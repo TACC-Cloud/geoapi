@@ -1,0 +1,37 @@
+# This compose file is useful for testing https.
+# The .env file sets ENVVARS for the Docker CLI used by this compose file.
+---
+version: "3"
+services:
+  postgres:
+    image: mdillon/postgis
+    ports:
+      - 5432:5432
+    container_name: geoapi_postgres
+    hostname: geoapi_postgres
+    environment:
+      - POSTGRES_PASSWORD=dev
+      - POSTGRES_USER=dev
+      - POSTGRES_DB=dev
+
+  api:
+    build:
+      context: .
+      dockerfile: ./Dockerfile
+    links:
+      - postgres:postgres
+    volumes:
+      - .:/api
+    ports:
+      - 8000:8000
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
+    environment:
+      - FLASK_APP=/api/geoapi/app.py
+      - FLASK_ENV=development
+    stdin_open: true
+    tty: true
+    container_name: geoapi
+    hostname: geoapi
+    command: "flask run --host=0.0.0.0 --port=8000"

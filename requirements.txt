@@ -1,0 +1,9 @@
+flask-restplus
+flask
+sqlalchemy
+psycopg2
+ipython
+geojson
+pillow
+pytest
+pyjwt
