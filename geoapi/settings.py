@@ -6,13 +6,30 @@ class Config(object):
     DB_USERNAME = 'dev'
     DB_NAME = 'dev'
     DB_PASSWD = 'dev'
+    DB_HOST = 'postgres'
     ASSETS_BASE_DIR = '/tmp'
 
+
 class ProductionConfig(Config):
-    DATABASE_URI = 'mysql://user@localhost/foo'
+    DEBUG = False
+
 
 class DevelopmentConfig(Config):
     DEBUG = True
 
+
 class TestingConfig(Config):
+    DB_USERNAME = 'dev'
+    DB_NAME = 'test'
+    DB_PASSWD = 'dev'
     TESTING = True
+    ASSETS_BASE_DIR = '/tmp'
+
+
+APP_ENV = os.environ.get('APP_ENV', '').lower()
+if APP_ENV == 'prod':
+    settings = ProductionConfig
+elif APP_ENV == 'testing':
+    settings = TestingConfig
+else:
+    settings = DevelopmentConfig

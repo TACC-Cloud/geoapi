@@ -15,4 +15,7 @@ class LayerGroup(Base):
     description = Column(String, nullable=True)
     created = Column(DateTime(timezone=True), server_default=func.now())
 
-    features = relationship('Feature', cascade="all")
+    features = relationship('Feature', cascade="all, delete-orphan")
+
+    def __repr__(self):
+        return '<LayerGroup(id={})>'.format(self.id)

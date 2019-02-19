@@ -5,6 +5,7 @@ from flask import request
 from flask_restplus import reqparse
 import jwt
 from geoapi.dao.users import UserDAO
+from geoapi.dao.projects import ProjectsDAO
 
 parser = reqparse.RequestParser()
 
@@ -13,10 +14,8 @@ def jwt_decoder(fn):
     @wraps(fn)
     def wrapper(*args, **kwargs):
         token = request.headers.get('x-jwt-assertion')
-        print(token)
         try:
             decoded = jwt.decode(token, 'your-256-bit-secret', 'HS256')
-            print(decoded)
             username = decoded["http://wso2.org/claims/subscriber"]
         except:
             abort(400, 'could not decode JWT')
@@ -24,7 +23,7 @@ def jwt_decoder(fn):
         user = UserDAO.getUser(username)
         if not user:
             user = UserDAO.create(username)
-        
+        request.current_user = user
         return fn(*args, **kwargs)
     return wrapper
 
@@ -32,8 +31,13 @@ def jwt_decoder(fn):
 def project_permissions(fn):
     @wraps(fn)
     def wrapper(*args, **kwargs):
-
-        print('Checking permissions')
-        print(kwargs)
+        projectId = kwargs.get("projectId")
+        proj = ProjectsDAO.get(projectId)
+        if not proj:
+            abort(404, "No project found")
+        current_user = request.current_user
+        access = UserDAO.canAccess(current_user, projectId)
+        if not access:
+            abort(403, "Access denied")
         return fn(*args, **kwargs)
     return wrapper

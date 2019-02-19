@@ -7,3 +7,5 @@ geojson
 pillow
 pytest
 pyjwt
+geoalchemy2
+alembic
