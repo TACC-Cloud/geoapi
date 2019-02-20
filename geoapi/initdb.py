@@ -1,7 +1,6 @@
 from geoapi.db import Base, engine
-from geoapi.models import Feature
+from geoapi.models import Feature, FeatureAsset
 from geoapi.models import User
-from geoapi.models import LayerGroup
 from geoapi.models import Project
 
 def initDB():

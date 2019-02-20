@@ -2,7 +2,7 @@ from geoapi.models import User, Project, ProjectUser
 from geoapi.db import db_session
 from typing import List
 
-class UserDAO():
+class UserService:
 
     @staticmethod
     def create(username: str) -> User:

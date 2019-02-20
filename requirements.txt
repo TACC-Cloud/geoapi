@@ -9,3 +9,5 @@ pytest
 pyjwt
 geoalchemy2
 alembic
+shapely
+

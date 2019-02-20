@@ -13,10 +13,11 @@ from geoapi.db import Base
 class Feature(Base):
     __tablename__ = 'features'
     id = Column(Integer, primary_key=True)
-    layergroup_id = Column(ForeignKey('layergroups.id'), index=True)
+    project_id = Column(ForeignKey('projects.id'), index=True)
     the_geom = Column(Geometry(geometry_type='GEOMETRY', srid=4326))
-    extra = Column(JSONB)
+    properties = Column(JSONB)
     assets = relationship("FeatureAsset", cascade="all, delete-orphan")
+    project = relationship("Project")
 
     def __repr__(self):
         return '<Feature(id={})>'.format(self.id)

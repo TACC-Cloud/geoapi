@@ -1,0 +1,17 @@
+pipelines:
+  default:
+    - step:
+      image: node
+      script:
+        - npm install
+        - npm test
+      services:
+        - postgres
+definitions:
+  services:
+    postgres:
+      image: mdillon/postgis
+      environment:
+        POSTGRES_DB: test
+        POSTGRES_USER: dev
+        POSTGRES_PASSWORD: dev
