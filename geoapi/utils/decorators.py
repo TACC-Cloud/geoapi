@@ -6,6 +6,7 @@ from flask_restplus import reqparse
 import jwt
 from geoapi.services.users import UserService
 from geoapi.services.projects import ProjectsService
+from geoapi.settings import  settings
 
 parser = reqparse.RequestParser()
 
@@ -15,14 +16,15 @@ def jwt_decoder(fn):
     def wrapper(*args, **kwargs):
         token = request.headers.get('x-jwt-assertion')
         try:
-            decoded = jwt.decode(token, 'your-256-bit-secret', 'HS256')
+            decoded = jwt.decode(token, settings.JWT_SECRET_KEY, 'HS256')
             username = decoded["http://wso2.org/claims/subscriber"]
         except:
             abort(400, 'could not decode JWT')
 
         user = UserService.getUser(username)
         if not user:
-            user = UserService.create(username)
+            user = UserService.create(username, token)
+        UserService.setJWT(user, token)
         request.current_user = user
         return fn(*args, **kwargs)
     return wrapper

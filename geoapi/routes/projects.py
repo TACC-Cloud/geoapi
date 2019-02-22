@@ -7,13 +7,15 @@ from geoapi.db import db_session
 from geoapi.utils.decorators import jwt_decoder, project_permissions
 from geoapi.services.projects import ProjectsService
 from geoapi.services.users import UserService
+from geoapi.services.features import FeatureService
+from geoapi.schemas import FeatureCollectionSchema, FeatureSchema
 
 api = Namespace('projects', decorators=[jwt_decoder])
 
-layergroup = api.model('LayerGroup', {
-    'id': fields.Integer(),
-    'name': fields.String(required=True),
-    'description': fields.String(required=False)
+geojson = api.model('GeoJSON', {
+    "type": fields.String(),
+    "geometry": fields.Raw(),
+    "properties": fields.Raw()
 })
 project = api.model('Project', {
     'id': fields.Integer(),
@@ -25,6 +27,8 @@ user = api.model('User', {
     'id': fields.Integer(),
     'username': fields.String(required=True)
 })
+
+feature_schema = api.schema_model('Feature', FeatureSchema)
 
 
 @api.route('/')
@@ -84,50 +88,52 @@ class ProjectUserResource(Resource):
     def delete(self, projectId: int):
         return ProjectsService.removeUserFromProject(projectId)
 
-feature_upload_parser = api.parser()
-feature_upload_parser.add_argument('feature', location='json', type="json", required=False)
+
 
 @api.route('/<int:projectId>/features/')
 class ProjectFeaturesResource(Resource):
 
-    @api.marshal_with(project)
     @project_permissions
     def get(self, projectId: int):
-        return ProjectsService.get(projectId)
+        return ProjectsService.getFeatures(projectId)
 
-    @api.doc('Add a new feature to a project. Must be valid GeoJSON. If the posted data'
-             ' is a FeatureCollection, each individual feature will be added to the project'
-             'individually')
-    @api.expect(feature_upload_parser)
+    @api.doc('')
+    @api.expect(feature_schema)
     @project_permissions
     def post(self, projectId: int):
-        args = feature_upload_parser.parse_args()
-        if args.feature:
-            ProjectsService.addGeoJSON(projectId, args.feature)
+        return ProjectsService.addGeoJSON(projectId, request.json)
+
+@api.route('/<int:projectId>/features/<int:featureId>/properties/')
+class ProjectFeaturePropertiesResource(Resource):
+
+    @api.doc('')
+    @project_permissions
+    def post(self, projectId: int, featureId: int):
+        return FeatureService.setProperties(featureId, request.json)
+
 
 
 file_upload_parser = api.parser()
-file_upload_parser.add_argument('file', location='files', type=FileStorage, required=False)
+file_upload_parser.add_argument('file', location='files', type=FileStorage, required=True)
 
 @api.route('/<int:projectId>/features/files/')
 class ProjectFeaturesFilesResource(Resource):
 
     @api.doc('Add a new feature to a project. Can upload a file '
              '(GeoJSON, image, shapefile) or POST valid GeoJSON directly')
-    @api.expect(file_upload_parser)
     @project_permissions
     def post(self, projectId: int):
-        print(request.files)
-        args = file_upload_parser.parse_args()
-        print(args)
-        ProjectsService.addImage(projectId, args.file)
+        file = request.files['file']
+        formData = request.form
+        metadata = formData.to_dict()
+        ProjectsService.addImage(projectId, file, metadata)
 
 
 @api.route('/<int:projectId>/features/collection/')
 class ProjectFeaturesCollectionResource(Resource):
 
     @api.doc('Create a special collection marker, which can have multiple static assets like images or videos attached to it')
-    @api.expect(feature_upload_parser)
+    @api.expect(feature_schema)
     @project_permissions
     def post(self, projectId: int):
         args = feature_upload_parser.parse_args()
@@ -142,9 +148,9 @@ class ProjectFeaturesCollectionResource(Resource):
     @api.expect(file_upload_parser)
     @project_permissions
     def post(self, projectId: int, collectionId: int) -> None:
-        args = feature_upload_parser.parse_args()
-        if args.feature:
-            ProjectsService.addGeoJSON(projectId, args.feature)
+        args = file_upload_parser.parse_args()
+        if args.file:
+            ProjectsService.addGeoJSON(projectId, args.file)
 
 
 

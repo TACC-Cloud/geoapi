@@ -8,7 +8,7 @@ class Config(object):
     DB_PASSWD = 'dev'
     DB_HOST = 'postgres'
     ASSETS_BASE_DIR = '/tmp'
-
+    JWT_SECRET_KEY = 'your-256-bit-secret'
 
 class ProductionConfig(Config):
     DEBUG = False

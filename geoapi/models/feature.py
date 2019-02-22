@@ -3,25 +3,38 @@ from sqlalchemy import (
     Column, Integer, String,
     ForeignKey, Boolean, Index
 )
+import shapely
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import relationship
 from sqlalchemy.dialects.postgresql import UUID
 from geoalchemy2 import Geometry
+from geoalchemy2.shape import from_shape, to_shape
 from geoapi.db import Base
 
 
 class Feature(Base):
     __tablename__ = 'features'
+    __table_args__ = (
+        Index('ix_features_properties', 'properties', postgresql_using="gin"),
+    )
+
     id = Column(Integer, primary_key=True)
     project_id = Column(ForeignKey('projects.id'), index=True)
-    the_geom = Column(Geometry(geometry_type='GEOMETRY', srid=4326))
-    properties = Column(JSONB)
-    assets = relationship("FeatureAsset", cascade="all, delete-orphan")
+    the_geom = Column(Geometry(geometry_type='GEOMETRY', srid=4326), nullable=False)
+    properties = Column(JSONB, default={})
+    assets = relationship("FeatureAsset", cascade="all, delete-orphan", lazy="joined")
     project = relationship("Project")
 
     def __repr__(self):
         return '<Feature(id={})>'.format(self.id)
 
+    @classmethod
+    def fromGeoJSON(cls, data):
+        shp = shapely.geometry.shape(data["geometry"])
+        feat = cls()
+        feat.the_geom = from_shape(shp, srid=4326)
+        feat.properties = data.get("properties")
+        return feat
 
 class FeatureAsset(Base):
     __tablename__ = 'feature_assets'

@@ -1,5 +1,5 @@
 
-class InvalidGeoJson(Exception):
+class InvalidGeoJSON(Exception):
     """ Custom exception to notify caller they have supplied Invalid GeoJson """
     pass
 

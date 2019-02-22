@@ -1,9 +1,11 @@
+import os
 import PIL
 from PIL import Image
 from PIL.ExifTags import TAGS, GPSTAGS
 from typing import Tuple, IO
 from dataclasses import dataclass
 from geoapi.exceptions import InvalidEXIFData
+from geoapi.settings import settings
 
 @dataclass
 class ImageData:
@@ -12,11 +14,11 @@ class ImageData:
     coordinates: Tuple[float, float]
 
 
-
 class ImageService:
 
     THUMBSIZE = (100, 100)
     RESIZE = (1024, 1024)
+
     @staticmethod
     def processImage(fileObj: IO) -> ImageData:
 
@@ -30,6 +32,8 @@ class ImageService:
             return imdata
         except:
             raise InvalidEXIFData()
+
+
 
 def get_exif_data(image):
     """Returns a dictionary from the exif data of an PIL Image item. Also converts the GPS Tags"""
@@ -73,7 +77,6 @@ def get_exif_location(image):
     Returns the latitude and longitude, if available, from the provided exif_data (obtained through get_exif_data above)
     """
     exif_data = get_exif_data(image)
-    print(exif_data)
     lat = None
     lon = None
 

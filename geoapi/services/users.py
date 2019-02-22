@@ -5,12 +5,12 @@ from typing import List
 class UserService:
 
     @staticmethod
-    def create(username: str) -> User:
+    def create(username: str, jwt: str) -> User:
         """
 
         :rtype: User
         """
-        u = User(username=username)
+        u = User(username=username, jwt=jwt)
         db_session.add(u)
         db_session.commit()
         return u
@@ -34,3 +34,8 @@ class UserService:
         if up:
             return True
         return False
+
+    @staticmethod
+    def setJWT(user: User, token: str) -> None:
+        user.jwt = token
+        db_session.commit()

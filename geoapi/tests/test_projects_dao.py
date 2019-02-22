@@ -15,3 +15,19 @@ def test_create_project(users_fixture):
     assert proj.id is not None
     assert len(proj.users) == 1
     assert proj.name == "test name"
+
+def test_insert_feature_geojson(users_fixture):
+    pass
+
+def test_insert_feature_collection(users_fixture):
+    pass
+
+def test_insert_image(users_fixture):
+    pass
+
+def test_remove_feature(users_fixture):
+    pass
+
+def test_remove_feature_removes_assets(users_fixture):
+    pass
+
