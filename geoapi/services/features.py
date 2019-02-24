@@ -4,7 +4,7 @@ from typing import List
 from PIL import Image
 import PIL.ExifTags
 
-class FeatureService:
+class FeaturesService:
 
     @staticmethod
     def getFeature(featureId: int)-> Feature:
@@ -24,6 +24,7 @@ class FeatureService:
     def setProperties(featureId: int, props: dict) -> Feature:
         feat = Feature.query.get(featureId)
         # TODO: Throw assert if not found?
+        # TODO: PROTECT assets and styles attributes
         feat.properties = props
         db_session.commit()
         return feat

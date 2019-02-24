@@ -8,9 +8,9 @@ from shapely.geometry import Point
 from geoalchemy2.shape import from_shape, to_shape
 import geojson
 
-from geoapi.models import Project, User, Feature
+from geoapi.models import Project, User, Feature, FeatureAsset
 from geoapi.db import db_session
-from geoapi.services.features import FeatureService
+from geoapi.services.features import FeaturesService
 from geoapi.services.images import ImageService
 from geoapi.exceptions import InvalidGeoJSON
 from geoapi.settings import settings
@@ -53,15 +53,20 @@ class ProjectsService:
             'features', json_agg(
                 json_build_object(
                     'type',       'Feature',
-                    'id',         id, 
+                    'id',         tmp.id, 
                     'geometry',   ST_AsGeoJSON(the_geom)::json,
                     'properties', properties || json_build_object(
-                        'image_uuid', image_uuid, 'collection', collection)::jsonb --This merges the properties with extra fields
+                        'assets', assets, 'styles', styles
+                        )::jsonb --This merges the properties with extra fields
                     )
                 )
         ) as geojson
-        FROM features
-        where project_id = :projectId;
+        FROM (select feat.*, array_remove(array_agg(fa), null) as assets, array_remove(array_agg(fs), null) as styles 
+              from features as feat, feature_styles as fs
+              left join feature_assets fa on feat.id = fa.feature_id
+              where project_id = :projectId
+              group by feat.id
+        ) as tmp
         """
         result = db_session.execute(q, {'projectId': projectId})
         out = result.fetchone()
@@ -102,13 +107,22 @@ class ProjectsService:
         f = Feature()
         f.project_id = projectId
         f.the_geom = from_shape(point, srid=4326)
-        f.image_uuid = uuid.uuid4()
         f.properties = metadata
+
+        asset_uuid = uuid.uuid4()
+        asset_path = os.path.join(settings.ASSETS_BASE_DIR, str(projectId), str(asset_uuid))
+        fa = FeatureAsset(
+            uuid=asset_uuid,
+            asset_type="image",
+            path=asset_path,
+            feature=f,
+        )
         pathlib.Path(os.path.join(settings.ASSETS_BASE_DIR, str(projectId))).mkdir(parents=True, exist_ok=True)
-        imdata.thumb.save(os.path.join(settings.ASSETS_BASE_DIR, str(projectId), str(f.image_uuid)+".thumb"), "JPEG")
-        imdata.resized.save(os.path.join(settings.ASSETS_BASE_DIR, str(projectId), str(f.image_uuid)), "JPEG")
+        imdata.thumb.save(asset_path + ".thumb", "JPEG")
+        imdata.resized.save(asset_path, "JPEG")
 
         db_session.add(f)
+        db_session.add(fa)
         db_session.commit()
 
     @staticmethod

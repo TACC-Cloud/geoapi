@@ -41,6 +41,19 @@ class FeatureAsset(Base):
     id = Column(Integer, primary_key=True)
     feature_id = Column(ForeignKey('features.id'), index=True)
     uuid = Column(UUID(as_uuid=True), default=uuid.uuid4, nullable=False)
+    path = Column(String(), nullable=False)
+    asset_type = Column(String(), nullable=False, default="image")
+    feature = relationship('Feature')
+
+    def __repr__(self):
+        return '<FeatureAsset(id={})>'.format(self.id)
+
+
+class FeatureStyle(Base):
+    __tablename__ = 'feature_styles'
+    id = Column(Integer, primary_key=True)
+    feature_id = Column(ForeignKey('features.id'), index=True)
+    styles = Column(JSONB, nullable=False)
 
     def __repr__(self):
         return '<FeatureAsset(id={})>'.format(self.id)

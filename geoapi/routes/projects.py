@@ -7,7 +7,7 @@ from geoapi.db import db_session
 from geoapi.utils.decorators import jwt_decoder, project_permissions
 from geoapi.services.projects import ProjectsService
 from geoapi.services.users import UserService
-from geoapi.services.features import FeatureService
+from geoapi.services.features import FeaturesService
 from geoapi.schemas import FeatureCollectionSchema, FeatureSchema
 
 api = Namespace('projects', decorators=[jwt_decoder])
@@ -109,7 +109,7 @@ class ProjectFeaturePropertiesResource(Resource):
     @api.doc('')
     @project_permissions
     def post(self, projectId: int, featureId: int):
-        return FeatureService.setProperties(featureId, request.json)
+        return FeaturesService.setProperties(featureId, request.json)
 
 
 
@@ -119,8 +119,8 @@ file_upload_parser.add_argument('file', location='files', type=FileStorage, requ
 @api.route('/<int:projectId>/features/files/')
 class ProjectFeaturesFilesResource(Resource):
 
-    @api.doc('Add a new feature to a project. Can upload a file '
-             '(GeoJSON, image, shapefile) or POST valid GeoJSON directly')
+    @api.doc(description='Add a new feature to a project. Can upload a file '
+             '(image, shapefile, lidar (las, lsz))')
     @project_permissions
     def post(self, projectId: int):
         file = request.files['file']
