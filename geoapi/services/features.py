@@ -1,14 +1,31 @@
-from geoapi.models import Project, User, Feature, FeatureAsset
+import os
+import pathlib
+import uuid
+import json
+from typing import List, IO
+from shapely.geometry import Point
+from geoalchemy2.shape import from_shape, to_shape
+import geojson
+
+from geoapi.services.images import ImageService
+from geoapi.settings import settings
+from geoapi.models import Feature, FeatureAsset
 from geoapi.db import db_session
-from typing import List
-from PIL import Image
-import PIL.ExifTags
+from geoapi.exceptions import InvalidGeoJSON
 
 class FeaturesService:
 
+    IMAGE_FILE_EXTENSIONS = (
+        'jpeg', 'png', 'tiff'
+    )
+
+    VIDEO_FILE_EXTENSIONS = (
+        'mp4', 'mov'
+    )
+
     @staticmethod
-    def getFeature(featureId: int)-> Feature:
-        return Feature.query.filter(Feature.id == featureId).first()
+    def get(featureId: int)-> Feature:
+        return Feature.query.get(featureId)
 
 
     @staticmethod
@@ -28,3 +45,80 @@ class FeaturesService:
         feat.properties = props
         db_session.commit()
         return feat
+
+
+    @staticmethod
+    def addGeoJSON(projectId: int, feature: dict) -> Feature:
+        """
+        Add a GeoJSON feature to a project
+        :param projectId: int
+        :param feature: GeoJSON
+        :return: Feature
+        """
+        try:
+            data = geojson.loads(json.dumps(feature))
+        except ValueError:
+            raise InvalidGeoJSON
+
+        if data["type"] == "Feature":
+            feat = Feature.fromGeoJSON(data)
+            feat.project_id = projectId
+            db_session.add(feat)
+        elif data["type"] == "FeatureCollection":
+            fc = geojson.FeatureCollection(data)
+            for feature in fc.features:
+                feat = Feature.fromGeoJSON(feature)
+                feat.project_id = projectId
+                db_session.add(feat)
+        else:
+            raise InvalidGeoJSON("Valid GeoJSON must be either a Feature or FeatureCollection.")
+        db_session.commit()
+        return True
+
+
+    @staticmethod
+    def fromImage(projectId: int, fileObj: IO, metadata: dict) -> (Feature, FeatureAsset):
+        imdata = ImageService.processImage(fileObj)
+        point = Point(imdata.coordinates)
+        f = Feature()
+        f.project_id = projectId
+        f.the_geom = from_shape(point, srid=4326)
+        f.properties = metadata
+
+        asset_uuid = uuid.uuid4()
+        asset_path = os.path.join("/assets", str(projectId), str(asset_uuid))
+        fa = FeatureAsset(
+            uuid=asset_uuid,
+            asset_type="image",
+            path=asset_path,
+            feature=f,
+        )
+        f.assets.append(fa)
+        base_filepath = os.path.join(settings.ASSETS_BASE_DIR, str(projectId))
+        pathlib.Path(base_filepath).mkdir(parents=True, exist_ok=True)
+        imdata.thumb.save(os.path.join(base_filepath, str(asset_uuid) + ".thumb"), "JPEG")
+        imdata.thumb.save(os.path.join(base_filepath, str(asset_uuid)), "JPEG")
+        db_session.add(f)
+        db_session.commit()
+
+    @staticmethod
+    def createFeatureAsset(projectId:int , featureId: int, fileObj: IO) -> FeatureAsset:
+        feat = Feature.query.get(featureId)
+        imdata = ImageService.processImage(fileObj)
+        asset_uuid = uuid.uuid4()
+        # asset_path will be used to serve the asset with front end server
+        asset_path = os.path.join("/assets", str(projectId), str(asset_uuid))
+        fa = FeatureAsset(
+            uuid=asset_uuid,
+            asset_type="image",
+            path=asset_path,
+
+        )
+        fa.feature = feat
+        base_filepath = os.path.join(settings.ASSETS_BASE_DIR, str(projectId))
+        pathlib.Path(base_filepath).mkdir(parents=True, exist_ok=True)
+        imdata.thumb.save(os.path.join(base_filepath, str(asset_uuid) + ".thumb"), "JPEG")
+        imdata.thumb.save(os.path.join(base_filepath, str(asset_uuid)), "JPEG")
+        db_session.add(fa)
+        db_session.commit()
+

@@ -21,17 +21,39 @@ class ImageService:
 
     @staticmethod
     def processImage(fileObj: IO) -> ImageData:
+        """
+        Resize and get the EXIF GeoLocation from an image
+        :param fileObj:
+        :return:
+        """
 
         try:
-            thumb = Image.open(fileObj)
-            thumb.thumbnail(ImageService.THUMBSIZE)
-            resized = Image.open(fileObj)
-            resized.thumbnail(ImageService.RESIZE, PIL.Image.ANTIALIAS)
-            exif_loc = get_exif_location(thumb)
-            imdata = ImageData(thumb, resized, exif_loc)
+            imdata = ImageService.resizeImage(fileObj)
+            exif_loc = get_exif_location(imdata.resized)
+            imdata.coordinates = exif_loc
             return imdata
         except:
             raise InvalidEXIFData()
+
+    @staticmethod
+    def resizeImage(fileObj: IO) -> ImageData:
+        thumb = Image.open(fileObj)
+        thumb.thumbnail(ImageService.THUMBSIZE)
+        resized = Image.open(fileObj)
+        resized.thumbnail(ImageService.RESIZE, PIL.Image.ANTIALIAS)
+        imdata = ImageData(thumb, resized, (0,0))
+        return imdata
+
+    @staticmethod
+    def saveImageToProject(imdata: ImageData, projectId: int, name: str) -> None:
+        """
+        Save an image and thumbnail to disk
+        :param imdata:
+        :param filePath:
+        :param name:
+        :return:
+        """
+
 
 
 

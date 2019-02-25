@@ -16,6 +16,10 @@ class UserService:
         return u
 
     @staticmethod
+    def checkUser(username: str) -> bool:
+        pass
+
+    @staticmethod
     def getUser(username: str)-> User:
         return db_session.query(User).filter(User.username == username).first()
 

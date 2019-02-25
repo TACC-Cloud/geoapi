@@ -8,5 +8,8 @@ def initDB():
     Base.metadata.create_all(bind=engine)
 
 
+def addRandomMarkers():
+    pass
+
 if __name__ == "__main__":
     initDB()

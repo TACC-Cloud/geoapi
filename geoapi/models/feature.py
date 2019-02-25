@@ -11,7 +11,6 @@ from geoalchemy2 import Geometry
 from geoalchemy2.shape import from_shape, to_shape
 from geoapi.db import Base
 
-
 class Feature(Base):
     __tablename__ = 'features'
     __table_args__ = (
@@ -23,6 +22,7 @@ class Feature(Base):
     the_geom = Column(Geometry(geometry_type='GEOMETRY', srid=4326), nullable=False)
     properties = Column(JSONB, default={})
     assets = relationship("FeatureAsset", cascade="all, delete-orphan", lazy="joined")
+    styles = relationship("FeatureStyle", cascade="all, delete-orphan", uselist=False)
     project = relationship("Project")
 
     def __repr__(self):

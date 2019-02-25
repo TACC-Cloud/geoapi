@@ -4,8 +4,7 @@ import os
 import pathlib
 from typing import List
 import shapely
-from shapely.geometry import Point
-from geoalchemy2.shape import from_shape, to_shape
+
 import geojson
 
 from geoapi.models import Project, User, Feature, FeatureAsset
@@ -15,10 +14,22 @@ from geoapi.services.images import ImageService
 from geoapi.exceptions import InvalidGeoJSON
 from geoapi.settings import settings
 
+
 class ProjectsService:
+    """
+    Central location of all interactions with Projects.
+    """
+
 
     @staticmethod
     def create(data: dict, user: User) -> Project:
+        """
+        Create a new map project for a user.
+        :param data: dict
+        :param user: User
+        :return: Project
+        """
+
         project = Project(**data)
         project.users.append(user)
         db_session.add(project)
@@ -27,6 +38,11 @@ class ProjectsService:
 
     @staticmethod
     def list(username: str) -> List[Project]:
+        """
+        List a users projects
+        :param username: str
+        :return: List[Project]
+        """
         u = db_session.query(User).filter(User.username == username).first()
         if not u:
             return []
@@ -34,13 +50,22 @@ class ProjectsService:
 
     @staticmethod
     def get(projectId: int) -> Project:
-
+        """
+        Get the metadata associated with a project
+        :param projectId: int
+        :return: Project
+        """
         return db_session.query(Project)\
             .filter(Project.id == projectId).first()
 
 
     @staticmethod
     def getFeatures(projectId: int) -> object:
+        """
+        Returns a GeoJSON FeatureCollection of all assets in a project
+        :param projectId: int
+        :return: GeoJSON
+        """
         q = """
         SELECT  json_build_object(
             'type', 'FeatureCollection',
@@ -62,8 +87,9 @@ class ProjectsService:
                 )
         ) as geojson
         FROM (select feat.*, array_remove(array_agg(fa), null) as assets, array_remove(array_agg(fs), null) as styles 
-              from features as feat, feature_styles as fs
+              from features as feat
               left join feature_assets fa on feat.id = fa.feature_id
+              LEFT JOIN feature_styles fs on feat.id = fs.feature_id
               where project_id = :projectId
               group by feat.id
         ) as tmp
@@ -78,12 +104,26 @@ class ProjectsService:
 
     @staticmethod
     def delete(projectId: int) -> None:
+        """
+        Delete a project and all its Features and assets
+        :param projectId:
+        :return:
+        """
         db_session.query(Project) \
             .filter(Project.id == projectId).delete()
         db_session.commit()
 
+
     @staticmethod
     def addUserToProject(projectId: int, username: str) -> None:
+        """
+        Add a user to a project
+        :param projectId: int
+        :param username: string
+        :return:
+        """
+
+        # TODO: Add TAS integration
         proj = db_session.query(Project) \
             .filter(Project.id == projectId).first()
         user = db_session.query(User) \
@@ -93,6 +133,12 @@ class ProjectsService:
 
     @staticmethod
     def removeUserFromProject(projectId: int, username: str) -> None:
+        """
+        Remove a user from a Project.
+        :param projectId: int
+        :param username: str
+        :return: None
+        """
         proj = db_session.query(Project) \
             .filter(Project.id == projectId).first()
         user = db_session.query(User) \
@@ -100,53 +146,25 @@ class ProjectsService:
         proj.users.remove(user)
         db_session.commit()
 
-    @staticmethod
-    def addImage(projectId: int, fileObj, metadata: dict) -> Feature:
-        imdata = ImageService.processImage(fileObj)
-        point = Point(imdata.coordinates)
-        f = Feature()
-        f.project_id = projectId
-        f.the_geom = from_shape(point, srid=4326)
-        f.properties = metadata
-
-        asset_uuid = uuid.uuid4()
-        asset_path = os.path.join(settings.ASSETS_BASE_DIR, str(projectId), str(asset_uuid))
-        fa = FeatureAsset(
-            uuid=asset_uuid,
-            asset_type="image",
-            path=asset_path,
-            feature=f,
-        )
-        pathlib.Path(os.path.join(settings.ASSETS_BASE_DIR, str(projectId))).mkdir(parents=True, exist_ok=True)
-        imdata.thumb.save(asset_path + ".thumb", "JPEG")
-        imdata.resized.save(asset_path, "JPEG")
-
-        db_session.add(f)
-        db_session.add(fa)
-        db_session.commit()
 
     @staticmethod
-    def addGeoJSON(projectId: int, feature: dict) -> Feature:
-        try:
-            data = geojson.loads(json.dumps(feature))
-        except ValueError:
-            raise InvalidGeoJSON
-
-        if data["type"] == "Feature":
-            feat = Feature.fromGeoJSON(data)
-            feat.project_id = projectId
-            db_session.add(feat)
-        elif data["type"] == "FeatureCollection":
-            fc = geojson.FeatureCollection(data)
-            for feature in fc.features:
-                feat = Feature.fromGeoJSON(feature)
-                feat.project_id = projectId
-                db_session.add(feat)
-        else:
-            raise InvalidGeoJSON
-        db_session.commit()
-        return True
+    def addLidarData(projectID: int, fileObj) -> None:
+        """
+        Add a las/laz file to a project. This is asynchronous. The dataset will be converted
+        to potree viewer format and processed to get the extent which will be shown on the map.
+        :param projectID: int
+        :param fileObj: file
+        :return: None
+        """
+        pass
 
     @staticmethod
-    def addLidarData(projectID: int) -> Feature:
+    def importFromAgave(projectId, agaveSystemId, filePath) -> None:
+        """
+        Import data stored in an agave file system. This is asynchronous.
+        :param projectId: int
+        :param agaveSystemId: str
+        :param filePath: str
+        :return: None
+        """
         pass

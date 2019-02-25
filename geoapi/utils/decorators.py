@@ -6,6 +6,7 @@ from flask_restplus import reqparse
 import jwt
 from geoapi.services.users import UserService
 from geoapi.services.projects import ProjectsService
+from geoapi.services.features import FeaturesService
 from geoapi.settings import  settings
 
 parser = reqparse.RequestParser()
@@ -42,4 +43,19 @@ def project_permissions(fn):
         if not access:
             abort(403, "Access denied")
         return fn(*args, **kwargs)
+    return wrapper
+
+def project_feature_exists(fn):
+    @wraps(fn)
+    def wrapper(*args, **kwargs):
+        projectId = kwargs.get("projectId")
+        proj = ProjectsService.get(projectId)
+        if not proj:
+            abort(404, "No project found")
+        featureId = kwargs.get("featureId")
+        feature = FeaturesService.get(featureId)
+        if not feature:
+            abort(404, "No feature found!")
+        return fn(*args, **kwargs)
+
     return wrapper

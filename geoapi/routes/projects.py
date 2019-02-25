@@ -4,7 +4,7 @@ from werkzeug.datastructures import FileStorage
 
 from geoapi.models import Project, Feature, User
 from geoapi.db import db_session
-from geoapi.utils.decorators import jwt_decoder, project_permissions
+from geoapi.utils.decorators import jwt_decoder, project_permissions, project_feature_exists
 from geoapi.services.projects import ProjectsService
 from geoapi.services.users import UserService
 from geoapi.services.features import FeaturesService
@@ -108,6 +108,7 @@ class ProjectFeaturePropertiesResource(Resource):
 
     @api.doc('')
     @project_permissions
+    @project_feature_exists
     def post(self, projectId: int, featureId: int):
         return FeaturesService.setProperties(featureId, request.json)
 
@@ -119,38 +120,28 @@ file_upload_parser.add_argument('file', location='files', type=FileStorage, requ
 @api.route('/<int:projectId>/features/files/')
 class ProjectFeaturesFilesResource(Resource):
 
-    @api.doc(description='Add a new feature to a project. Can upload a file '
-             '(image, shapefile, lidar (las, lsz))')
+    @api.doc(id="uploadFile",
+             description='Add a new feature to a project. Can upload a file '
+             '(georeferenced image, shapefile, lidar (las, lsz))')
     @project_permissions
     def post(self, projectId: int):
         file = request.files['file']
         formData = request.form
         metadata = formData.to_dict()
-        ProjectsService.addImage(projectId, file, metadata)
+        FeaturesService.fromImage(projectId, file, metadata)
 
 
-@api.route('/<int:projectId>/features/collection/')
+
+@api.route('/<int:projectId>/features/<int:featureId>/assets/')
 class ProjectFeaturesCollectionResource(Resource):
 
-    @api.doc('Create a special collection marker, which can have multiple static assets like images or videos attached to it')
-    @api.expect(feature_schema)
-    @project_permissions
-    def post(self, projectId: int):
-        args = feature_upload_parser.parse_args()
-        if args.feature:
-            ProjectsService.addGeoJSON(projectId, args.feature)
-
-
-@api.route('/<int:projectId>/features/collection/<int:collectionId>')
-class ProjectFeaturesCollectionResource(Resource):
-
-    @api.doc('Add a static asset to a collection')
+    @api.doc('Add a static asset to a collection. Must be an image at the moment')
     @api.expect(file_upload_parser)
     @project_permissions
-    def post(self, projectId: int, collectionId: int) -> None:
+    @project_feature_exists
+    def post(self, projectId: int, featureId: int) -> None:
         args = file_upload_parser.parse_args()
-        if args.file:
-            ProjectsService.addGeoJSON(projectId, args.file)
+        FeaturesService.createFeatureAsset(projectId, featureId, args['file'])
 
 
 
