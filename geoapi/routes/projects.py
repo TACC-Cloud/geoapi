@@ -13,8 +13,8 @@ from geoapi.schemas import FeatureCollectionSchema, FeatureSchema
 api = Namespace('projects', decorators=[jwt_decoder])
 
 geojson = api.model('GeoJSON', {
-    "type": fields.String(),
-    "geometry": fields.Raw(),
+    "type": fields.String(required=True),
+    "geometry": fields.Raw(required=True),
     "properties": fields.Raw()
 })
 project = api.model('Project', {
@@ -34,7 +34,7 @@ feature_schema = api.schema_model('Feature', FeatureSchema)
 @api.route('/')
 class ProjectsListing(Resource):
 
-    @api.doc('Get a listing of projects')
+    @api.doc(description='Get a listing of projects')
     @api.marshal_with(project)
     def get(self):
         u = request.current_user
@@ -114,8 +114,6 @@ class ProjectFeaturePropertiesResource(Resource):
 
 
 
-file_upload_parser = api.parser()
-file_upload_parser.add_argument('file', location='files', type=FileStorage, required=True)
 
 @api.route('/<int:projectId>/features/files/')
 class ProjectFeaturesFilesResource(Resource):
@@ -131,6 +129,8 @@ class ProjectFeaturesFilesResource(Resource):
         FeaturesService.fromImage(projectId, file, metadata)
 
 
+file_upload_parser = api.parser()
+file_upload_parser.add_argument('file', location='files', type=FileStorage, required=True)
 
 @api.route('/<int:projectId>/features/<int:featureId>/assets/')
 class ProjectFeaturesCollectionResource(Resource):

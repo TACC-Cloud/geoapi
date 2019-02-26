@@ -44,17 +44,6 @@ class ImageService:
         imdata = ImageData(thumb, resized, (0,0))
         return imdata
 
-    @staticmethod
-    def saveImageToProject(imdata: ImageData, projectId: int, name: str) -> None:
-        """
-        Save an image and thumbnail to disk
-        :param imdata:
-        :param filePath:
-        :param name:
-        :return:
-        """
-
-
 
 
 def get_exif_data(image):

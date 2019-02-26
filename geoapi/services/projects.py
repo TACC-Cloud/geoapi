@@ -1,18 +1,9 @@
-import uuid
-import json
-import os
-import pathlib
+
 from typing import List
-import shapely
 
-import geojson
-
-from geoapi.models import Project, User, Feature, FeatureAsset
+from geoapi.models import Project, User
+from geoapi.services.users import UserService
 from geoapi.db import db_session
-from geoapi.services.features import FeaturesService
-from geoapi.services.images import ImageService
-from geoapi.exceptions import InvalidGeoJSON
-from geoapi.settings import settings
 
 
 class ProjectsService:
@@ -43,10 +34,7 @@ class ProjectsService:
         :param username: str
         :return: List[Project]
         """
-        u = db_session.query(User).filter(User.username == username).first()
-        if not u:
-            return []
-        return u.projects
+        return UserService.projectsForUser(username)
 
     @staticmethod
     def get(projectId: int) -> Project:
@@ -55,17 +43,16 @@ class ProjectsService:
         :param projectId: int
         :return: Project
         """
-        return db_session.query(Project)\
-            .filter(Project.id == projectId).first()
-
+        return Project.query.get(projectId)
 
     @staticmethod
-    def getFeatures(projectId: int) -> object:
+    def getFeatures(projectId: int, query: dict = None) -> object:
         """
         Returns a GeoJSON FeatureCollection of all assets in a project
         :param projectId: int
         :return: GeoJSON
         """
+        # TODO: Add filtering somehow...
         q = """
         SELECT  json_build_object(
             'type', 'FeatureCollection',
@@ -106,7 +93,7 @@ class ProjectsService:
     def delete(projectId: int) -> None:
         """
         Delete a project and all its Features and assets
-        :param projectId:
+        :param projectId: int
         :return:
         """
         db_session.query(Project) \
@@ -124,12 +111,17 @@ class ProjectsService:
         """
 
         # TODO: Add TAS integration
-        proj = db_session.query(Project) \
-            .filter(Project.id == projectId).first()
-        user = db_session.query(User) \
-                .filter(User.username == username).first()
+        proj = Project.query.get(projectId)
+        user = User.query.filter(User.username == username).first()
         proj.users.append(user)
         db_session.commit()
+
+
+    @staticmethod
+    def getUsers(projectId: int) -> List[User]:
+        proj = Project.query.get(projectId)
+        return proj.users
+
 
     @staticmethod
     def removeUserFromProject(projectId: int, username: str) -> None:
@@ -146,25 +138,3 @@ class ProjectsService:
         proj.users.remove(user)
         db_session.commit()
 
-
-    @staticmethod
-    def addLidarData(projectID: int, fileObj) -> None:
-        """
-        Add a las/laz file to a project. This is asynchronous. The dataset will be converted
-        to potree viewer format and processed to get the extent which will be shown on the map.
-        :param projectID: int
-        :param fileObj: file
-        :return: None
-        """
-        pass
-
-    @staticmethod
-    def importFromAgave(projectId, agaveSystemId, filePath) -> None:
-        """
-        Import data stored in an agave file system. This is asynchronous.
-        :param projectId: int
-        :param agaveSystemId: str
-        :param filePath: str
-        :return: None
-        """
-        pass

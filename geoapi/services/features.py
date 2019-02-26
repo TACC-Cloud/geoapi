@@ -29,13 +29,30 @@ class FeaturesService:
 
 
     @staticmethod
-    def query(q) -> List[Feature]:
+    def query(q: dict) -> List[Feature]:
+        """
+        Query/filter Features based on a bounding box or feature properties
+        :param q:
+        :return: GeoJSON
+        """
         pass
 
     @staticmethod
     def delete(featureId: int) -> None:
+        """
+        Delete a Feature and any assets tied to it.
+        :param featureId: int
+        :return: None
+        """
         # TODO: remove any assets tied to the feature also
-        pass
+        feat = Feature.query.get(featureId)
+        base_asset_path = os.path.join(settings.ASSETS_BASE_DIR, str(feat.project_id))
+        assets = FeatureAsset.query.filter(FeatureAsset.feature_id == featureId)
+        for asset in assets:
+            asset_path = os.path.join(base_asset_path, str(asset.uuid))
+
+
+
 
     @staticmethod
     def setProperties(featureId: int, props: dict) -> Feature:
@@ -48,11 +65,11 @@ class FeaturesService:
 
 
     @staticmethod
-    def addGeoJSON(projectId: int, feature: dict) -> Feature:
+    def addGeoJSON(projectId: int, feature: dict) -> None:
         """
         Add a GeoJSON feature to a project
         :param projectId: int
-        :param feature: GeoJSON
+        :param feature: dict
         :return: Feature
         """
         try:
@@ -77,7 +94,14 @@ class FeaturesService:
 
 
     @staticmethod
-    def fromImage(projectId: int, fileObj: IO, metadata: dict) -> (Feature, FeatureAsset):
+    def fromImage(projectId: int, fileObj: IO, metadata: dict) -> None:
+        """
+        Create a Point feature from a georeferenced image
+        :param projectId: int
+        :param fileObj: file
+        :param metadata: dict
+        :return: None
+        """
         imdata = ImageService.processImage(fileObj)
         point = Point(imdata.coordinates)
         f = Feature()
@@ -103,6 +127,13 @@ class FeaturesService:
 
     @staticmethod
     def createFeatureAsset(projectId:int , featureId: int, fileObj: IO) -> FeatureAsset:
+        """
+
+        :param projectId: int
+        :param featureId: int
+        :param fileObj: file
+        :return: FeatureAsset
+        """
         feat = Feature.query.get(featureId)
         imdata = ImageService.processImage(fileObj)
         asset_uuid = uuid.uuid4()
@@ -122,3 +153,25 @@ class FeaturesService:
         db_session.add(fa)
         db_session.commit()
 
+
+    @staticmethod
+    def addLidarData(projectID: int, fileObj) -> None:
+        """
+        Add a las/laz file to a project. This is asynchronous. The dataset will be converted
+        to potree viewer format and processed to get the extent which will be shown on the map.
+        :param projectID: int
+        :param fileObj: file
+        :return: None
+        """
+        pass
+
+    @staticmethod
+    def importFromAgave(projectId, agaveSystemId, filePath) -> None:
+        """
+        Import data stored in an agave file system. This is asynchronous.
+        :param projectId: int
+        :param agaveSystemId: str
+        :param filePath: str
+        :return: None
+        """
+        pass

@@ -25,7 +25,7 @@ class UserService:
 
     @staticmethod
     def projectsForUser(username: str)->List[Project]:
-        user = db_session.query(User).filter(User.username == username).first()
+        user = User.query.filter(User.username == username).first()
         if not user:
             return []
         return user.projects
