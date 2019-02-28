@@ -7,8 +7,9 @@ class Config(object):
     DB_NAME = 'dev'
     DB_PASSWD = 'dev'
     DB_HOST = 'postgres'
-    ASSETS_BASE_DIR = '/tmp'
+    ASSETS_BASE_DIR = os.environ.get('ASSETS_BASE_DIR', '/assets')
     JWT_SECRET_KEY = 'your-256-bit-secret'
+
 
 class ProductionConfig(Config):
     DEBUG = False

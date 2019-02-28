@@ -104,4 +104,4 @@ def get_exif_location(image):
     if gps_longitude_ref != 'E':
         lon = 0 - lon
 
-    return lat, lon
+    return lon, lat

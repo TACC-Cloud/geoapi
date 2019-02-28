@@ -1,6 +1,4 @@
-import {Component, OnInit} from '@angular/core';
-import { Map } from 'leaflet';
-import {GeoDataServiceService} from "./geo-data-service.service";
+import {Component} from '@angular/core';
 
 
 @Component({
@@ -8,15 +6,6 @@ import {GeoDataServiceService} from "./geo-data-service.service";
   templateUrl: './app.component.html',
   styleUrls: ['./app.component.styl'],
 })
-export class AppComponent implements OnInit {
+export class AppComponent {
   title = 'viewer';
-  map: Map;
-
-  constructor(private GeoDataService: GeoDataService) {
-    this.GeoDataService = GeoDataService;
-  }
-
-  ngOnInit() {
-    this.map = new Map('map');
-  }
 }

@@ -18,7 +18,7 @@ class Feature(Base):
     )
 
     id = Column(Integer, primary_key=True)
-    project_id = Column(ForeignKey('projects.id'), index=True)
+    project_id = Column(ForeignKey('projects.id', ondelete="CASCADE"), index=True)
     the_geom = Column(Geometry(geometry_type='GEOMETRY', srid=4326), nullable=False)
     properties = Column(JSONB, default={})
     assets = relationship("FeatureAsset", cascade="all, delete-orphan", lazy="joined")
@@ -39,7 +39,7 @@ class Feature(Base):
 class FeatureAsset(Base):
     __tablename__ = 'feature_assets'
     id = Column(Integer, primary_key=True)
-    feature_id = Column(ForeignKey('features.id'), index=True)
+    feature_id = Column(ForeignKey('features.id', ondelete="CASCADE"), index=True)
     uuid = Column(UUID(as_uuid=True), default=uuid.uuid4, nullable=False)
     path = Column(String(), nullable=False)
     asset_type = Column(String(), nullable=False, default="image")
@@ -52,7 +52,7 @@ class FeatureAsset(Base):
 class FeatureStyle(Base):
     __tablename__ = 'feature_styles'
     id = Column(Integer, primary_key=True)
-    feature_id = Column(ForeignKey('features.id'), index=True)
+    feature_id = Column(ForeignKey('features.id', ondelete="CASCADE"), index=True)
     styles = Column(JSONB, nullable=False)
 
     def __repr__(self):

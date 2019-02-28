@@ -15,6 +15,5 @@ class User(Base):
                  secondary='projects_users',
                  back_populates='users', lazy="joined")
 
-
     def __repr__(self):
         return '<User(uname={})>'.format(self.username)

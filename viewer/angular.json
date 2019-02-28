@@ -28,6 +28,7 @@
             ],
             "styles": [
               "src/styles.styl"
+
             ],
             "scripts": [],
             "es5BrowserSupport": true
@@ -62,7 +63,8 @@
         "serve": {
           "builder": "@angular-devkit/build-angular:dev-server",
           "options": {
-            "browserTarget": "viewer:build"
+            "browserTarget": "viewer:build",
+            "proxyConfig": "proxy.conf.json"
           },
           "configurations": {
             "production": {

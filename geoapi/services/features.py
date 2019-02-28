@@ -65,7 +65,7 @@ class FeaturesService:
 
 
     @staticmethod
-    def addGeoJSON(projectId: int, feature: dict) -> None:
+    def addGeoJSON(projectId: int, feature: dict) -> dict:
         """
         Add a GeoJSON feature to a project
         :param projectId: int
@@ -90,7 +90,7 @@ class FeaturesService:
         else:
             raise InvalidGeoJSON("Valid GeoJSON must be either a Feature or FeatureCollection.")
         db_session.commit()
-        return True
+        return {"status": "ok"}
 
 
     @staticmethod
@@ -120,8 +120,8 @@ class FeaturesService:
         f.assets.append(fa)
         base_filepath = os.path.join(settings.ASSETS_BASE_DIR, str(projectId))
         pathlib.Path(base_filepath).mkdir(parents=True, exist_ok=True)
-        imdata.thumb.save(os.path.join(base_filepath, str(asset_uuid) + ".thumb"), "JPEG")
-        imdata.thumb.save(os.path.join(base_filepath, str(asset_uuid)), "JPEG")
+        imdata.thumb.save(os.path.join(base_filepath, str(asset_uuid) + ".thumb.jpeg"), "JPEG")
+        imdata.resized.save(os.path.join(base_filepath, str(asset_uuid)+ '.jpeg'), "JPEG")
         db_session.add(f)
         db_session.commit()
 

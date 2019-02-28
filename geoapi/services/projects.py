@@ -1,5 +1,8 @@
-
+import os
+import shutil
 from typing import List
+
+from geoapi.settings import settings
 
 from geoapi.models import Project, User
 from geoapi.services.users import UserService
@@ -90,15 +93,21 @@ class ProjectsService:
         pass
 
     @staticmethod
-    def delete(projectId: int) -> None:
+    def delete(projectId: int) -> dict:
         """
         Delete a project and all its Features and assets
         :param projectId: int
         :return:
         """
-        db_session.query(Project) \
-            .filter(Project.id == projectId).delete()
+        proj = Project.query.get(projectId)
+        db_session.delete(proj)
         db_session.commit()
+        assets_folder = os.path.join(settings.ASSETS_BASE_DIR, str(projectId))
+        try:
+            shutil.rmtree(assets_folder)
+        except FileNotFoundError:
+            pass
+        return {"status": "ok"}
 
 
     @staticmethod

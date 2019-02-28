@@ -12,9 +12,8 @@ from geoapi.db import Base
 class ProjectUser(Base):
     __tablename__ = 'projects_users'
 
-    user_id = Column(Integer, ForeignKey('users.id'), primary_key=True)
-    project_id = Column(Integer, ForeignKey('projects.id'), primary_key=True)
-
+    user_id = Column(Integer, ForeignKey('users.id', ondelete="CASCADE"), primary_key=True, )
+    project_id = Column(Integer, ForeignKey('projects.id', ondelete="CASCADE"), primary_key=True)
 
 class Project(Base):
     __tablename__ = 'projects'
