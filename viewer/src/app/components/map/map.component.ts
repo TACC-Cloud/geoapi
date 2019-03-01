@@ -1,10 +1,14 @@
 import { Component, OnInit } from '@angular/core';
-import * as L  from 'leaflet';
-import { GeoDataService} from "../../services/geo-data.service";
-import { createMarker} from "../../utils/leafletUtils";
-import { clustersKmeans } from "@turf/turf";
-
 import { ActivatedRoute } from "@angular/router";
+import { MatDialog } from "@angular/material";
+import { randomPoint } from "@turf/turf";
+import * as L  from 'leaflet';
+import 'types.leaflet.heat';
+
+import { GeoDataService} from "../../services/geo-data.service";
+import { createMarker } from "../../utils/leafletUtils";
+import { GalleryComponent } from "../gallery/gallery.component";
+
 
 @Component({
   selector: 'app-map',
@@ -15,24 +19,25 @@ export class MapComponent implements OnInit {
   map: L.Map;
   features: {};
   projectId: number;
+  mapType: string = "normal";
 
   constructor(private GeoDataService: GeoDataService,
-              private route: ActivatedRoute) {
-    this.GeoDataService = GeoDataService;
+              private route: ActivatedRoute,
+              public dialog: MatDialog) {
+    this.featureClickHandler.bind(this);
+
   }
 
   ngOnInit() {
-
-    const style: string = this.route.snapshot.queryParamMap.get('style');
+    const mapType: string = this.route.snapshot.queryParamMap.get('mapType');
     this.projectId = +this.route.snapshot.paramMap.get("projectId");
-
+    console.log(mapType);
 
     this.map = new L.Map('map', {
      center: [40, -80],
-     zoom: 15
+     zoom: 9
     });
 
-    let baseSatellite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}');
     let baseOSM = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       maxZoom: 19,
       attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
@@ -45,19 +50,33 @@ export class MapComponent implements OnInit {
   loadFeatures () {
     let geojsonOptions = {
       pointToLayer: createMarker
-    }
+    };
     this.GeoDataService.getAllFeatures(this.projectId).subscribe(collection=> {
       let fg = new L.FeatureGroup();
       collection.features.forEach( d=>{
-        L.geoJSON(d, geojsonOptions).addTo(fg);
-      })
+        let feat = L.geoJSON(d, geojsonOptions);
+        feat.on('click', (ev)=>{ this.featureClickHandler(ev)} );
+        feat.addTo(fg);
+      });
       fg.addTo(this.map);
       this.map.fitBounds(fg.getBounds());
 
-      let points = collection.features.filter( d=> {return d.geometry.type == 'Point'});
-      console.log(points);
-      let clusters = clustersKmeans(points)
-      console.log(clusters)
+      // let points = collection.features.filter( d=> {return d.geometry.type == 'Point'});
+      let points = randomPoint(100000);
+      let heater = L.heatLayer(points.features.map(p => {return p.geometry.coordinates}), {radius: 10});
+      heater.addTo(this.map);
+      // let newfc = {type: "FeatureCollection", features: points};
+
+    });
+
+  }
+
+  featureClickHandler(ev: any): void {
+    console.log(ev);
+    console.log(this.dialog)
+    this.dialog.open(GalleryComponent, {
+      data: ev.layer.feature,
+      maxWidth: '50%',
     })
 
   }

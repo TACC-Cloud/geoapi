@@ -25,6 +25,11 @@ class FeaturesService:
 
     @staticmethod
     def get(featureId: int)-> Feature:
+        """
+        Retreive a single Feature
+        :param featureId: int
+        :return: Feature
+        """
         return Feature.query.get(featureId)
 
 
@@ -32,7 +37,7 @@ class FeaturesService:
     def query(q: dict) -> List[Feature]:
         """
         Query/filter Features based on a bounding box or feature properties
-        :param q:
+        :param q: dict
         :return: GeoJSON
         """
         pass
@@ -56,6 +61,12 @@ class FeaturesService:
 
     @staticmethod
     def setProperties(featureId: int, props: dict) -> Feature:
+        """
+        Set the properties of a feature.
+        :param featureId: int
+        :param props: dict
+        :return:
+        """
         feat = Feature.query.get(featureId)
         # TODO: Throw assert if not found?
         # TODO: PROTECT assets and styles attributes
@@ -126,7 +137,7 @@ class FeaturesService:
         db_session.commit()
 
     @staticmethod
-    def createFeatureAsset(projectId:int , featureId: int, fileObj: IO) -> FeatureAsset:
+    def createFeatureAsset(projectId:int , featureId: int, fileObj: IO) -> None:
         """
 
         :param projectId: int
@@ -148,8 +159,8 @@ class FeaturesService:
         fa.feature = feat
         base_filepath = os.path.join(settings.ASSETS_BASE_DIR, str(projectId))
         pathlib.Path(base_filepath).mkdir(parents=True, exist_ok=True)
-        imdata.thumb.save(os.path.join(base_filepath, str(asset_uuid) + ".thumb"), "JPEG")
-        imdata.thumb.save(os.path.join(base_filepath, str(asset_uuid)), "JPEG")
+        imdata.thumb.save(os.path.join(base_filepath, str(asset_uuid) + ".thumb.jpeg"), "JPEG")
+        imdata.resized.save(os.path.join(base_filepath, str(asset_uuid)+".jpeg"), "JPEG")
         db_session.add(fa)
         db_session.commit()
 
