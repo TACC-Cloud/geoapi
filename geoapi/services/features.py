@@ -166,6 +166,27 @@ class FeaturesService:
 
 
     @staticmethod
+    def clusterKMeans(projectId:int, numClusters: int=20) -> json:
+        """
+        Cluster all the Point geometries in a project
+        :param projectId:
+        :return:
+        """
+        q = """
+        select ST_Centroid(ST_Collect(the_geom)), count(clusters.cid)
+        from (
+            SELECT ST_ClusterKMeans(the_geom, :numCluster) OVER() AS cid, the_geom from features
+            where project_id = :projectId
+        ) as clusters
+        group by clusters.cid
+
+        """
+        result = db_session.execute(q, {'projectId': projectId, 'numClusters': numClusters})
+        out = result.fetchone()
+        return out.geojson
+
+
+    @staticmethod
     def addLidarData(projectID: int, fileObj) -> None:
         """
         Add a las/laz file to a project. This is asynchronous. The dataset will be converted

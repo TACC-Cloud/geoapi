@@ -1,5 +1,6 @@
 import { Component, Inject } from '@angular/core';
 import { MatDialogRef, MAT_DIALOG_DATA } from '@angular/material';
+import {Feature} from "geojson";
 
 
 @Component({
@@ -11,7 +12,7 @@ export class GalleryComponent {
 
   constructor(
     public dialogRef: MatDialogRef<GalleryComponent>,
-    @Inject(MAT_DIALOG_DATA) public data: any) {}
+    @Inject(MAT_DIALOG_DATA) public data: Feature) {}
 
   onClose(): void {
     this.dialogRef.close();

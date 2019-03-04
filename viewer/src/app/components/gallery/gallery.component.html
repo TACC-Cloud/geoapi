@@ -1,3 +1,4 @@
+<!--TODO: make this a material image list component-->
 <div mat-dialog-content>
   <mat-card *ngFor="let asset of data.properties.assets">
     <img mat-card-image src='{{asset.path+".jpeg"}}' style="max-width:300px">
@@ -5,5 +6,4 @@
 </div>
 <div mat-dialog-actions>
   <button mat-button (click)="onClose()">Close</button>
-  <!--<button mat-button [mat-dialog-close]="data.animal" cdkFocusInitial>Ok</button>-->
 </div>

@@ -42,7 +42,7 @@ export function createMarker(feature: Feature, latlng: LatLng) {
   else {
     marker = createCircleMarker(feature, latlng)
   }
-  marker = createCollectionMarker(feature, latlng);
+  // marker = createCollectionMarker(feature, latlng);
   return marker;
 
 }

@@ -81,7 +81,9 @@ class ProjectsService:
               left join feature_assets fa on feat.id = fa.feature_id
               LEFT JOIN feature_styles fs on feat.id = fs.feature_id
               where project_id = :projectId
+                    and random() < 0.1
               group by feat.id
+              limit 1000
         ) as tmp
         """
         result = db_session.execute(q, {'projectId': projectId})

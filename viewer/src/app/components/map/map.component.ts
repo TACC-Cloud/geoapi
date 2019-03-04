@@ -8,6 +8,7 @@ import 'types.leaflet.heat';
 import { GeoDataService} from "../../services/geo-data.service";
 import { createMarker } from "../../utils/leafletUtils";
 import { GalleryComponent } from "../gallery/gallery.component";
+import {Feature} from "geojson";
 
 
 @Component({
@@ -47,6 +48,10 @@ export class MapComponent implements OnInit {
 
   }
 
+
+  /**
+   * Load Features for a project.
+   */
   loadFeatures () {
     let geojsonOptions = {
       pointToLayer: createMarker
@@ -62,20 +67,24 @@ export class MapComponent implements OnInit {
       this.map.fitBounds(fg.getBounds());
 
       // let points = collection.features.filter( d=> {return d.geometry.type == 'Point'});
-      let points = randomPoint(100000);
-      let heater = L.heatLayer(points.features.map(p => {return p.geometry.coordinates}), {radius: 10});
-      heater.addTo(this.map);
+      // let points = randomPoint(100000);
+      // let heater = L.heatLayer(points.features.map(p => {return p.geometry.coordinates}), {radius: 10});
+      // heater.addTo(this.map);
       // let newfc = {type: "FeatureCollection", features: points};
 
     });
 
   }
 
+  /**
+   *
+   * @param ev
+   */
   featureClickHandler(ev: any): void {
     console.log(ev);
     console.log(this.dialog)
     this.dialog.open(GalleryComponent, {
-      data: ev.layer.feature,
+      data: <Feature>ev.layer.feature,
       maxWidth: '50%',
     })
 
