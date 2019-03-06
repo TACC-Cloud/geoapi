@@ -2,6 +2,7 @@ import {CircleMarker, circleMarker, divIcon, LatLng, Marker, marker} from "leafl
 import {Feature} from "geojson";
 
 
+
 function createCircleMarker (feature: Feature, latlng: LatLng): CircleMarker {
   let options = {
     radius: 8,
@@ -16,7 +17,9 @@ function createCircleMarker (feature: Feature, latlng: LatLng): CircleMarker {
 
 function createImageMarker (feature: Feature, latlng: LatLng): Marker {
   let asset = feature.properties.assets[0];
-  let divHtml = `<a href="${asset.path}.jpeg" target="_blank"> <img src="${asset.path}.thumb.jpeg" width="50px" height="50px"></a>`;
+  // let divHtml = `<a href="${asset.path}.jpeg" target="_blank"> <img src="${asset.path}.thumb.jpeg" width="50px" height="50px"></a>`;
+  let divHtml = `<img src="${asset.path}.thumb.jpeg" width="50px" height="50px">`;
+
   let ico = divIcon({className: 'img-marker', html: divHtml});
   return marker(latlng, {icon: ico});
 }
@@ -28,7 +31,7 @@ function createCollectionMarker (feature: Feature, latlng: LatLng) : Marker {
 }
 
 
-export function createMarker(feature: Feature, latlng: LatLng) {
+export function createMarker(feature: Feature, latlng: LatLng) : Marker {
   let marker;
   if (feature.properties
       && feature.properties.assets

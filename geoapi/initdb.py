@@ -26,4 +26,4 @@ def addRandomMarkers():
 
 if __name__ == "__main__":
     initDB()
-    addRandomMarkers()
+    # addRandomMarkers()

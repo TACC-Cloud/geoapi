@@ -11,3 +11,4 @@ geoalchemy2
 alembic
 shapely
 agavepy
+fiona

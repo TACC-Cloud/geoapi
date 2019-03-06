@@ -1,9 +1,9 @@
 import { Component, OnInit } from '@angular/core';
 import { ActivatedRoute } from "@angular/router";
 import { MatDialog } from "@angular/material";
-import { randomPoint } from "@turf/turf";
 import * as L  from 'leaflet';
 import 'types.leaflet.heat';
+import 'leaflet.markercluster';
 
 import { GeoDataService} from "../../services/geo-data.service";
 import { createMarker } from "../../utils/leafletUtils";
@@ -18,9 +18,9 @@ import {Feature} from "geojson";
 })
 export class MapComponent implements OnInit {
   map: L.Map;
-  features: {};
   projectId: number;
   mapType: string = "normal";
+  cluster: string;
 
   constructor(private GeoDataService: GeoDataService,
               private route: ActivatedRoute,
@@ -32,7 +32,7 @@ export class MapComponent implements OnInit {
   ngOnInit() {
     const mapType: string = this.route.snapshot.queryParamMap.get('mapType');
     this.projectId = +this.route.snapshot.paramMap.get("projectId");
-    console.log(mapType);
+    this.cluster = this.route.snapshot.queryParamMap.get('mapType');
 
     this.map = new L.Map('map', {
      center: [40, -80],
@@ -58,19 +58,28 @@ export class MapComponent implements OnInit {
     };
     this.GeoDataService.getAllFeatures(this.projectId).subscribe(collection=> {
       let fg = new L.FeatureGroup();
+      let markers = L.markerClusterGroup({
+        iconCreateFunction: (cluster)=>{
+          return L.divIcon({html:`<div><b>${cluster.getChildCount()}</b></div>`, className:'marker-cluster'})
+        }
+      });
       collection.features.forEach( d=>{
         let feat = L.geoJSON(d, geojsonOptions);
         feat.on('click', (ev)=>{ this.featureClickHandler(ev)} );
-        feat.addTo(fg);
-      });
-      fg.addTo(this.map);
-      this.map.fitBounds(fg.getBounds());
 
-      // let points = collection.features.filter( d=> {return d.geometry.type == 'Point'});
-      // let points = randomPoint(100000);
-      // let heater = L.heatLayer(points.features.map(p => {return p.geometry.coordinates}), {radius: 10});
-      // heater.addTo(this.map);
-      // let newfc = {type: "FeatureCollection", features: points};
+        if (d.geometry.type == "Point") {
+          markers.addLayer(feat);
+        } else {
+          fg.addLayer(feat);
+        }
+      });
+      fg.addLayer(markers);
+      this.map.addLayer(fg);
+      try {
+        this.map.fitBounds(fg.getBounds());
+      } catch (e) {
+        console.log(e);
+      }
 
     });
 
@@ -81,8 +90,6 @@ export class MapComponent implements OnInit {
    * @param ev
    */
   featureClickHandler(ev: any): void {
-    console.log(ev);
-    console.log(this.dialog)
     this.dialog.open(GalleryComponent, {
       data: <Feature>ev.layer.feature,
       maxWidth: '50%',

@@ -9,18 +9,19 @@ import { JwtInterceptor } from "./app.interceptors";
 import { NotFoundComponent } from './components/notfound/notfound.component';
 import { ProjectsComponent } from './components/projects/projects.component';
 import { GalleryComponent } from './components/gallery/gallery.component';
-import { DemoMaterialModule } from './material.module';
+import { MaterialModule } from './material.module';
+import { PropstableComponent } from './components/propstable/propstable.component';
 
 @NgModule({
   declarations: [
-    AppComponent, MapComponent, NotFoundComponent, ProjectsComponent, GalleryComponent
+    AppComponent, MapComponent, NotFoundComponent, ProjectsComponent, GalleryComponent, PropstableComponent
   ],
   imports: [
     BrowserModule,
     AppRoutingModule,
     HttpClientModule,
     BrowserAnimationsModule,
-    DemoMaterialModule,
+    MaterialModule,
   ],
   providers: [
     { provide: HTTP_INTERCEPTORS, useClass: JwtInterceptor, multi: true },
