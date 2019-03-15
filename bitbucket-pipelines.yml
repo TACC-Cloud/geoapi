@@ -1,0 +1,23 @@
+pipelines:
+  default:
+    - parallel:
+      - step:
+        image: node
+        script:
+          - npm install
+          - npm test
+      - step:
+        image: python:3.7
+        services:
+          - postgres
+        script:
+          - pip install -r requirements.txt
+          - pytest
+definitions:
+  services:
+    postgres:
+      image: mdillon/postgis
+      environment:
+        POSTGRES_DB: test
+        POSTGRES_USER: dev
+        POSTGRES_PASSWORD: dev

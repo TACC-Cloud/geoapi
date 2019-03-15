@@ -6,5 +6,4 @@ def load_lidar():
     #convert to potree
 
     #save a FeatureAsset
-
-    
+    pass
