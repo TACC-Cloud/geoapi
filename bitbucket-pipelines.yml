@@ -3,16 +3,20 @@ pipelines:
     - parallel:
       - step:
           image: node
+          caches:
+            - node
           script:
             - npm install
             - ng test
       - step:
           image: python:3.7
+          caches:
+            - pip
           services:
             - postgres
           script:
             - pip install -r requirements.txt
-            - pytest
+            - APP_ENV=testing pytest
 definitions:
   services:
     postgres:
