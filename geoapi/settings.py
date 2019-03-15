@@ -23,6 +23,7 @@ class TestingConfig(Config):
     DB_USERNAME = 'dev'
     DB_NAME = 'test'
     DB_PASSWD = 'dev'
+    DB_HOST = 'localhost'
     TESTING = True
     ASSETS_BASE_DIR = '/tmp'
 
