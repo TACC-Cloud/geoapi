@@ -2,17 +2,18 @@ pipelines:
   default:
     - parallel:
       - step:
-        image: node
-        script:
-          - npm install
-          - npm test
+          name: Client Side
+          image: node
+          script:
+            - npm install
+            - npm test
       - step:
-        image: python:3.7
-        services:
-          - postgres
-        script:
-          - pip install -r requirements.txt
-          - pytest
+          image: python:3.7
+          services:
+            - postgres
+          script:
+            - pip install -r requirements.txt
+            - pytest
 definitions:
   services:
     postgres:
