@@ -14,8 +14,8 @@ def pytest_runtest_teardown(item):
 
 @pytest.fixture(scope="function")
 def users_fixture():
-    u1 = User(username="test1")
-    u2 = User(username="test2")
+    u1 = User(username="test1", jwt="testjwt")
+    u2 = User(username="test2", jwt="testjwt")
     db_session.add_all([u1, u2])
     db_session.commit()
     users = db_session.query(User).all()

@@ -23,7 +23,7 @@ class TestingConfig(Config):
     DB_USERNAME = 'dev'
     DB_NAME = 'test'
     DB_PASSWD = 'dev'
-    DB_HOST = 'localhost'
+    DB_HOST = os.environ.get('DB_HOST', 'postgres')
     TESTING = True
     ASSETS_BASE_DIR = '/tmp'
 

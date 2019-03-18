@@ -6,6 +6,7 @@ pipelines:
           caches:
             - node
           script:
+            - cd viewer
             - npm install
             - ng test
       - step:

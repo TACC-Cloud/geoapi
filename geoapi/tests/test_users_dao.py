@@ -10,10 +10,11 @@ def test_user_get(users_fixture):
 
 
 def test_user_create(users_fixture):
-    user = UserService.create("newUser")
+    user = UserService.create("newUser", "testjwt")
     assert user.id is not None
     assert user.created is not None
     assert user.username == 'newUser'
+    assert user.jwt == "testjwt"
 
 def test_projects_for_user(users_fixture):
     user = UserService.getUser("test1")
