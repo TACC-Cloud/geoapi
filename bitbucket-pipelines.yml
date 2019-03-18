@@ -8,7 +8,7 @@ pipelines:
           script:
             - cd viewer
             - npm install
-            - ng test
+            - ./node_modules/.bin/ng test
       - step:
           image: python:3.7
           caches:
