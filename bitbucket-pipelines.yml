@@ -2,7 +2,7 @@ pipelines:
   default:
     - parallel:
       - step:
-          image: node
+          image: markhobson/node-chrome
           caches:
             - node
           script:
