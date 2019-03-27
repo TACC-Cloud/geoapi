@@ -18,6 +18,7 @@ class UserService:
 
     @staticmethod
     def checkUser(username: str) -> bool:
+        # TODO: Add in TAS check
         pass
 
     @staticmethod

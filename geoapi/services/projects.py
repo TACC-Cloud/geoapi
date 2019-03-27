@@ -4,9 +4,10 @@ from typing import List
 
 from geoapi.settings import settings
 
-from geoapi.models import Project, User
+from geoapi.models import Project, User, Feature, FeatureStyle, FeatureAsset
 from geoapi.services.users import UserService
 from geoapi.db import db_session
+from sqlalchemy.sql import select, func, text, and_
 
 
 class ProjectsService:
@@ -52,40 +53,74 @@ class ProjectsService:
     def getFeatures(projectId: int, query: dict = None) -> object:
         """
         Returns a GeoJSON FeatureCollection of all assets in a project
-        :param projectId: int
-        :return: GeoJSON
-        """
-        # TODO: Add filtering somehow...
-        q = """
+
+        This is the main query
+
         SELECT  json_build_object(
             'type', 'FeatureCollection',
             'crs',  json_build_object(
-                'type',      'name', 
+                'type',      'name',
                 'properties', json_build_object(
-                    'name', 'EPSG:4326'  
+                    'name', 'EPSG:4326'
                 )
-            ), 
-            'features', json_agg(
+            ),
+            'features', coalesce(json_agg(
                 json_build_object(
                     'type',       'Feature',
-                    'id',         tmp.id, 
+                    'id',         tmp.id,
                     'geometry',   ST_AsGeoJSON(the_geom)::json,
                     'properties', properties || json_build_object(
                         'assets', assets, 'styles', styles
                         )::jsonb --This merges the properties with extra fields
                     )
-                )
+                ), '[]'::json)
         ) as geojson
-        FROM (select feat.*, array_remove(array_agg(fa), null) as assets, array_remove(array_agg(fs), null) as styles 
+        FROM (select feat.*, array_remove(array_agg(fa), null) as assets, array_remove(array_agg(fs), null) as styles
               from features as feat
-              left join feature_assets fa on feat.id = fa.feature_id
+              LEFT JOIN feature_assets fa on feat.id = fa.feature_id
               LEFT JOIN feature_styles fs on feat.id = fs.feature_id
               where project_id = :projectId
               group by feat.id
-              limit 1000
         ) as tmp
+        :param projectId: int
+        :return: GeoJSON
         """
-        result = db_session.execute(q, {'projectId': projectId})
+
+        select_stmt = text("""
+        json_build_object(
+            'type', 'FeatureCollection',
+            'crs',  json_build_object(
+                'type',      'name',
+                'properties', json_build_object(
+                    'name', 'EPSG:4326'
+                )
+            ),
+            'features', coalesce(json_agg(
+                json_build_object(
+                    'type',       'Feature',
+                    'id',         tmp.id,
+                    'geometry',   ST_AsGeoJSON(the_geom)::json,
+                    'properties', properties || json_build_object(
+                        'assets', assets, 'styles', styles
+                        )::jsonb --This merges the properties with extra fields
+                    )
+                ), '[]'::json)
+        ) as geojson
+        """)
+
+        sub_select = select([
+            text("""feat.*,  array_remove(array_agg(fa), null) as assets, array_remove(array_agg(fs), null) as styles 
+              from features as feat
+              LEFT JOIN feature_assets fa on feat.id = fa.feature_id
+              LEFT JOIN feature_styles fs on feat.id = fs.feature_id""")
+        ]).where(text("project_id = :projectId")).group_by(text("feat.id")).alias("tmp")
+
+        if query.get("bbox"):
+            print(query)
+
+        s = select([select_stmt]).select_from(sub_select)
+        print(s)
+        result = db_session.execute(s, {'projectId': projectId})
         out = result.fetchone()
         return out.geojson
 

@@ -13,7 +13,11 @@ class Config(object):
 
 class ProductionConfig(Config):
     DEBUG = False
-
+    DB_USERNAME = os.environ.get("DB_USERNAME")
+    DB_NAME = os.environ.get("DB_NAME")
+    DB_PASSWD = os.environ.get("DB_PASSWD")
+    DB_HOST = os.environ.get("DB_HOST")
+    JWT_SECRET_KEY = os.environ.get("JWT_SECRET_KEY")
 
 class DevelopmentConfig(Config):
     DEBUG = True

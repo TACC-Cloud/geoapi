@@ -109,7 +109,8 @@ class ProjectFeaturesResource(Resource):
              description="GET all the features of a project as GeoJSON")
     @project_permissions
     def get(self, projectId: int):
-        return ProjectsService.getFeatures(projectId)
+        query = request.args
+        return ProjectsService.getFeatures(projectId, query)
 
     @api.doc(id="addGeoJSONFeature",
              description="Add a GeoJSON feature to a project")

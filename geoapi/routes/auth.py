@@ -1,8 +1,7 @@
 from flask import request
-from flask_restplus import Resource, Namespace, fields
+from flask_restplus import Resource, Namespace
 
 from geoapi.settings import settings
-from geoapi.utils.decorators import jwt_decoder
 
 api = Namespace('auth')
 

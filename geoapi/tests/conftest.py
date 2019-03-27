@@ -2,6 +2,7 @@ import pytest
 
 from geoapi.initdb import initDB
 from geoapi.models.users import User
+from geoapi.models.project import Project
 from geoapi.db import db_session
 from geoapi.app import app
 
@@ -12,18 +13,28 @@ def pytest_runtest_teardown(item):
     db_session.remove()
 
 
+user1JWT="eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJ3c28yLm9yZy9wcm9kdWN0cy9hbSIsImV4cCI6MjM4NDQ4MTcxMzg0MiwiaHR0cDovL3dzbzIub3JnL2NsYWltcy9zdWJzY3JpYmVyIjoidGVzdDEiLCJodHRwOi8vd3NvMi5vcmcvY2xhaW1zL2FwcGxpY2F0aW9uaWQiOiI0NCIsImh0dHA6Ly93c28yLm9yZy9jbGFpbXMvYXBwbGljYXRpb25uYW1lIjoiRGVmYXVsdEFwcGxpY2F0aW9uIiwiaHR0cDovL3dzbzIub3JnL2NsYWltcy9hcHBsaWNhdGlvbnRpZXIiOiJVbmxpbWl0ZWQiLCJodHRwOi8vd3NvMi5vcmcvY2xhaW1zL2FwaWNvbnRleHQiOiIvYXBwcyIsImh0dHA6Ly93c28yLm9yZy9jbGFpbXMvdmVyc2lvbiI6IjIuMCIsImh0dHA6Ly93c28yLm9yZy9jbGFpbXMvdGllciI6IlVubGltaXRlZCIsImh0dHA6Ly93c28yLm9yZy9jbGFpbXMva2V5dHlwZSI6IlBST0RVQ1RJT04iLCJodHRwOi8vd3NvMi5vcmcvY2xhaW1zL3VzZXJ0eXBlIjoiQVBQTElDQVRJT05fVVNFUiIsImh0dHA6Ly93c28yLm9yZy9jbGFpbXMvZW5kdXNlciI6IllPVVJfVVNFUk5BTUUiLCJodHRwOi8vd3NvMi5vcmcvY2xhaW1zL2VuZHVzZXJUZW5hbnRJZCI6IjEwIiwiaHR0cDovL3dzbzIub3JnL2NsYWltcy9lbWFpbGFkZHJlc3MiOiJ0ZXN0dXNlcjNAdGVzdC5jb20iLCJodHRwOi8vd3NvMi5vcmcvY2xhaW1zL2Z1bGxuYW1lIjoiVGVzdCBVc2VyMSIsImh0dHA6Ly93c28yLm9yZy9jbGFpbXMvZ2l2ZW5uYW1lIjoiRGV2IiwiaHR0cDovL3dzbzIub3JnL2NsYWltcy9sYXN0bmFtZSI6IlVzZXIiLCJodHRwOi8vd3NvMi5vcmcvY2xhaW1zL3ByaW1hcnlDaGFsbGVuZ2VRdWVzdGlvbiI6Ik4vQSIsImh0dHA6Ly93c28yLm9yZy9jbGFpbXMvcm9sZSI6IkludGVybmFsL2V2ZXJ5b25lIiwiaHR0cDovL3dzbzIub3JnL2NsYWltcy90aXRsZSI6Ik4vQSJ9.USdVBvpmh7uEQBLSQAJcxniIdUU2coqFr4rPxCYWI8w"
+user2JWT="eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJ3c28yLm9yZy9wcm9kdWN0cy9hbSIsImV4cCI6MjM4NDQ4MTcxMzg0MiwiaHR0cDovL3dzbzIub3JnL2NsYWltcy9zdWJzY3JpYmVyIjoidGVzdDIiLCJodHRwOi8vd3NvMi5vcmcvY2xhaW1zL2FwcGxpY2F0aW9uaWQiOiI0NCIsImh0dHA6Ly93c28yLm9yZy9jbGFpbXMvYXBwbGljYXRpb25uYW1lIjoiRGVmYXVsdEFwcGxpY2F0aW9uIiwiaHR0cDovL3dzbzIub3JnL2NsYWltcy9hcHBsaWNhdGlvbnRpZXIiOiJVbmxpbWl0ZWQiLCJodHRwOi8vd3NvMi5vcmcvY2xhaW1zL2FwaWNvbnRleHQiOiIvYXBwcyIsImh0dHA6Ly93c28yLm9yZy9jbGFpbXMvdmVyc2lvbiI6IjIuMCIsImh0dHA6Ly93c28yLm9yZy9jbGFpbXMvdGllciI6IlVubGltaXRlZCIsImh0dHA6Ly93c28yLm9yZy9jbGFpbXMva2V5dHlwZSI6IlBST0RVQ1RJT04iLCJodHRwOi8vd3NvMi5vcmcvY2xhaW1zL3VzZXJ0eXBlIjoiQVBQTElDQVRJT05fVVNFUiIsImh0dHA6Ly93c28yLm9yZy9jbGFpbXMvZW5kdXNlciI6IllPVVJfVVNFUk5BTUUiLCJodHRwOi8vd3NvMi5vcmcvY2xhaW1zL2VuZHVzZXJUZW5hbnRJZCI6IjEwIiwiaHR0cDovL3dzbzIub3JnL2NsYWltcy9lbWFpbGFkZHJlc3MiOiJ0ZXN0dXNlcjNAdGVzdC5jb20iLCJodHRwOi8vd3NvMi5vcmcvY2xhaW1zL2Z1bGxuYW1lIjoiVGVzdCBVc2VyMSIsImh0dHA6Ly93c28yLm9yZy9jbGFpbXMvZ2l2ZW5uYW1lIjoiRGV2IiwiaHR0cDovL3dzbzIub3JnL2NsYWltcy9sYXN0bmFtZSI6IlVzZXIiLCJodHRwOi8vd3NvMi5vcmcvY2xhaW1zL3ByaW1hcnlDaGFsbGVuZ2VRdWVzdGlvbiI6Ik4vQSIsImh0dHA6Ly93c28yLm9yZy9jbGFpbXMvcm9sZSI6IkludGVybmFsL2V2ZXJ5b25lIiwiaHR0cDovL3dzbzIub3JnL2NsYWltcy90aXRsZSI6Ik4vQSJ9.JfNlv8e_mUkdk5sm0_2ieVmaijttmLfyHSLHpDz8Ak8"
+
 @pytest.fixture(scope="function")
 def users_fixture():
-    u1 = User(username="test1", jwt="testjwt")
-    u2 = User(username="test2", jwt="testjwt")
+    u1 = User(username="test1", jwt=user1JWT)
+    u2 = User(username="test2", jwt=user2JWT)
     db_session.add_all([u1, u2])
     db_session.commit()
-    users = db_session.query(User).all()
-    print("**********************************")
-    print(users)
 
-
-@pytest.fixture
-def client():
+@pytest.fixture(scope="session")
+def test_client():
     client = app.test_client()
     yield client
+
+
+@pytest.fixture(scope="function")
+def projects_fixture():
+    u1 = User(username="test1", jwt=user1JWT)
+    u2 = User(username="test2", jwt=user2JWT)
+    db_session.add_all([u1, u2])
+    proj = Project(name="test", description="test")
+    proj.users.append(u1)
+    db_session.add(proj)
+    db_session.commit()
