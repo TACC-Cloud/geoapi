@@ -29,7 +29,7 @@ class Feature(Base):
         return '<Feature(id={})>'.format(self.id)
 
     @classmethod
-    def fromGeoJSON(cls, data):
+    def fromGeoJSON(cls, data: dict):
         shp = shapely.geometry.shape(data["geometry"])
         feat = cls()
         feat.the_geom = from_shape(shp, srid=4326)

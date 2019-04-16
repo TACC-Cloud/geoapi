@@ -2,16 +2,17 @@ import os
 import pathlib
 import uuid
 import json
-from typing import List, IO
+from typing import List, IO, Dict
 from shapely.geometry import Point
 from geoalchemy2.shape import from_shape, to_shape
 import geojson
 
 from geoapi.services.images import ImageService
 from geoapi.settings import settings
-from geoapi.models import Feature, FeatureAsset
+from geoapi.models import Feature, FeatureAsset, Overlay
 from geoapi.db import db_session
 from geoapi.exceptions import InvalidGeoJSON
+
 
 class FeaturesService:
 
@@ -60,12 +61,12 @@ class FeaturesService:
 
 
     @staticmethod
-    def setProperties(featureId: int, props: dict) -> Feature:
+    def setProperties(featureId: int, props: Dict) -> Feature:
         """
         Set the properties of a feature.
         :param featureId: int
         :param props: dict
-        :return:
+        :return: Feature
         """
         feat = Feature.query.get(featureId)
         # TODO: Throw assert if not found?
@@ -74,9 +75,24 @@ class FeaturesService:
         db_session.commit()
         return feat
 
+    @staticmethod
+    def setStyles(featureId: int, styles: Dict) -> Feature:
+        """
+        Set the styles of a feature.
+        :param featureId: int
+        :param styles: dict
+        :return: Feature
+        """
+        feat = Feature.query.get(featureId)
+        # TODO: Throw assert if not found?
+        # TODO: PROTECT assets and styles attributes
+        feat.styles = styles
+        db_session.commit()
+        return feat
+
 
     @staticmethod
-    def addGeoJSON(projectId: int, feature: dict) -> dict:
+    def addGeoJSON(projectId: int, feature: Dict) -> dict:
         """
         Add a GeoJSON feature to a project
         :param projectId: int
@@ -105,7 +121,7 @@ class FeaturesService:
 
 
     @staticmethod
-    def fromImage(projectId: int, fileObj: IO, metadata: dict) -> None:
+    def fromImage(projectId: int, fileObj: IO, metadata: Dict) -> None:
         """
         Create a Point feature from a georeferenced image
         :param projectId: int
@@ -132,14 +148,14 @@ class FeaturesService:
         base_filepath = os.path.join(settings.ASSETS_BASE_DIR, str(projectId))
         pathlib.Path(base_filepath).mkdir(parents=True, exist_ok=True)
         imdata.thumb.save(os.path.join(base_filepath, str(asset_uuid) + ".thumb.jpeg"), "JPEG")
-        imdata.resized.save(os.path.join(base_filepath, str(asset_uuid)+ '.jpeg'), "JPEG")
+        imdata.resized.save(os.path.join(base_filepath, str(asset_uuid) + '.jpeg'), "JPEG")
         db_session.add(f)
         db_session.commit()
 
     @staticmethod
     def createFeatureAsset(projectId:int , featureId: int, fileObj: IO) -> None:
         """
-
+        Create a feature asset and save the static content to the ASSETS_BASE_DIR
         :param projectId: int
         :param featureId: int
         :param fileObj: file
@@ -157,8 +173,7 @@ class FeaturesService:
 
         )
         fa.feature = feat
-        base_filepath = os.path.join(settings.ASSETS_BASE_DIR, str(projectId))
-        pathlib.Path(base_filepath).mkdir(parents=True, exist_ok=True)
+        base_filepath = FeaturesService._makeAssetDir(projectId)
         imdata.thumb.save(os.path.join(base_filepath, str(asset_uuid) + ".thumb.jpeg"), "JPEG")
         imdata.resized.save(os.path.join(base_filepath, str(asset_uuid)+".jpeg"), "JPEG")
         db_session.add(fa)
@@ -185,9 +200,63 @@ class FeaturesService:
         out = result.fetchone()
         return out.geojson
 
+    @staticmethod
+    def _makeAssetDir(projectId: int) -> None:
+        """
+        Creates a directory for assets in the ASSETS_BASE_DIR location
+        :param projectId: int
+        :return:
+        """
+        base_filepath = os.path.join(settings.ASSETS_BASE_DIR, str(projectId))
+        pathlib.Path(base_filepath).mkdir(parents=True, exist_ok=True)
+        return base_filepath
+
 
     @staticmethod
-    def addLidarData(projectID: int, fileObj) -> None:
+    def addOverlay(projectId: int, fileObj: IO, bounds: List[float], label: str) -> None:
+        """
+
+        :param projectId: int
+        :param fileObj: IO
+        :param bounds: List [minLon, minLat, maxLon, maxLat]
+        :param label: str
+        :return: None
+        """
+
+        imdata = ImageService.processOverlay(fileObj)
+        ov = Overlay()
+        ov.label = label
+        ov.minLon = bounds[0]
+        ov.minLat = bounds[1]
+        ov.maxLon = bounds[2]
+        ov.maxLat = bounds[3]
+        ov.project_id = projectId
+        ov.uuid = uuid.uuid4()
+        base_filepath = FeaturesService._makeAssetDir(projectId)
+        asset_path = os.path.join("/", str(projectId), str(ov.uuid))
+        ov.path = asset_path + '.jpeg'
+        fpath = os.path.join(base_filepath, str(ov.uuid))
+        imdata.original.save(fpath+'.jpeg', 'JPEG')
+        imdata.thumb.save(fpath+'.thumb.jpeg', 'JPEG')
+        db_session.add(ov)
+        db_session.commit()
+        return ov
+
+    @staticmethod
+    def getOverlays(projectId: int) -> List[Overlay]:
+        overlays = Overlay.query.filter_by(project_id=projectId).all()
+        return overlays
+
+    @staticmethod
+    def deleteOverlay(projectId: int, overlayId: int) -> None:
+        ov = Overlay.query.get(overlayId)
+        #TODO: remove assets here too
+
+        db_session.remove(ov)
+        db_session.commit()
+
+    @staticmethod
+    def addLidarData(projectID: int, fileObj: IO) -> None:
         """
         Add a las/laz file to a project. This is asynchronous. The dataset will be converted
         to potree viewer format and processed to get the extent which will be shown on the map.
@@ -198,7 +267,7 @@ class FeaturesService:
         pass
 
     @staticmethod
-    def importFromAgave(projectId, agaveSystemId, filePath) -> None:
+    def importFromAgave(projectId: int, agaveSystemId: str, filePath: str) -> None:
         """
         Import data stored in an agave file system. This is asynchronous.
         :param projectId: int

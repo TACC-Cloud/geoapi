@@ -14,6 +14,12 @@ class ImageData:
     coordinates: Tuple[float, float]
 
 
+@dataclass
+class ImageOverlay:
+    thumb: Image
+    original: Image
+
+
 class ImageService:
 
     THUMBSIZE = (100, 100)
@@ -43,6 +49,15 @@ class ImageService:
         resized.thumbnail(ImageService.RESIZE, PIL.Image.ANTIALIAS)
         imdata = ImageData(thumb, resized, (0,0))
         return imdata
+
+    @staticmethod
+    def processOverlay(fileObj: IO) -> ImageOverlay:
+        thumb = Image.open(fileObj)
+        thumb.thumbnail(ImageService.THUMBSIZE)
+        original = Image.open(fileObj)
+        imdata = ImageOverlay(thumb, original)
+        return imdata
+
 
 
 

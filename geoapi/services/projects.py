@@ -118,6 +118,7 @@ class ProjectsService:
         if query.get("bbox"):
             print(query)
 
+
         s = select([select_stmt]).select_from(sub_select)
         print(s)
         result = db_session.execute(s, {'projectId': projectId})

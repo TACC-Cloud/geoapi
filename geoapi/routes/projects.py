@@ -28,8 +28,37 @@ user = api.model('User', {
     'username': fields.String(required=True)
 })
 
+overlay = api.model('Overlay', {
+    'id': fields.Integer(),
+    'uuid': fields.String(),
+    'minLon': fields.Float(),
+    'minLat': fields.Float(),
+    'maxLon': fields.Float(),
+    'maxLon': fields.Float(),
+    'path': fields.String(),
+    'project_id': fields.Integer(),
+    'label': fields.String()
+})
+
+
+overlay_parser = api.parser()
+overlay_parser.add_argument('file', location='files', type=FileStorage, required=True)
+overlay_parser.add_argument('label', location='form', type=str, required=True)
+overlay_parser.add_argument('minLon', location='form', type=float, required=True)
+overlay_parser.add_argument('minLat', location='form', type=float, required=True)
+overlay_parser.add_argument('maxLon', location='form', type=float, required=True)
+overlay_parser.add_argument('maxLat', location='form', type=float, required=True)
+
+
+# overlay = api.model('Overlay', {
+#     "bounds": fields.List(required=True),
+#     "label": fields.String(required=True),
+# })
+
 feature_schema = api.schema_model('Feature', FeatureSchema)
 
+file_upload_parser = api.parser()
+file_upload_parser.add_argument('file', location='files', type=FileStorage, required=True)
 
 @api.route('/')
 class ProjectsListing(Resource):
@@ -81,7 +110,8 @@ class ProjectUsersResource(Resource):
         return ProjectsService.getUsers(projectId)
 
     @api.doc(id="addUser",
-             description="Add a user to the project")
+             description="Add a user to the project. This allows full access to the project, "
+                         "including deleting the entire thing so chose carefully")
     @api.expect(user)
     @project_permissions
     def post(self, projectId: int):
@@ -129,6 +159,16 @@ class ProjectFeaturePropertiesResource(Resource):
     def post(self, projectId: int, featureId: int):
         return FeaturesService.setProperties(featureId, request.json)
 
+@api.route('/<int:projectId>/features/<int:featureId>/styles/')
+class ProjectFeaturePropertiesResource(Resource):
+
+    @api.doc(id="updateFeatureStyles",
+             description="Update the styles of a feature")
+    @project_permissions
+    @project_feature_exists
+    def post(self, projectId: int, featureId: int):
+        return FeaturesService.setStyles(featureId, request.json)
+
 @api.route('/<int:projectId>/features/files/')
 class ProjectFeaturesFilesResource(Resource):
 
@@ -143,8 +183,44 @@ class ProjectFeaturesFilesResource(Resource):
         FeaturesService.fromImage(projectId, file, metadata)
 
 
-file_upload_parser = api.parser()
-file_upload_parser.add_argument('file', location='files', type=FileStorage, required=True)
+@api.route('/<int:projectId>/overlays/')
+class ProjectOverlaysResource(Resource):
+
+    @api.doc(id="addOverlay",
+             description='Add a new overlay to a project.')
+    @api.marshal_with(overlay)
+    @api.expect(overlay_parser)
+    @project_permissions
+    def post(self, projectId: int):
+        file = request.files['file']
+        formData = request.form
+        bounds = [
+            formData['minLon'],
+            formData['minLat'],
+            formData['maxLon'],
+            formData['maxLat']
+        ]
+        label = formData['label']
+        ov = FeaturesService.addOverlay(projectId, file, bounds, label)
+        return ov
+
+    @api.doc(id="getOverlays",
+             description='Get a list of all the overlays associated with the current map project.')
+    @api.marshal_with(overlay)
+    @project_permissions
+    def get(self, projectId: int):
+        ovs = FeaturesService.getOverlays(projectId)
+        return ovs
+
+@api.route('/<int:projectId>/overlays/<int:overlayId>/')
+class ProjectOverlayResource(Resource):
+
+    @api.doc(id="removeOverlays",
+             description='Remove an overlay from a project')
+    @project_permissions
+    def delete(self, projectId: int, overlayId: int):
+        FeaturesService.deleteOverlay(overlayId)
+
 
 @api.route('/<int:projectId>/features/<int:featureId>/assets/')
 class ProjectFeaturesCollectionResource(Resource):
