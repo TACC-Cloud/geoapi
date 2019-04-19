@@ -34,7 +34,7 @@ overlay = api.model('Overlay', {
     'minLon': fields.Float(),
     'minLat': fields.Float(),
     'maxLon': fields.Float(),
-    'maxLon': fields.Float(),
+    'maxLat': fields.Float(),
     'path': fields.String(),
     'project_id': fields.Integer(),
     'label': fields.String()

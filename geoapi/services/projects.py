@@ -69,10 +69,9 @@ class ProjectsService:
                     'type',       'Feature',
                     'id',         tmp.id,
                     'geometry',   ST_AsGeoJSON(the_geom)::json,
-                    'properties', properties || json_build_object(
-                        'assets', assets, 'styles', styles
-                        )::jsonb --This merges the properties with extra fields
-                    )
+                     'assets', assets,
+                     'styles', styles,
+                    'properties', properties
                 ), '[]'::json)
         ) as geojson
         FROM (select feat.*, array_remove(array_agg(fa), null) as assets, array_remove(array_agg(fs), null) as styles
@@ -100,9 +99,9 @@ class ProjectsService:
                     'type',       'Feature',
                     'id',         tmp.id,
                     'geometry',   ST_AsGeoJSON(the_geom)::json,
-                    'properties', properties || json_build_object(
-                        'assets', assets, 'styles', styles
-                        )::jsonb --This merges the properties with extra fields
+                    'assets', assets, 
+                    'styles', styles, 
+                    'properties', properties
                     )
                 ), '[]'::json)
         ) as geojson
