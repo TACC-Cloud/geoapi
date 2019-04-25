@@ -4,6 +4,10 @@ from geoapi.routes import api
 from geoapi.settings import settings as app_settings
 from geoapi.db import db_session
 from geoapi.exceptions import InvalidGeoJSON, InvalidEXIFData
+import logging
+
+logging.basicConfig(format='%(asctime)s %(message)s', level=logging.INFO)
+
 
 app = Flask(__name__)
 api.init_app(app)

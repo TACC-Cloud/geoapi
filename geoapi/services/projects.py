@@ -4,11 +4,12 @@ from typing import List
 
 from geoapi.settings import settings
 
-from geoapi.models import Project, User, Feature, FeatureStyle, FeatureAsset
+from geoapi.models import Project, User, ObservableDataProject
 from geoapi.services.users import UserService
 from geoapi.db import db_session
 from sqlalchemy.sql import select, func, text, and_
-
+from sqlalchemy.exc import IntegrityError
+from agavepy.agave import Agave
 
 class ProjectsService:
     """
@@ -32,13 +33,48 @@ class ProjectsService:
         return project
 
     @staticmethod
-    def list(username: str) -> List[Project]:
+    def createRapidProject(data: dict, user: User) -> Project:
+        """
+        Creates a project from a storage system for the RAPID recon projects in Designsafe
+        :param data: dict
+        :param user: User
+        :return: Project
+        """
+        systemId = data["system_id"]
+        path = data["path"]
+        client = Agave(api_server="https://agave.designsafe-ci.org", token="f14d724cdbf44ed62fce54399ed3e")
+
+        # TODO: Handle no storage system found
+        system = client.systems.get(systemId=systemId)
+        proj = Project(
+            name=system.description,
+            description=system.description
+        )
+        obs = ObservableDataProject(
+            system_id=system.id,
+            path=path
+        )
+        roles = client.systems.listRoles(systemId=system.id)
+        print(roles)
+        obs.project = proj
+        proj.users.append(user)
+        try:
+            db_session.add(obs)
+            db_session.add(proj)
+            db_session.commit()
+        except IntegrityError as e:
+            raise e
+        return proj
+
+
+    @staticmethod
+    def list(user: User) -> List[Project]:
         """
         List a users projects
         :param username: str
         :return: List[Project]
         """
-        return UserService.projectsForUser(username)
+        return user.projects
 
     @staticmethod
     def get(projectId: int) -> Project:
@@ -99,6 +135,7 @@ class ProjectsService:
                     'type',       'Feature',
                     'id',         tmp.id,
                     'geometry',   ST_AsGeoJSON(the_geom)::json,
+                    'created_date', tmp.created_date,
                     'assets', assets, 
                     'styles', styles, 
                     'properties', properties

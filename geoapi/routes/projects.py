@@ -1,4 +1,4 @@
-from flask import request
+from flask import request, abort
 from flask_restplus import Resource, Namespace, fields
 from werkzeug.datastructures import FileStorage
 
@@ -9,6 +9,7 @@ from geoapi.services.projects import ProjectsService
 from geoapi.services.users import UserService
 from geoapi.services.features import FeaturesService
 from geoapi.schemas import FeatureCollectionSchema, FeatureSchema
+from geoapi.exceptions import ApiException
 
 api = Namespace('projects', decorators=[jwt_decoder])
 
@@ -50,6 +51,12 @@ overlay_parser.add_argument('maxLon', location='form', type=float, required=True
 overlay_parser.add_argument('maxLat', location='form', type=float, required=True)
 
 
+rapid_project = api.parser()
+rapid_project.add_argument('system_id', location='body', type=str, required=True)
+rapid_project.add_argument('path', location='body', type=str, required=False, default="RApp")
+
+
+
 # overlay = api.model('Overlay', {
 #     "bounds": fields.List(required=True),
 #     "label": fields.String(required=True),
@@ -68,7 +75,7 @@ class ProjectsListing(Resource):
     @api.marshal_with(project)
     def get(self):
         u = request.current_user
-        return ProjectsService.list(username=u.username)
+        return ProjectsService.list(u)
 
     @api.doc(id="createProject",
              description='Create a new project')
@@ -77,6 +84,20 @@ class ProjectsListing(Resource):
     def post(self):
         u = request.current_user
         return ProjectsService.create(api.payload, u)
+
+
+@api.route('/rapid/')
+class RapidProject(Resource):
+    @api.doc(id="createRapidProject",
+             description='Create a new project from a Rapid recon project storage system')
+    @api.expect(rapid_project)
+    @api.marshal_with(project)
+    def post(self):
+        u = request.current_user
+        try:
+            return ProjectsService.createRapidProject(api.payload, u)
+        except:
+            return abort(409, "A project for this storage system/path already exists!")
 
 
 @api.route('/<int:projectId>/')

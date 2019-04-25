@@ -2,14 +2,6 @@ pipelines:
   default:
     - parallel:
       - step:
-          image: markhobson/node-chrome
-          caches:
-            - node
-          script:
-            - cd viewer
-            - npm install
-            - ./node_modules/.bin/ng test --watch=false --browsers=ChromeHeadless
-      - step:
           image: python:3.7
           caches:
             - pip

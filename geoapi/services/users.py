@@ -6,12 +6,12 @@ from typing import List
 class UserService:
 
     @staticmethod
-    def create(username: str, jwt: str) -> User:
+    def create(username: str, jwt: str, tenant: str) -> User:
         """
 
         :rtype: User
         """
-        u = User(username=username, jwt=jwt)
+        u = User(username=username, jwt=jwt, tenant_id=tenant)
         db_session.add(u)
         db_session.commit()
         return u
@@ -22,15 +22,11 @@ class UserService:
         pass
 
     @staticmethod
-    def getUser(username: str)-> User:
-        return db_session.query(User).filter(User.username == username).first()
-
-    @staticmethod
-    def projectsForUser(username: str)->List[Project]:
-        user = User.query.filter(User.username == username).first()
-        if not user:
-            return []
-        return user.projects
+    def getUser(username: str, tenant: str)-> User:
+        return db_session.query(User)\
+            .filter(User.username == username)\
+            .filter(User.tenant_id == tenant)\
+            .first()
 
     @staticmethod
     def canAccess(user: User, projectId: int) -> bool:

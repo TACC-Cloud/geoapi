@@ -17,11 +17,15 @@ from geoapi.exceptions import InvalidGeoJSON
 class FeaturesService:
 
     IMAGE_FILE_EXTENSIONS = (
-        'jpeg', 'png', 'tiff'
+        'jpeg', 'jpg', 'png', 'tiff'
     )
 
     VIDEO_FILE_EXTENSIONS = (
-        'mp4', 'mov'
+        'mp4', 'mov', 'mpeg4', 'webm'
+    )
+
+    AUDIO_FILE_EXTENSIONS = (
+        'mp3', 'aac'
     )
 
     @staticmethod
@@ -152,8 +156,10 @@ class FeaturesService:
         db_session.add(f)
         db_session.commit()
 
+
+
     @staticmethod
-    def createFeatureAsset(projectId:int , featureId: int, fileObj: IO) -> None:
+    def createFeatureAsset(projectId:int , featureId: int, fileObj: IO) -> FeatureAsset:
         """
         Create a feature asset and save the static content to the ASSETS_BASE_DIR
         :param projectId: int
@@ -161,6 +167,8 @@ class FeaturesService:
         :param fileObj: file
         :return: FeatureAsset
         """
+        fileaname, file_ext = os.path.splitext(fileObj.name)
+
         feat = Feature.query.get(featureId)
         imdata = ImageService.processImage(fileObj)
         asset_uuid = uuid.uuid4()
@@ -178,6 +186,7 @@ class FeaturesService:
         imdata.resized.save(os.path.join(base_filepath, str(asset_uuid)+".jpeg"), "JPEG")
         db_session.add(fa)
         db_session.commit()
+        return fa
 
 
     @staticmethod
@@ -201,7 +210,7 @@ class FeaturesService:
         return out.geojson
 
     @staticmethod
-    def _makeAssetDir(projectId: int) -> None:
+    def _makeAssetDir(projectId: int) -> str:
         """
         Creates a directory for assets in the ASSETS_BASE_DIR location
         :param projectId: int

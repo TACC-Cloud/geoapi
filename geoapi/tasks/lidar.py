@@ -1,9 +1,13 @@
+from geoapi.celery_app import app
+from agavepy.agave import Agave
 
 
-def load_lidar():
-    #grab bounds of scan
+@app.task()
+def import_from_agave():
+    client = Agave(api_server="https://agave.designsafe-ci.org", token="3df38c7b3f58461ef8fa3c238a344291")
+    files = client.files.list(systemId="designsafe.storage.default")
+    print(files)
 
-    #convert to potree
 
-    #save a FeatureAsset
-    pass
+if __name__== "__main__":
+    import_from_agave()
