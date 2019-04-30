@@ -14,3 +14,4 @@ agavepy
 fiona
 celery
 coverage
+requests

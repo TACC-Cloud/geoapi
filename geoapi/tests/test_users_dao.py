@@ -4,25 +4,25 @@ from geoapi.services.projects import ProjectsService
 
 
 def test_user_get(users_fixture):
-    user = UserService.getUser("test1")
+    user = UserService.getUser("test1", "test")
     assert user.id is not None
     assert user.created is not None
 
 
 def test_user_create(users_fixture):
-    user = UserService.create("newUser", "testjwt")
+    user = UserService.create("newUser", "testjwt", "test")
     assert user.id is not None
     assert user.created is not None
     assert user.username == 'newUser'
     assert user.jwt == "testjwt"
 
 def test_projects_for_user(users_fixture):
-    user = UserService.getUser("test1")
+    user = UserService.getUser("test1", "test")
     data = {
         "name": 'new project',
         'description': 'test'
     }
     ProjectsService.create(data, user)
-    myProjects = UserService.projectsForUser(user.username)
+    myProjects = ProjectsService.list(user)
     assert len(myProjects) == 1
     assert myProjects[0].name == 'new project'

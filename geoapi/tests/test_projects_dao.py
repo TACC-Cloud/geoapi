@@ -6,7 +6,7 @@ from geoapi.services.users import UserService
 
 def test_create_project(users_fixture):
     print("test")
-    user = UserService.getUser("test1")
+    user = UserService.getUser("test1", "test")
     data = {
         "name": "test name",
         "description": "test description"

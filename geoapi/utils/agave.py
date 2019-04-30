@@ -25,6 +25,7 @@ class AgaveFileListing:
 
         :return: string: the UUID for the file
         """
+        print(self._links)
         if 'metadata' in self._links:
             assoc_meta_href = self._links['metadata']['href']
             print(assoc_meta_href)
@@ -32,7 +33,6 @@ class AgaveFileListing:
             query_dict = urlparse(parsed_href.query)
             if 'q' in query_dict:
                 meta_q = json.loads(query_dict['q'][0])
-
                 return meta_q.get('associationIds')
         return None
 
@@ -47,7 +47,7 @@ class AgaveUtils:
         client.headers.update({'X-JWT-Assertion-designsafe': jwt})
         self.client = client
 
-    def listFiles(self, systemId: str, path: str) -> List[AgaveFileListing]:
+    def listing(self, systemId: str, path: str) -> List[AgaveFileListing]:
         url = quote('/files/listings/system/{}/{}'.format(systemId, path))
         print(self.BASE_URL + url)
         resp = self.client.get(self.BASE_URL + url)

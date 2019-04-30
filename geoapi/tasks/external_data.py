@@ -16,7 +16,7 @@ def import_from_agave(user: User, systemId: str, path: str, proj: Project):
     # listing = client.files.list(systemId=systemId, filePath=path)
     # logger.info(listing)
     client = AgaveUtils(user.jwt)
-    listing = client.listFiles(systemId, path)
+    listing = client.listing(systemId, path)
     logger.info(listing)
     # First item is always a reference to self
     for item in listing[1:]:
@@ -24,6 +24,8 @@ def import_from_agave(user: User, systemId: str, path: str, proj: Project):
             import_from_agave(user, systemId, item.path, proj)
         else:
             logger.info(item)
+            listing = client.listing(systemId, item.path)
+            logger.info(listing)
             f = client.getFile(systemId, item.path)
             meta = client.getMetaAssociated(item.uuid)
             logger.info(meta)

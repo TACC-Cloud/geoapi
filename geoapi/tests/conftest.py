@@ -18,8 +18,8 @@ user2JWT="eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJ3c28yLm9yZy9wcm9kdWN0c
 
 @pytest.fixture(scope="function")
 def users_fixture():
-    u1 = User(username="test1", jwt=user1JWT)
-    u2 = User(username="test2", jwt=user2JWT)
+    u1 = User(username="test1", jwt=user1JWT, tenant_id="test")
+    u2 = User(username="test2", jwt=user2JWT, tenant_id="test")
     db_session.add_all([u1, u2])
     db_session.commit()
 
@@ -31,8 +31,8 @@ def test_client():
 
 @pytest.fixture(scope="function")
 def projects_fixture():
-    u1 = User(username="test1", jwt=user1JWT)
-    u2 = User(username="test2", jwt=user2JWT)
+    u1 = User(username="test1", jwt=user1JWT, tenant_id="test")
+    u2 = User(username="test2", jwt=user2JWT, tenant_id="test")
     db_session.add_all([u1, u2])
     proj = Project(name="test", description="test")
     proj.users.append(u1)
