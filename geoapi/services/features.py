@@ -12,6 +12,9 @@ from geoapi.settings import settings
 from geoapi.models import Feature, FeatureAsset, Overlay
 from geoapi.db import db_session
 from geoapi.exceptions import InvalidGeoJSON
+from geoapi.log import logging
+
+logger = logging.getLogger(__name__)
 
 
 class FeaturesService:
@@ -28,6 +31,8 @@ class FeaturesService:
         'mp3', 'aac'
     )
 
+    ALLOWED_EXTENSIONS = IMAGE_FILE_EXTENSIONS + VIDEO_FILE_EXTENSIONS + AUDIO_FILE_EXTENSIONS
+    logger.info(ALLOWED_EXTENSIONS)
     @staticmethod
     def get(featureId: int)-> Feature:
         """

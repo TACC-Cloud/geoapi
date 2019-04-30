@@ -10,6 +10,9 @@ from geoapi.services.users import UserService
 from geoapi.services.features import FeaturesService
 from geoapi.schemas import FeatureCollectionSchema, FeatureSchema
 from geoapi.exceptions import ApiException
+from geoapi.log import logging
+
+logger = logging.getLogger(__name__)
 
 api = Namespace('projects', decorators=[jwt_decoder])
 
@@ -96,7 +99,8 @@ class RapidProject(Resource):
         u = request.current_user
         try:
             return ProjectsService.createRapidProject(api.payload, u)
-        except:
+        except Exception as e:
+            logger.exception(e)
             return abort(409, "A project for this storage system/path already exists!")
 
 

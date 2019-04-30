@@ -1,8 +1,20 @@
 import requests
-from typing import List, Dict
-from urllib.parse import quote, urljoin, urlparse
+import pathlib
+from typing import List, Dict, IO
+from urllib.parse import quote, urlparse, unquote, parse_qs, urlencode
 import uuid
 import json
+from geoapi.log import logging
+
+logger = logging.getLogger(__name__)
+
+class TempAgaveFile:
+
+    def __init__(self, uuid: str):
+        self.uuid = uuid
+
+    def copyToAssets(self):
+        pass
 
 class AgaveFileListing:
 
@@ -11,8 +23,11 @@ class AgaveFileListing:
         self.system = data["system"]
         self.type = data["type"]
         self.length = data["length"]
-        self.path = data["path"]
+        self.path = pathlib.Path(data["path"])
         self.mimeType = data["mimeType"]
+
+    def __repr__(self):
+        return "<AgaveFileListing {}>".format(self.path)
 
     @property
     def uuid(self):
@@ -25,16 +40,15 @@ class AgaveFileListing:
 
         :return: string: the UUID for the file
         """
-        print(self._links)
         if 'metadata' in self._links:
             assoc_meta_href = self._links['metadata']['href']
-            print(assoc_meta_href)
             parsed_href = urlparse(assoc_meta_href)
-            query_dict = urlparse(parsed_href.query)
+            query_dict = parse_qs(parsed_href.query)
             if 'q' in query_dict:
                 meta_q = json.loads(query_dict['q'][0])
                 return meta_q.get('associationIds')
         return None
+
 
 
 
@@ -47,19 +61,39 @@ class AgaveUtils:
         client.headers.update({'X-JWT-Assertion-designsafe': jwt})
         self.client = client
 
+    def systemsList(self):
+        url = quote('/systems/')
+        resp = self.client.get(self.BASE_URL + url)
+        listing = resp.json()
+        return listing["result"]
+
+    def systemsGet(self, systemId: str) -> Dict:
+        url = quote('/systems/{}'.format(systemId))
+        resp = self.client.get(self.BASE_URL + url)
+        listing = resp.json()
+        return listing["result"]
+
     def listing(self, systemId: str, path: str) -> List[AgaveFileListing]:
         url = quote('/files/listings/system/{}/{}'.format(systemId, path))
-        print(self.BASE_URL + url)
         resp = self.client.get(self.BASE_URL + url)
         listing = resp.json()
         out = [AgaveFileListing(d) for d in listing["result"]]
         return out
 
     def getMetaAssociated(self, uuid:str):
-        url = quote('/meta/data/{}'.format(uuid))
+        """
+        Get metadata associated with a file object for Rapid
+        :param uuid: str
+        :return: Dict
+        """
+        q = {'associationIds': uuid}
+        qstring = quote(json.dumps(q), safe='')
+        url = '/meta/data?q={}'.format(qstring)
         resp = self.client.get(self.BASE_URL + url)
         meta = resp.json()
-        return meta
+        results = [rec["value"] for rec in meta["result"]]
+        out = {k: v for d in results for k, v in d.items()}
+        return out
 
     def getFile(self, systemId: str, path: str) -> str:
         """
@@ -69,7 +103,6 @@ class AgaveUtils:
         :return: uuid str
         """
         url = quote('/files/media/system/{}/{}'.format(systemId, path))
-        print(self.BASE_URL + url)
         struuid = str(uuid.uuid4())
         with self.client.get(self.BASE_URL + url, stream=True) as r:
             with open('/tmp/{}'.format(struuid), 'wb') as fd:

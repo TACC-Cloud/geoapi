@@ -1,34 +1,57 @@
+import pathlib
 from geoapi.celery_app import app
-from geoapi.models import User, ObservableDataProject, Project
+from geoapi.models import User, ObservableDataProject, Project, FeatureAsset, Feature
 from geoapi.utils import tenants
 from geoapi.utils.agave import AgaveUtils
 from geoapi.log import logging
-
+from geoapi.services.features import FeaturesService
 logger = logging.getLogger(__file__)
 
-@app.task()
+def _get_file_and_metadata():
+    pass
+
+
+def _parse_rapid_geolocation(loc):
+    coords = loc[0]
+    lat = loc["latitude"]
+    lon = loc["longitude"]
+    return lat, lon
+
+
+@app.task(rate_limit="5/s")
 def import_from_agave(user: User, systemId: str, path: str, proj: Project):
-    api_server = tenants.get_api_server(user.tenant_id)
-    # client = Agave(jwt=user.jwt,
-    #               jwt_header_name='X-JWT-Assertion-{tenant}'.format(tenant=user.tenant_id),
-    #               api_server='http://api.prod.tacc.cloud'
-    #            )
-    # listing = client.files.list(systemId=systemId, filePath=path)
-    # logger.info(listing)
     client = AgaveUtils(user.jwt)
     listing = client.listing(systemId, path)
-    logger.info(listing)
     # First item is always a reference to self
     for item in listing[1:]:
+        logger.info(item.path.suffix)
         if item.type == "dir":
             import_from_agave(user, systemId, item.path, proj)
+        # skip any junk files that are not allowed
+        if item.path.suffix.lower().lstrip('.') not in FeaturesService.ALLOWED_EXTENSIONS:
+            logger.info("Skipping {}".format(item.path))
+            continue
         else:
-            logger.info(item)
-            listing = client.listing(systemId, item.path)
-            logger.info(listing)
-            f = client.getFile(systemId, item.path)
-            meta = client.getMetaAssociated(item.uuid)
-            logger.info(meta)
+            # first check if there already is a file in the DB
+            asset = FeatureAsset.query.filter(FeatureAsset.original_path == str(item.path)).first()
+            if asset:
+                logger.info("Already imported {}".format(item.path))
+                continue
+            listing = client.listing(systemId, item.path)[0]
+            # f = client.getFile(systemId, item.path)
+            meta = client.getMetaAssociated(listing.uuid)
+            if not meta:
+                logger.info("No metadata for {}".format(item.path))
+                continue
+            geolocation = meta.get("geolocation")
+            lat, lon = _parse_rapid_geolocation(geolocation)
+            if not geolocation:
+                logger.info("NO geolocation for {}".format(item.path))
+                continue
+            logger.info(geolocation)
+            # f = client.getFile(systemId, item.path)
+
+
 
 @app.task()
 def refresh_observable_projects():
