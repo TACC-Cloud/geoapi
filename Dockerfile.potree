@@ -3,7 +3,7 @@ FROM python:3.7
 RUN apt-get update && apt-get install -y \
 libtiff-dev libgeotiff-dev libgdal-dev \
 libboost-system-dev libboost-thread-dev libboost-filesystem-dev libboost-program-options-dev libboost-regex-dev libboost-iostreams-dev \
-git cmake build-essential wget python3-pip python3-dev
+git cmake build-essential wget python3-pip python3-dev ffmpeg
 
 WORKDIR /opt
 

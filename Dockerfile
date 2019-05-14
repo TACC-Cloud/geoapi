@@ -1,7 +1,7 @@
 FROM python:3.7
 RUN apt-get update
 RUN apt-get install -y software-properties-common
-RUN apt-get install -y libgdal-dev
+RUN apt-get install -y libgdal-dev ffmeg
 RUN mkdir /api
 COPY ./geoapi /api
 COPY requirements.txt /

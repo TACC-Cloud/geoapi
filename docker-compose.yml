@@ -3,6 +3,7 @@ version: "3"
 
 volumes:
   assets:
+  pgdata:
 
 networks:
   geoapi:
@@ -20,6 +21,8 @@ services:
 
   postgres:
     image: mdillon/postgis
+    volumes:
+      - pgdata:/var/lib/postgresql/data
     ports:
       - 5432:5432
     networks:
@@ -46,7 +49,7 @@ services:
   workers:
     build:
       context: .
-      dockerfile: ./Dockerfile.entwine
+      dockerfile: ./Dockerfile.potree
     networks:
       - geoapi
     volumes:

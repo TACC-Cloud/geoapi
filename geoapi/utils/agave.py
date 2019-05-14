@@ -8,14 +8,6 @@ from geoapi.log import logging
 
 logger = logging.getLogger(__name__)
 
-class TempAgaveFile:
-
-    def __init__(self, uuid: str):
-        self.uuid = uuid
-
-    def copyToAssets(self):
-        pass
-
 class AgaveFileListing:
 
     def __init__(self, data: Dict):
@@ -28,6 +20,10 @@ class AgaveFileListing:
 
     def __repr__(self):
         return "<AgaveFileListing {}>".format(self.path)
+
+    @property
+    def ext(self):
+        return self.path.suffix.lstrip('.').lower()
 
     @property
     def uuid(self):
@@ -74,13 +70,13 @@ class AgaveUtils:
         return listing["result"]
 
     def listing(self, systemId: str, path: str) -> List[AgaveFileListing]:
-        url = quote('/files/listings/system/{}/{}'.format(systemId, path))
+        url = quote('/files/listings/system/{}/{}?limit=10000'.format(systemId, path))
         resp = self.client.get(self.BASE_URL + url)
         listing = resp.json()
         out = [AgaveFileListing(d) for d in listing["result"]]
         return out
 
-    def getMetaAssociated(self, uuid:str):
+    def getMetaAssociated(self, uuid:str)->Dict:
         """
         Get metadata associated with a file object for Rapid
         :param uuid: str
@@ -95,7 +91,7 @@ class AgaveUtils:
         out = {k: v for d in results for k, v in d.items()}
         return out
 
-    def getFile(self, systemId: str, path: str) -> str:
+    def getFile(self, systemId: str, path: str) -> (str, IO):
         """
         Download a file from agave
         :param systemId: str

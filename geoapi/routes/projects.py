@@ -1,20 +1,21 @@
 from flask import request, abort
 from flask_restplus import Resource, Namespace, fields
 from werkzeug.datastructures import FileStorage
-
-from geoapi.models import Project, Feature, User
-from geoapi.db import db_session
 from geoapi.utils.decorators import jwt_decoder, project_permissions, project_feature_exists
 from geoapi.services.projects import ProjectsService
-from geoapi.services.users import UserService
 from geoapi.services.features import FeaturesService
 from geoapi.schemas import FeatureCollectionSchema, FeatureSchema
-from geoapi.exceptions import ApiException
 from geoapi.log import logging
 
 logger = logging.getLogger(__name__)
 
 api = Namespace('projects', decorators=[jwt_decoder])
+
+default_response = api.model('DefaultAgaveResponse', {
+    "message": fields.String(),
+    "version": fields.String(),
+    "status": "success"
+})
 
 geojson = api.model('GeoJSON', {
     "type": fields.String(required=True),
@@ -199,7 +200,7 @@ class ProjectFeaturesFilesResource(Resource):
 
     @api.doc(id="uploadFile",
              description='Add a new feature to a project. Can upload a file '
-             '(georeferenced image, shapefile, lidar (las, lsz))')
+             '(georeferenced image, shapefile, lidar (las, laz))')
     @project_permissions
     def post(self, projectId: int):
         file = request.files['file']
@@ -251,7 +252,7 @@ class ProjectOverlayResource(Resource):
 class ProjectFeaturesCollectionResource(Resource):
 
     @api.doc(id="addFeatureAsset",
-             description='Add a static asset to a collection. Must be an image at the moment')
+             description='Add a static asset to a collection. Must be an image or video at the moment')
     @api.expect(file_upload_parser)
     @project_permissions
     @project_feature_exists

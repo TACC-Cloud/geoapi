@@ -21,7 +21,11 @@ def shutdown_session(exception=None):
 @api.errorhandler(InvalidGeoJSON)
 def handle_custom_exception(error):
     '''Return a custom message and 400 status code'''
-    return {'message': 'Invalid GeoJSON. Valid input must be a Feature or FeatureCollection'}, 400
+    return {
+        "status": "error",
+        "version": "0.1",
+        "message": 'Invalid GeoJSON. Valid input must be a Feature or FeatureCollection'
+    }, 400
 
 @api.errorhandler(InvalidEXIFData)
 def handle_custom_exception(error):

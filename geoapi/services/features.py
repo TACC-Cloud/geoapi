@@ -31,8 +31,12 @@ class FeaturesService:
         'mp3', 'aac'
     )
 
-    ALLOWED_EXTENSIONS = IMAGE_FILE_EXTENSIONS + VIDEO_FILE_EXTENSIONS + AUDIO_FILE_EXTENSIONS
-    logger.info(ALLOWED_EXTENSIONS)
+    LIDAR_FILE_EXTENSIONS = (
+        'las', 'laz'
+    )
+
+    ALLOWED_EXTENSIONS = IMAGE_FILE_EXTENSIONS + VIDEO_FILE_EXTENSIONS + AUDIO_FILE_EXTENSIONS + LIDAR_FILE_EXTENSIONS
+
     @staticmethod
     def get(featureId: int)-> Feature:
         """
@@ -128,6 +132,14 @@ class FeaturesService:
         db_session.commit()
         return {"status": "ok"}
 
+    @staticmethod
+    def fromLatLng(projectId: int, lat: float, lng: float, metadata: Dict) -> Feature:
+        point = Point(lng, lat)
+        f = Feature()
+        f.project_id = projectId
+        f.the_geom = from_shape(point, srid=4326)
+        f.properties = metadata or {}
+        return f
 
     @staticmethod
     def fromImage(projectId: int, fileObj: IO, metadata: Dict) -> None:
@@ -146,7 +158,7 @@ class FeaturesService:
         f.properties = metadata
 
         asset_uuid = uuid.uuid4()
-        asset_path = os.path.join("/assets", str(projectId), str(asset_uuid))
+        asset_path = os.path.join("/assets", str(projectId), str(asset_uuid)+".jpeg")
         fa = FeatureAsset(
             uuid=asset_uuid,
             asset_type="image",
@@ -172,27 +184,47 @@ class FeaturesService:
         :param fileObj: file
         :return: FeatureAsset
         """
-        fileaname, file_ext = os.path.splitext(fileObj.name)
+        fpath = pathlib.Path(fileObj.name)
+        ext = fpath.suffix.lstrip('.')
+        if ext in FeaturesService.IMAGE_FILE_EXTENSIONS:
+            return FeaturesService.createImageFeatureAsset(projectId, featureId, fileObj)
+        if ext in FeaturesService.VIDEO_FILE_EXTENSIONS:
+            return FeaturesService.createVideoFeatureAsset(projectId, fileObj)
 
-        feat = Feature.query.get(featureId)
-        imdata = ImageService.processImage(fileObj)
+    @staticmethod
+    def createImageFeatureAsset(projectId: int, fileObj: IO) -> FeatureAsset:
         asset_uuid = uuid.uuid4()
-        # asset_path will be used to serve the asset with front end server
-        asset_path = os.path.join("/assets", str(projectId), str(asset_uuid))
+        imdata = ImageService.resizeImage(fileObj)
+        base_filepath = FeaturesService._makeAssetDir(projectId)
+        imdata.thumb.save(os.path.join(base_filepath, str(asset_uuid) + ".thumb.jpeg"), "JPEG")
+        imdata.resized.save(os.path.join(base_filepath, str(asset_uuid) + ".jpeg"), "JPEG")
+        asset_path = os.path.join("/assets", str(projectId), str(asset_uuid)+'.jpeg')
         fa = FeatureAsset(
             uuid=asset_uuid,
             asset_type="image",
-            path=asset_path,
-
+            path=asset_path
         )
-        fa.feature = feat
-        base_filepath = FeaturesService._makeAssetDir(projectId)
-        imdata.thumb.save(os.path.join(base_filepath, str(asset_uuid) + ".thumb.jpeg"), "JPEG")
-        imdata.resized.save(os.path.join(base_filepath, str(asset_uuid)+".jpeg"), "JPEG")
-        db_session.add(fa)
-        db_session.commit()
         return fa
 
+    @staticmethod
+    def createVideoFeatureAsset(projectId: int, fileObj: IO) -> FeatureAsset:
+        """
+
+        :param projectId:
+        :param fileObj: Should be a file descriptor of a file in tmp
+        :return: FeatureAsset
+        """
+        asset_uuid = uuid.uuid4()
+        base_filepath = FeaturesService._makeAssetDir(projectId)
+        save_path = os.path.join("/assets", str(projectId), str(asset_uuid) + '.mp4')
+        with open(save_path, 'wb') as f:
+            f.write(fileObj.read())
+        fa = FeatureAsset(
+            uuid=asset_uuid,
+            path=save_path,
+            asset_type="video"
+        )
+        return fa
 
     @staticmethod
     def clusterKMeans(projectId:int, numClusters: int=20) -> json:
@@ -264,7 +296,7 @@ class FeaturesService:
     @staticmethod
     def deleteOverlay(projectId: int, overlayId: int) -> None:
         ov = Overlay.query.get(overlayId)
-        #TODO: remove assets here too
+        # TODO: remove assets here too
 
         db_session.remove(ov)
         db_session.commit()

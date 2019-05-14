@@ -9,7 +9,6 @@ class Config(object):
     DB_HOST = 'postgres'
     ASSETS_BASE_DIR = os.environ.get('ASSETS_BASE_DIR', '/assets')
     JWT_SECRET_KEY = 'your-256-bit-secret'
-    DS_AGAVE_SUPER_TOKEN = '12312313'
 
 class ProductionConfig(Config):
     DEBUG = False
@@ -21,6 +20,8 @@ class ProductionConfig(Config):
 
 class DevelopmentConfig(Config):
     DEBUG = True
+    DS_CONSUMER_KEY = "wcZIa9kEYL220uqfAecCRui7ti0a"
+    DS_CONSUMER_SECRET = "dnRJOyi443M7PuTs7MAjCIfkFAMa"
 
 
 class TestingConfig(Config):
