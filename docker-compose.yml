@@ -39,8 +39,7 @@ services:
     ports:
       - 8080:80
     volumes:
-      - ./viewer:/static
-      - ./assets:/assets
+      - assets:/assets
       - ./conf/nginx.conf:/etc/nginx/nginx.conf
     networks:
       - geoapi
