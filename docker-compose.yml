@@ -37,7 +37,7 @@ services:
   nginx:
     image: nginx
     ports:
-      - 8080:80
+      - 8888:80
     volumes:
       - assets:/assets
       - ./conf/nginx.conf:/etc/nginx/nginx.conf
