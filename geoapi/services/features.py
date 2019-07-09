@@ -1,9 +1,12 @@
 import os
+from io import BytesIO
+
 import pathlib
 import uuid
 import json
 from typing import List, IO, Dict
-from shapely.geometry import Point
+from shapely.geometry import Point, shape
+import fiona
 from geoalchemy2.shape import from_shape, to_shape
 import geojson
 
@@ -11,7 +14,7 @@ from geoapi.services.images import ImageService
 from geoapi.settings import settings
 from geoapi.models import Feature, FeatureAsset, Overlay
 from geoapi.db import db_session
-from geoapi.exceptions import InvalidGeoJSON
+from geoapi.exceptions import InvalidGeoJSON, ApiException
 from geoapi.log import logging
 
 logger = logging.getLogger(__name__)
@@ -29,6 +32,10 @@ class FeaturesService:
 
     AUDIO_FILE_EXTENSIONS = (
         'mp3', 'aac'
+    )
+
+    GPX_FILE_EXTENSIONS = (
+        'gpx',
     )
 
     LIDAR_FILE_EXTENSIONS = (
@@ -142,7 +149,40 @@ class FeaturesService:
         return f
 
     @staticmethod
-    def fromImage(projectId: int, fileObj: IO, metadata: Dict) -> None:
+    def fromGPX(projectId: int, fileObj: IO, metadata: Dict) -> Feature :
+
+        # TODO: Fiona should support reading fromg the file directly, this MemoryFile business
+        #  should not be needed
+        with fiona.io.MemoryFile(fileObj) as memfile:
+            with memfile.open(layer="tracks") as collection:
+                track = collection[0]
+                shp = shape(track["geometry"])
+                feat = Feature()
+                feat.project_id = projectId
+                feat.the_geom = from_shape(shp, srid=4326)
+                feat.properties = metadata or {}
+                db_session.add(feat)
+                db_session.commit()
+                return feat
+
+    @staticmethod
+    def fromFileObj(projectId: int, fileObj: IO, metadata: Dict) -> Feature:
+        ext = pathlib.Path(fileObj.filename).suffix.lstrip(".")
+        if ext in FeaturesService.IMAGE_FILE_EXTENSIONS:
+            return FeaturesService.fromImage(projectId, fileObj, metadata)
+        elif ext in FeaturesService.GPX_FILE_EXTENSIONS:
+            return FeaturesService.fromGPX(projectId, fileObj, metadata)
+        elif ext in FeaturesService.LIDAR_FILE_EXTENSIONS:
+            FeaturesService.fromLidar(projectId, fileObj, metadata)
+        else:
+            raise ApiException("Filetype not supported for direct upload. Create a feature and attach as an asset?")
+
+    @staticmethod
+    def fromLidar(projectId: int, fileObj: IO, metadata:Dict) -> Feature:
+        pass
+
+    @staticmethod
+    def fromImage(projectId: int, fileObj: IO, metadata: Dict) -> Feature:
         """
         Create a Point feature from a georeferenced image
         :param projectId: int
@@ -172,8 +212,7 @@ class FeaturesService:
         imdata.resized.save(os.path.join(base_filepath, str(asset_uuid) + '.jpeg'), "JPEG")
         db_session.add(f)
         db_session.commit()
-
-
+        return f
 
     @staticmethod
     def createFeatureAsset(projectId:int , featureId: int, fileObj: IO) -> FeatureAsset:

@@ -1,0 +1,55 @@
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  annotations:
+    kompose.cmd: kompose convert
+    kompose.version: 1.16.0 (0c01309)
+  creationTimestamp: null
+  labels:
+    io.kompose.service: workers
+  name: workers
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      creationTimestamp: null
+      labels:
+        io.kompose.service: workers
+    spec:
+      containers:
+      - args:
+        - celery
+        - -A
+        - celery_app
+        - worker
+        - -l
+        - info
+        env:
+        - name: ASSETS_BASE_DIR
+          value: /assets
+        - name: FLASK_APP
+          value: /api/geoapi/app.py
+        - name: FLASK_ENV
+          value: development
+        image: workers
+        name: geoapiworkers
+        resources: {}
+        stdin: true
+        tty: true
+        volumeMounts:
+        - mountPath: /api/geoapi
+          name: workers-claim0
+        - mountPath: /assets
+          name: assets
+      hostname: geoapiworkers
+      restartPolicy: Always
+      volumes:
+      - name: workers-claim0
+        persistentVolumeClaim:
+          claimName: workers-claim0
+      - name: assets
+        persistentVolumeClaim:
+          claimName: assets
+status: {}

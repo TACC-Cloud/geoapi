@@ -1,6 +1,9 @@
 from flask import request, abort
 from flask_restplus import Resource, Namespace, fields
 from werkzeug.datastructures import FileStorage
+import shapely
+from geoalchemy2.shape import from_shape, to_shape
+
 from geoapi.utils.decorators import jwt_decoder, project_permissions, project_feature_exists
 from geoapi.services.projects import ProjectsService
 from geoapi.services.features import FeaturesService
@@ -14,14 +17,25 @@ api = Namespace('projects', decorators=[jwt_decoder])
 default_response = api.model('DefaultAgaveResponse', {
     "message": fields.String(),
     "version": fields.String(),
-    "status": "success"
+    "status": fields.String(default="success")
 })
 
-geojson = api.model('GeoJSON', {
-    "type": fields.String(required=True),
-    "geometry": fields.Raw(required=True),
-    "properties": fields.Raw()
+asset = api.model('Asset', {
+    "id": fields.Integer(),
+    "path": fields.String(),
+    "uuid": fields.String(),
+    "asset_type": fields.String()
 })
+
+#TODO: move this shapely/geoalchemy2 stuff somwhere else
+api_feature = api.model('Feature', {
+    "type": fields.String(required=True, default="Feature"),
+    "geometry": fields.Raw(required=True, attribute=lambda x: shapely.geometry.mapping(to_shape(x.the_geom))),
+    "properties": fields.Raw(),
+    "styles": fields.Raw(default={}),
+    "assets": fields.Nested(asset)
+})
+
 project = api.model('Project', {
     'id': fields.Integer(),
     'name': fields.String(required=True),
@@ -58,13 +72,6 @@ overlay_parser.add_argument('maxLat', location='form', type=float, required=True
 rapid_project = api.parser()
 rapid_project.add_argument('system_id', location='body', type=str, required=True)
 rapid_project.add_argument('path', location='body', type=str, required=False, default="RApp")
-
-
-
-# overlay = api.model('Overlay', {
-#     "bounds": fields.List(required=True),
-#     "label": fields.String(required=True),
-# })
 
 feature_schema = api.schema_model('Feature', FeatureSchema)
 
@@ -199,14 +206,16 @@ class ProjectFeaturePropertiesResource(Resource):
 class ProjectFeaturesFilesResource(Resource):
 
     @api.doc(id="uploadFile",
-             description='Add a new feature to a project. Can upload a file '
-             '(georeferenced image, shapefile, lidar (las, laz))')
+             description='Add a new feature to a project from a file that has embedded geospatial information. Current'
+                         'allowed file types are (georeferenced image (jpeg), gpx track, lidar (las, laz))')
+    @api.marshal_with(api_feature)
     @project_permissions
     def post(self, projectId: int):
         file = request.files['file']
         formData = request.form
         metadata = formData.to_dict()
-        FeaturesService.fromImage(projectId, file, metadata)
+        feat = FeaturesService.fromFileObj(projectId, file, metadata)
+        return feat
 
 
 @api.route('/<int:projectId>/overlays/')
