@@ -1,5 +1,5 @@
 import pytest
-
+import os
 from geoapi.initdb import initDB
 from geoapi.models.users import User
 from geoapi.models.project import Project
@@ -38,3 +38,28 @@ def projects_fixture():
     proj.users.append(u1)
     db_session.add(proj)
     db_session.commit()
+
+@pytest.fixture(scope="function")
+def gpx_file_fixture():
+    dir = os.path.dirname(__file__)
+    with open(os.path.join(dir, 'fixtures/run.gpx'), 'rb') as f:
+        yield f
+
+@pytest.fixture(scope="function")
+def image_file_fixture():
+    dir = os.path.dirname(__file__)
+    with open(os.path.join(dir, 'fixtures/image.jpg'), 'rb') as f:
+        yield f
+
+@pytest.fixture(scope="function")
+def geojson_file_fixture():
+    dir = os.path.dirname(__file__)
+    with open(os.path.join(dir, 'fixtures/geojson.json'), 'rb') as f:
+        yield f
+
+@pytest.fixture(scope="function")
+def feature_properties_file_fixture():
+    dir = os.path.dirname(__file__)
+    with open(os.path.join(dir, 'fixtures/properties.json'), 'rb') as f:
+        yield f
+
