@@ -1,6 +1,4 @@
 import os
-from io import BytesIO
-
 import pathlib
 import uuid
 import json
@@ -22,6 +20,10 @@ logger = logging.getLogger(__name__)
 
 class FeaturesService:
 
+    GEOJSON_FILE_EXTENSIONS = (
+        'json', 'geojson'
+    )
+
     IMAGE_FILE_EXTENSIONS = (
         'jpeg', 'jpg', 'png', 'tiff'
     )
@@ -42,7 +44,9 @@ class FeaturesService:
         'las', 'laz'
     )
 
-    ALLOWED_EXTENSIONS = IMAGE_FILE_EXTENSIONS + VIDEO_FILE_EXTENSIONS + AUDIO_FILE_EXTENSIONS + LIDAR_FILE_EXTENSIONS
+    ALLOWED_EXTENSIONS = IMAGE_FILE_EXTENSIONS + VIDEO_FILE_EXTENSIONS \
+                         + AUDIO_FILE_EXTENSIONS + LIDAR_FILE_EXTENSIONS \
+                         + GPX_FILE_EXTENSIONS + GEOJSON_FILE_EXTENSIONS
 
     @staticmethod
     def get(featureId: int)-> Feature:
@@ -51,7 +55,7 @@ class FeaturesService:
         :param featureId: int
         :return: Feature
         """
-        return Feature.query.get(featureId)
+        return db_session.query(Feature).get(featureId)
 
 
     @staticmethod
@@ -71,9 +75,9 @@ class FeaturesService:
         :return: None
         """
         # TODO: remove any assets tied to the feature also
-        feat = Feature.query.get(featureId)
+        feat = db_session.query(Feature).get(featureId)
         base_asset_path = os.path.join(settings.ASSETS_BASE_DIR, str(feat.project_id))
-        assets = FeatureAsset.query.filter(FeatureAsset.feature_id == featureId)
+        assets = db_session.query(FeatureAsset).filter(FeatureAsset.feature_id == featureId)
         for asset in assets:
             asset_path = os.path.join(base_asset_path, str(asset.uuid))
 
@@ -88,7 +92,7 @@ class FeaturesService:
         :param props: dict
         :return: Feature
         """
-        feat = Feature.query.get(featureId)
+        feat = db_session.query(Feature).get(featureId)
         # TODO: Throw assert if not found?
         # TODO: PROTECT assets and styles attributes
         feat.properties = props
@@ -103,7 +107,7 @@ class FeaturesService:
         :param styles: dict
         :return: Feature
         """
-        feat = Feature.query.get(featureId)
+        feat = db_session.query(Feature).get(featureId)
         # TODO: Throw assert if not found?
         # TODO: PROTECT assets and styles attributes
         feat.styles = styles
@@ -112,7 +116,7 @@ class FeaturesService:
 
 
     @staticmethod
-    def addGeoJSON(projectId: int, feature: Dict) -> dict:
+    def addGeoJSON(projectId: int, feature: Dict) -> List[Feature]:
         """
         Add a GeoJSON feature to a project
         :param projectId: int
@@ -124,20 +128,23 @@ class FeaturesService:
         except ValueError:
             raise InvalidGeoJSON
 
+        features = []
         if data["type"] == "Feature":
             feat = Feature.fromGeoJSON(data)
             feat.project_id = projectId
             db_session.add(feat)
+            features.append(feat)
         elif data["type"] == "FeatureCollection":
             fc = geojson.FeatureCollection(data)
             for feature in fc.features:
                 feat = Feature.fromGeoJSON(feature)
                 feat.project_id = projectId
                 db_session.add(feat)
+                features.append(feat)
         else:
             raise InvalidGeoJSON("Valid GeoJSON must be either a Feature or FeatureCollection.")
         db_session.commit()
-        return {"status": "ok"}
+        return features
 
     @staticmethod
     def fromLatLng(projectId: int, lat: float, lng: float, metadata: Dict) -> Feature:
@@ -149,9 +156,9 @@ class FeaturesService:
         return f
 
     @staticmethod
-    def fromGPX(projectId: int, fileObj: IO, metadata: Dict) -> Feature :
+    def fromGPX(projectId: int, fileObj: IO, metadata: Dict) -> List[Feature] :
 
-        # TODO: Fiona should support reading fromg the file directly, this MemoryFile business
+        # TODO: Fiona should support reading from the file directly, this MemoryFile business
         #  should not be needed
         with fiona.io.MemoryFile(fileObj) as memfile:
             with memfile.open(layer="tracks") as collection:
@@ -163,22 +170,36 @@ class FeaturesService:
                 feat.properties = metadata or {}
                 db_session.add(feat)
                 db_session.commit()
-                return feat
+                return [feat]
 
     @staticmethod
-    def fromFileObj(projectId: int, fileObj: IO, metadata: Dict) -> Feature:
+    def fromGeoJSON(projectId: int, fileObj: IO, metadata: Dict) -> List[Feature]:
+        """
+
+        :param projectId: int
+        :param fileObj: file descriptor
+        :param metadata: Dict of <key, val> pairs
+        :return: Feature
+        """
+        data = json.loads(fileObj.read())
+        return FeaturesService.addGeoJSON(projectId, data)
+
+    @staticmethod
+    def fromFileObj(projectId: int, fileObj: IO, metadata: Dict) -> List[Feature]:
         ext = pathlib.Path(fileObj.filename).suffix.lstrip(".")
         if ext in FeaturesService.IMAGE_FILE_EXTENSIONS:
             return FeaturesService.fromImage(projectId, fileObj, metadata)
         elif ext in FeaturesService.GPX_FILE_EXTENSIONS:
             return FeaturesService.fromGPX(projectId, fileObj, metadata)
         elif ext in FeaturesService.LIDAR_FILE_EXTENSIONS:
-            FeaturesService.fromLidar(projectId, fileObj, metadata)
+            return FeaturesService.fromLidar(projectId, fileObj, metadata)
+        elif ext in FeaturesService.GEOJSON_FILE_EXTENSIONS:
+            return FeaturesService.fromGeoJSON(projectId, fileObj, metadata)
         else:
             raise ApiException("Filetype not supported for direct upload. Create a feature and attach as an asset?")
 
     @staticmethod
-    def fromLidar(projectId: int, fileObj: IO, metadata:Dict) -> Feature:
+    def fromLidar(projectId: int, fileObj: IO, metadata: Dict) -> Feature:
         pass
 
     @staticmethod
@@ -223,12 +244,17 @@ class FeaturesService:
         :param fileObj: file
         :return: FeatureAsset
         """
-        fpath = pathlib.Path(fileObj.name)
+        fpath = pathlib.Path(fileObj.filename)
         ext = fpath.suffix.lstrip('.')
         if ext in FeaturesService.IMAGE_FILE_EXTENSIONS:
-            return FeaturesService.createImageFeatureAsset(projectId, featureId, fileObj)
-        if ext in FeaturesService.VIDEO_FILE_EXTENSIONS:
-            return FeaturesService.createVideoFeatureAsset(projectId, fileObj)
+            fa = FeaturesService.createImageFeatureAsset(projectId, fileObj)
+        elif ext in FeaturesService.VIDEO_FILE_EXTENSIONS:
+            fa = FeaturesService.createVideoFeatureAsset(projectId, fileObj)
+        else:
+            raise ApiException("Invalid format for feature assets")
+        feat = FeaturesService.get(featureId)
+        feat.assets.append(fa)
+        db_session.commit()
 
     @staticmethod
     def createImageFeatureAsset(projectId: int, fileObj: IO) -> FeatureAsset:
@@ -329,14 +355,14 @@ class FeaturesService:
 
     @staticmethod
     def getOverlays(projectId: int) -> List[Overlay]:
-        overlays = Overlay.query.filter_by(project_id=projectId).all()
+        overlays = db_session.query(Overlay).filter_by(project_id=projectId).all()
         return overlays
 
     @staticmethod
     def deleteOverlay(projectId: int, overlayId: int) -> None:
-        ov = Overlay.query.get(overlayId)
+        ov = db_session.query(Overlay).get(overlayId)
         # TODO: remove assets here too
-
+        os.remove(os.path.join(settings.ASSETS_BASE_DIR, ov.path))
         db_session.remove(ov)
         db_session.commit()
 
@@ -347,17 +373,6 @@ class FeaturesService:
         to potree viewer format and processed to get the extent which will be shown on the map.
         :param projectID: int
         :param fileObj: file
-        :return: None
-        """
-        pass
-
-    @staticmethod
-    def importFromAgave(projectId: int, agaveSystemId: str, filePath: str) -> None:
-        """
-        Import data stored in an agave file system. This is asynchronous.
-        :param projectId: int
-        :param agaveSystemId: str
-        :param filePath: str
         :return: None
         """
         pass

@@ -10,10 +10,9 @@ CONNECTION_STRING = 'postgresql://{}:{}@{}/{}'.format(
     settings.DB_NAME
 )
 engine = create_engine(CONNECTION_STRING, echo=False)
-# engine = create_engine("sqlite:///:memory:", echo=True)
+
 db_session = scoped_session(sessionmaker(autocommit=False,
                                          autoflush=False,
                                          bind=engine))
 
 Base = declarative_base()
-Base.query = db_session.query_property()

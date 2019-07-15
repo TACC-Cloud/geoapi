@@ -1,27 +1,20 @@
 import pytest
 import os
-from geoapi.initdb import initDB
+import json
+from geoalchemy2.shape import from_shape
+
+from sqlalchemy import create_engine
+from geoapi.settings import settings
+from geoapi.db import Base, db_session
 from geoapi.models.users import User
 from geoapi.models.project import Project
-from geoapi.db import db_session
+from geoapi.models.feature import Feature
 from geoapi.app import app
-
-def pytest_runtest_setup(item):
-    initDB()
-
-def pytest_runtest_teardown(item):
-    db_session.remove()
 
 
 user1JWT="eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJ3c28yLm9yZy9wcm9kdWN0cy9hbSIsImV4cCI6MjM4NDQ4MTcxMzg0MiwiaHR0cDovL3dzbzIub3JnL2NsYWltcy9zdWJzY3JpYmVyIjoidGVzdDEiLCJodHRwOi8vd3NvMi5vcmcvY2xhaW1zL2FwcGxpY2F0aW9uaWQiOiI0NCIsImh0dHA6Ly93c28yLm9yZy9jbGFpbXMvYXBwbGljYXRpb25uYW1lIjoiRGVmYXVsdEFwcGxpY2F0aW9uIiwiaHR0cDovL3dzbzIub3JnL2NsYWltcy9hcHBsaWNhdGlvbnRpZXIiOiJVbmxpbWl0ZWQiLCJodHRwOi8vd3NvMi5vcmcvY2xhaW1zL2FwaWNvbnRleHQiOiIvYXBwcyIsImh0dHA6Ly93c28yLm9yZy9jbGFpbXMvdmVyc2lvbiI6IjIuMCIsImh0dHA6Ly93c28yLm9yZy9jbGFpbXMvdGllciI6IlVubGltaXRlZCIsImh0dHA6Ly93c28yLm9yZy9jbGFpbXMva2V5dHlwZSI6IlBST0RVQ1RJT04iLCJodHRwOi8vd3NvMi5vcmcvY2xhaW1zL3VzZXJ0eXBlIjoiQVBQTElDQVRJT05fVVNFUiIsImh0dHA6Ly93c28yLm9yZy9jbGFpbXMvZW5kdXNlciI6IllPVVJfVVNFUk5BTUUiLCJodHRwOi8vd3NvMi5vcmcvY2xhaW1zL2VuZHVzZXJUZW5hbnRJZCI6IjEwIiwiaHR0cDovL3dzbzIub3JnL2NsYWltcy9lbWFpbGFkZHJlc3MiOiJ0ZXN0dXNlcjNAdGVzdC5jb20iLCJodHRwOi8vd3NvMi5vcmcvY2xhaW1zL2Z1bGxuYW1lIjoiVGVzdCBVc2VyMSIsImh0dHA6Ly93c28yLm9yZy9jbGFpbXMvZ2l2ZW5uYW1lIjoiRGV2IiwiaHR0cDovL3dzbzIub3JnL2NsYWltcy9sYXN0bmFtZSI6IlVzZXIiLCJodHRwOi8vd3NvMi5vcmcvY2xhaW1zL3ByaW1hcnlDaGFsbGVuZ2VRdWVzdGlvbiI6Ik4vQSIsImh0dHA6Ly93c28yLm9yZy9jbGFpbXMvcm9sZSI6IkludGVybmFsL2V2ZXJ5b25lIiwiaHR0cDovL3dzbzIub3JnL2NsYWltcy90aXRsZSI6Ik4vQSJ9.USdVBvpmh7uEQBLSQAJcxniIdUU2coqFr4rPxCYWI8w"
 user2JWT="eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJ3c28yLm9yZy9wcm9kdWN0cy9hbSIsImV4cCI6MjM4NDQ4MTcxMzg0MiwiaHR0cDovL3dzbzIub3JnL2NsYWltcy9zdWJzY3JpYmVyIjoidGVzdDIiLCJodHRwOi8vd3NvMi5vcmcvY2xhaW1zL2FwcGxpY2F0aW9uaWQiOiI0NCIsImh0dHA6Ly93c28yLm9yZy9jbGFpbXMvYXBwbGljYXRpb25uYW1lIjoiRGVmYXVsdEFwcGxpY2F0aW9uIiwiaHR0cDovL3dzbzIub3JnL2NsYWltcy9hcHBsaWNhdGlvbnRpZXIiOiJVbmxpbWl0ZWQiLCJodHRwOi8vd3NvMi5vcmcvY2xhaW1zL2FwaWNvbnRleHQiOiIvYXBwcyIsImh0dHA6Ly93c28yLm9yZy9jbGFpbXMvdmVyc2lvbiI6IjIuMCIsImh0dHA6Ly93c28yLm9yZy9jbGFpbXMvdGllciI6IlVubGltaXRlZCIsImh0dHA6Ly93c28yLm9yZy9jbGFpbXMva2V5dHlwZSI6IlBST0RVQ1RJT04iLCJodHRwOi8vd3NvMi5vcmcvY2xhaW1zL3VzZXJ0eXBlIjoiQVBQTElDQVRJT05fVVNFUiIsImh0dHA6Ly93c28yLm9yZy9jbGFpbXMvZW5kdXNlciI6IllPVVJfVVNFUk5BTUUiLCJodHRwOi8vd3NvMi5vcmcvY2xhaW1zL2VuZHVzZXJUZW5hbnRJZCI6IjEwIiwiaHR0cDovL3dzbzIub3JnL2NsYWltcy9lbWFpbGFkZHJlc3MiOiJ0ZXN0dXNlcjNAdGVzdC5jb20iLCJodHRwOi8vd3NvMi5vcmcvY2xhaW1zL2Z1bGxuYW1lIjoiVGVzdCBVc2VyMSIsImh0dHA6Ly93c28yLm9yZy9jbGFpbXMvZ2l2ZW5uYW1lIjoiRGV2IiwiaHR0cDovL3dzbzIub3JnL2NsYWltcy9sYXN0bmFtZSI6IlVzZXIiLCJodHRwOi8vd3NvMi5vcmcvY2xhaW1zL3ByaW1hcnlDaGFsbGVuZ2VRdWVzdGlvbiI6Ik4vQSIsImh0dHA6Ly93c28yLm9yZy9jbGFpbXMvcm9sZSI6IkludGVybmFsL2V2ZXJ5b25lIiwiaHR0cDovL3dzbzIub3JnL2NsYWltcy90aXRsZSI6Ik4vQSJ9.JfNlv8e_mUkdk5sm0_2ieVmaijttmLfyHSLHpDz8Ak8"
 
-@pytest.fixture(scope="function")
-def users_fixture():
-    u1 = User(username="test1", jwt=user1JWT, tenant_id="test")
-    u2 = User(username="test2", jwt=user2JWT, tenant_id="test")
-    db_session.add_all([u1, u2])
-    db_session.commit()
 
 @pytest.fixture(scope="session")
 def test_client():
@@ -29,37 +22,86 @@ def test_client():
     yield client
 
 
-@pytest.fixture(scope="function")
-def projects_fixture():
+@pytest.fixture(scope='session')
+def engine():
+    return create_engine('postgresql://{}:{}@{}/{}'.format(
+        settings.DB_USERNAME,
+        settings.DB_PASSWD,
+        settings.DB_HOST,
+        settings.DB_NAME)
+    )
+
+
+@pytest.fixture(autouse=True)
+def setup(engine):
+    Base.metadata.drop_all(engine)
+    Base.metadata.create_all(engine)
+    yield
+
+
+@pytest.yield_fixture(scope="function")
+def dbsession(engine):
+    """Returns an sqlalchemy session, and after the test tears down everything properly."""
+    connection = engine.connect()
+    txn = connection.begin()
+    db_session.begin_nested()
+    yield db_session
+    db_session.remove()
+    txn.rollback()
+    connection.close()
+
+
+@pytest.fixture(autouse=True)
+def userdata(dbsession):
     u1 = User(username="test1", jwt=user1JWT, tenant_id="test")
     u2 = User(username="test2", jwt=user2JWT, tenant_id="test")
-    db_session.add_all([u1, u2])
-    proj = Project(name="test", description="test")
+    dbsession.add_all([u1, u2])
+    dbsession.commit()
+
+
+@pytest.fixture(scope="function")
+def projects_fixture(dbsession):
+    proj = Project(name="test", description="description")
+    u1 = dbsession.query(User).get(1)
     proj.users.append(u1)
-    db_session.add(proj)
-    db_session.commit()
+    dbsession.add(proj)
+    dbsession.commit()
 
 @pytest.fixture(scope="function")
 def gpx_file_fixture():
-    dir = os.path.dirname(__file__)
-    with open(os.path.join(dir, 'fixtures/run.gpx'), 'rb') as f:
+    home = os.path.dirname(__file__)
+    with open(os.path.join(home, 'fixtures/run.gpx'), 'rb') as f:
         yield f
+
 
 @pytest.fixture(scope="function")
 def image_file_fixture():
-    dir = os.path.dirname(__file__)
-    with open(os.path.join(dir, 'fixtures/image.jpg'), 'rb') as f:
+    home = os.path.dirname(__file__)
+    with open(os.path.join(home, 'fixtures/image.jpg'), 'rb') as f:
         yield f
+
 
 @pytest.fixture(scope="function")
 def geojson_file_fixture():
-    dir = os.path.dirname(__file__)
-    with open(os.path.join(dir, 'fixtures/geojson.json'), 'rb') as f:
+    home = os.path.dirname(__file__)
+    with open(os.path.join(home, 'fixtures/geojson.json'), 'rb') as f:
         yield f
+
 
 @pytest.fixture(scope="function")
 def feature_properties_file_fixture():
-    dir = os.path.dirname(__file__)
-    with open(os.path.join(dir, 'fixtures/properties.json'), 'rb') as f:
+    home = os.path.dirname(__file__)
+    with open(os.path.join(home, 'fixtures/properties.json'), 'rb') as f:
         yield f
+
+
+@pytest.fixture(scope="function")
+def feature_fixture(dbsession):
+    home = os.path.dirname(__file__)
+    with open(os.path.join(home, 'fixtures/properties.json'), 'rb') as f:
+        feat = Feature.fromGeoJSON(json.loads(f.read()))
+        feat.project_id = 1
+        dbsession.add(feat)
+        dbsession.commit()
+
 

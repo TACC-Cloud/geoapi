@@ -5,11 +5,9 @@ from typing import List
 from geoapi.settings import settings
 
 from geoapi.models import Project, User, ObservableDataProject
-from geoapi.services.users import UserService
 from geoapi.db import db_session
 from sqlalchemy.sql import select, func, text, and_
 from sqlalchemy.exc import IntegrityError
-from agavepy.agave import Agave
 from geoapi.utils.agave import AgaveUtils
 
 
@@ -85,7 +83,7 @@ class ProjectsService:
         :param projectId: int
         :return: Project
         """
-        return Project.query.get(projectId)
+        return db_session.query(Project).get(projectId)
 
     @staticmethod
     def getFeatures(projectId: int, query: dict = None) -> object:
@@ -155,10 +153,9 @@ class ProjectsService:
 
         if query.get("bbox"):
             print(query)
-
+            # TODO: implement bounding box filters
 
         s = select([select_stmt]).select_from(sub_select)
-        print(s)
         result = db_session.execute(s, {'projectId': projectId})
         out = result.fetchone()
         return out.geojson
@@ -174,7 +171,7 @@ class ProjectsService:
         :param projectId: int
         :return:
         """
-        proj = Project.query.get(projectId)
+        proj = db_session.query(Project).get(projectId)
         db_session.delete(proj)
         db_session.commit()
         assets_folder = os.path.join(settings.ASSETS_BASE_DIR, str(projectId))
@@ -195,15 +192,15 @@ class ProjectsService:
         """
 
         # TODO: Add TAS integration
-        proj = Project.query.get(projectId)
-        user = User.query.filter(User.username == username).first()
+        proj = db_session.query(Project).get(projectId)
+        user = db_session.query(User).filter(User.username == username).first()
         proj.users.append(user)
         db_session.commit()
 
 
     @staticmethod
     def getUsers(projectId: int) -> List[User]:
-        proj = Project.query.get(projectId)
+        proj = db_session.query(Project).get(projectId)
         return proj.users
 
 

@@ -1,12 +1,11 @@
 import pytest
 from geoapi.services.projects import ProjectsService
 from geoapi.services.users import UserService
+from geoapi.models.users import User
 
 
-
-def test_create_project(users_fixture):
-    print("test")
-    user = UserService.getUser("test1", "test")
+def test_create_project(dbsession):
+    user = dbsession.query(User).get(1)
     data = {
         "name": "test name",
         "description": "test description"
@@ -16,18 +15,18 @@ def test_create_project(users_fixture):
     assert len(proj.users) == 1
     assert proj.name == "test name"
 
-def test_insert_feature_geojson(users_fixture):
+def test_insert_feature_geojson():
     pass
 
-def test_insert_feature_collection(users_fixture):
+def test_insert_feature_collection():
     pass
 
-def test_insert_image(users_fixture):
+def test_insert_image():
     pass
 
-def test_remove_feature(users_fixture):
+def test_remove_feature():
     pass
 
-def test_remove_feature_removes_assets(users_fixture):
+def test_remove_feature_removes_assets():
     pass
 

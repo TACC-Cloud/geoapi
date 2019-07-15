@@ -41,7 +41,7 @@ def import_from_agave(user: User, systemId: str, path: str, proj: Project):
                 item_system_path = os.path.join(item.system, str(item.path).lstrip("/"))
                 logger.info(item_system_path)
 
-                asset = FeatureAsset.query.filter(FeatureAsset.original_path == item_system_path).first()
+                asset = db_session.query(FeatureAsset).filter(FeatureAsset.original_path == item_system_path).first()
                 if asset:
                     logger.info("Already imported {}".format(item_system_path))
                     continue
@@ -95,12 +95,12 @@ def import_from_agave(user: User, systemId: str, path: str, proj: Project):
 
 @app.task()
 def refresh_observable_projects():
-    obs = ObservableDataProject.query.all()
+    obs = db_session.query(ObservableDataProject).all()
     logger.info(obs)
     for o in obs:
         import_from_agave(o.project.users[0], o.system_id, o.path, o.project)
 
 
 if __name__ =="__main__":
-    u = User.query.get(1)
+    u = db_session.query(User).get(1)
     refresh_observable_projects()

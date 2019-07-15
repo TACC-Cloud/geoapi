@@ -161,14 +161,14 @@ class ProjectUserResource(Resource):
              description="Remove a user from a project")
     @project_permissions
     def delete(self, projectId: int):
-        return ProjectsService.removeUserFromProject(projectId)
+        return ProjectsService.removeUserFromProject(projectId, request.current_user.username)
 
 
 
 @api.route('/<int:projectId>/features/')
 class ProjectFeaturesResource(Resource):
 
-    @api.doc(id="getFeatures",
+    @api.doc(id="getAllFeatures",
              description="GET all the features of a project as GeoJSON")
     @project_permissions
     def get(self, projectId: int):
@@ -182,6 +182,17 @@ class ProjectFeaturesResource(Resource):
     def post(self, projectId: int):
         return FeaturesService.addGeoJSON(projectId, request.json)
 
+
+@api.route('/<int:projectId>/features/<int:featureId>/')
+class ProjectFeatureResource(Resource):
+    @api.doc(id="getFeature",
+             description="GET all the features of a project as GeoJSON")
+    @api.marshal_with(api_feature)
+    @project_permissions
+    def get(self, projectId: int, featureId: int):
+        return FeaturesService.get(featureId)
+
+
 @api.route('/<int:projectId>/features/<int:featureId>/properties/')
 class ProjectFeaturePropertiesResource(Resource):
 
@@ -192,6 +203,7 @@ class ProjectFeaturePropertiesResource(Resource):
     def post(self, projectId: int, featureId: int):
         return FeaturesService.setProperties(featureId, request.json)
 
+
 @api.route('/<int:projectId>/features/<int:featureId>/styles/')
 class ProjectFeaturePropertiesResource(Resource):
 
@@ -201,6 +213,20 @@ class ProjectFeaturePropertiesResource(Resource):
     @project_feature_exists
     def post(self, projectId: int, featureId: int):
         return FeaturesService.setStyles(featureId, request.json)
+
+
+@api.route('/<int:projectId>/features/<int:featureId>/assets/')
+class ProjectFeaturesCollectionResource(Resource):
+
+    @api.doc(id="addFeatureAsset",
+             description='Add a static asset to a collection. Must be an image or video at the moment')
+    @api.expect(file_upload_parser)
+    @project_permissions
+    @project_feature_exists
+    def post(self, projectId: int, featureId: int) -> None:
+        args = file_upload_parser.parse_args()
+        FeaturesService.createFeatureAsset(projectId, featureId, args['file'])
+
 
 @api.route('/<int:projectId>/features/files/')
 class ProjectFeaturesFilesResource(Resource):
@@ -214,8 +240,8 @@ class ProjectFeaturesFilesResource(Resource):
         file = request.files['file']
         formData = request.form
         metadata = formData.to_dict()
-        feat = FeaturesService.fromFileObj(projectId, file, metadata)
-        return feat
+        features = FeaturesService.fromFileObj(projectId, file, metadata)
+        return features
 
 
 @api.route('/<int:projectId>/overlays/')
@@ -247,6 +273,7 @@ class ProjectOverlaysResource(Resource):
         ovs = FeaturesService.getOverlays(projectId)
         return ovs
 
+
 @api.route('/<int:projectId>/overlays/<int:overlayId>/')
 class ProjectOverlayResource(Resource):
 
@@ -257,17 +284,7 @@ class ProjectOverlayResource(Resource):
         FeaturesService.deleteOverlay(overlayId)
 
 
-@api.route('/<int:projectId>/features/<int:featureId>/assets/')
-class ProjectFeaturesCollectionResource(Resource):
 
-    @api.doc(id="addFeatureAsset",
-             description='Add a static asset to a collection. Must be an image or video at the moment')
-    @api.expect(file_upload_parser)
-    @project_permissions
-    @project_feature_exists
-    def post(self, projectId: int, featureId: int) -> None:
-        args = file_upload_parser.parse_args()
-        FeaturesService.createFeatureAsset(projectId, featureId, args['file'])
 
 
 
