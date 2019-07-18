@@ -156,7 +156,7 @@ class FeaturesService:
         return f
 
     @staticmethod
-    def fromGPX(projectId: int, fileObj: IO, metadata: Dict) -> List[Feature] :
+    def fromGPX(projectId: int, fileObj: IO, metadata: Dict) -> Feature :
 
         # TODO: Fiona should support reading from the file directly, this MemoryFile business
         #  should not be needed
@@ -170,7 +170,7 @@ class FeaturesService:
                 feat.properties = metadata or {}
                 db_session.add(feat)
                 db_session.commit()
-                return [feat]
+                return feat
 
     @staticmethod
     def fromGeoJSON(projectId: int, fileObj: IO, metadata: Dict) -> List[Feature]:
@@ -185,17 +185,12 @@ class FeaturesService:
         return FeaturesService.addGeoJSON(projectId, data)
 
     @staticmethod
-    def fromFileObj(projectId: int, fileObj: IO, metadata: Dict) -> List[Feature]:
+    def fromFileObj(projectId: int, fileObj: IO, metadata: Dict) -> Feature:
         ext = pathlib.Path(fileObj.filename).suffix.lstrip(".")
         if ext in FeaturesService.IMAGE_FILE_EXTENSIONS:
-            #
-            return [FeaturesService.fromImage(projectId, fileObj, metadata)]
+            return FeaturesService.fromImage(projectId, fileObj, metadata)
         elif ext in FeaturesService.GPX_FILE_EXTENSIONS:
             return FeaturesService.fromGPX(projectId, fileObj, metadata)
-        elif ext in FeaturesService.LIDAR_FILE_EXTENSIONS:
-            return [FeaturesService.fromLidar(projectId, fileObj, metadata)]
-        elif ext in FeaturesService.GEOJSON_FILE_EXTENSIONS:
-            return FeaturesService.fromGeoJSON(projectId, fileObj, metadata)
         else:
             raise ApiException("Filetype not supported for direct upload. Create a feature and attach as an asset?")
 
@@ -325,7 +320,7 @@ class FeaturesService:
 
 
     @staticmethod
-    def addOverlay(projectId: int, fileObj: IO, bounds: List[float], label: str) -> None:
+    def addOverlay(projectId: int, fileObj: IO, bounds: List[float], label: str) -> Overlay:
         """
 
         :param projectId: int

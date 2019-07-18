@@ -1,14 +1,10 @@
 import uuid
 from sqlalchemy import (
     Column, Integer, String, Numeric,
-    ForeignKey, Boolean, Index
+    ForeignKey
 )
-import shapely
-from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import relationship
 from sqlalchemy.dialects.postgresql import UUID
-from geoalchemy2 import Geometry
-from geoalchemy2.shape import from_shape, to_shape
 from geoapi.db import Base
 
 

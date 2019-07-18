@@ -233,15 +233,15 @@ class ProjectFeaturesFilesResource(Resource):
 
     @api.doc(id="uploadFile",
              description='Add a new feature to a project from a file that has embedded geospatial information. Current'
-                         'allowed file types are (georeferenced image (jpeg), gpx track, lidar (las, laz))')
+                         'allowed file types are (georeferenced image (jpeg) or gpx track')
     @api.marshal_with(api_feature)
     @project_permissions
     def post(self, projectId: int):
         file = request.files['file']
         formData = request.form
         metadata = formData.to_dict()
-        features = FeaturesService.fromFileObj(projectId, file, metadata)
-        return features
+        feature = FeaturesService.fromFileObj(projectId, file, metadata)
+        return feature
 
 
 @api.route('/<int:projectId>/overlays/')
