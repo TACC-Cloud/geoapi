@@ -9,6 +9,7 @@ from geoalchemy2.shape import from_shape, to_shape
 import geojson
 
 from geoapi.services.images import ImageService
+from geoapi.services.lidar import LidarService
 from geoapi.settings import settings
 from geoapi.models import Feature, FeatureAsset, Overlay
 from geoapi.db import db_session
@@ -188,7 +189,6 @@ class FeaturesService:
     def fromFileObj(projectId: int, fileObj: IO, metadata: Dict) -> List[Feature]:
         ext = pathlib.Path(fileObj.filename).suffix.lstrip(".")
         if ext in FeaturesService.IMAGE_FILE_EXTENSIONS:
-            #
             return [FeaturesService.fromImage(projectId, fileObj, metadata)]
         elif ext in FeaturesService.GPX_FILE_EXTENSIONS:
             return FeaturesService.fromGPX(projectId, fileObj, metadata)
@@ -201,7 +201,38 @@ class FeaturesService:
 
     @staticmethod
     def fromLidar(projectId: int, fileObj: IO, metadata: Dict) -> Feature:
-        pass
+        """
+        Add a Polygon feature from a lidar file.
+
+        When lidar file has been processed, the feature will be updated.
+
+        :param projectId: int
+        :param featureId: int
+        :param fileObj: file
+        :return: FeatureAsset
+        """
+        base_filepath = os.path.join(settings.ASSETS_BASE_DIR, str(projectId), fileObj.name)
+        pathlib.Path(base_filepath).mkdir(parents=True, exist_ok=True)
+        file_path = os.path.join(base_filepath, fileObj.filename)
+
+        with open(file_path, 'wb') as f:
+            f.write(fileObj.read())
+
+        polygon = LidarService.getBoundingBox(file_path)
+        f = Feature()
+        f.project_id = projectId
+        f.the_geom = from_shape(shape(polygon), srid=4326)
+        f.properties = metadata
+        f.properties["point_cloud_file"] = "Processing..."
+        f.properties["original file"] = file_path
+
+        db_session.add(f)
+        db_session.commit()
+
+        # Process asynchronously the lidar data
+        LidarService.addLidarData(projectId, f.id, file_path)
+
+        return f
 
     @staticmethod
     def fromImage(projectId: int, fileObj: IO, metadata: Dict) -> Feature:
@@ -366,14 +397,3 @@ class FeaturesService:
         os.remove(os.path.join(settings.ASSETS_BASE_DIR, ov.path))
         db_session.remove(ov)
         db_session.commit()
-
-    @staticmethod
-    def addLidarData(projectID: int, fileObj: IO) -> None:
-        """
-        Add a las/laz file to a project. This is asynchronous. The dataset will be converted
-        to potree viewer format and processed to get the extent which will be shown on the map.
-        :param projectID: int
-        :param fileObj: file
-        :return: None
-        """
-        pass

@@ -16,3 +16,5 @@ celery
 coverage
 requests
 ffmpeg-python
+laspy
+pyproj
