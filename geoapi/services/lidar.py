@@ -1,3 +1,5 @@
+import subprocess
+import regex as re
 import laspy
 import typing
 from geojson import Polygon, Point
@@ -5,16 +7,42 @@ from pyproj import Proj, transform
 from geoapi.tasks.lidar import convert_to_potree
 
 def _transform_to_geojson(epsg, point: tuple) -> tuple:
-    inProj = Proj(init='EPSG:{}'.format(epsg))
+    """
+    Transform point to epsg:4326
+    :param epsg: int
+    :param point
+    :return: point
+    """
+    input_projection = Proj(init='EPSG:{}'.format(epsg))
     geojson_default_projection = Proj(init="epsg:4326")
-    x, y = transform(inProj, geojson_default_projection, point[0], point[1], errcheck=True)
+    x, y = transform(input_projection, geojson_default_projection, point[0], point[1], errcheck=True)
     return (x, y)
+
 
 class LidarService:
 
     @staticmethod
     def addLidarDataToExistingSet(projectId: int, fileObj: typing.IO):
         pass
+
+    def getEPSG(filePath: str):
+        """
+        Get EPSG of las file
+        :param filePath
+        :return: int
+        """
+
+        result = subprocess.run([
+            "lasinfo",
+            "-i",
+            filePath,
+            "-stdout"
+        ], capture_output=True, text=True, check=True)
+        epsg = re.search('\d+(?=\s*- ProjectedCSTypeGeoKey)', result.stdout)
+        if epsg:
+            return int(epsg.group())
+        else:
+            raise RuntimeError("Unable to find spatial reference system")
 
     @staticmethod
     def getBoundingBox(filePath: str) -> Polygon:
@@ -23,8 +51,7 @@ class LidarService:
         :param filePath
         :return: Polygon
         """
-        # TODO get current epsg
-        epsg = 32614
+        epsg = LidarService.getEPSG(filePath)
 
         las_file = laspy.file.File(filePath, mode="r-")
         min_point = _transform_to_geojson(epsg=epsg, point=tuple(las_file.header.min[:2]))
