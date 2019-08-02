@@ -1,7 +1,10 @@
 import pytest
 import os
 import json
+from unittest.mock import patch
+
 from geoalchemy2.shape import from_shape
+import laspy
 
 from sqlalchemy import create_engine
 from geoapi.settings import settings
@@ -89,6 +92,13 @@ def geojson_file_fixture():
 
 
 @pytest.fixture(scope="function")
+def lidar_file_fixture():
+    home = os.path.dirname(__file__)
+    with open(os.path.join(home, 'fixtures/lidar_subset_las1pt2.laz'), 'rb') as f:
+        yield f
+
+
+@pytest.fixture(scope="function")
 def feature_properties_file_fixture():
     home = os.path.dirname(__file__)
     with open(os.path.join(home, 'fixtures/properties.json'), 'rb') as f:
@@ -104,4 +114,7 @@ def feature_fixture(dbsession):
         dbsession.add(feat)
         dbsession.commit()
 
-
+@pytest.fixture(scope="function")
+def convert_to_potree_mock():
+    with patch('geoapi.services.lidar.convert_to_potree') as mock_convert_to_potree:
+        yield mock_convert_to_potree
