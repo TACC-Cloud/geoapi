@@ -1,9 +1,9 @@
 import pytest
 import os
 import json
+import tempfile
 from unittest.mock import patch
 
-from geoalchemy2.shape import from_shape
 import laspy
 
 from sqlalchemy import create_engine
@@ -70,6 +70,7 @@ def projects_fixture(dbsession):
     dbsession.add(proj)
     dbsession.commit()
 
+
 @pytest.fixture(scope="function")
 def gpx_file_fixture():
     home = os.path.dirname(__file__)
@@ -96,6 +97,7 @@ def lidar_las1pt2_file_path_fixture():
     home = os.path.dirname(__file__)
     return os.path.join(home, 'fixtures/lidar_subset_las1pt2.laz')
 
+
 @pytest.fixture()
 def lidar_las1pt4_file_path_fixture():
     home = os.path.dirname(__file__)
@@ -106,6 +108,19 @@ def lidar_las1pt4_file_path_fixture():
 def lidar_las1pt2_file_fixture(lidar_las1pt2_file_path_fixture):
     with open(lidar_las1pt2_file_path_fixture, 'rb') as f:
         yield f
+
+
+@pytest.fixture(scope="function")
+def empty_las_file_fixture(lidar_las1pt2_file_path_fixture):
+    with tempfile.TemporaryDirectory() as temp_dir:
+        empty_las_file_path = os.path.join(temp_dir, "empty.las")
+
+        header = laspy.header.Header()
+        outfile = laspy.file.File(empty_las_file_path, mode="w", header=header)
+        outfile.close()
+
+        with open(empty_las_file_path, 'rb') as f:
+            yield f
 
 
 @pytest.fixture(scope="function")
