@@ -78,6 +78,7 @@ feature_schema = api.schema_model('Feature', FeatureSchema)
 file_upload_parser = api.parser()
 file_upload_parser.add_argument('file', location='files', type=FileStorage, required=True)
 
+
 @api.route('/')
 class ProjectsListing(Resource):
 
@@ -134,6 +135,7 @@ class ProjectResource(Resource):
     def put(self, projectId: int):
         return True
 
+
 @api.route('/<int:projectId>/users/')
 class ProjectUsersResource(Resource):
 
@@ -162,7 +164,6 @@ class ProjectUserResource(Resource):
     @project_permissions
     def delete(self, projectId: int):
         return ProjectsService.removeUserFromProject(projectId, request.current_user.username)
-
 
 
 @api.route('/<int:projectId>/features/')
@@ -197,7 +198,8 @@ class ProjectFeatureResource(Resource):
 class ProjectFeaturePropertiesResource(Resource):
 
     @api.doc(id="updateFeatureProperties",
-             description="Update the properties of a feature")
+             description="Update the properties of a feature. This will replace any"
+                         "existing properties previously associated with the feature")
     @project_permissions
     @project_feature_exists
     def post(self, projectId: int, featureId: int):
@@ -208,7 +210,8 @@ class ProjectFeaturePropertiesResource(Resource):
 class ProjectFeaturePropertiesResource(Resource):
 
     @api.doc(id="updateFeatureStyles",
-             description="Update the styles of a feature")
+             description="Update the styles of a feature. This will replace any styles"
+                         "previously associated with the feature.")
     @project_permissions
     @project_feature_exists
     def post(self, projectId: int, featureId: int):
@@ -221,11 +224,12 @@ class ProjectFeaturesCollectionResource(Resource):
     @api.doc(id="addFeatureAsset",
              description='Add a static asset to a collection. Must be an image or video at the moment')
     @api.expect(file_upload_parser)
+    @api.marshal_with(api_feature)
     @project_permissions
     @project_feature_exists
-    def post(self, projectId: int, featureId: int) -> None:
+    def post(self, projectId: int, featureId: int):
         args = file_upload_parser.parse_args()
-        FeaturesService.createFeatureAsset(projectId, featureId, args['file'])
+        return FeaturesService.createFeatureAsset(projectId, featureId, args['file'])
 
 
 @api.route('/<int:projectId>/features/files/')

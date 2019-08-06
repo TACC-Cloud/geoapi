@@ -64,6 +64,7 @@ def projects_fixture(dbsession):
     proj = Project(name="test", description="description")
     u1 = dbsession.query(User).get(1)
     proj.users.append(u1)
+    proj.tenant_id = u1.tenant_id
     dbsession.add(proj)
     dbsession.commit()
 
@@ -80,6 +81,11 @@ def image_file_fixture():
     with open(os.path.join(home, 'fixtures/image.jpg'), 'rb') as f:
         yield f
 
+@pytest.fixture(scope="function")
+def video_file_fixture():
+    home = os.path.dirname(__file__)
+    with open(os.path.join(home, 'fixtures/video.mov'), 'rb') as f:
+        yield f
 
 @pytest.fixture(scope="function")
 def geojson_file_fixture():

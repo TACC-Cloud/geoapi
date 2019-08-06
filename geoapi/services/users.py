@@ -22,7 +22,7 @@ class UserService:
         pass
 
     @staticmethod
-    def getUser(username: str, tenant: str)-> User:
+    def getUser(username: str, tenant: str) -> User:
         return db_session.query(User)\
             .filter(User.username == username)\
             .filter(User.tenant_id == tenant)\
@@ -32,6 +32,7 @@ class UserService:
     def canAccess(user: User, projectId: int) -> bool:
         up = db_session.query(ProjectUser)\
             .filter(ProjectUser.user_id == user.id)\
+            .filter(Project.tenant_id == user.tenant_id)\
             .filter(ProjectUser.project_id == projectId).first()
         if up:
             return True

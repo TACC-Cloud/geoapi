@@ -60,20 +60,3 @@ def test_upload_image(test_client, dbsession, projects_fixture, image_file_fixtu
     )
     assert resp.status_code == 200
 
-def test_upload_geojson(test_client, dbsession, projects_fixture, geojson_file_fixture):
-    u1 = dbsession.query(User).get(1)
-    resp = test_client.post(
-        '/projects/1/features/files/',
-        data={"file": geojson_file_fixture},
-        headers={'x-jwt-assertion-test': u1.jwt}
-    )
-    assert resp.status_code == 200
-
-def test_upload_feature_properties(test_client, dbsession, projects_fixture, feature_properties_file_fixture):
-    u1 = dbsession.query(User).get(1)
-    resp = test_client.post(
-        '/projects/1/features/files/',
-        data={"file": feature_properties_file_fixture},
-        headers={'x-jwt-assertion-test': u1.jwt}
-    )
-    assert resp.status_code == 200

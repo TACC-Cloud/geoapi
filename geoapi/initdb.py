@@ -1,6 +1,6 @@
 import random
 from geoapi.db import Base, engine, db_session
-from geoapi.models import Project, Feature, FeatureAsset, User, ProjectUser, FeatureStyle
+from geoapi.models import Project, Feature, FeatureAsset, User, ProjectUser
 from shapely.geometry import Point
 from geoalchemy2.shape import from_shape
 

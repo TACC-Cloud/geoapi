@@ -27,6 +27,7 @@ class ProjectsService:
         """
 
         project = Project(**data)
+        project.tenant_id = user.tenant_id
         project.users.append(user)
         db_session.add(project)
         db_session.commit()

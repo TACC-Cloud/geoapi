@@ -108,7 +108,6 @@ class FeaturesService:
         :return: Feature
         """
         feat = db_session.query(Feature).get(featureId)
-        # TODO: Throw assert if not found?
         # TODO: PROTECT assets and styles attributes
         feat.styles = styles
         db_session.commit()
@@ -232,7 +231,7 @@ class FeaturesService:
         return f
 
     @staticmethod
-    def createFeatureAsset(projectId:int , featureId: int, fileObj: IO) -> FeatureAsset:
+    def createFeatureAsset(projectId:int , featureId: int, fileObj: IO) -> Feature:
         """
         Create a feature asset and save the static content to the ASSETS_BASE_DIR
         :param projectId: int
@@ -240,6 +239,7 @@ class FeaturesService:
         :param fileObj: file
         :return: FeatureAsset
         """
+        # TODO: Need to add surveys in here at some point
         fpath = pathlib.Path(fileObj.filename)
         ext = fpath.suffix.lstrip('.')
         if ext in FeaturesService.IMAGE_FILE_EXTENSIONS:
@@ -251,6 +251,7 @@ class FeaturesService:
         feat = FeaturesService.get(featureId)
         feat.assets.append(fa)
         db_session.commit()
+        return feat
 
     @staticmethod
     def createImageFeatureAsset(projectId: int, fileObj: IO) -> FeatureAsset:
