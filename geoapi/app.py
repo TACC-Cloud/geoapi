@@ -3,7 +3,7 @@ from flask import Flask
 from geoapi.routes import api
 from geoapi.settings import settings as app_settings
 from geoapi.db import db_session
-from geoapi.exceptions import InvalidGeoJSON, InvalidEXIFData, ApiException
+from geoapi.exceptions import InvalidGeoJSON, InvalidEXIFData, InvalidCoordinateReferenceSystem, ApiException
 
 import logging
 
@@ -36,6 +36,10 @@ def handle_api_exception(error: Exception):
 def handle_exif_exception(error: Exception):
     '''Return a custom message and 400 status code'''
     return {'message': 'Invalid EXIF data, geolocation could not be found'}, 400
+
+@api.errorhandler(InvalidCoordinateReferenceSystem)
+def handle_coordinate_reference_system_exception(error: Exception):
+    return {'message': 'Invalid data, coordinate reference system could not be found'}, 400
 
 @app.teardown_appcontext
 def shutdown_session(exception=None):

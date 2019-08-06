@@ -69,11 +69,11 @@ def test_upload_geojson(test_client, dbsession, projects_fixture, geojson_file_f
     )
     assert resp.status_code == 200
 
-def test_upload_lidar(test_client, dbsession, projects_fixture, lidar_file_fixture, convert_to_potree_mock):
+def test_upload_lidar(test_client, dbsession, projects_fixture, lidar_las1pt2_file_fixture, convert_to_potree_mock):
     u1 = dbsession.query(User).get(1)
     resp = test_client.post(
         '/projects/1/features/files/',
-        data={"file": lidar_file_fixture},
+        data={"file": lidar_las1pt2_file_fixture},
         headers={'x-jwt-assertion-test': u1.jwt}
     )
     assert resp.status_code == 200

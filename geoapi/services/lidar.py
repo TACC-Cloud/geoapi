@@ -5,6 +5,9 @@ import typing
 from geojson import Polygon, Point
 from pyproj import Proj, transform
 from geoapi.tasks.lidar import convert_to_potree
+from geoapi.exceptions import InvalidCoordinateReferenceSystem
+
+
 
 def _transform_to_geojson(epsg, point: tuple) -> tuple:
     """
@@ -38,11 +41,14 @@ class LidarService:
             filePath,
             "-stdout"
         ], capture_output=True, text=True, check=True)
-        epsg = re.search('\d+(?=\s*- ProjectedCSTypeGeoKey)', result.stdout)
-        if epsg:
-            return int(epsg.group())
-        else:
-            raise RuntimeError("Unable to find spatial reference system")
+        wkt_re = '(?<=\"EPSG\"\,\")\d+(?=\"\]\])(?!.*EPSG)' # LAS 1.4
+        geotiff_re = '\d+(?=\s*- ProjectedCSTypeGeoKey)' # LAS < 1.4
+        for epsg_re in [wkt_re, geotiff_re]:
+            epsg = re.search(epsg_re, result.stdout)
+            if epsg:
+                return int(epsg.group())
+
+        raise InvalidCoordinateReferenceSystem()
 
     @staticmethod
     def getBoundingBox(filePath: str) -> Polygon:
