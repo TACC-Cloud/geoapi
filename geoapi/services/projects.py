@@ -138,7 +138,7 @@ class ProjectsService:
                     'geometry',   ST_AsGeoJSON(the_geom)::json,
                     'created_date', tmp.created_date,
                     'assets', assets, 
-                    'styles', styles, 
+                    'styles', tmp.styles, 
                     'properties', properties
                     )
                 ), '[]'::json)
@@ -146,10 +146,10 @@ class ProjectsService:
         """)
 
         sub_select = select([
-            text("""feat.*,  array_remove(array_agg(fa), null) as assets, array_remove(array_agg(fs), null) as styles 
+            text("""feat.*,  array_remove(array_agg(fa), null) as assets 
               from features as feat
               LEFT JOIN feature_assets fa on feat.id = fa.feature_id
-              LEFT JOIN feature_styles fs on feat.id = fs.feature_id""")
+             """)
         ]).where(text("project_id = :projectId")).group_by(text("feat.id")).alias("tmp")
 
         if query.get("bbox"):
