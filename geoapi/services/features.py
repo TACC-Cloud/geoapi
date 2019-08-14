@@ -49,7 +49,7 @@ class FeaturesService:
                          + GPX_FILE_EXTENSIONS + GEOJSON_FILE_EXTENSIONS
 
     @staticmethod
-    def get(featureId: int)-> Feature:
+    def get(featureId: int) -> Feature:
         """
         Retreive a single Feature
         :param featureId: int
@@ -155,7 +155,7 @@ class FeaturesService:
         return f
 
     @staticmethod
-    def fromGPX(projectId: int, fileObj: IO, metadata: Dict) -> Feature :
+    def fromGPX(projectId: int, fileObj: IO, metadata: Dict) -> Feature:
 
         # TODO: Fiona should support reading from the file directly, this MemoryFile business
         #  should not be needed
@@ -231,7 +231,7 @@ class FeaturesService:
         return f
 
     @staticmethod
-    def createFeatureAsset(projectId:int , featureId: int, fileObj: IO) -> Feature:
+    def createFeatureAsset(projectId: int, featureId: int, fileObj: IO) -> Feature:
         """
         Create a feature asset and save the static content to the ASSETS_BASE_DIR
         :param projectId: int
@@ -289,24 +289,41 @@ class FeaturesService:
         return fa
 
     @staticmethod
-    def clusterKMeans(projectId:int, numClusters: int=20) -> json:
+    def clusterKMeans(projectId: int, numClusters: int = 20) -> Dict:
         """
         Cluster all the Point geometries in a project
-        :param projectId:
-        :return:
+        :param numClusters: int
+        :param projectId: int
+        :return: FeatureCollection
         """
+        # TODO: Add filtering clause on the sub-select
         q = """
-        select ST_Centroid(ST_Collect(the_geom)), count(clusters.cid)
+        select json_build_object(
+               'type', 'FeatureCollection',
+               'features', jsonb_agg(features.feature)
+           )
         from (
-            SELECT ST_ClusterKMeans(the_geom, :numCluster) OVER() AS cid, the_geom from features
-            where project_id = :projectId
-        ) as clusters
-        group by clusters.cid
-
+                 select json_build_object(
+                                'type', 'Feature',
+                                'geometry', ST_AsGeoJSON(clusters.center)::jsonb,
+                                'properties', json_build_object(
+                                        'count', clusters.count
+                                    )
+                            ) as feature
+                 from (
+                          select ST_Centroid(ST_Collect(the_geom)) as center, count(clusters.cid) as count
+                          from (
+                                   SELECT ST_ClusterKMeans(the_geom, :numClusters) OVER () AS cid, the_geom
+                                   from features
+                                   where project_id = :projectId
+                               ) as clusters
+                          group by clusters.cid
+                      ) as clusters
+             ) as features
         """
-        result = db_session.execute(q, {'projectId': projectId, 'numClusters': numClusters})
-        out = result.fetchone()
-        return out.geojson
+        result = db_session.execute(q, {'projectId': projectId, 'numClusters': numClusters}).first()
+        clusters = result[0]
+        return clusters
 
     @staticmethod
     def _makeAssetDir(projectId: int) -> str:

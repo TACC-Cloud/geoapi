@@ -40,6 +40,14 @@ class Feature(Base):
         feat.styles = data.get("styles")
         return feat
 
+    @property
+    def geometry(self):
+        """
+
+        :return: Dict
+        """
+        return shapely.geometry.mapping(to_shape(self.the_geom))
+
 
 class FeatureAsset(Base):
     __tablename__ = 'feature_assets'
