@@ -78,7 +78,7 @@ def get_exif_data(image):
 
 def _convert_to_degress(value):
     """
-    Helper function to convert the GPS coordinates stored in the EXIF to degress in float format
+    Helper function to convert the GPS coordinates stored in the EXIF to decimal degrees in float format
     :param value:
     :type value: tuple
     :rtype: float

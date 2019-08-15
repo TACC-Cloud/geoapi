@@ -69,10 +69,10 @@ class LidarService:
                          Point(min_point)]])
 
     @staticmethod
-    def addLidarData(projectId: int, featureId: int, filePath: str) -> None:
+    def addProcessedLidarData(projectId: int, featureId: int, filePath: str) -> None:
         """
-        Add a las/laz file to a project. This is asynchronous. The dataset will be converted
-        to potree viewer format and processed to get the extent which will be shown on the map.
+        Process a las/laz file and add to a project. This is asynchronous. The dataset will be converted
+        to potree viewer format.
         :param projectId: int
         :param featureId: int
         :param filePath

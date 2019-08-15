@@ -209,11 +209,13 @@ class FeaturesService:
         :param projectId: int
         :param featureId: int
         :param fileObj: file
-        :return: FeatureAsset
+        :return: Feature
         """
-        base_filepath = os.path.join(settings.ASSETS_BASE_DIR, str(projectId), fileObj.name)
+        base_filepath = os.path.join(settings.ASSETS_BASE_DIR, str(projectId))
         pathlib.Path(base_filepath).mkdir(parents=True, exist_ok=True)
-        file_path = os.path.join(base_filepath, fileObj.filename)
+        asset_uuid = uuid.uuid4()
+        ext = pathlib.Path(fileObj.filename).suffix
+        file_path = os.path.join(base_filepath, str(asset_uuid) + ext)
 
         with open(file_path, 'wb') as f:
             f.write(fileObj.read())
@@ -223,14 +225,21 @@ class FeaturesService:
         f.project_id = projectId
         f.the_geom = from_shape(shape(polygon), srid=4326)
         f.properties = metadata
-        f.properties["point_cloud_file"] = "Processing..."
-        f.properties["original file"] = file_path
 
-        db_session.add(f)
+        fa = FeatureAsset(
+            uuid=asset_uuid,
+            asset_type="file",
+            path=file_path,
+            feature=f,
+            original_path=fileObj.name
+        )
+        f.assets.append(fa)
+
+        db_session.add_all([f, fa])
         db_session.commit()
 
-        # Process asynchronously the lidar data
-        LidarService.addLidarData(projectId, f.id, file_path)
+        # Process asynchronously lidar file and add a feature asset
+        LidarService.addProcessedLidarData(projectId, f.id, file_path)
 
         return f
 
@@ -288,8 +297,9 @@ class FeaturesService:
             fa = FeaturesService.createVideoFeatureAsset(projectId, fileObj)
         else:
             raise ApiException("Invalid format for feature assets")
-        feat = FeaturesService.get(featureId)
+
         feat.assets.append(fa)
+        db_session.add_all([fa, feat])
         db_session.commit()
 
     @staticmethod

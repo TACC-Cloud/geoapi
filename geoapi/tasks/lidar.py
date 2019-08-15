@@ -5,6 +5,7 @@ import pathlib
 from geoapi.celery_app import app
 from geoapi.db import db_session
 
+
 @app.task()
 def convert_to_potree(projectId: int, featureId: int, filePath: str) -> None:
     """
@@ -14,7 +15,7 @@ def convert_to_potree(projectId: int, featureId: int, filePath: str) -> None:
     :param filePath: Local path to las/laz file
     :return: None
     """
-    from geoapi.models import Feature
+    from geoapi.models import Feature, FeatureAsset
 
     asset_uuid = uuid.uuid4()
     asset_path = os.path.join("/assets", str(projectId), str(asset_uuid))
@@ -33,10 +34,15 @@ def convert_to_potree(projectId: int, featureId: int, filePath: str) -> None:
     f = db_session.query(Feature).get(featureId)
     properties = dict(f.properties)
     properties["point_cloud_file"] = asset_path
-    f.properties = properties
 
+    fa = FeatureAsset(
+        uuid=asset_uuid,
+        asset_type="lidar",
+        path=asset_path,
+        feature=f,
+    )
+    f.assets.append(fa)
     db_session.commit()
-
 
 
 if __name__== "__main__":
