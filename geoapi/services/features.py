@@ -208,11 +208,10 @@ class FeaturesService:
         :param fileObj: file
         :return: Feature
         """
-        base_filepath = os.path.join(settings.ASSETS_BASE_DIR, str(projectId))
-        pathlib.Path(base_filepath).mkdir(parents=True, exist_ok=True)
+        project_asset_dir = FeaturesService._makeAssetDir(projectId)
         asset_uuid = uuid.uuid4()
         ext = pathlib.Path(fileObj.filename).suffix
-        file_path = os.path.join(base_filepath, str(asset_uuid) + ext)
+        file_path = os.path.join(project_asset_dir, str(asset_uuid) + ext)
 
         with open(file_path, 'wb') as f:
             f.write(fileObj.read())
@@ -256,8 +255,10 @@ class FeaturesService:
         f.the_geom = from_shape(point, srid=4326)
         f.properties = metadata
 
+        base_filepath = FeaturesService._makeAssetDir(projectId)
+
         asset_uuid = uuid.uuid4()
-        asset_path = os.path.join("/assets", str(projectId), str(asset_uuid)+".jpeg")
+        asset_path = os.path.join(base_filepath, str(asset_uuid)+".jpeg")
         fa = FeatureAsset(
             uuid=asset_uuid,
             asset_type="image",
@@ -265,8 +266,6 @@ class FeaturesService:
             feature=f,
         )
         f.assets.append(fa)
-        base_filepath = os.path.join(settings.ASSETS_BASE_DIR, str(projectId))
-        pathlib.Path(base_filepath).mkdir(parents=True, exist_ok=True)
         imdata.thumb.save(os.path.join(base_filepath, str(asset_uuid) + ".thumb.jpeg"), "JPEG")
         imdata.resized.save(os.path.join(base_filepath, str(asset_uuid) + '.jpeg'), "JPEG")
         db_session.add(f)
@@ -306,7 +305,7 @@ class FeaturesService:
         base_filepath = FeaturesService._makeAssetDir(projectId)
         imdata.thumb.save(os.path.join(base_filepath, str(asset_uuid) + ".thumb.jpeg"), "JPEG")
         imdata.resized.save(os.path.join(base_filepath, str(asset_uuid) + ".jpeg"), "JPEG")
-        asset_path = os.path.join("/assets", str(projectId), str(asset_uuid)+'.jpeg')
+        asset_path = os.path.join(base_filepath, str(asset_uuid)+'.jpeg')
         fa = FeatureAsset(
             uuid=asset_uuid,
             asset_type="image",
@@ -323,8 +322,8 @@ class FeaturesService:
         :return: FeatureAsset
         """
         asset_uuid = uuid.uuid4()
-        base_filepath = FeaturesService._makeAssetDir(projectId)
-        save_path = os.path.join("/assets", str(projectId), str(asset_uuid) + '.mp4')
+        project_asset_dir = FeaturesService._makeAssetDir(projectId)
+        save_path = os.path.join(project_asset_dir, str(asset_uuid) + '.mp4')
         with open(save_path, 'wb') as f:
             f.write(fileObj.read())
         fa = FeatureAsset(
