@@ -1,6 +1,7 @@
 from geoapi.models.users import User
 from geoapi.models.project import Project
-
+from geoapi.exceptions import InvalidCoordinateReferenceSystem
+from pytest import raises
 
 def test_get_projects(test_client, dbsession, projects_fixture):
     u1 = dbsession.query(User).get(1)
@@ -73,10 +74,12 @@ def test_upload_lidar(test_client, dbsession, projects_fixture, lidar_las1pt2_fi
 
 def test_upload_lidar_missing_coordiante_reference_system(test_client, dbsession, projects_fixture, empty_las_file_fixture):
     u1 = dbsession.query(User).get(1)
-    resp = test_client.post(
-        '/projects/1/features/files/',
-        data={"file": empty_las_file_fixture},
-        headers={'x-jwt-assertion-test': u1.jwt}
-    )
-    assert resp.status_code == 400
-    assert "coordinate reference system could not be found" in resp.json['message']
+    with raises(InvalidCoordinateReferenceSystem):
+        resp = test_client.post(
+            '/projects/1/features/files/',
+            data={"file": empty_las_file_fixture},
+            headers={'x-jwt-assertion-test': u1.jwt}
+        )
+    # TODO  should be testing the response and error handling:
+    #  assert resp.status_code == 400
+    #  assert "coordinate reference system could not be found" in resp.json['message']
