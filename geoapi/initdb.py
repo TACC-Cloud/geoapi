@@ -1,6 +1,6 @@
 import random
 from geoapi.db import Base, engine, db_session
-from geoapi.models import Project, Feature, FeatureAsset, User, ProjectUser, FeatureStyle
+from geoapi.models import Project, Feature, FeatureAsset, User, ProjectUser
 from shapely.geometry import Point
 from geoalchemy2.shape import from_shape
 
@@ -11,12 +11,12 @@ def initDB():
 
 
 def addRandomMarkers():
-    proj = Project(name="test", description="test")
-    user = User(username="test")
+    proj = Project(name="test", description="test", tenant_id="designsafe")
+    user = db_session.query(User).filter(User.username == "jmeiring").first()
     proj.users.append(user)
     db_session.add(user)
     for i in range(0, 10000):
-        p = Point(random.uniform(-90, 90), random.uniform(-180, 180))
+        p = Point(random.uniform(-180, 180), random.uniform(-90, 90))
         feat = Feature(
             the_geom=from_shape(p, srid=4326),
         )

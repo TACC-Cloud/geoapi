@@ -50,7 +50,7 @@ class FeaturesService:
                          + GPX_FILE_EXTENSIONS + GEOJSON_FILE_EXTENSIONS
 
     @staticmethod
-    def get(featureId: int)-> Feature:
+    def get(featureId: int) -> Feature:
         """
         Retreive a single Feature
         :param featureId: int
@@ -109,7 +109,6 @@ class FeaturesService:
         :return: Feature
         """
         feat = db_session.query(Feature).get(featureId)
-        # TODO: Throw assert if not found?
         # TODO: PROTECT assets and styles attributes
         feat.styles = styles
         db_session.commit()
@@ -157,7 +156,7 @@ class FeaturesService:
         return f
 
     @staticmethod
-    def fromGPX(projectId: int, fileObj: IO, metadata: Dict) -> List[Feature] :
+    def fromGPX(projectId: int, fileObj: IO, metadata: Dict) -> Feature:
 
         # TODO: Fiona should support reading from the file directly, this MemoryFile business
         #  should not be needed
@@ -171,7 +170,7 @@ class FeaturesService:
                 feat.properties = metadata or {}
                 db_session.add(feat)
                 db_session.commit()
-                return [feat]
+                return feat
 
     @staticmethod
     def fromGeoJSON(projectId: int, fileObj: IO, metadata: Dict) -> List[Feature]:
@@ -186,16 +185,14 @@ class FeaturesService:
         return FeaturesService.addGeoJSON(projectId, data)
 
     @staticmethod
-    def fromFileObj(projectId: int, fileObj: IO, metadata: Dict) -> List[Feature]:
+    def fromFileObj(projectId: int, fileObj: IO, metadata: Dict) -> Feature:
         ext = pathlib.Path(fileObj.filename).suffix.lstrip(".")
         if ext in FeaturesService.IMAGE_FILE_EXTENSIONS:
-            return [FeaturesService.fromImage(projectId, fileObj, metadata)]
+            return FeaturesService.fromImage(projectId, fileObj, metadata)
         elif ext in FeaturesService.GPX_FILE_EXTENSIONS:
             return FeaturesService.fromGPX(projectId, fileObj, metadata)
         elif ext in FeaturesService.LIDAR_FILE_EXTENSIONS:
             return [FeaturesService.fromLidar(projectId, fileObj, metadata)]
-        elif ext in FeaturesService.GEOJSON_FILE_EXTENSIONS:
-            return FeaturesService.fromGeoJSON(projectId, fileObj, metadata)
         else:
             raise ApiException("Filetype not supported for direct upload. Create a feature and attach as an asset?")
 
@@ -277,7 +274,7 @@ class FeaturesService:
         return f
 
     @staticmethod
-    def createFeatureAsset(projectId:int , featureId: int, fileObj: IO) -> FeatureAsset:
+    def createFeatureAsset(projectId: int, featureId: int, fileObj: IO) -> Feature:
         """
         Create a feature asset and save the static content to the ASSETS_BASE_DIR
         :param projectId: int
@@ -299,8 +296,8 @@ class FeaturesService:
             raise ApiException("Invalid format for feature assets")
 
         feat.assets.append(fa)
-        db_session.add_all([fa, feat])
         db_session.commit()
+        return feat
 
     @staticmethod
     def createImageFeatureAsset(projectId: int, fileObj: IO) -> FeatureAsset:
@@ -338,24 +335,41 @@ class FeaturesService:
         return fa
 
     @staticmethod
-    def clusterKMeans(projectId:int, numClusters: int=20) -> json:
+    def clusterKMeans(projectId: int, numClusters: int = 20) -> Dict:
         """
         Cluster all the Point geometries in a project
-        :param projectId:
-        :return:
+        :param numClusters: int
+        :param projectId: int
+        :return: FeatureCollection
         """
+        # TODO: Add filtering clause on the sub-select
         q = """
-        select ST_Centroid(ST_Collect(the_geom)), count(clusters.cid)
+        select json_build_object(
+               'type', 'FeatureCollection',
+               'features', jsonb_agg(features.feature)
+           )
         from (
-            SELECT ST_ClusterKMeans(the_geom, :numCluster) OVER() AS cid, the_geom from features
-            where project_id = :projectId
-        ) as clusters
-        group by clusters.cid
-
+                 select json_build_object(
+                                'type', 'Feature',
+                                'geometry', ST_AsGeoJSON(clusters.center)::jsonb,
+                                'properties', json_build_object(
+                                        'count', clusters.count
+                                    )
+                            ) as feature
+                 from (
+                          select ST_Centroid(ST_Collect(the_geom)) as center, count(clusters.cid) as count
+                          from (
+                                   SELECT ST_ClusterKMeans(the_geom, :numClusters) OVER () AS cid, the_geom
+                                   from features
+                                   where project_id = :projectId
+                               ) as clusters
+                          group by clusters.cid
+                      ) as clusters
+             ) as features
         """
-        result = db_session.execute(q, {'projectId': projectId, 'numClusters': numClusters})
-        out = result.fetchone()
-        return out.geojson
+        result = db_session.execute(q, {'projectId': projectId, 'numClusters': numClusters}).first()
+        clusters = result[0]
+        return clusters
 
     @staticmethod
     def _makeAssetDir(projectId: int) -> str:
@@ -370,7 +384,7 @@ class FeaturesService:
 
 
     @staticmethod
-    def addOverlay(projectId: int, fileObj: IO, bounds: List[float], label: str) -> None:
+    def addOverlay(projectId: int, fileObj: IO, bounds: List[float], label: str) -> Overlay:
         """
 
         :param projectId: int

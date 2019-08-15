@@ -20,6 +20,8 @@ default_response = api.model('DefaultAgaveResponse', {
     "status": fields.String(default="success")
 })
 
+feature_schema = api.schema_model('Feature', FeatureSchema)
+
 asset = api.model('Asset', {
     "id": fields.Integer(),
     "path": fields.String(),
@@ -27,14 +29,20 @@ asset = api.model('Asset', {
     "asset_type": fields.String()
 })
 
-#TODO: move this shapely/geoalchemy2 stuff somwhere else
 api_feature = api.model('Feature', {
+    "id": fields.Integer(),
     "type": fields.String(required=True, default="Feature"),
-    "geometry": fields.Raw(required=True, attribute=lambda x: shapely.geometry.mapping(to_shape(x.the_geom))),
+    "geometry": fields.Raw(required=True),
     "properties": fields.Raw(),
-    "styles": fields.Raw(default={}),
-    "assets": fields.Nested(asset)
+    "styles": fields.Raw(allow_null=True),
+    "assets": fields.Nested(asset, allow_null=True)
 })
+
+feature_collection_model = api.model('FeatureCollection', {
+    "type": fields.String(required=True, default="FeatureCollection"),
+    "features": fields.Nested(api_feature)
+})
+
 
 project = api.model('Project', {
     'id': fields.Integer(),
@@ -68,15 +76,14 @@ overlay_parser.add_argument('minLat', location='form', type=float, required=True
 overlay_parser.add_argument('maxLon', location='form', type=float, required=True)
 overlay_parser.add_argument('maxLat', location='form', type=float, required=True)
 
-
-rapid_project = api.parser()
-rapid_project.add_argument('system_id', location='body', type=str, required=True)
-rapid_project.add_argument('path', location='body', type=str, required=False, default="RApp")
-
-feature_schema = api.schema_model('Feature', FeatureSchema)
+rapid_project_body = api.model("RapidProject", {
+    "system_id": fields.String(),
+    "path": fields.String(default="RApp")
+})
 
 file_upload_parser = api.parser()
 file_upload_parser.add_argument('file', location='files', type=FileStorage, required=True)
+
 
 @api.route('/')
 class ProjectsListing(Resource):
@@ -101,7 +108,7 @@ class ProjectsListing(Resource):
 class RapidProject(Resource):
     @api.doc(id="createRapidProject",
              description='Create a new project from a Rapid recon project storage system')
-    @api.expect(rapid_project)
+    @api.expect(rapid_project_body)
     @api.marshal_with(project)
     def post(self):
         u = request.current_user
@@ -134,6 +141,7 @@ class ProjectResource(Resource):
     def put(self, projectId: int):
         return True
 
+
 @api.route('/<int:projectId>/users/')
 class ProjectUsersResource(Resource):
 
@@ -164,12 +172,12 @@ class ProjectUserResource(Resource):
         return ProjectsService.removeUserFromProject(projectId, request.current_user.username)
 
 
-
 @api.route('/<int:projectId>/features/')
 class ProjectFeaturesResource(Resource):
 
     @api.doc(id="getAllFeatures",
              description="GET all the features of a project as GeoJSON")
+    @api.marshal_with(feature_collection_model)
     @project_permissions
     def get(self, projectId: int):
         query = request.args
@@ -177,6 +185,7 @@ class ProjectFeaturesResource(Resource):
 
     @api.doc(id="addGeoJSONFeature",
              description="Add a GeoJSON feature to a project")
+    @api.marshal_with(api_feature)
     @api.expect(feature_schema)
     @project_permissions
     def post(self, projectId: int):
@@ -197,7 +206,9 @@ class ProjectFeatureResource(Resource):
 class ProjectFeaturePropertiesResource(Resource):
 
     @api.doc(id="updateFeatureProperties",
-             description="Update the properties of a feature")
+             description="Update the properties of a feature. This will replace any"
+                         "existing properties previously associated with the feature")
+    @api.marshal_with(api_feature)
     @project_permissions
     @project_feature_exists
     def post(self, projectId: int, featureId: int):
@@ -208,7 +219,9 @@ class ProjectFeaturePropertiesResource(Resource):
 class ProjectFeaturePropertiesResource(Resource):
 
     @api.doc(id="updateFeatureStyles",
-             description="Update the styles of a feature")
+             description="Update the styles of a feature. This will replace any styles"
+                         "previously associated with the feature.")
+    @api.marshal_with(api_feature)
     @project_permissions
     @project_feature_exists
     def post(self, projectId: int, featureId: int):
@@ -221,27 +234,44 @@ class ProjectFeaturesCollectionResource(Resource):
     @api.doc(id="addFeatureAsset",
              description='Add a static asset to a collection. Must be an image or video at the moment')
     @api.expect(file_upload_parser)
+    @api.marshal_with(api_feature)
     @project_permissions
     @project_feature_exists
-    def post(self, projectId: int, featureId: int) -> None:
+    def post(self, projectId: int, featureId: int):
         args = file_upload_parser.parse_args()
-        FeaturesService.createFeatureAsset(projectId, featureId, args['file'])
+        return FeaturesService.createFeatureAsset(projectId, featureId, args['file'])
 
 
 @api.route('/<int:projectId>/features/files/')
 class ProjectFeaturesFilesResource(Resource):
 
     @api.doc(id="uploadFile",
-             description='Add a new feature to a project from a file that has embedded geospatial information. Current'
-                         'allowed file types are (georeferenced image (jpeg), gpx track, lidar (las, laz))')
+             description='Add a new feature to a project from a file that has embedded geospatial information. Current '
+                         'allowed file types are (georeferenced image (jpeg) or gpx track. '
+                         'Any additional key/value pairs '
+                         'in the form will also be placed in the feature metadata')
+    @api.expect(file_upload_parser)
     @api.marshal_with(api_feature)
     @project_permissions
     def post(self, projectId: int):
         file = request.files['file']
         formData = request.form
         metadata = formData.to_dict()
-        features = FeaturesService.fromFileObj(projectId, file, metadata)
-        return features
+        feature = FeaturesService.fromFileObj(projectId, file, metadata)
+        return feature
+
+@api.route('/<int:projectId>/features/cluster/<int:numClusters>/')
+class ProjectFeaturesClustersResource(Resource):
+
+    @api.doc(id="clusterFeatures",
+             description='K-Means cluster the features in a project. This returns a FeatureCollection '
+                         'of the centroids with the additional property of "count" representing the number of '
+                         'Features that were aggregated into each cluster' )
+    @api.marshal_with(feature_collection_model)
+    @project_permissions
+    def get(self, projectId: int, numClusters: int):
+        clusters = FeaturesService.clusterKMeans(projectId, numClusters)
+        return clusters
 
 
 @api.route('/<int:projectId>/overlays/')
@@ -249,8 +279,8 @@ class ProjectOverlaysResource(Resource):
 
     @api.doc(id="addOverlay",
              description='Add a new overlay to a project.')
-    @api.marshal_with(overlay)
     @api.expect(overlay_parser)
+    @api.marshal_with(overlay)
     @project_permissions
     def post(self, projectId: int):
         file = request.files['file']
@@ -281,15 +311,4 @@ class ProjectOverlayResource(Resource):
              description='Remove an overlay from a project')
     @project_permissions
     def delete(self, projectId: int, overlayId: int):
-        FeaturesService.deleteOverlay(overlayId)
-
-
-
-
-
-
-
-
-
-
-
+        return FeaturesService.deleteOverlay(projectId, overlayId)
