@@ -276,6 +276,10 @@ class FeaturesService:
         :param fileObj: file
         :return: FeatureAsset
         """
+        feat = FeaturesService.get(featureId)
+        if feat.project_id != projectId:
+            raise ApiException("Feature not located in project")
+
         fpath = pathlib.Path(fileObj.filename)
         ext = fpath.suffix.lstrip('.')
         if ext in FeaturesService.IMAGE_FILE_EXTENSIONS:
