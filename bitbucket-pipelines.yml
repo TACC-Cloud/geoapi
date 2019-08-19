@@ -2,14 +2,13 @@ pipelines:
   default:
     - parallel:
       - step:
-          image: python:3.7
           caches:
             - docker
           services:
             - postgres
             - docker
           script:
-            - docker-compose build api
+            - docker build -t geoapi_api:latest .
             - docker run --rm -e APP_ENV=testing -v $(pwd):/test_dir -w /test_dir geoapi_api:latest pytest geoapi
 definitions:
   services:
