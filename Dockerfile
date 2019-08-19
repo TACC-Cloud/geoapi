@@ -9,6 +9,6 @@ RUN pip install -r requirements.txt
 RUN pip install gunicorn
 ENV PYTHONPATH "${PYTHONPATH}:/api"
 WORKDIR /opt
-RUN git clone https://github.com/LAStools/LAStools && cd LAStools/ && make all
+RUN git clone https://github.com/LAStools/LAStools && cd LAStools/ && make all && cd .. && rm -rf LAStools
 ENV PATH /opt/LAStools/bin/:$PATH
 WORKDIR /api

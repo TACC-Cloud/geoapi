@@ -4,12 +4,13 @@ pipelines:
       - step:
           image: python:3.7
           caches:
-            - pip
+            - docker
           services:
             - postgres
+            - docker
           script:
-            - pip install -r requirements.txt
-            - APP_ENV=testing pytest
+            - docker-compose build api
+            - docker run --rm -e APP_ENV=testing -v $(pwd):/test_dir -w /test_dir geoapi_api:latest pytest geoapi
 definitions:
   services:
     postgres:
