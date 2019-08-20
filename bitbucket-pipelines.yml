@@ -9,7 +9,7 @@ pipelines:
             - docker
           script:
             - docker build -t geoapi_api:latest .
-            - docker run --rm -p 5432:5432 -e APP_ENV=testing -v $(pwd):/test_dir -w /test_dir geoapi_api:latest pytest geoapi
+            - docker run --rm --net=host -e APP_ENV=testing -v $(pwd):/test_dir -w /test_dir geoapi_api:latest pytest geoapi
 definitions:
   services:
     postgres:
