@@ -9,7 +9,7 @@ pipelines:
             - docker
           script:
             - docker build -t geoapi_api:latest .
-            - docker run --rm --add-host="host.docker.internal:$BITBUCKET_DOCKER_HOST_INTERNAL" -e APP_ENV=testing -v $(pwd):/test_dir -w /test_dir geoapi_api:latest pytest geoapi
+            - docker run --rm --add-host="host.docker.internal:$BITBUCKET_DOCKER_HOST_INTERNAL" -e APP_ENV=testing -e DB_HOST=localhost -v $(pwd):/test_dir -w /test_dir geoapi_api:latest pytest geoapi
 definitions:
   services:
     postgres:
