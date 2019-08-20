@@ -37,7 +37,7 @@ def convert_to_potree(projectId: int, featureId: int, filePath: str) -> None:
 
     fa = FeatureAsset(
         uuid=asset_uuid,
-        asset_type="lidar",
+        asset_type="point_cloud",
         path=asset_path,
         feature=f,
     )

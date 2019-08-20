@@ -61,7 +61,6 @@ def test_upload_image(test_client, dbsession, projects_fixture, image_file_fixtu
     )
     assert resp.status_code == 200
 
-
 def test_upload_lidar(test_client, dbsession, projects_fixture, lidar_las1pt2_file_fixture, convert_to_potree_mock):
     u1 = dbsession.query(User).get(1)
     resp = test_client.post(

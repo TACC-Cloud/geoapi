@@ -201,7 +201,8 @@ class FeaturesService:
         """
         Add a Polygon feature from a lidar file.
 
-        When lidar file has been processed, the feature will be updated.
+        When lidar file has been processed, the feature will be updated with feature
+        asset.
 
         :param projectId: int
         :param featureId: int
@@ -222,16 +223,7 @@ class FeaturesService:
         f.the_geom = from_shape(shape(polygon), srid=4326)
         f.properties = metadata
 
-        fa = FeatureAsset(
-            uuid=asset_uuid,
-            asset_type="file",
-            path=file_path,
-            feature=f,
-            original_path=fileObj.name
-        )
-        f.assets.append(fa)
-
-        db_session.add_all([f, fa])
+        db_session.add(f)
         db_session.commit()
 
         # Process asynchronously lidar file and add a feature asset
