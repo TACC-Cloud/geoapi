@@ -30,25 +30,20 @@ spec:
         - name: ASSETS_BASE_DIR
           value: /assets
         - name: FLASK_APP
-          value: /api/geoapi/app.py
+          value: /api/app.py
         - name: FLASK_ENV
-          value: development
-        image: workers
+          value: production
+        image: geoapi_workers
         name: geoapiworkers
         resources: {}
         stdin: true
         tty: true
         volumeMounts:
-        - mountPath: /api/geoapi
-          name: workers-claim0
         - mountPath: /assets
           name: assets
       hostname: geoapiworkers
       restartPolicy: Always
       volumes:
-      - name: workers-claim0
-        persistentVolumeClaim:
-          claimName: workers-claim0
       - name: assets
         persistentVolumeClaim:
           claimName: assets

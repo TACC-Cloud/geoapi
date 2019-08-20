@@ -25,16 +25,15 @@ spec:
         - "4"
         - -b
         - 0.0.0.0:8000
-        - geoapi.app:app
-        - --reload
+        - app:app
         env:
         - name: ASSETS_BASE_DIR
           value: /assets
         - name: FLASK_APP
           value: /api/geoapi/app.py
         - name: FLASK_ENV
-          value: development
-        image: api
+          value: production
+        image: localhost:32000/geoapi
         name: geoapi
         ports:
         - containerPort: 8000
@@ -42,16 +41,11 @@ spec:
         stdin: true
         tty: true
         volumeMounts:
-        - mountPath: /api
-          name: api-claim0
         - mountPath: /assets
           name: assets
       hostname: geoapi
       restartPolicy: Always
       volumes:
-      - name: api-claim0
-        persistentVolumeClaim:
-          claimName: api-claim0
       - name: assets
         persistentVolumeClaim:
           claimName: assets

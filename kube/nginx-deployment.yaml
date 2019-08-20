@@ -34,7 +34,4 @@ spec:
       - name: assets
         persistentVolumeClaim:
           claimName: assets
-      - name: nginx-claim1
-        persistentVolumeClaim:
-          claimName: nginx-claim1
 status: {}

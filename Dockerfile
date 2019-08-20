@@ -1,11 +1,11 @@
-FROM python:3.7
+FROM python:3.7-slim
 RUN apt-get update
 RUN apt-get install -y software-properties-common
-RUN apt-get install -y libgdal-dev ffmeg
-RUN mkdir /api
-COPY ./geoapi /api
+RUN apt-get install -y libgdal-dev ffmpeg
+RUN mkdir /app
 COPY requirements.txt /
 RUN pip install -r requirements.txt
 RUN pip install gunicorn
-ENV PYTHONPATH "${PYTHONPATH}:/api"
-WORKDIR /api
+COPY ./geoapi /app/geoapi
+ENV PYTHONPATH "${PYTHONPATH}:/app"
+WORKDIR /app/geoapi

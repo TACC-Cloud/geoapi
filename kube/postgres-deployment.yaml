@@ -16,7 +16,7 @@ spec:
     metadata:
       creationTimestamp: null
       labels:
-        io.kompose.service: postgres
+        io.kompose.service: geoapi_postgres
     spec:
       containers:
       - env:
