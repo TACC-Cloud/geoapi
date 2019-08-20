@@ -1,0 +1,392 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  creationTimestamp: null
+  labels:
+    io.kompose.service: assets
+  name: assets
+spec:
+  accessModes:
+  - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10G
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: geoapi-nginx-conf
+data:
+  nginx.conf: |
+    events {
+      worker_connections 1024;
+      accept_mutex off;
+      use epoll;
+    }
+    http {
+        server {
+            include /etc/nginx/mime.types;
+            client_max_body_size 10g;
+
+            location /assets {
+                max_ranges 0;
+                expires 30d;
+                add_header "Access-Control-Allow-Origin"  *;
+                alias /assets/;
+            }
+        }
+    }
+
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  creationTimestamp: null
+  labels:
+    io.kompose.service: pgdata
+  name: pgdata
+spec:
+  accessModes:
+  - ReadWriteOnce
+  resources:
+    requests:
+      storage: 5G
+---
+apiVersion: v1
+kind: Service
+metadata:
+  annotations:
+    kompose.cmd: kompose convert
+    kompose.version: 1.16.0 (0c01309)
+  creationTimestamp: null
+  labels:
+    io.kompose.service: geoapi-rabbitmq
+  name: geoapi-rabbitmq
+spec:
+  ports:
+  - name: "5672"
+    port: 5672
+    targetPort: 5672
+  selector:
+    io.kompose.service: geoapi-rabbitmq
+status:
+  loadBalancer: {}
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  annotations:
+    kompose.cmd: kompose convert
+    kompose.version: 1.16.0 (0c01309)
+  creationTimestamp: null
+  labels:
+    io.kompose.service: postgres
+  name: postgres
+spec:
+  ports:
+  - name: "5432"
+    port: 5432
+    targetPort: 5432
+  selector:
+    io.kompose.service: postgres
+status:
+  loadBalancer: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  annotations:
+    kompose.cmd: kompose convert
+    kompose.version: 1.16.0 (0c01309)
+  creationTimestamp: null
+  labels:
+    io.kompose.service: nginx
+  name: geoapi-nginx
+spec:
+  ports:
+  - name: "8080"
+    port: 8080
+    targetPort: 80
+  selector:
+    io.kompose.service: nginx
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  annotations:
+    kompose.cmd: kompose convert
+    kompose.version: 1.16.0 (0c01309)
+  creationTimestamp: null
+  labels:
+    io.kompose.service: geoapi
+  name: geoapi
+spec:
+  ports:
+  - name: "5000"
+    port: 5000
+    targetPort: 5000
+  selector:
+    io.kompose.service: geoapi
+---
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  annotations:
+    kompose.cmd: kompose convert
+    kompose.version: 1.16.0 (0c01309)
+  creationTimestamp: null
+  labels:
+    io.kompose.service: geoapi-rabbitmq
+  name: geoapi-rabbitmq
+spec:
+  replicas: 1
+  strategy: {}
+  template:
+    metadata:
+      creationTimestamp: null
+      labels:
+        io.kompose.service: geoapi-rabbitmq
+    spec:
+      containers:
+      - env:
+        - name: RABBITMQ_DEFAULT_PASS
+          value: dev
+        - name: RABBITMQ_DEFAULT_USER
+          value: dev
+        - name: RABBITMQ_DEFAULT_VHOST
+          value: dev
+        image: rabbitmq
+        ports:
+          - containerPort: 5672
+        name: geoapi-rabbitmq
+        resources: {}
+      restartPolicy: Always
+---
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  annotations:
+    kompose.cmd: kompose convert
+    kompose.version: 1.16.0 (0c01309)
+  creationTimestamp: null
+  labels:
+    io.kompose.service: nginx
+  name: nginx
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      creationTimestamp: null
+      labels:
+        io.kompose.service: nginx
+    spec:
+      containers:
+      - image: nginx
+        name: nginx
+        ports:
+        - containerPort: 8000
+        resources: {}
+        volumeMounts:
+        - mountPath: /assets
+          name: assets
+      restartPolicy: Always
+      volumes:
+      - name: assets
+        persistentVolumeClaim:
+          claimName: assets
+---
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  annotations:
+    kompose.cmd: kompose convert
+    kompose.version: 1.16.0 (0c01309)
+  creationTimestamp: null
+  labels:
+    io.kompose.service: geoapi-workers
+  name: geoapi-workers
+spec:
+  replicas: 3
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      creationTimestamp: null
+      labels:
+        io.kompose.service: geoapi-workers
+    spec:
+      containers:
+      - args:
+        - celery
+        - -A
+        - celery_app
+        - worker
+        env:
+          - name: ASSETS_BASE_DIR
+            value: /assets
+          - name: FLASK_APP
+            value: /app/geoapi/app.py
+          - name: APP_ENV
+            value: production
+          - name: RABBITMQ_HOST
+            value: geoapi-rabbibtmq
+          - name: RABBITMQ_VHOST
+            value: dev
+          - name: RABBITMQ_PASSWD
+            value: dev
+          - name: RABBITMQ_USERNAME
+            value: dev
+          - name: DB_USERNAME
+            value: dev
+          - name: DB_HOST
+            value: geoapi-postgres
+          - name: DB_PASWWD
+            value: dev
+          - name: DB_NAME
+            value: DEV
+        image: localhost:32000/geoapi-workers
+        name: geoapi-workers
+        resources: {}
+        volumeMounts:
+        - mountPath: /assets
+          name: assets
+      hostname: geoapi-workers
+      restartPolicy: Always
+      volumes:
+      - name: assets
+        persistentVolumeClaim:
+          claimName: assets
+---
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  annotations:
+    kompose.cmd: kompose convert
+    kompose.version: 1.16.0 (0c01309)
+  creationTimestamp: null
+  labels:
+    io.kompose.service: geoapi-postgres
+  name: geoapi-postgres
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      creationTimestamp: null
+      labels:
+        io.kompose.service: geoapi-postgres
+    spec:
+      containers:
+      - env:
+        - name: POSTGRES_DB
+          value: dev
+        - name: POSTGRES_PASSWORD
+          value: dev
+        - name: POSTGRES_USER
+          value: dev
+        image: mdillon/postgis
+        name: geoapi-postgres
+        ports:
+        - containerPort: 5432
+        resources: {}
+        volumeMounts:
+        - mountPath: /var/lib/postgresql/data
+          name: pgdata
+      hostname: geoapi-postgres
+      restartPolicy: Always
+      volumes:
+      - name: pgdata
+        persistentVolumeClaim:
+          claimName: pgdata
+---
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  annotations:
+    kompose.cmd: kompose convert
+    kompose.version: 1.16.0 (0c01309)
+  creationTimestamp: null
+  labels:
+    io.kompose.service: geoapi
+  name: geoapi
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      creationTimestamp: null
+      labels:
+        io.kompose.service: geoapi
+    spec:
+      containers:
+      - args:
+        - gunicorn
+        - -w
+        - "4"
+        - -b
+        - 0.0.0.0:5000
+        - app:app
+        env:
+        - name: ASSETS_BASE_DIR
+          value: /assets
+        - name: FLASK_APP
+          value: /app/geoapi/app.py
+        - name: APP_ENV
+          value: production
+        - name: RABBITMQ_HOST
+          value: geoapi-rabbibtmq
+        - name: RABBITMQ_VHOST
+          value: dev
+        - name: RABBITMQ_PASSWD
+          value: dev
+        - name: RABBITMQ_USERNAME
+          value: dev
+        - name: DB_USERNAME
+          value: dev
+        - name: DB_HOST
+          value: geoapi-postgres
+        - name: DB_PASWWD
+          value: dev
+        - name: DB_NAME
+          value: DEV
+        image: localhost:32000/geoapi:latest
+        name: geoapi
+        ports:
+        - containerPort: 5000
+        resources: {}
+        stdin: true
+        tty: true
+        volumeMounts:
+        - mountPath: /assets
+          name: assets
+      hostname: geoapi
+      restartPolicy: Always
+      volumes:
+      - name: assets
+        persistentVolumeClaim:
+          claimName: assets
+
+---
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  name: geoapi-ingress
+  annotations:
+spec:
+  rules:
+  - http:
+      paths:
+      - path: /assets
+        backend:
+          serviceName: geoapi-nginx
+          servicePort: 8080
+      - path: /
+        backend:
+          serviceName: geoapi
+          servicePort: 5000
