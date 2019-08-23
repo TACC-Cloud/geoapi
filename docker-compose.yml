@@ -52,11 +52,11 @@ services:
     networks:
       - geoapi
     volumes:
-      - ./geoapi:/api/geoapi
+      - .:/app
       - assets:/assets
     environment:
-      - FLASK_APP=/api/geoapi/app.py
-      - FLASK_ENV=development
+      - FLASK_APP=/app/geoapi/app.py
+      - APP_ENV=development
       - ASSETS_BASE_DIR=/assets
     stdin_open: true
     tty: true
@@ -71,7 +71,7 @@ services:
     networks:
       - geoapi
     volumes:
-      - .:/api
+      - .:/app
       - assets:/assets
     ports:
       - 8000:8000
@@ -79,8 +79,8 @@ services:
       - 8.8.8.8
       - 8.8.4.4
     environment:
-      - FLASK_APP=/api/geoapi/app.py
-      - FLASK_ENV=development
+      - FLASK_APP=/app/geoapi/app.py
+      - APP_ENV=development
       - ASSETS_BASE_DIR=/assets
     stdin_open: true
     tty: true

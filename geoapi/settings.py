@@ -23,7 +23,7 @@ class ProductionConfig(Config):
     DB_PASSWD = os.environ.get("DB_PASSWD")
     DB_HOST = os.environ.get("DB_HOST")
     JWT_SECRET_KEY = os.environ.get("JWT_SECRET_KEY")
-    RABBITMQ_USERNAME = os.environ.get("RABBITMQ_USERANME")
+    RABBITMQ_USERNAME = os.environ.get("RABBITMQ_USERNAME")
     RABBITMQ_PASSWD = os.environ.get("RABBITMQ_PASSWD")
     RABBITMQ_VHOST = os.environ.get("RABBITMQ_VHOST")
     RABBITMQ_HOSTNAME = os.environ.get("RABBITMQ_HOSTNAME")

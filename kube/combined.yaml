@@ -1,7 +1,6 @@
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  creationTimestamp: null
   labels:
     io.kompose.service: assets
   name: assets
@@ -41,7 +40,6 @@ data:
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  creationTimestamp: null
   labels:
     io.kompose.service: pgdata
   name: pgdata
@@ -58,7 +56,6 @@ metadata:
   annotations:
     kompose.cmd: kompose convert
     kompose.version: 1.16.0 (0c01309)
-  creationTimestamp: null
   labels:
     io.kompose.service: geoapi-rabbitmq
   name: geoapi-rabbitmq
@@ -69,8 +66,6 @@ spec:
     targetPort: 5672
   selector:
     io.kompose.service: geoapi-rabbitmq
-status:
-  loadBalancer: {}
 
 ---
 apiVersion: v1
@@ -79,19 +74,17 @@ metadata:
   annotations:
     kompose.cmd: kompose convert
     kompose.version: 1.16.0 (0c01309)
-  creationTimestamp: null
   labels:
-    io.kompose.service: postgres
-  name: postgres
+    io.kompose.service: geoapi-postgres
+  name: geoapi-postgres
 spec:
   ports:
   - name: "5432"
     port: 5432
     targetPort: 5432
   selector:
-    io.kompose.service: postgres
-status:
-  loadBalancer: {}
+    io.kompose.service: geoapi-postgres
+
 ---
 apiVersion: v1
 kind: Service
@@ -99,7 +92,6 @@ metadata:
   annotations:
     kompose.cmd: kompose convert
     kompose.version: 1.16.0 (0c01309)
-  creationTimestamp: null
   labels:
     io.kompose.service: nginx
   name: geoapi-nginx
@@ -136,7 +128,6 @@ metadata:
   annotations:
     kompose.cmd: kompose convert
     kompose.version: 1.16.0 (0c01309)
-  creationTimestamp: null
   labels:
     io.kompose.service: geoapi-rabbitmq
   name: geoapi-rabbitmq
@@ -145,7 +136,6 @@ spec:
   strategy: {}
   template:
     metadata:
-      creationTimestamp: null
       labels:
         io.kompose.service: geoapi-rabbitmq
     spec:
@@ -170,7 +160,6 @@ metadata:
   annotations:
     kompose.cmd: kompose convert
     kompose.version: 1.16.0 (0c01309)
-  creationTimestamp: null
   labels:
     io.kompose.service: nginx
   name: nginx
@@ -180,7 +169,6 @@ spec:
     type: Recreate
   template:
     metadata:
-      creationTimestamp: null
       labels:
         io.kompose.service: nginx
     spec:
@@ -205,7 +193,6 @@ metadata:
   annotations:
     kompose.cmd: kompose convert
     kompose.version: 1.16.0 (0c01309)
-  creationTimestamp: null
   labels:
     io.kompose.service: geoapi-workers
   name: geoapi-workers
@@ -215,7 +202,6 @@ spec:
     type: Recreate
   template:
     metadata:
-      creationTimestamp: null
       labels:
         io.kompose.service: geoapi-workers
     spec:
@@ -232,8 +218,8 @@ spec:
             value: /app/geoapi/app.py
           - name: APP_ENV
             value: production
-          - name: RABBITMQ_HOST
-            value: geoapi-rabbibtmq
+          - name: RABBITMQ_HOSTNAME
+            value: geoapi-rabbitmq
           - name: RABBITMQ_VHOST
             value: dev
           - name: RABBITMQ_PASSWD
@@ -244,10 +230,10 @@ spec:
             value: dev
           - name: DB_HOST
             value: geoapi-postgres
-          - name: DB_PASWWD
+          - name: DB_PASSWD
             value: dev
           - name: DB_NAME
-            value: DEV
+            value: dev
         image: localhost:32000/geoapi-workers
         name: geoapi-workers
         resources: {}
@@ -267,7 +253,6 @@ metadata:
   annotations:
     kompose.cmd: kompose convert
     kompose.version: 1.16.0 (0c01309)
-  creationTimestamp: null
   labels:
     io.kompose.service: geoapi-postgres
   name: geoapi-postgres
@@ -277,7 +262,6 @@ spec:
     type: Recreate
   template:
     metadata:
-      creationTimestamp: null
       labels:
         io.kompose.service: geoapi-postgres
     spec:
@@ -310,7 +294,6 @@ metadata:
   annotations:
     kompose.cmd: kompose convert
     kompose.version: 1.16.0 (0c01309)
-  creationTimestamp: null
   labels:
     io.kompose.service: geoapi
   name: geoapi
@@ -320,7 +303,6 @@ spec:
     type: Recreate
   template:
     metadata:
-      creationTimestamp: null
       labels:
         io.kompose.service: geoapi
     spec:
@@ -351,10 +333,12 @@ spec:
           value: dev
         - name: DB_HOST
           value: geoapi-postgres
-        - name: DB_PASWWD
+        - name: DB_PASSWD
           value: dev
         - name: DB_NAME
-          value: DEV
+          value: dev
+        - name: JWT_SECRET_KEY
+          value: your-256-bit-secret
         image: localhost:32000/geoapi:latest
         name: geoapi
         ports:
@@ -378,6 +362,7 @@ kind: Ingress
 metadata:
   name: geoapi-ingress
   annotations:
+    nginx.ingress.kubernetes.io/enable-cors: "true"
 spec:
   rules:
   - http:
