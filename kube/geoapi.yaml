@@ -6,7 +6,8 @@ metadata:
   name: assets
 spec:
   accessModes:
-  - ReadWriteOnce
+  - ReadWriteMany
+  storageClassName: rbd
   resources:
     requests:
       storage: 10G
@@ -26,7 +27,6 @@ data:
         server {
             include /etc/nginx/mime.types;
             client_max_body_size 10g;
-
             location /assets {
                 max_ranges 0;
                 expires 30d;
@@ -35,7 +35,6 @@ data:
             }
         }
     }
-
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim
@@ -46,6 +45,7 @@ metadata:
 spec:
   accessModes:
   - ReadWriteOnce
+  storageClassName: rbd
   resources:
     requests:
       storage: 5G
@@ -60,13 +60,13 @@ metadata:
     io.kompose.service: geoapi-rabbitmq
   name: geoapi-rabbitmq
 spec:
+  type: NodePort
   ports:
   - name: "5672"
     port: 5672
     targetPort: 5672
   selector:
     io.kompose.service: geoapi-rabbitmq
-
 ---
 apiVersion: v1
 kind: Service
@@ -78,13 +78,13 @@ metadata:
     io.kompose.service: geoapi-postgres
   name: geoapi-postgres
 spec:
+  type: NodePort
   ports:
   - name: "5432"
     port: 5432
     targetPort: 5432
   selector:
     io.kompose.service: geoapi-postgres
-
 ---
 apiVersion: v1
 kind: Service
@@ -96,6 +96,7 @@ metadata:
     io.kompose.service: nginx
   name: geoapi-nginx
 spec:
+  type: NodePort
   ports:
   - name: "8080"
     port: 8080
@@ -103,7 +104,6 @@ spec:
   selector:
     io.kompose.service: nginx
 ---
-
 apiVersion: v1
 kind: Service
 metadata:
@@ -115,6 +115,7 @@ metadata:
     io.kompose.service: geoapi
   name: geoapi
 spec:
+  type: NodePort
   ports:
   - name: "5000"
     port: 5000
@@ -234,7 +235,7 @@ spec:
             value: dev
           - name: DB_NAME
             value: dev
-        image: localhost:32000/geoapi-workers
+        image: taccaci/geoapi-workers:latest
         name: geoapi-workers
         resources: {}
         volumeMounts:
@@ -281,6 +282,7 @@ spec:
         volumeMounts:
         - mountPath: /var/lib/postgresql/data
           name: pgdata
+          subPath: postgres
       hostname: geoapi-postgres
       restartPolicy: Always
       volumes:
@@ -339,7 +341,7 @@ spec:
           value: dev
         - name: JWT_SECRET_KEY
           value: your-256-bit-secret
-        image: localhost:32000/geoapi:latest
+        image: taccaci/geoapi:latest
         name: geoapi
         ports:
         - containerPort: 5000
@@ -355,7 +357,6 @@ spec:
       - name: assets
         persistentVolumeClaim:
           claimName: assets
-
 ---
 apiVersion: extensions/v1beta1
 kind: Ingress
