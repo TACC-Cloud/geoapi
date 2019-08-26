@@ -12,5 +12,5 @@ install:
 
 script:
   - docker network create -d bridge test
-  - docker run -d -p 5432:5432 --net=test -e POSTGRES_DB=test -e POSTGRES_USER=dev -e POSTGRES_PASSWORD=dev --hostname=postgres --name=postgres mdillon/postgis
+  - docker run -d --net=test -e POSTGRES_DB=test -e POSTGRES_USER=dev -e POSTGRES_PASSWORD=dev --hostname=postgres --name=postgres mdillon/postgis
   - docker run --net=test -e APP_ENV=testing taccaci/geoapi pytest
