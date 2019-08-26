@@ -1,0 +1,15 @@
+sudo: required
+
+services:
+  - docker
+
+branches:
+  only:
+    - master
+
+install:
+  - docker build -t taccaci/geoapi:latest .
+
+script:
+  - docker run -e POSTGRES_DB=test -e POSTGRES_USER=dev -e POSTGRES_PASSWORD=dev --hostname=postgres mdillon/postgis
+  - docker run -e APP_ENV=testing taccaci/geoapi pytest
