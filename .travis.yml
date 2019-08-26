@@ -11,7 +11,7 @@ install:
   - docker build --cache-from taccaci/geoapi -t taccaci/geoapi:latest .
 
 before_script:
-  # Disable services enabled by default
+  - mkdir /assets
   - sudo service mysql stop
   - sudo service postgresql stop
   - docker network create -d bridge test
