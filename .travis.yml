@@ -10,6 +10,11 @@ branches:
 install:
   - docker build --cache-from taccaci/geoapi -t taccaci/geoapi:latest .
 
+before_script:
+  # Disable services enabled by default
+  - sudo service mysql stop
+  - sudo service postgresql stop
+
 script:
   - docker network create -d bridge test
   - docker run -d --net=test -e POSTGRES_DB=test -e POSTGRES_USER=dev -e POSTGRES_PASSWORD=dev --hostname=postgres --name=postgres mdillon/postgis
