@@ -18,4 +18,5 @@ before_script:
   - docker run -d --net=test -p 5432:5432 -e POSTGRES_DB=test -e POSTGRES_USER=dev -e POSTGRES_PASSWORD=dev --hostname=postgres --name=postgres mdillon/postgis
 
 script:
+  - sleep 10
   - docker run --net=test -e APP_ENV=testing taccaci/geoapi pytest
