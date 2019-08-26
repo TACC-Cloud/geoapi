@@ -8,8 +8,9 @@ branches:
     - master
 
 install:
-  - docker build -t taccaci/geoapi:latest .
+  - docker build --cache-from taccaci/geoapi -t taccaci/geoapi:latest .
 
 script:
-  - docker run -d -e POSTGRES_DB=test -e POSTGRES_USER=dev -e POSTGRES_PASSWORD=dev --hostname postgres --name postgres mdillon/postgis
-  - docker run --link postgres:postgres -e APP_ENV=testing taccaci/geoapi pytest
+  - docker network create -d bridge test
+  - docker run -d --network=test -e POSTGRES_DB=test -e POSTGRES_USER=dev -e POSTGRES_PASSWORD=dev --hostname=postgres --name=postgres mdillon/postgis
+  - docker run --network=test -e APP_ENV=testing taccaci/geoapi pytest
