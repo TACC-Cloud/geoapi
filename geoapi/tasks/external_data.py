@@ -72,10 +72,7 @@ def import_from_agave(user: User, systemId: str, path: str, proj: Project):
                 if ext in FeaturesService.IMAGE_FILE_EXTENSIONS:
                     fa = FeaturesService.createImageFeatureAsset(proj.id, fd)
                 elif ext in FeaturesService.VIDEO_FILE_EXTENSIONS:
-                    convertedFile = VideoService.transcode(os.path.join("/tmp", tmp_file_uuid))
-                    fa = FeaturesService.createVideoFeatureAsset(proj.id, convertedFile)
-                    convertedFile.close()
-                    os.remove(convertedFile.name)
+                    fa = FeaturesService.createVideoFeatureAsset(proj.id, fd)
                 else:
                     raise ApiException("Could not process this file")
                 fa.feature = feat

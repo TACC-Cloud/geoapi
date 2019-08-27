@@ -247,7 +247,7 @@ class ProjectFeaturesFilesResource(Resource):
 
     @api.doc(id="uploadFile",
              description='Add a new feature to a project from a file that has embedded geospatial information. Current '
-                         'allowed file types are (georeferenced image (jpeg) or gpx track. '
+                         'allowed file types are georeferenced image (jpeg) or gpx track. '
                          'Any additional key/value pairs '
                          'in the form will also be placed in the feature metadata')
     @api.expect(file_upload_parser)
@@ -307,8 +307,9 @@ class ProjectOverlaysResource(Resource):
 @api.route('/<int:projectId>/overlays/<int:overlayId>/')
 class ProjectOverlayResource(Resource):
 
-    @api.doc(id="removeOverlays",
+    @api.doc(id="removeOverlay",
              description='Remove an overlay from a project')
     @project_permissions
-    def delete(self, projectId: int, overlayId: int):
-        return FeaturesService.deleteOverlay(projectId, overlayId)
+    def delete(self, projectId: int, overlayId: int) -> str:
+        FeaturesService.deleteOverlay(projectId, overlayId)
+        return "Overlay {id} deleted".format(id=overlayId)
