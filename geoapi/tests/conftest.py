@@ -21,7 +21,10 @@ user2JWT="eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJ3c28yLm9yZy9wcm9kdWN0c
 
 @pytest.fixture(scope="session")
 def test_client():
+    # Disable propagating of exceptions (which is enabled by default in testing/debug)
+    app.config['PROPAGATE_EXCEPTIONS'] = False
     client = app.test_client()
+
     yield client
 
 
