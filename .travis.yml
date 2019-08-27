@@ -20,4 +20,4 @@ before_script:
 script:
   - sleep 5
   - docker run --net=test -e APP_ENV=testing taccaci/geoapi coverage run -m pytest
-  - docker run --net=test APP_ENV=testing taccaci/geoapi coverage report
+  - docker run --net=test -e APP_ENV=testing taccaci/geoapi coverage report
