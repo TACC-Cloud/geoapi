@@ -7,7 +7,7 @@ jobs:
   include:
     - stage: build_docker
       script:
-      - docker build -t taccaci/geoapi:latest .
+      - docker build --cache-from taccaci/geoapi:latest -t taccaci/geoapi:latest .
       - docker images
     - stage: test
       before_script:
@@ -18,8 +18,9 @@ jobs:
       - docker run -d --net=test -p 5432:5432 -e POSTGRES_DB=test -e POSTGRES_USER=dev -e POSTGRES_PASSWORD=dev --hostname=postgres --name=postgres mdillon/postgis
       - sleep 5
       script:
-      - docker run --net=test -e APP_ENV=testing taccaci/geoapi coverage run -m pytest
-       #- docker run --net=test -e APP_ENV=testing taccaci/geoapi coverage report
+      - docker images
+      - docker run --net=test -e APP_ENV=testing taccaci/geoapi:latest coverage run -m pytest
+      #- docker run --net=test -e APP_ENV=testing taccaci/geoapi:latest coverage report
     - stage: deploy_docker
       if: branch = master
       script:
