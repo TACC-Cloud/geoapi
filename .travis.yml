@@ -7,7 +7,6 @@ jobs:
   include:
     - stage: build_docker
       script:
-      - echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
       - docker build -t taccaci/geoapi:latest .
       - docker images
     - stage: test
