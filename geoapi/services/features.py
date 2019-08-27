@@ -3,6 +3,8 @@ import pathlib
 import uuid
 import json
 from typing import List, IO, Dict
+
+from geoapi.services.videos import VideoService
 from shapely.geometry import Point, shape
 import fiona
 from geoalchemy2.shape import from_shape, to_shape
@@ -314,10 +316,17 @@ class FeaturesService:
         :return: FeatureAsset
         """
         asset_uuid = uuid.uuid4()
-        project_asset_dir = FeaturesService._makeAssetDir(projectId)
-        save_path = os.path.join(project_asset_dir, str(asset_uuid) + '.mp4')
-        with open(save_path, 'wb') as f:
-            f.write(fileObj.read())
+        base_filepath = FeaturesService._makeAssetDir(projectId)
+        save_path = os.path.join(base_filepath, str(asset_uuid) + '.mp4')
+        tmp_path = os.path.join('/tmp', str(asset_uuid))
+        with open(tmp_path, 'wb') as tmp:
+            tmp.write(fileObj.read())
+        encodedPath = VideoService.transcode(tmp_path)
+        with open(encodedPath, 'rb') as enc:
+            with open(save_path, 'wb') as f:
+                f.write(enc.read())
+        # clean up the tmp file
+        os.remove(encodedPath)
         fa = FeatureAsset(
             uuid=asset_uuid,
             path=save_path,

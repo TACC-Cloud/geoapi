@@ -23,9 +23,7 @@ RUN mkdir api
 
 RUN pip3 install -r requirements.txt
 
-COPY geoapi /api
-ENV PYTHONPATH "${PYTHONPATH}:/api"
-
-WORKDIR /api
-
+COPY ./geoapi /app/geoapi
+ENV PYTHONPATH "${PYTHONPATH}:/app"
+WORKDIR /app/geoapi
 

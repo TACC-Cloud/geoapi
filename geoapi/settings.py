@@ -1,5 +1,6 @@
 import os
 
+
 class Config(object):
     DEBUG = False
     TESTING = False
@@ -9,6 +10,11 @@ class Config(object):
     DB_HOST = 'postgres'
     ASSETS_BASE_DIR = os.environ.get('ASSETS_BASE_DIR', '/assets')
     JWT_SECRET_KEY = 'your-256-bit-secret'
+    RABBITMQ_USERNAME = 'dev'
+    RABBITMQ_PASSWD = 'dev'
+    RABBITMQ_VHOST = 'dev'
+    RABBITMQ_HOSTNAME = 'rabbitmq'
+
 
 class ProductionConfig(Config):
     DEBUG = False
@@ -17,11 +23,14 @@ class ProductionConfig(Config):
     DB_PASSWD = os.environ.get("DB_PASSWD")
     DB_HOST = os.environ.get("DB_HOST")
     JWT_SECRET_KEY = os.environ.get("JWT_SECRET_KEY")
+    RABBITMQ_USERNAME = os.environ.get("RABBITMQ_USERNAME")
+    RABBITMQ_PASSWD = os.environ.get("RABBITMQ_PASSWD")
+    RABBITMQ_VHOST = os.environ.get("RABBITMQ_VHOST")
+    RABBITMQ_HOSTNAME = os.environ.get("RABBITMQ_HOSTNAME")
+
 
 class DevelopmentConfig(Config):
     DEBUG = True
-    DS_CONSUMER_KEY = "wcZIa9kEYL220uqfAecCRui7ti0a"
-    DS_CONSUMER_SECRET = "dnRJOyi443M7PuTs7MAjCIfkFAMa"
 
 
 class TestingConfig(Config):
@@ -34,7 +43,7 @@ class TestingConfig(Config):
 
 
 APP_ENV = os.environ.get('APP_ENV', '').lower()
-if APP_ENV == 'prod':
+if APP_ENV == 'production':
     settings = ProductionConfig
 elif APP_ENV == 'testing':
     settings = TestingConfig

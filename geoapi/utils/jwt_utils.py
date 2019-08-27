@@ -1,5 +1,7 @@
 from typing import Dict
+from geoapi.log import logging
 
+logger = logging.getLogger(__name__)
 
 def jwt_tenant(headers: Dict) -> (str, str, str):
     """

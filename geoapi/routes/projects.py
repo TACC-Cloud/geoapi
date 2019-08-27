@@ -1,14 +1,12 @@
 from flask import request, abort
 from flask_restplus import Resource, Namespace, fields
 from werkzeug.datastructures import FileStorage
-import shapely
-from geoalchemy2.shape import from_shape, to_shape
 
-from geoapi.utils.decorators import jwt_decoder, project_permissions, project_feature_exists
-from geoapi.services.projects import ProjectsService
-from geoapi.services.features import FeaturesService
-from geoapi.schemas import FeatureCollectionSchema, FeatureSchema
 from geoapi.log import logging
+from geoapi.schemas import FeatureSchema
+from geoapi.services.features import FeaturesService
+from geoapi.services.projects import ProjectsService
+from geoapi.utils.decorators import jwt_decoder, project_permissions, project_feature_exists
 
 logger = logging.getLogger(__name__)
 
@@ -247,7 +245,7 @@ class ProjectFeaturesFilesResource(Resource):
 
     @api.doc(id="uploadFile",
              description='Add a new feature to a project from a file that has embedded geospatial information. Current '
-                         'allowed file types are (georeferenced image (jpeg) or gpx track. '
+                         'allowed file types are georeferenced image (jpeg) or gpx track. '
                          'Any additional key/value pairs '
                          'in the form will also be placed in the feature metadata')
     @api.expect(file_upload_parser)
@@ -307,8 +305,9 @@ class ProjectOverlaysResource(Resource):
 @api.route('/<int:projectId>/overlays/<int:overlayId>/')
 class ProjectOverlayResource(Resource):
 
-    @api.doc(id="removeOverlays",
+    @api.doc(id="removeOverlay",
              description='Remove an overlay from a project')
     @project_permissions
-    def delete(self, projectId: int, overlayId: int):
-        return FeaturesService.deleteOverlay(projectId, overlayId)
+    def delete(self, projectId: int, overlayId: int) -> str:
+        FeaturesService.deleteOverlay(projectId, overlayId)
+        return "Overlay {id} deleted".format(id=overlayId)
