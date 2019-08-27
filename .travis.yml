@@ -8,7 +8,6 @@ branches:
     - master
 
 install:
-  - docker pull taccaci/geoapi:latest
   - docker build --cache-from taccaci/geoapi:latest -t taccaci/geoapi:latest .
 
 before_script:
