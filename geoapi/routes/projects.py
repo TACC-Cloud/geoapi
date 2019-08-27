@@ -1,14 +1,12 @@
 from flask import request, abort
 from flask_restplus import Resource, Namespace, fields
 from werkzeug.datastructures import FileStorage
-import shapely
-from geoalchemy2.shape import from_shape, to_shape
 
-from geoapi.utils.decorators import jwt_decoder, project_permissions, project_feature_exists
-from geoapi.services.projects import ProjectsService
-from geoapi.services.features import FeaturesService
-from geoapi.schemas import FeatureCollectionSchema, FeatureSchema
 from geoapi.log import logging
+from geoapi.schemas import FeatureSchema
+from geoapi.services.features import FeaturesService
+from geoapi.services.projects import ProjectsService
+from geoapi.utils.decorators import jwt_decoder, project_permissions, project_feature_exists
 
 logger = logging.getLogger(__name__)
 
