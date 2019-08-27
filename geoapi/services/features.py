@@ -276,9 +276,10 @@ class FeaturesService:
         :param fileObj: Should be a file descriptor of a file in tmp
         :return: FeatureAsset
         """
+        #  TODO: Transcode the video to mp4. This should probably be done async?
         asset_uuid = uuid.uuid4()
         base_filepath = FeaturesService._makeAssetDir(projectId)
-        save_path = os.path.join("/assets", str(projectId), str(asset_uuid) + '.mp4')
+        save_path = os.path.join(base_filepath, str(asset_uuid) + '.mp4')
         with open(save_path, 'wb') as f:
             f.write(fileObj.read())
         fa = FeatureAsset(
