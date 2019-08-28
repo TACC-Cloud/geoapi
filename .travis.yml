@@ -8,6 +8,7 @@ jobs:
   include:
     - name: "geoapi: unit tests / container"
       before_script:
+      - docker pull taccaci/geoapi:latest
       - docker build --cache-from taccaci/geoapi:latest -t taccaci/geoapi:latest .
       - sudo mkdir /assets
       - sudo service mysql stop
