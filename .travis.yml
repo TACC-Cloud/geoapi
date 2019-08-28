@@ -1,23 +1,27 @@
+language: generic
 sudo: required
 
 services:
   - docker
 
-branches:
-  only:
-    - master
-
-install:
-  - docker build --cache-from taccaci/geoapi:latest -t taccaci/geoapi:latest .
-
-before_script:
-  - sudo mkdir /assets
-  - sudo service mysql stop
-  - sudo service postgresql stop
-  - docker network create -d bridge test
-  - docker run -d --net=test -p 5432:5432 -e POSTGRES_DB=test -e POSTGRES_USER=dev -e POSTGRES_PASSWORD=dev --hostname=postgres --name=postgres mdillon/postgis
-
-script:
-  - sleep 5
-  - docker run --net=test -e APP_ENV=testing taccaci/geoapi coverage run -m pytest
-  - docker run --net=test -e APP_ENV=testing taccaci/geoapi coverage report
+jobs:
+  include:
+    - name: "geoapi: unit tests / container"
+      before_script:
+      - docker pull taccaci/geoapi:latest
+      - docker build --cache-from taccaci/geoapi:latest -t taccaci/geoapi:latest .
+      - sudo mkdir /assets
+      - sudo service mysql stop
+      - sudo service postgresql stop
+      - docker network create -d bridge test
+      - docker run -d --net=test -p 5432:5432 -e POSTGRES_DB=test -e POSTGRES_USER=dev -e POSTGRES_PASSWORD=dev --hostname=postgres --name=postgres mdillon/postgis
+      - sleep 5
+      script:
+      - docker run --net=test -e APP_ENV=testing taccaci/geoapi:latest pytest --cov=geoapi
+      before_deploy:
+         - echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
+      deploy:
+        provider: script
+        script: docker push taccaci/geoapi:latest
+        on:
+          branch: master
