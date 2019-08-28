@@ -24,4 +24,4 @@ jobs:
         provider: script
         script: docker push taccaci/geoapi:latest
         on:
-          branch: master
+          branch: configure-travis-dockerhub
