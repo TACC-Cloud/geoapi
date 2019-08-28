@@ -17,10 +17,10 @@ jobs:
       script:
       - docker run --net=test -e APP_ENV=testing taccaci/geoapi:latest coverage run -m pytest
       #- docker run --net=test -e APP_ENV=testing taccaci/geoapi:latest coverage report
+      before_deploy:
+         - echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
       deploy:
         provider: script
-        script:
-         - echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
-         - docker push taccaci/geoapi:latest
+        script: docker push taccaci/geoapi:latest
         on:
           branch: configure-travis-dockerhub
