@@ -1,7 +1,8 @@
 FROM python:3.7-slim
-RUN apt-get update -q
-RUN apt-get install -q -y software-properties-common
-RUN apt-get install -q -y libgdal-dev ffmpeg
+RUN apt-get update -q && apt-get install -q -y \
+  software-properties-common \
+  libgdal-dev \
+  ffmpeg
 RUN mkdir /app
 COPY requirements.txt /
 RUN pip install -q -r requirements.txt
