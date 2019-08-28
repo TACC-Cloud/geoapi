@@ -8,7 +8,6 @@ from geoapi.tasks.lidar import convert_to_potree
 from geoapi.exceptions import InvalidCoordinateReferenceSystem
 
 
-
 def _transform_to_geojson(epsg, point: tuple) -> tuple:
     """
     Transform point to epsg:4326
@@ -28,6 +27,7 @@ class LidarService:
     def addLidarDataToExistingSet(projectId: int, fileObj: typing.IO):
         pass
 
+    @staticmethod
     def getEPSG(filePath: str):
         """
         Get EPSG of las file
@@ -41,8 +41,8 @@ class LidarService:
             filePath,
             "-stdout"
         ], capture_output=True, text=True, check=True)
-        wkt_re = '(?<=\"EPSG\"\,\")\d+(?=\"\]\])(?!.*EPSG)' # LAS 1.4
-        geotiff_re = '\d+(?=\s*- ProjectedCSTypeGeoKey)' # LAS < 1.4
+        wkt_re = '(?<=\"EPSG\"\,\")\d+(?=\"\]\])(?!.*EPSG)'  # LAS 1.4
+        geotiff_re = '\d+(?=\s*- ProjectedCSTypeGeoKey)'  # LAS < 1.4
         for epsg_re in [wkt_re, geotiff_re]:
             epsg = re.search(epsg_re, result.stdout)
             if epsg:
@@ -65,7 +65,7 @@ class LidarService:
         las_file.close()
 
         return Polygon([[Point(min_point), Point((max_point[0], min_point[1])),
-                         Point(max_point), Point((min_point[0],max_point[1])),
+                         Point(max_point), Point((min_point[0], max_point[1])),
                          Point(min_point)]])
 
     @staticmethod

@@ -76,7 +76,7 @@ def get_exif_data(image):
 
     return exif_data
 
-def _convert_to_degress(value):
+def _convert_to_degrees(value):
     """
     Helper function to convert the GPS coordinates stored in the EXIF to decimal degrees in float format
     :param value:
@@ -111,11 +111,11 @@ def get_exif_location(image):
     gps_longitude = exif_data['GPSLongitude']
     gps_longitude_ref = exif_data['GPSLongitudeRef']
 
-    lat = _convert_to_degress(gps_latitude)
+    lat = _convert_to_degrees(gps_latitude)
     if gps_latitude_ref != 'N':
         lat = 0 - lat
 
-    lon = _convert_to_degress(gps_longitude)
+    lon = _convert_to_degrees(gps_longitude)
     if gps_longitude_ref != 'E':
         lon = 0 - lon
 
