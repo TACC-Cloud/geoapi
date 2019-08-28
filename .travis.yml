@@ -22,5 +22,3 @@ jobs:
         script:
          - echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
          - docker push taccaci/geoapi:latest
-        on:
-          branch: master
