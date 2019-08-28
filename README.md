@@ -1,5 +1,7 @@
 # GeoAPI and Viewer
 
+[![Build Status](https://travis-ci.org/TACC-Cloud/geoapi.svg?branch=master)](https://travis-ci.org/TACC-Cloud/geoapi)
+
 ## Overview and Architecture
 
 GeoAPI is a restful API to create geospatial features in a PostGIS database. Users create a map "project" then
