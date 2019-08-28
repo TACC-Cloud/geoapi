@@ -17,8 +17,8 @@ jobs:
       - docker run -d --net=test -p 5432:5432 -e POSTGRES_DB=test -e POSTGRES_USER=dev -e POSTGRES_PASSWORD=dev --hostname=postgres --name=postgres mdillon/postgis
       - sleep 5
       script:
-      - docker run --net=test -e APP_ENV=testing taccaci/geoapi:latest coverage run -m pytest
-      #- docker run --net=test -e APP_ENV=testing taccaci/geoapi:latest coverage report
+      - docker run --net=test -e APP_ENV=testing --v `pwd`:/coverage -w /coverage taccaci/geoapi:latest coverage run -m pytest /app/geoapi
+      - docker run --net=test -e APP_ENV=testing --v `pwd`:/coverage -w /coverage taccaci/geoapi:latest coverage report
       before_deploy:
          - echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
       deploy:
