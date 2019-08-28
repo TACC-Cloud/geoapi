@@ -5,12 +5,9 @@ services:
 
 jobs:
   include:
-    - stage: build_docker
-      script:
-      - docker build --cache-from taccaci/geoapi:latest -t taccaci/geoapi:latest .
-      - docker images
-    - stage: test
+    - name: "geoapi: unit tests / container"
       before_script:
+      - docker build --cache-from taccaci/geoapi:latest -t taccaci/geoapi:latest .
       - sudo mkdir /assets
       - sudo service mysql stop
       - sudo service postgresql stop
@@ -18,11 +15,12 @@ jobs:
       - docker run -d --net=test -p 5432:5432 -e POSTGRES_DB=test -e POSTGRES_USER=dev -e POSTGRES_PASSWORD=dev --hostname=postgres --name=postgres mdillon/postgis
       - sleep 5
       script:
-      - docker images
       - docker run --net=test -e APP_ENV=testing taccaci/geoapi:latest coverage run -m pytest
       #- docker run --net=test -e APP_ENV=testing taccaci/geoapi:latest coverage report
-    - stage: deploy_docker
-      if: branch = master
-      script:
-      - echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
-      - docker push taccaci/geoapi:latest
+      deploy:
+        provider: script
+        script:
+         - echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
+         - docker push taccaci/geoapi:latest
+        on:
+          branch: master
