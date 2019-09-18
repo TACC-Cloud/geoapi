@@ -11,7 +11,6 @@ from geoalchemy2.shape import from_shape, to_shape
 import geojson
 
 from geoapi.services.images import ImageService
-from geoapi.services.lidar import LidarService
 from geoapi.settings import settings
 from geoapi.models import Feature, FeatureAsset, Overlay
 from geoapi.db import db_session
@@ -43,13 +42,9 @@ class FeaturesService:
         'gpx',
     )
 
-    LIDAR_FILE_EXTENSIONS = (
-        'las', 'laz'
-    )
-
     ALLOWED_EXTENSIONS = IMAGE_FILE_EXTENSIONS + VIDEO_FILE_EXTENSIONS \
-                         + AUDIO_FILE_EXTENSIONS + LIDAR_FILE_EXTENSIONS \
-                         + GPX_FILE_EXTENSIONS + GEOJSON_FILE_EXTENSIONS
+                         + AUDIO_FILE_EXTENSIONS + GPX_FILE_EXTENSIONS \
+                         + GEOJSON_FILE_EXTENSIONS
 
     @staticmethod
     def get(featureId: int) -> Feature:
@@ -193,45 +188,8 @@ class FeaturesService:
             return FeaturesService.fromImage(projectId, fileObj, metadata)
         elif ext in FeaturesService.GPX_FILE_EXTENSIONS:
             return FeaturesService.fromGPX(projectId, fileObj, metadata)
-        elif ext in FeaturesService.LIDAR_FILE_EXTENSIONS:
-            return [FeaturesService.fromLidar(projectId, fileObj, metadata)]
         else:
             raise ApiException("Filetype not supported for direct upload. Create a feature and attach as an asset?")
-
-    @staticmethod
-    def fromLidar(projectId: int, fileObj: IO, metadata: Dict) -> Feature:
-        """
-        Add a Polygon feature from a lidar file.
-
-        When lidar file has been processed, the feature will be updated with feature
-        asset.
-
-        :param projectId: int
-        :param featureId: int
-        :param fileObj: file
-        :return: Feature
-        """
-        project_asset_dir = FeaturesService._makeAssetDir(projectId)
-        asset_uuid = uuid.uuid4()
-        ext = pathlib.Path(fileObj.filename).suffix
-        file_path = os.path.join(project_asset_dir, str(asset_uuid) + ext)
-
-        with open(file_path, 'wb') as f:
-            f.write(fileObj.read())
-
-        polygon = LidarService.getBoundingBox(file_path)
-        f = Feature()
-        f.project_id = projectId
-        f.the_geom = from_shape(shape(polygon), srid=4326)
-        f.properties = metadata
-
-        db_session.add(f)
-        db_session.commit()
-
-        # Process asynchronously lidar file and add a feature asset
-        LidarService.addProcessedLidarData(projectId, f.id, file_path)
-
-        return f
 
     @staticmethod
     def fromImage(projectId: int, fileObj: IO, metadata: Dict) -> Feature:
@@ -275,10 +233,6 @@ class FeaturesService:
         :param fileObj: file
         :return: FeatureAsset
         """
-        feat = FeaturesService.get(featureId)
-        if feat.project_id != projectId:
-            raise ApiException("Feature not located in project")
-
         fpath = pathlib.Path(fileObj.filename)
         ext = fpath.suffix.lstrip('.')
         if ext in FeaturesService.IMAGE_FILE_EXTENSIONS:
@@ -288,6 +242,7 @@ class FeaturesService:
         else:
             raise ApiException("Invalid format for feature assets")
 
+        feat = FeaturesService.get(featureId)
         feat.assets.append(fa)
         db_session.commit()
         return feat

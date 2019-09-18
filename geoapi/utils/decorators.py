@@ -7,6 +7,7 @@ import jwt
 from geoapi.services.users import UserService
 from geoapi.services.projects import ProjectsService
 from geoapi.services.features import FeaturesService
+from geoapi.services.point_cloud import PointCloudService
 from geoapi.settings import settings
 from geoapi.utils import jwt_utils
 
@@ -58,6 +59,23 @@ def project_feature_exists(fn):
         feature = FeaturesService.get(featureId)
         if not feature:
             abort(404, "No feature found!")
+        if feature.project_id != projectId:
+            abort(404,("Feature not part of project"))
+        return fn(*args, **kwargs)
+
+def project_point_cloud_exists(fn):
+    @wraps(fn)
+    def wrapper(*args, **kwargs):
+        projectId = kwargs.get("projectId")
+        proj = ProjectsService.get(projectId)
+        if not proj:
+            abort(404, "No project found")
+        pointCloudId = kwargs.get("pointCloudId")
+        point_cloud = PointCloudService.get(pointCloudId)
+        if not point_cloud:
+            abort(404, "No point cloud found!")
+        if point_cloud.project_id != projectId:
+            abort(404, ("Point cloud not part of project"))
         return fn(*args, **kwargs)
 
     return wrapper
