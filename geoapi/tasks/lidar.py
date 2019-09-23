@@ -3,21 +3,36 @@ import uuid
 import subprocess
 import pathlib
 import shutil
+import celery
 from geoalchemy2.shape import from_shape
 
+from geoapi.log import logging
 from geoapi.utils.lidar import Lidar
 from geoapi.celery_app import app
 from geoapi.db import db_session
+from geoapi.models import Task
 
 
-@app.task(bind=True)
+logger = logging.getLogger(__file__)
+
+
+class PointCloudProcessingTask(celery.Task):
+    def on_failure(self, exc, task_id, args, kwargs, einfo):
+        logger.info("Task ({}, point cloud {}) failed: {}".format(task_id, args, exc))
+        failed_task = db_session.query(Task).filter(Task.process_id == task_id).first()
+        failed_task.status = "FAILED"
+        db_session.add(failed_task)
+        db_session.commit()
+
+
+@app.task(bind=True, base=PointCloudProcessingTask)
 def convert_to_potree(self, pointCloudId: int) -> None:
     """
     Use the potree converter to convert a LAS/LAZ file to potree format
     :param pointCloudId: int
     :return: None
     """
-    from geoapi.models import Feature, FeatureAsset, Task
+    from geoapi.models import Feature, FeatureAsset
     from geoapi.services.point_cloud import PointCloudService
 
     point_cloud = PointCloudService.get(pointCloudId)
@@ -30,9 +45,7 @@ def convert_to_potree(self, pointCloudId: int) -> None:
                    if pathlib.Path(file).suffix.lstrip('.') in PointCloudService.LIDAR_FILE_EXTENSIONS]
     outline = Lidar.getBoundingBox(input_files)
 
-    # todo put this in a try block and update task + return if problem here plus update associated Task
-    # todo add potree params (point_cloud.conversion_parameters)
-    subprocess.run([
+    command = [
         "PotreeConverter",
         "-i",
         point_cloud_path,
@@ -41,16 +54,16 @@ def convert_to_potree(self, pointCloudId: int) -> None:
         "--overwrite",
         "--generate-page",
         "index"
-    ])
+    ]
+    command.extend(point_cloud.conversion_parameters.split())
+    logger.info("Processing point cloud (#{}):  {}".format(pointCloudId, " ".join(command)))
+    subprocess.run(command, check=True, capture_output=True, text=True)
 
     if point_cloud.feature_id:
         feature = point_cloud.feature
     else:
         feature = Feature()
         feature.project_id = point_cloud.project_id
-
-        # TODO metadata for feature
-        # feature.properties = metadata
 
         asset_uuid = uuid.uuid4()
 
