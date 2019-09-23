@@ -12,8 +12,8 @@ RUN git clone --depth 1 https://github.com/m-schuetz/LAStools.git && cd LAStools
 cmake -DCMAKE_BUILD_TYPE=Release .. && make && make install && ldconfig && rm -rf /opt/LAStools
 
 RUN wget http://www.cs.unc.edu/~isenburg/lastools/download/lastools.zip && \
-unzip -q lastools.zip && cd /opt/LAStools && make && \
-ln -s /opt/LAStools/bin/lasinfo /usr/local/sbin/lasinfo
+unzip -q lastools.zip && cd /opt/LAStools && make
+ENV PATH /opt/LAStools/bin/:$PATH
 
 RUN git clone -b develop https://github.com/potree/PotreeConverter.git && cd PotreeConverter && mkdir build && cd build && \
 cmake -DCMAKE_BUILD_TYPE=Release -DLASZIP_INCLUDE_DIRS=/opt/LAStools/LASzip/dll/ -DLASZIP_LIBRARY=/usr/local/lib/liblaszip.so .. && \
