@@ -11,7 +11,9 @@ from geoapi.settings import settings
 from geoapi.db import Base, db_session
 from geoapi.models.users import User
 from geoapi.models.project import Project
+from geoapi.models.point_cloud import PointCloud
 from geoapi.models.feature import Feature
+from geoapi.services.point_cloud import PointCloudService
 from geoapi.app import app
 
 
@@ -74,6 +76,11 @@ def projects_fixture(dbsession):
     dbsession.add(proj)
     dbsession.commit()
 
+@pytest.fixture(scope="function")
+def point_cloud_fixture(dbsession):
+    u1 = dbsession.query(User).get(1)
+    data = {"description": "description"}
+    point_cloud = PointCloudService.create(projectId=1, data=data, user=u1)
 
 @pytest.fixture(scope="function")
 def gpx_file_fixture():
@@ -151,5 +158,8 @@ def feature_fixture(dbsession):
 
 @pytest.fixture(scope="function")
 def convert_to_potree_mock():
-    with patch('geoapi.services.lidar.convert_to_potree') as mock_convert_to_potree:
+    with patch('geoapi.services.point_cloud.convert_to_potree') as mock_convert_to_potree:
+        class FakeAsyncResult:
+            id = "b53fdb0a-de1a-11e9-b641-0242c0a80004"
+        mock_convert_to_potree.apply_async.return_value = FakeAsyncResult()
         yield mock_convert_to_potree

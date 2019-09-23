@@ -60,8 +60,9 @@ def project_feature_exists(fn):
         if not feature:
             abort(404, "No feature found!")
         if feature.project_id != projectId:
-            abort(404,("Feature not part of project"))
+            abort(404, "Feature not part of project")
         return fn(*args, **kwargs)
+    return wrapper
 
 def project_point_cloud_exists(fn):
     @wraps(fn)
@@ -75,7 +76,7 @@ def project_point_cloud_exists(fn):
         if not point_cloud:
             abort(404, "No point cloud found!")
         if point_cloud.project_id != projectId:
-            abort(404, ("Point cloud not part of project"))
+            abort(404, "Point cloud not part of project")
         return fn(*args, **kwargs)
 
     return wrapper
