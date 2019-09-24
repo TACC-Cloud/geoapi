@@ -42,13 +42,9 @@ class FeaturesService:
         'gpx',
     )
 
-    LIDAR_FILE_EXTENSIONS = (
-        'las', 'laz'
-    )
-
     ALLOWED_EXTENSIONS = IMAGE_FILE_EXTENSIONS + VIDEO_FILE_EXTENSIONS \
-                         + AUDIO_FILE_EXTENSIONS + LIDAR_FILE_EXTENSIONS \
-                         + GPX_FILE_EXTENSIONS + GEOJSON_FILE_EXTENSIONS
+                         + AUDIO_FILE_EXTENSIONS + GPX_FILE_EXTENSIONS \
+                         + GEOJSON_FILE_EXTENSIONS
 
     @staticmethod
     def get(featureId: int) -> Feature:
@@ -196,10 +192,6 @@ class FeaturesService:
             raise ApiException("Filetype not supported for direct upload. Create a feature and attach as an asset?")
 
     @staticmethod
-    def fromLidar(projectId: int, fileObj: IO, metadata: Dict) -> Feature:
-        pass
-
-    @staticmethod
     def fromImage(projectId: int, fileObj: IO, metadata: Dict) -> Feature:
         """
         Create a Point feature from a georeferenced image
@@ -215,8 +207,10 @@ class FeaturesService:
         f.the_geom = from_shape(point, srid=4326)
         f.properties = metadata
 
+        base_filepath = FeaturesService._makeAssetDir(projectId)
+
         asset_uuid = uuid.uuid4()
-        asset_path = os.path.join("/assets", str(projectId), str(asset_uuid)+".jpeg")
+        asset_path = os.path.join(base_filepath, str(asset_uuid)+".jpeg")
         fa = FeatureAsset(
             uuid=asset_uuid,
             asset_type="image",
@@ -224,8 +218,6 @@ class FeaturesService:
             feature=f,
         )
         f.assets.append(fa)
-        base_filepath = os.path.join(settings.ASSETS_BASE_DIR, str(projectId))
-        pathlib.Path(base_filepath).mkdir(parents=True, exist_ok=True)
         imdata.thumb.save(os.path.join(base_filepath, str(asset_uuid) + ".thumb.jpeg"), "JPEG")
         imdata.resized.save(os.path.join(base_filepath, str(asset_uuid) + '.jpeg'), "JPEG")
         db_session.add(f)
@@ -241,7 +233,6 @@ class FeaturesService:
         :param fileObj: file
         :return: FeatureAsset
         """
-        # TODO: Need to add surveys in here at some point
         fpath = pathlib.Path(fileObj.filename)
         ext = fpath.suffix.lstrip('.')
         if ext in FeaturesService.IMAGE_FILE_EXTENSIONS:
@@ -250,6 +241,7 @@ class FeaturesService:
             fa = FeaturesService.createVideoFeatureAsset(projectId, fileObj)
         else:
             raise ApiException("Invalid format for feature assets")
+
         feat = FeaturesService.get(featureId)
         feat.assets.append(fa)
         db_session.commit()
@@ -262,7 +254,7 @@ class FeaturesService:
         base_filepath = FeaturesService._makeAssetDir(projectId)
         imdata.thumb.save(os.path.join(base_filepath, str(asset_uuid) + ".thumb.jpeg"), "JPEG")
         imdata.resized.save(os.path.join(base_filepath, str(asset_uuid) + ".jpeg"), "JPEG")
-        asset_path = os.path.join("/assets", str(projectId), str(asset_uuid)+'.jpeg')
+        asset_path = os.path.join(base_filepath, str(asset_uuid)+'.jpeg')
         fa = FeatureAsset(
             uuid=asset_uuid,
             asset_type="image",
@@ -388,14 +380,3 @@ class FeaturesService:
         os.remove(os.path.join(settings.ASSETS_BASE_DIR, ov.path))
         db_session.remove(ov)
         db_session.commit()
-
-    @staticmethod
-    def addLidarData(projectID: int, fileObj: IO) -> None:
-        """
-        Add a las/laz file to a project. This is asynchronous. The dataset will be converted
-        to potree viewer format and processed to get the extent which will be shown on the map.
-        :param projectID: int
-        :param fileObj: file
-        :return: None
-        """
-        pass

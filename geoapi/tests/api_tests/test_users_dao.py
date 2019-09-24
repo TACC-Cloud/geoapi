@@ -1,4 +1,3 @@
-import pytest
 from geoapi.services.users import UserService
 from geoapi.services.projects import ProjectsService
 
@@ -15,6 +14,7 @@ def test_user_create(userdata):
     assert user.created is not None
     assert user.username == 'newUser'
     assert user.jwt == "testjwt"
+
 
 def test_projects_for_user(userdata):
     user = UserService.getUser("test1", "test")

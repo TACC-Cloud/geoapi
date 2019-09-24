@@ -62,7 +62,7 @@ services:
     tty: true
     container_name: geoapiworkers
     hostname: geoapiworkers
-    command: "celery -A celery_app worker -l info"
+    command: "celery -A geoapi.celery_app worker -l info"
 
   api:
     build:

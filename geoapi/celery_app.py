@@ -7,7 +7,9 @@ CELERY_CONNECTION_STRING = "amqp://{user}:{pwd}@{hostname}/{vhost}".format(
     hostname=settings.RABBITMQ_HOSTNAME,
     vhost=settings.RABBITMQ_VHOST
 )
-app = Celery('hello', broker=CELERY_CONNECTION_STRING)
+app = Celery('hello',
+             broker=CELERY_CONNECTION_STRING,
+             include='geoapi.tasks.lidar')
 
 
 @app.task

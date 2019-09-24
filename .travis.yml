@@ -17,11 +17,30 @@ jobs:
       - docker run -d --net=test -p 5432:5432 -e POSTGRES_DB=test -e POSTGRES_USER=dev -e POSTGRES_PASSWORD=dev --hostname=postgres --name=postgres mdillon/postgis
       - sleep 5
       script:
-      - docker run --net=test -e APP_ENV=testing taccaci/geoapi:latest pytest --cov=geoapi
+      - docker run --net=test -e APP_ENV=testing taccaci/geoapi:latest pytest --cov=geoapi -m "not worker"
       before_deploy:
          - echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
       deploy:
         provider: script
         script: docker push taccaci/geoapi:latest
+        on:
+          branch: master
+    - name: "geoapi-workers: unit tests / container"
+      before_script:
+      - docker pull taccaci/geoapi-workers:latest
+      - docker build --cache-from taccaci/geoapi-workers:latest -t taccaci/geoapi-workers:latest -f Dockerfile.potree .
+      - sudo mkdir /assets
+      - sudo service mysql stop
+      - sudo service postgresql stop
+      - docker network create -d bridge test
+      - docker run -d --net=test -p 5432:5432 -e POSTGRES_DB=test -e POSTGRES_USER=dev -e POSTGRES_PASSWORD=dev --hostname=postgres --name=postgres mdillon/postgis
+      - sleep 5
+      script:
+      - docker run --net=test -e APP_ENV=testing taccaci/geoapi-workers:latest pytest --cov=geoapi -m "worker"
+      before_deploy:
+         - echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
+      deploy:
+        provider: script
+        script: docker push taccaci/geoapi-workers:latest
         on:
           branch: master

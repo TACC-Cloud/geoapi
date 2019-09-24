@@ -8,7 +8,6 @@ from geoapi.log import logging
 from geoapi.services.features import FeaturesService
 from geoapi.services.images import ImageService
 from geoapi.services.videos import VideoService
-from geoapi.tasks.lidar import convert_to_potree
 from geoapi.db import db_session
 logger = logging.getLogger(__file__)
 

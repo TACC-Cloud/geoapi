@@ -22,7 +22,7 @@ under gunicorn on port 8000
 
 - Initialize the database
 
-`docker exec -it geoapi python geoapi/initdb.py`
+`docker exec -it geoapi python initdb.py`
 
 - Create a JWT
 
