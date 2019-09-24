@@ -11,17 +11,17 @@ from geoalchemy2.shape import from_shape, to_shape
 import geojson
 
 from geoapi.services.images import ImageService
-from geoapi.settings import settings
 from geoapi.models import Feature, FeatureAsset, Overlay
 from geoapi.db import db_session
 from geoapi.exceptions import InvalidGeoJSON, ApiException
+from geoapi.settings import settings
+from geoapi.utils.assets import make_asset_dir, get_asset_dir
 from geoapi.log import logging
 
 logger = logging.getLogger(__name__)
 
 
 class FeaturesService:
-
     GEOJSON_FILE_EXTENSIONS = (
         'json', 'geojson'
     )
@@ -55,7 +55,6 @@ class FeaturesService:
         """
         return db_session.query(Feature).get(featureId)
 
-
     @staticmethod
     def query(q: dict) -> List[Feature]:
         """
@@ -74,13 +73,10 @@ class FeaturesService:
         """
         # TODO: remove any assets tied to the feature also
         feat = db_session.query(Feature).get(featureId)
-        base_asset_path = os.path.join(settings.ASSETS_BASE_DIR, str(feat.project_id))
+        base_asset_path = get_asset_dir(feat.project_id)
         assets = db_session.query(FeatureAsset).filter(FeatureAsset.feature_id == featureId)
         for asset in assets:
             asset_path = os.path.join(base_asset_path, str(asset.uuid))
-
-
-
 
     @staticmethod
     def setProperties(featureId: int, props: Dict) -> Feature:
@@ -110,7 +106,6 @@ class FeaturesService:
         feat.styles = styles
         db_session.commit()
         return feat
-
 
     @staticmethod
     def addGeoJSON(projectId: int, feature: Dict) -> List[Feature]:
@@ -207,10 +202,10 @@ class FeaturesService:
         f.the_geom = from_shape(point, srid=4326)
         f.properties = metadata
 
-        base_filepath = FeaturesService._makeAssetDir(projectId)
+        base_filepath = make_asset_dir(projectId)
 
         asset_uuid = uuid.uuid4()
-        asset_path = os.path.join(base_filepath, str(asset_uuid)+".jpeg")
+        asset_path = os.path.join(base_filepath, str(asset_uuid) + ".jpeg")
         fa = FeatureAsset(
             uuid=asset_uuid,
             asset_type="image",
@@ -251,10 +246,10 @@ class FeaturesService:
     def createImageFeatureAsset(projectId: int, fileObj: IO) -> FeatureAsset:
         asset_uuid = uuid.uuid4()
         imdata = ImageService.resizeImage(fileObj)
-        base_filepath = FeaturesService._makeAssetDir(projectId)
+        base_filepath = make_asset_dir(projectId)
         imdata.thumb.save(os.path.join(base_filepath, str(asset_uuid) + ".thumb.jpeg"), "JPEG")
         imdata.resized.save(os.path.join(base_filepath, str(asset_uuid) + ".jpeg"), "JPEG")
-        asset_path = os.path.join(base_filepath, str(asset_uuid)+'.jpeg')
+        asset_path = os.path.join(base_filepath, str(asset_uuid) + '.jpeg')
         fa = FeatureAsset(
             uuid=asset_uuid,
             asset_type="image",
@@ -271,7 +266,7 @@ class FeaturesService:
         :return: FeatureAsset
         """
         asset_uuid = uuid.uuid4()
-        base_filepath = FeaturesService._makeAssetDir(projectId)
+        base_filepath = make_asset_dir(projectId)
         save_path = os.path.join(base_filepath, str(asset_uuid) + '.mp4')
         tmp_path = os.path.join('/tmp', str(asset_uuid))
         with open(tmp_path, 'wb') as tmp:
@@ -327,18 +322,6 @@ class FeaturesService:
         return clusters
 
     @staticmethod
-    def _makeAssetDir(projectId: int) -> str:
-        """
-        Creates a directory for assets in the ASSETS_BASE_DIR location
-        :param projectId: int
-        :return:
-        """
-        base_filepath = os.path.join(settings.ASSETS_BASE_DIR, str(projectId))
-        pathlib.Path(base_filepath).mkdir(parents=True, exist_ok=True)
-        return base_filepath
-
-
-    @staticmethod
     def addOverlay(projectId: int, fileObj: IO, bounds: List[float], label: str) -> Overlay:
         """
 
@@ -358,12 +341,12 @@ class FeaturesService:
         ov.maxLat = bounds[3]
         ov.project_id = projectId
         ov.uuid = uuid.uuid4()
-        base_filepath = FeaturesService._makeAssetDir(projectId)
+        base_filepath = make_asset_dir(projectId)
         asset_path = os.path.join("/", str(projectId), str(ov.uuid))
         ov.path = asset_path + '.jpeg'
         fpath = os.path.join(base_filepath, str(ov.uuid))
-        imdata.original.save(fpath+'.jpeg', 'JPEG')
-        imdata.thumb.save(fpath+'.thumb.jpeg', 'JPEG')
+        imdata.original.save(fpath + '.jpeg', 'JPEG')
+        imdata.thumb.save(fpath + '.thumb.jpeg', 'JPEG')
         db_session.add(ov)
         db_session.commit()
         return ov

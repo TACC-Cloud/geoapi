@@ -11,8 +11,7 @@ from geoapi.models import PointCloud, Project, User, Task
 from geoapi.db import db_session
 from geoapi.log import logging
 from geoapi.tasks.lidar import convert_to_potree
-# TODO move _makeAssetDir to utils
-from geoapi.services.features import FeaturesService
+from geoapi.utils.assets import make_asset_dir
 
 logger = logging.getLogger(__name__)
 
@@ -56,7 +55,7 @@ class PointCloudService:
         """
 
         point_cloud_uid = uuid.uuid4()
-        point_cloud_path = os.path.join(FeaturesService._makeAssetDir(projectId), str(point_cloud_uid))
+        point_cloud_path = os.path.join(make_asset_dir(projectId), str(point_cloud_uid))
         file_point_cloud_path = os.path.join(point_cloud_path, PointCloudService.ORIGINAL_FILES_DIR)
         pathlib.Path(file_point_cloud_path).mkdir(parents=True, exist_ok=True)
 
