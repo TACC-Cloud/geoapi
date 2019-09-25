@@ -1,4 +1,5 @@
 import os
+import glob
 import pathlib
 import uuid
 import json
@@ -71,12 +72,15 @@ class FeaturesService:
         :param featureId: int
         :return: None
         """
-        # TODO: remove any assets tied to the feature also
         feat = db_session.query(Feature).get(featureId)
         base_asset_path = get_asset_dir(feat.project_id)
         assets = db_session.query(FeatureAsset).filter(FeatureAsset.feature_id == featureId)
         for asset in assets:
-            asset_path = os.path.join(base_asset_path, str(asset.uuid))
+            for asset_file in glob.glob('{}/*{}*'.format(base_asset_path, asset.uuid)):
+                os.remove(asset_file)
+
+        db_session.delete(feat)
+        db_session.commit()
 
     @staticmethod
     def setProperties(featureId: int, props: Dict) -> Feature:
