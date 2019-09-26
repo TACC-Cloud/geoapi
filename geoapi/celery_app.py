@@ -1,5 +1,6 @@
 from celery import Celery
 from geoapi.settings import settings
+import geoapi.tasks.external_data
 
 CELERY_CONNECTION_STRING = "amqp://{user}:{pwd}@{hostname}/{vhost}".format(
     user=settings.RABBITMQ_USERNAME,
@@ -7,7 +8,7 @@ CELERY_CONNECTION_STRING = "amqp://{user}:{pwd}@{hostname}/{vhost}".format(
     hostname=settings.RABBITMQ_HOSTNAME,
     vhost=settings.RABBITMQ_VHOST
 )
-app = Celery('hello', broker=CELERY_CONNECTION_STRING)
+app = Celery('geoapi', broker=CELERY_CONNECTION_STRING)
 
 
 @app.task

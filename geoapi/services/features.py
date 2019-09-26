@@ -17,11 +17,12 @@ from geoapi.db import db_session
 from geoapi.exceptions import InvalidGeoJSON, ApiException
 from geoapi.log import logging
 
+import geoapi.tasks.external_data as data_tasks
+
 logger = logging.getLogger(__name__)
 
 
 class FeaturesService:
-
     GEOJSON_FILE_EXTENSIONS = (
         'json', 'geojson'
     )
@@ -59,7 +60,6 @@ class FeaturesService:
         """
         return db_session.query(Feature).get(featureId)
 
-
     @staticmethod
     def query(q: dict) -> List[Feature]:
         """
@@ -82,9 +82,6 @@ class FeaturesService:
         assets = db_session.query(FeatureAsset).filter(FeatureAsset.feature_id == featureId)
         for asset in assets:
             asset_path = os.path.join(base_asset_path, str(asset.uuid))
-
-
-
 
     @staticmethod
     def setProperties(featureId: int, props: Dict) -> Feature:
@@ -114,7 +111,6 @@ class FeaturesService:
         feat.styles = styles
         db_session.commit()
         return feat
-
 
     @staticmethod
     def addGeoJSON(projectId: int, feature: Dict) -> List[Feature]:
@@ -186,12 +182,14 @@ class FeaturesService:
         return FeaturesService.addGeoJSON(projectId, data)
 
     @staticmethod
-    def fromFileObj(projectId: int, fileObj: IO, metadata: Dict) -> Feature:
+    def fromFileObj(projectId: int, fileObj: IO, metadata: Dict) -> List[Feature]:
         ext = pathlib.Path(fileObj.filename).suffix.lstrip(".")
         if ext in FeaturesService.IMAGE_FILE_EXTENSIONS:
-            return FeaturesService.fromImage(projectId, fileObj, metadata)
+            return [FeaturesService.fromImage(projectId, fileObj, metadata)]
         elif ext in FeaturesService.GPX_FILE_EXTENSIONS:
-            return FeaturesService.fromGPX(projectId, fileObj, metadata)
+            return [FeaturesService.fromGPX(projectId, fileObj, metadata)]
+        elif ext in FeaturesService.GEOJSON_FILE_EXTENSIONS:
+            return FeaturesService.fromGeoJSON(projectId, fileObj, {})
         else:
             raise ApiException("Filetype not supported for direct upload. Create a feature and attach as an asset?")
 
@@ -216,7 +214,7 @@ class FeaturesService:
         f.properties = metadata
 
         asset_uuid = uuid.uuid4()
-        asset_path = os.path.join("/assets", str(projectId), str(asset_uuid)+".jpeg")
+        asset_path = os.path.join("/assets", str(projectId), str(asset_uuid) + ".jpeg")
         fa = FeatureAsset(
             uuid=asset_uuid,
             asset_type="image",
@@ -262,7 +260,7 @@ class FeaturesService:
         base_filepath = FeaturesService._makeAssetDir(projectId)
         imdata.thumb.save(os.path.join(base_filepath, str(asset_uuid) + ".thumb.jpeg"), "JPEG")
         imdata.resized.save(os.path.join(base_filepath, str(asset_uuid) + ".jpeg"), "JPEG")
-        asset_path = os.path.join("/assets", str(projectId), str(asset_uuid)+'.jpeg')
+        asset_path = os.path.join("/assets", str(projectId), str(asset_uuid) + '.jpeg')
         fa = FeatureAsset(
             uuid=asset_uuid,
             asset_type="image",
@@ -345,7 +343,6 @@ class FeaturesService:
         pathlib.Path(base_filepath).mkdir(parents=True, exist_ok=True)
         return base_filepath
 
-
     @staticmethod
     def addOverlay(projectId: int, fileObj: IO, bounds: List[float], label: str) -> Overlay:
         """
@@ -370,8 +367,8 @@ class FeaturesService:
         asset_path = os.path.join("/", str(projectId), str(ov.uuid))
         ov.path = asset_path + '.jpeg'
         fpath = os.path.join(base_filepath, str(ov.uuid))
-        imdata.original.save(fpath+'.jpeg', 'JPEG')
-        imdata.thumb.save(fpath+'.thumb.jpeg', 'JPEG')
+        imdata.original.save(fpath + '.jpeg', 'JPEG')
+        imdata.thumb.save(fpath + '.thumb.jpeg', 'JPEG')
         db_session.add(ov)
         db_session.commit()
         return ov
@@ -388,6 +385,17 @@ class FeaturesService:
         os.remove(os.path.join(settings.ASSETS_BASE_DIR, ov.path))
         db_session.remove(ov)
         db_session.commit()
+
+    @staticmethod
+    def importFromTapis(projectId: int, files: List[Dict], user):
+        for file in files:
+            logger.info(file)
+            data_tasks.import_file_from_agave.apply()
+        
+
+
+
+
 
     @staticmethod
     def addLidarData(projectID: int, fileObj: IO) -> None:

@@ -46,8 +46,6 @@ class AgaveFileListing:
         return None
 
 
-
-
 class AgaveUtils:
     BASE_URL = 'http://api.prod.tacc.cloud'
 
@@ -100,8 +98,15 @@ class AgaveUtils:
         """
         url = quote('/files/media/system/{}/{}'.format(systemId, path))
         struuid = str(uuid.uuid4())
-        with self.client.get(self.BASE_URL + url, stream=True) as r:
-            with open('/tmp/{}'.format(struuid), 'wb') as fd:
-                for chunk in r.iter_content(1024*1024):
-                    fd.write(chunk)
-        return struuid
+        try:
+            with self.client.get(self.BASE_URL + url, stream=True) as r:
+                if r.status_code > 400:
+                    raise ValueError("Could not fetch file: {}".format(r.status_code))
+                with open('/tmp/{}'.format(struuid), 'wb') as fd:
+                    for chunk in r.iter_content(1024*1024):
+                        fd.write(chunk)
+
+            return struuid
+        except Exception as e:
+            logger.error(e)
+            raise e
