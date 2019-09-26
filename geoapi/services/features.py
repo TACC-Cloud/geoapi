@@ -346,7 +346,7 @@ class FeaturesService:
         ov.project_id = projectId
         ov.uuid = uuid.uuid4()
         base_filepath = make_asset_dir(projectId)
-        asset_path = os.path.join("/", str(projectId), str(ov.uuid))
+        asset_path = os.path.join(str(projectId), str(ov.uuid))
         ov.path = asset_path + '.jpeg'
         fpath = os.path.join(base_filepath, str(ov.uuid))
         imdata.original.save(fpath + '.jpeg', 'JPEG')
@@ -363,7 +363,8 @@ class FeaturesService:
     @staticmethod
     def deleteOverlay(projectId: int, overlayId: int) -> None:
         ov = db_session.query(Overlay).get(overlayId)
-        # TODO: remove assets here too
-        os.remove(os.path.join(settings.ASSETS_BASE_DIR, ov.path))
-        db_session.remove(ov)
+        base_asset_path = get_asset_dir(projectId)
+        for asset_file in glob.glob('{}/*{}*'.format(base_asset_path, ov.uuid)):
+            os.remove(asset_file)
+        db_session.delete(ov)
         db_session.commit()
