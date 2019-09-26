@@ -1,5 +1,6 @@
 import os
 import pathlib
+import glob
 from geoapi.settings import settings
 
 def make_asset_dir(projectId: int) -> str:
@@ -19,3 +20,26 @@ def get_asset_dir(projectId: int) -> str:
     :return: string: asset directory
     """
     return os.path.join(settings.ASSETS_BASE_DIR, str(projectId))
+
+def get_asset_relative_path(path: str) -> str:
+    """
+    Get path which is relative to asset directory
+
+    If path is "/asset_dir/1/something.txt", then return
+    "1/something.txt"
+
+    :param path: str
+    :return: string: relative path
+    """
+    return os.path.relpath(path, start=settings.ASSETS_BASE_DIR)
+
+def delete_assets(projectId: int, uuid: str):
+    """
+    Delete project assets related to a single feature
+
+    :param projectId: int
+    :param uuid: str
+    :return:
+    """
+    for asset_file in glob.glob('{}/*{}*'.format(get_asset_dir(projectId), uuid)):
+        os.remove(asset_file)

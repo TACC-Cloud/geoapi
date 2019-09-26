@@ -33,7 +33,9 @@ def test_create_feature_image(dbsession, projects_fixture, image_file_fixture):
     assert len(feature.assets) == 1
     assert dbsession.query(Feature).count() == 1
     assert dbsession.query(FeatureAsset).count() == 1
-    assert len(glob.glob('{}/{}*.jpeg'.format(get_asset_dir(projects_fixture.id), feature.assets[0].uuid))) == 2
+    assert len(os.listdir(get_asset_dir(feature.project_id))) == 2
+    os.path.isfile(os.path.join(get_asset_dir(projects_fixture.id), str(feature.assets[0].uuid) + ".jpeg"))
+    os.path.isfile(os.path.join(get_asset_dir(projects_fixture.id), str(feature.assets[0].uuid) + ".thumb.jpeg"))
 
 def test_remove_feature_image(dbsession, projects_fixture, image_file_fixture):
     feature = FeaturesService.fromImage(projects_fixture.id, image_file_fixture, metadata={})
@@ -50,7 +52,9 @@ def test_create_feature_image_asset(dbsession, projects_fixture, feature_fixture
     assert feature.id == feature_fixture.id
     assert len(feature.assets) == 1
     assert dbsession.query(FeatureAsset).count() == 1
-    assert len(glob.glob('{}/{}*.jpeg'.format(get_asset_dir(projects_fixture.id), feature.assets[0].uuid))) == 2
+    assert len(os.listdir(get_asset_dir(feature.project_id))) == 2
+    os.path.isfile(os.path.join(get_asset_dir(projects_fixture.id), str(feature.assets[0].uuid) + ".jpeg"))
+    os.path.isfile(os.path.join(get_asset_dir(projects_fixture.id), str(feature.assets[0].uuid) + ".thumb.jpeg"))
 
 
 def test_remove_feature_image_asset(dbsession, projects_fixture, feature_fixture, image_file_fixture):
@@ -69,7 +73,8 @@ def test_create_feature_video_asset(dbsession, projects_fixture, feature_fixture
     assert feature.id == feature_fixture.id
     assert len(feature.assets) == 1
     assert dbsession.query(FeatureAsset).count() == 1
-    assert len(glob.glob('{}/{}*.mp4'.format(get_asset_dir(projects_fixture.id), feature.assets[0].uuid))) == 1
+    assert len(os.listdir(get_asset_dir(feature.project_id))) == 1
+    os.path.isfile(os.path.join(get_asset_dir(projects_fixture.id), str(feature.assets[0].uuid) + ".mp4"))
 
 
 def test_remove_feature_video_asset(dbsession, projects_fixture, feature_fixture, video_file_fixture):
