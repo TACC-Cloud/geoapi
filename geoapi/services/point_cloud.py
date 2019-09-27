@@ -97,7 +97,7 @@ class PointCloudService:
             raise ApiException("File type not supported.")
 
         point_cloud = PointCloudService.get(pointCloudId)
-        file_path = os.path.join(point_cloud.path, PointCloudService.ORIGINAL_FILES_DIR, fileObj.filename)
+        file_path = os.path.join(point_cloud.path, PointCloudService.ORIGINAL_FILES_DIR, os.path.basename(fileObj.filename))
 
         with open(file_path, 'wb') as f:
             f.write(fileObj.read())
