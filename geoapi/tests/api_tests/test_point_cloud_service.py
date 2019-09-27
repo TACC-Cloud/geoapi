@@ -1,5 +1,5 @@
 import pytest
-
+import os
 from werkzeug.datastructures import FileStorage
 
 from geoapi.services.point_cloud import PointCloudService
@@ -28,6 +28,13 @@ def test_add_point_cloud_file(dbsession, projects_fixture, point_cloud_fixture, 
     assert task.status == "RUNNING"
     assert point_cloud_fixture.task_id == task.id
 
+    # load updated point cloud
+    point_cloud = dbsession.query(PointCloud).get(1)
+    las_files = os.listdir(os.path.join(point_cloud.path,
+                                       PointCloudService.ORIGINAL_FILES_DIR))
+    assert len(las_files) == 1
+    assert las_files[0] == os.path.basename(lidar_las1pt2_file_fixture.name)
+
     # run conversion tool (that we had mocked)
     _, convert_kwargs  = convert_to_potree_mock.apply_async.call_args
     assert projects_fixture.id == convert_kwargs['args'][0]
@@ -39,3 +46,4 @@ def test_add_point_cloud_file(dbsession, projects_fixture, point_cloud_fixture, 
     assert point_cloud.task.status == "FINISHED"
     assert dbsession.query(Feature).count() == 1
     assert dbsession.query(FeatureAsset).count() == 1
+    assert os.path.exists(os.path.join(point_cloud.path, PointCloudService.PROCESSED_DIR))
