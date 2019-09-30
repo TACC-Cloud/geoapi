@@ -47,6 +47,7 @@ def convert_to_potree(self, pointCloudId: int) -> None:
 
     command = [
         "PotreeConverter",
+        "--verbose",
         "-i",
         point_cloud_path,
         "-o",
