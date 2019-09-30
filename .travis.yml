@@ -29,9 +29,6 @@ jobs:
       before_script:
       - docker pull taccaci/geoapi-workers:latest
       - docker build --cache-from taccaci/geoapi-workers:latest -t taccaci/geoapi-workers:latest -f Dockerfile.potree .
-      - docker tag taccaci/geoapi-workers:latest taccaci/geoapi-workers:ci
-      - echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
-      - docker push taccaci/geoapi-workers:ci
       - sudo mkdir /assets
       - sudo service mysql stop
       - sudo service postgresql stop
