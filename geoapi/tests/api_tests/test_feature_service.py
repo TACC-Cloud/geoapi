@@ -1,11 +1,11 @@
 import os
-import glob
 
 from werkzeug.datastructures import FileStorage
 
 from geoapi.services.features import FeaturesService
 from geoapi.models import Feature, FeatureAsset
 from geoapi.utils.assets import get_asset_dir
+
 
 def test_insert_feature_geojson(dbsession, projects_fixture, feature_properties_file_fixture):
     features = FeaturesService.fromGeoJSON(projects_fixture.id, feature_properties_file_fixture, metadata={})

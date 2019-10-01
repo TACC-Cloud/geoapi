@@ -1,6 +1,7 @@
 import os
 import pathlib
 import glob
+import shutil
 from geoapi.settings import settings
 
 def make_asset_dir(projectId: int) -> str:
@@ -13,13 +14,17 @@ def make_asset_dir(projectId: int) -> str:
     pathlib.Path(base_filepath).mkdir(parents=True, exist_ok=True)
     return base_filepath
 
-def get_asset_dir(projectId: int) -> str:
+def get_asset_dir(projectId: int, *paths) -> str:
     """
     Get project's asset directory
     :param projectId: int
+    :param paths: str
     :return: string: asset directory
     """
-    return os.path.join(settings.ASSETS_BASE_DIR, str(projectId))
+    if paths:
+        return os.path.join(settings.ASSETS_BASE_DIR, str(projectId), *paths)
+    else:
+        return os.path.join(settings.ASSETS_BASE_DIR, str(projectId))
 
 def get_asset_relative_path(path: str) -> str:
     """
@@ -42,4 +47,7 @@ def delete_assets(projectId: int, uuid: str):
     :return:
     """
     for asset_file in glob.glob('{}/*{}*'.format(get_asset_dir(projectId), uuid)):
-        os.remove(asset_file)
+        if os.path.isfile(asset_file):
+            os.remove(asset_file)
+        else:
+            shutil.rmtree(asset_file)

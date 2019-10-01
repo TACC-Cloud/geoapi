@@ -12,7 +12,7 @@ from geoapi.models import PointCloud, Project, User, Task
 from geoapi.db import db_session
 from geoapi.log import logging
 from geoapi.tasks.lidar import convert_to_potree
-from geoapi.utils.assets import make_asset_dir
+from geoapi.utils.assets import make_asset_dir, delete_assets, get_asset_relative_path, get_asset_dir
 
 logger = logging.getLogger(__name__)
 
@@ -64,7 +64,7 @@ class PointCloudService:
         point_cloud.project_id = projectId
         point_cloud.tenant_id = user.tenant_id
         point_cloud.uuid = point_cloud_uid
-        point_cloud.path = point_cloud_path
+        point_cloud.path = get_asset_relative_path(point_cloud_path)
 
         db_session.add(point_cloud)
         db_session.commit()
@@ -73,11 +73,14 @@ class PointCloudService:
     @staticmethod
     def delete(pointCloudId: int) -> None:
         """
-        Delete a PointCloud and any assets tied to it.
+        Delete a PointCloud
         :param pointCloudId: int
         :return: None
         """
-        pass
+        point_cloud = db_session.query(PointCloud).get(pointCloudId)
+        delete_assets(projectId=point_cloud.project_id, uuid=point_cloud.uuid)
+        db_session.delete(point_cloud)
+        db_session.commit()
 
     @staticmethod
     def fromFileObj(pointCloudId: int, fileObj: IO, metadata: Dict):
@@ -96,7 +99,9 @@ class PointCloudService:
             raise ApiException("File type not supported.")
 
         point_cloud = PointCloudService.get(pointCloudId)
-        file_path = os.path.join(point_cloud.path, PointCloudService.ORIGINAL_FILES_DIR, os.path.basename(fileObj.filename))
+        file_path = get_asset_dir(point_cloud.path,
+                                  PointCloudService.ORIGINAL_FILES_DIR,
+                                  os.path.basename(fileObj.filename))
 
         with open(file_path, 'wb') as f:
             f.write(fileObj.read())

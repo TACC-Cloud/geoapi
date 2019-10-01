@@ -8,7 +8,7 @@ from typing import List, IO, Dict
 from geoapi.services.videos import VideoService
 from shapely.geometry import Point, shape
 import fiona
-from geoalchemy2.shape import from_shape, to_shape
+from geoalchemy2.shape import from_shape
 import geojson
 
 from geoapi.services.images import ImageService
