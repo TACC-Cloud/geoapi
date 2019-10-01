@@ -14,5 +14,9 @@ agavepy
 fiona
 celery
 coverage
+pytest-cov
 requests
 ffmpeg-python
+laspy
+pyproj
+regex

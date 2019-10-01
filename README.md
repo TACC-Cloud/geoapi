@@ -1,5 +1,7 @@
 # GeoAPI and Viewer
 
+[![Build Status](https://travis-ci.org/TACC-Cloud/geoapi.svg?branch=master)](https://travis-ci.org/TACC-Cloud/geoapi)
+
 ## Overview and Architecture
 
 GeoAPI is a restful API to create geospatial features in a PostGIS database. Users create a map "project" then
@@ -20,7 +22,7 @@ under gunicorn on port 8000
 
 - Initialize the database
 
-`docker exec -it geoapi python geoapi/initdb.py`
+`docker exec -it geoapi python initdb.py`
 
 - Create a JWT
 

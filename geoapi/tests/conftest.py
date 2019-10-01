@@ -1,14 +1,19 @@
 import pytest
 import os
 import json
-from geoalchemy2.shape import from_shape
+import tempfile
+from unittest.mock import patch
+
+import laspy
 
 from sqlalchemy import create_engine
 from geoapi.settings import settings
 from geoapi.db import Base, db_session
 from geoapi.models.users import User
 from geoapi.models.project import Project
+from geoapi.models.point_cloud import PointCloud
 from geoapi.models.feature import Feature
+from geoapi.services.point_cloud import PointCloudService
 from geoapi.app import app
 
 
@@ -18,7 +23,10 @@ user2JWT="eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJ3c28yLm9yZy9wcm9kdWN0c
 
 @pytest.fixture(scope="session")
 def test_client():
+    # Disable propagating of exceptions (which is enabled by default in testing/debug)
+    app.config['PROPAGATE_EXCEPTIONS'] = False
     client = app.test_client()
+
     yield client
 
 
@@ -69,6 +77,12 @@ def projects_fixture(dbsession):
     dbsession.commit()
 
 @pytest.fixture(scope="function")
+def point_cloud_fixture(dbsession):
+    u1 = dbsession.query(User).get(1)
+    data = {"description": "description"}
+    point_cloud = PointCloudService.create(projectId=1, data=data, user=u1)
+
+@pytest.fixture(scope="function")
 def gpx_file_fixture():
     home = os.path.dirname(__file__)
     with open(os.path.join(home, 'fixtures/run.gpx'), 'rb') as f:
@@ -94,6 +108,37 @@ def geojson_file_fixture():
         yield f
 
 
+@pytest.fixture()
+def lidar_las1pt2_file_path_fixture():
+    home = os.path.dirname(__file__)
+    return os.path.join(home, 'fixtures/lidar_subset_las1pt2.laz')
+
+
+@pytest.fixture()
+def lidar_las1pt4_file_path_fixture():
+    home = os.path.dirname(__file__)
+    return os.path.join(home, 'fixtures/lidar_subset_las1pt4.laz')
+
+
+@pytest.fixture(scope="function")
+def lidar_las1pt2_file_fixture(lidar_las1pt2_file_path_fixture):
+    with open(lidar_las1pt2_file_path_fixture, 'rb') as f:
+        yield f
+
+
+@pytest.fixture(scope="function")
+def empty_las_file_fixture(lidar_las1pt2_file_path_fixture):
+    with tempfile.TemporaryDirectory() as temp_dir:
+        empty_las_file_path = os.path.join(temp_dir, "empty.las")
+
+        header = laspy.header.Header()
+        outfile = laspy.file.File(empty_las_file_path, mode="w", header=header)
+        outfile.close()
+
+        with open(empty_las_file_path, 'rb') as f:
+            yield f
+
+
 @pytest.fixture(scope="function")
 def feature_properties_file_fixture():
     home = os.path.dirname(__file__)
@@ -111,3 +156,10 @@ def feature_fixture(dbsession):
         dbsession.commit()
 
 
+@pytest.fixture(scope="function")
+def convert_to_potree_mock():
+    with patch('geoapi.services.point_cloud.convert_to_potree') as mock_convert_to_potree:
+        class FakeAsyncResult:
+            id = "b53fdb0a-de1a-11e9-b641-0242c0a80004"
+        mock_convert_to_potree.apply_async.return_value = FakeAsyncResult()
+        yield mock_convert_to_potree

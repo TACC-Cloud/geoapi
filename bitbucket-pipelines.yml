@@ -2,14 +2,14 @@ pipelines:
   default:
     - parallel:
       - step:
-          image: python:3.7
           caches:
-            - pip
+            - docker
           services:
             - postgres
+            - docker
           script:
-            - pip install -r requirements.txt
-            - APP_ENV=testing pytest
+            - docker build -t geoapi_api:latest .
+            - docker run --rm --add-host="host.docker.internal:$BITBUCKET_DOCKER_HOST_INTERNAL" -e APP_ENV=testing -e DB_HOST=host.docker.internal -v $(pwd):/test_dir -w /test_dir geoapi_api:latest pytest geoapi
 definitions:
   services:
     postgres:

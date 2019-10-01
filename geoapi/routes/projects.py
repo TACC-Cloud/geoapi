@@ -6,8 +6,10 @@ from geoapi.log import logging
 from geoapi.schemas import FeatureSchema
 from geoapi.services.features import FeaturesService
 from geoapi.services.projects import ProjectsService
-from geoapi.utils.decorators import jwt_decoder, project_permissions, project_feature_exists
-import geoapi.tasks.external_data as external_data
+
+from geoapi.services.point_cloud import PointCloudService
+from geoapi.utils.decorators import jwt_decoder, project_permissions, project_feature_exists, project_point_cloud_exists
+from tasks import external_data
 
 logger = logging.getLogger(__name__)
 
@@ -47,19 +49,34 @@ feature_collection_model = api.model('FeatureCollection', {
     "features": fields.Nested(api_feature)
 })
 
-
 project = api.model('Project', {
     'id': fields.Integer(),
     'name': fields.String(required=True),
     'description': fields.String(required=False),
     'uuid': fields.String(),
 })
+
 user = api.model('User', {
     'id': fields.Integer(),
     'username': fields.String(required=True)
 })
 
 
+point_cloud = api.model('PointCloud', {
+    'id': fields.Integer(),
+    'description': fields.String(required=False),
+    'conversion_parameters': fields.String(required=False),
+    'feature_id': fields.Integer(),
+    'task_id' : fields.Integer()
+})
+
+task = api.model('Task', {
+    'id': fields.Integer(),
+    'status': fields.String(),
+    'description': fields.String(required=False),
+    'created': fields.DateTime(dt_format='rfc822'),
+    'updated': fields.DateTime(dt_format='rfc822')
+})
 
 rapid_project_body = api.model("RapidProject", {
     "system_id": fields.String(),
@@ -288,7 +305,7 @@ class ProjectFeaturesClustersResource(Resource):
     @api.doc(id="clusterFeatures",
              description='K-Means cluster the features in a project. This returns a FeatureCollection '
                          'of the centroids with the additional property of "count" representing the number of '
-                         'Features that were aggregated into each cluster' )
+                         'Features that were aggregated into each cluster')
     @api.marshal_with(feature_collection_model)
     @project_permissions
     def get(self, projectId: int, numClusters: int):
@@ -354,3 +371,49 @@ class ProjectOverlayResource(Resource):
     def delete(self, projectId: int, overlayId: int) -> str:
         FeaturesService.deleteOverlay(projectId, overlayId)
         return "Overlay {id} deleted".format(id=overlayId)
+
+
+@api.route('/<int:projectId>/point-cloud/')
+class ProjectPointCloudsResource(Resource):
+
+    @api.doc(id="getAllPointClouds",
+             description="Get a listing of all the points clouds of a project")
+    @api.marshal_with(point_cloud)
+    @project_permissions
+    def get(self, projectId: int):
+        return PointCloudService.list(projectId)
+
+    @api.doc(id="addPointCloud",
+             description="Add a point cloud to a project")
+    @api.marshal_with(point_cloud)
+    @api.expect(point_cloud)
+    @project_permissions
+    def post(self, projectId: int):
+        return PointCloudService.create(projectId=projectId,
+                                        user=request.current_user,
+                                        data=request.json)
+
+
+@api.route('/<int:projectId>/point-cloud/<int:pointCloudId>/')
+class ProjectPointCloudResource(Resource):
+
+    @api.doc(id="getPointCloud",
+             description="Get point cloud of a project")
+    @api.marshal_with(point_cloud)
+    @project_permissions
+    def get(self, projectId: int, pointCloudId: int):
+        return PointCloudService.get(projectId, pointCloudId)
+
+    @api.doc(id="uploadPointCloud",
+             description='Add a file to a point cloud. Current allowed file types are las and laz. Any additional '
+                         'key/value pairs in the form will also be placed in the feature metadata')
+    @api.expect(file_upload_parser)
+    @api.marshal_with(task)
+    @project_permissions
+    @project_point_cloud_exists
+    def post(self, projectId: int, pointCloudId: int):
+        file = request.files['file']
+        formData = request.form
+        metadata = formData.to_dict()
+        task = PointCloudService.fromFileObj(pointCloudId, file, metadata)
+        return task
