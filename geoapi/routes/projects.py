@@ -402,7 +402,7 @@ class ProjectPointCloudResource(Resource):
     @api.marshal_with(point_cloud)
     @project_permissions
     def get(self, projectId: int, pointCloudId: int):
-        return PointCloudService.get(projectId, pointCloudId)
+        return PointCloudService.get(pointCloudId)
 
     @api.doc(id="uploadPointCloud",
              description='Add a file to a point cloud. Current allowed file types are las and laz. Any additional '
