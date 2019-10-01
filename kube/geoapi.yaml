@@ -399,6 +399,21 @@ spec:
             secretRef:
               name: ceph-secret
 ---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: geoapi-migrations
+spec:
+  parallelism: 1
+  backoffLimit: 5
+  activeDeadlineSeconds: 100
+  template:
+    spec:
+      containers:
+      - name: geoapi
+        image: taccaci/geoapi:latest
+        command: ["alembic", "upgrade", "head"]
+      restartPolicy: Never
 #apiVersion: extensions/v1beta1
 #kind: Ingress
 #metadata:
