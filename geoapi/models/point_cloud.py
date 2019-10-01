@@ -1,6 +1,6 @@
 from sqlalchemy import (
     Column, Integer, String,
-    ForeignKey, Boolean, Index, DateTime
+    ForeignKey, DateTime
 )
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
@@ -14,7 +14,7 @@ class PointCloud(Base):
 
     id = Column(Integer, primary_key=True)
     uuid = Column(UUID(as_uuid=True), default=uuid.uuid4, nullable=False)
-    feature_id = Column(ForeignKey('features.id', ondelete="CASCADE", onupdate="CASCADE"), index=True)
+    feature_id = Column(ForeignKey('features.id', ondelete="SET NULL", onupdate="CASCADE"), index=True)
     project_id = Column(ForeignKey('projects.id', ondelete="CASCADE", onupdate="CASCADE"), index=True)
     task_id = Column(ForeignKey('tasks.id'), index=True)
     description = Column(String)
@@ -24,7 +24,7 @@ class PointCloud(Base):
     created = Column(DateTime(timezone=True), server_default=func.now())
     updated = Column(DateTime(timezone=True), onupdate=func.now())
     project = relationship("Project")
-    feature = relationship("Feature", cascade="all", lazy="joined")
+    feature = relationship("Feature", lazy="joined")
     task = relationship("Task", lazy="joined")
 
     def __repr__(self):

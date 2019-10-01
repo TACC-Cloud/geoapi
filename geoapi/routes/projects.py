@@ -374,3 +374,15 @@ class ProjectPointCloudResource(Resource):
         metadata = formData.to_dict()
         task = PointCloudService.fromFileObj(pointCloudId, file, metadata)
         return task
+
+@api.route('/<int:projectId>/tasks/')
+class ProjectTasksResource(Resource):
+
+    @api.doc(id="getTasks",
+             description="Get a listing of all the tasks of a project")
+    @api.marshal_with(task)
+    @project_permissions
+    def get(self, projectId: int):
+        from geoapi.models import Task
+        from geoapi.db import db_session
+        return db_session.query(Task).all()
