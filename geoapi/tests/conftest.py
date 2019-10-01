@@ -75,12 +75,14 @@ def projects_fixture(dbsession):
     proj.tenant_id = u1.tenant_id
     dbsession.add(proj)
     dbsession.commit()
+    yield proj
 
 @pytest.fixture(scope="function")
 def point_cloud_fixture(dbsession):
     u1 = dbsession.query(User).get(1)
     data = {"description": "description"}
     point_cloud = PointCloudService.create(projectId=1, data=data, user=u1)
+    yield point_cloud
 
 @pytest.fixture(scope="function")
 def gpx_file_fixture():
