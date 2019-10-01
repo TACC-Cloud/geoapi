@@ -78,3 +78,9 @@ def test_upload_lidar(test_client, dbsession, projects_fixture, point_cloud_fixt
     )
     assert resp.status_code == 200
     convert_to_potree_mock.apply_async.assert_called_once()
+
+
+def test_get_point_cloud(test_client, dbsession, projects_fixture, point_cloud_fixture):
+    u1 = dbsession.query(User).get(1)
+    resp = test_client.get('/projects/1/point-cloud/1/', headers={'x-jwt-assertion-test': u1.jwt})
+    assert resp.status_code == 200

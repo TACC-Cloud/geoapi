@@ -47,6 +47,7 @@ def convert_to_potree(self, pointCloudId: int) -> None:
 
     command = [
         "PotreeConverter",
+        "--verbose",
         "-i",
         point_cloud_path,
         "-o",
@@ -55,7 +56,8 @@ def convert_to_potree(self, pointCloudId: int) -> None:
         "--generate-page",
         "index"
     ]
-    command.extend(point_cloud.conversion_parameters.split())
+    if point_cloud.conversion_parameters:
+        command.extend(point_cloud.conversion_parameters.split())
     logger.info("Processing point cloud (#{}):  {}".format(pointCloudId, " ".join(command)))
     subprocess.run(command, check=True, capture_output=True, text=True)
 

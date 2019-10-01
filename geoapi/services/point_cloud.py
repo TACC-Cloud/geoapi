@@ -4,6 +4,7 @@ import uuid
 from typing import List, IO, Dict
 
 from celery.task.control import revoke
+from celery import uuid as celery_uuid
 
 from geoapi.exceptions import ApiException
 
@@ -86,7 +87,6 @@ class PointCloudService:
         When lidar file has been processed, a feature will be created with updated with feature
         asset.
 
-        :param projectId: int
         :param pointCloudId: int
         :param fileObj: file
         :return: processingTask: Task
@@ -96,7 +96,7 @@ class PointCloudService:
             raise ApiException("File type not supported.")
 
         point_cloud = PointCloudService.get(pointCloudId)
-        file_path = os.path.join(point_cloud.path, PointCloudService.ORIGINAL_FILES_DIR, fileObj.filename)
+        file_path = os.path.join(point_cloud.path, PointCloudService.ORIGINAL_FILES_DIR, os.path.basename(fileObj.filename))
 
         with open(file_path, 'wb') as f:
             f.write(fileObj.read())
@@ -112,14 +112,10 @@ class PointCloudService:
             db_session.add(point_cloud.task)
             db_session.commit()
 
-        # Process asynchronously lidar file and add a feature asset
-        task_async_result = convert_to_potree.apply_async(args=[pointCloudId])
-        logger.info("Starting potree processing task ({}) for point cloud (#{}).".format(
-            task_async_result.id, pointCloudId))
-
+        celery_task_id = celery_uuid()
         task = Task()
         task.status = "RUNNING"
-        task.process_id = task_async_result.id
+        task.process_id = celery_task_id
         task.description = "Processing point cloud #{}".format(pointCloudId)
 
         point_cloud.task = task
@@ -127,5 +123,11 @@ class PointCloudService:
         db_session.add(task)
         db_session.add(point_cloud)
         db_session.commit()
+
+        # Process asynchronously lidar file and add a feature asset
+
+        convert_to_potree.apply_async(args=[pointCloudId], task_id=celery_task_id)
+        logger.info("Starting potree processing task (#{}:  '{}') for point cloud (#{}).".format(
+            task.id, celery_task_id, pointCloudId))
 
         return task
