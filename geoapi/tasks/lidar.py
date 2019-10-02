@@ -11,7 +11,7 @@ from geoapi.utils.lidar import Lidar
 from geoapi.celery_app import app
 from geoapi.db import db_session
 from geoapi.models import Task
-from geoapi.utils.assets import make_project_asset_dir, get_asset_path
+from geoapi.utils.assets import make_project_asset_dir, get_asset_path, get_asset_relative_path
 
 logger = logging.getLogger(__file__)
 
@@ -73,7 +73,7 @@ def convert_to_potree(self, pointCloudId: int) -> None:
         fa = FeatureAsset(
             uuid=asset_uuid,
             asset_type="point_cloud",
-            path=asset_path,
+            path=get_asset_relative_path(asset_path),
             feature=feature
         )
         feature.assets.append(fa)
@@ -84,8 +84,9 @@ def convert_to_potree(self, pointCloudId: int) -> None:
     feature.the_geom = from_shape(outline, srid=4326)
     point_cloud.task.status = "FINISHED"
 
-    shutil.rmtree(feature.assets[0].path, ignore_errors=True)
-    shutil.move(path_temp_processed_point_cloud_path, feature.assets[0].path)
+    point_cloud_asset_path = get_asset_path(feature.assets[0].path)
+    shutil.rmtree(point_cloud_asset_path, ignore_errors=True)
+    shutil.move(path_temp_processed_point_cloud_path, point_cloud_asset_path)
 
     db_session.add(point_cloud)
     db_session.add(feature)

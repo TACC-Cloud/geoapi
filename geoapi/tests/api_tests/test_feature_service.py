@@ -4,7 +4,7 @@ from werkzeug.datastructures import FileStorage
 
 from geoapi.services.features import FeaturesService
 from geoapi.models import Feature, FeatureAsset
-from geoapi.utils.assets import get_project_asset_dir
+from geoapi.utils.assets import get_project_asset_dir, get_asset_path
 
 
 def test_insert_feature_geojson(dbsession, projects_fixture, feature_properties_file_fixture):
@@ -34,7 +34,7 @@ def test_create_feature_image(dbsession, projects_fixture, image_file_fixture):
     assert dbsession.query(Feature).count() == 1
     assert dbsession.query(FeatureAsset).count() == 1
     assert len(os.listdir(get_project_asset_dir(feature.project_id))) == 2
-    os.path.isfile(os.path.join(get_project_asset_dir(projects_fixture.id), str(feature.assets[0].uuid) + ".jpeg"))
+    os.path.isfile(get_asset_path(feature.assets[0].path))
     os.path.isfile(os.path.join(get_project_asset_dir(projects_fixture.id), str(feature.assets[0].uuid) + ".thumb.jpeg"))
 
 def test_remove_feature_image(dbsession, projects_fixture, image_file_fixture):
@@ -53,7 +53,7 @@ def test_create_feature_image_asset(dbsession, projects_fixture, feature_fixture
     assert len(feature.assets) == 1
     assert dbsession.query(FeatureAsset).count() == 1
     assert len(os.listdir(get_project_asset_dir(feature.project_id))) == 2
-    os.path.isfile(os.path.join(get_project_asset_dir(projects_fixture.id), str(feature.assets[0].uuid) + ".jpeg"))
+    os.path.isfile(get_asset_path(feature.assets[0].path))
     os.path.isfile(os.path.join(get_project_asset_dir(projects_fixture.id), str(feature.assets[0].uuid) + ".thumb.jpeg"))
 
 
@@ -74,6 +74,7 @@ def test_create_feature_video_asset(dbsession, projects_fixture, feature_fixture
     assert len(feature.assets) == 1
     assert dbsession.query(FeatureAsset).count() == 1
     assert len(os.listdir(get_project_asset_dir(feature.project_id))) == 1
+    os.path.isfile(get_asset_path(feature.assets[0].path))
     os.path.isfile(os.path.join(get_project_asset_dir(projects_fixture.id), str(feature.assets[0].uuid) + ".mp4"))
 
 

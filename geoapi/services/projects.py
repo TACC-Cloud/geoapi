@@ -42,7 +42,6 @@ class ProjectsService:
         systemId = data["system_id"]
         path = data["path"]
 
-
         # TODO: Handle no storage system found
         system = AgaveUtils(user.jwt).systemsGet(systemId)
         proj = Project(

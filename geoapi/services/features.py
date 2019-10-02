@@ -209,7 +209,7 @@ class FeaturesService:
         fa = FeatureAsset(
             uuid=asset_uuid,
             asset_type="image",
-            path=asset_path,
+            path=get_asset_relative_path(asset_path),
             feature=f,
         )
         f.assets.append(fa)
