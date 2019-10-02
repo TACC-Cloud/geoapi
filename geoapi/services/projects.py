@@ -6,7 +6,7 @@ from geoapi.db import db_session
 from sqlalchemy.sql import select, func, text, and_
 from sqlalchemy.exc import IntegrityError
 from geoapi.utils.agave import AgaveUtils
-from geoapi.utils.assets import get_asset_dir
+from geoapi.utils.assets import get_project_asset_dir
 
 
 class ProjectsService:
@@ -173,7 +173,7 @@ class ProjectsService:
         proj = db_session.query(Project).get(projectId)
         db_session.delete(proj)
         db_session.commit()
-        assets_folder = get_asset_dir(projectId)
+        assets_folder = get_project_asset_dir(projectId)
         try:
             shutil.rmtree(assets_folder)
         except FileNotFoundError:

@@ -4,9 +4,9 @@ import glob
 import shutil
 from geoapi.settings import settings
 
-def make_asset_dir(projectId: int) -> str:
+def make_project_asset_dir(projectId: int) -> str:
     """
-    Creates a directory for assets in the ASSETS_BASE_DIR location
+    Creates a directory for a projects' assets in the ASSETS_BASE_DIR location
     :param projectId: int
     :return:
     """
@@ -14,17 +14,22 @@ def make_asset_dir(projectId: int) -> str:
     pathlib.Path(base_filepath).mkdir(parents=True, exist_ok=True)
     return base_filepath
 
-def get_asset_dir(projectId: int, *paths) -> str:
+def get_project_asset_dir(projectId: int) -> str:
     """
     Get project's asset directory
     :param projectId: int
-    :param paths: str
     :return: string: asset directory
     """
-    if paths:
-        return os.path.join(settings.ASSETS_BASE_DIR, str(projectId), *paths)
-    else:
-        return os.path.join(settings.ASSETS_BASE_DIR, str(projectId))
+    return os.path.join(settings.ASSETS_BASE_DIR, str(projectId))
+
+def get_asset_path(*relative_paths) -> str:
+    """
+    Join asset directory with relative paths
+    :param relative_paths: str
+    :return: string: abosulte path to asset
+    """
+    return os.path.join(settings.ASSETS_BASE_DIR, *relative_paths)
+
 
 def get_asset_relative_path(path: str) -> str:
     """
@@ -46,7 +51,7 @@ def delete_assets(projectId: int, uuid: str):
     :param uuid: str
     :return:
     """
-    for asset_file in glob.glob('{}/*{}*'.format(get_asset_dir(projectId), uuid)):
+    for asset_file in glob.glob('{}/*{}*'.format(get_project_asset_dir(projectId), uuid)):
         if os.path.isfile(asset_file):
             os.remove(asset_file)
         else:

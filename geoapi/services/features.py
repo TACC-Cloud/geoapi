@@ -15,7 +15,7 @@ from geoapi.services.images import ImageService
 from geoapi.models import Feature, FeatureAsset, Overlay
 from geoapi.db import db_session
 from geoapi.exceptions import InvalidGeoJSON, ApiException
-from geoapi.utils.assets import make_asset_dir, delete_assets, get_asset_relative_path
+from geoapi.utils.assets import make_project_asset_dir, delete_assets, get_asset_relative_path
 from geoapi.log import logging
 
 logger = logging.getLogger(__name__)
@@ -203,7 +203,7 @@ class FeaturesService:
         f.properties = metadata
 
         asset_uuid = uuid.uuid4()
-        base_filepath = make_asset_dir(projectId)
+        base_filepath = make_project_asset_dir(projectId)
         asset_path = os.path.join(base_filepath, str(asset_uuid) + '.jpeg')
 
         fa = FeatureAsset(
@@ -246,7 +246,7 @@ class FeaturesService:
     def createImageFeatureAsset(projectId: int, fileObj: IO) -> FeatureAsset:
         asset_uuid = uuid.uuid4()
         imdata = ImageService.resizeImage(fileObj)
-        base_filepath = make_asset_dir(projectId)
+        base_filepath = make_project_asset_dir(projectId)
         asset_path = os.path.join(base_filepath, str(asset_uuid) + '.jpeg')
         imdata.thumb.save(pathlib.Path(asset_path).with_suffix(".thumb.jpeg"), "JPEG")
         imdata.resized.save(asset_path, "JPEG")
@@ -266,7 +266,7 @@ class FeaturesService:
         :return: FeatureAsset
         """
         asset_uuid = uuid.uuid4()
-        base_filepath = make_asset_dir(projectId)
+        base_filepath = make_project_asset_dir(projectId)
         save_path = os.path.join(base_filepath, str(asset_uuid) + '.mp4')
         with tempfile.TemporaryDirectory() as tmpdirname:
             tmp_path = os.path.join(tmpdirname, str(asset_uuid))
@@ -342,7 +342,7 @@ class FeaturesService:
         ov.maxLat = bounds[3]
         ov.project_id = projectId
         ov.uuid = uuid.uuid4()
-        asset_path = os.path.join(str(make_asset_dir(projectId)), str(ov.uuid) + '.jpeg')
+        asset_path = os.path.join(str(make_project_asset_dir(projectId)), str(ov.uuid) + '.jpeg')
         ov.path = get_asset_relative_path(asset_path)
         imdata.original.save(asset_path, 'JPEG')
         imdata.thumb.save(pathlib.Path(asset_path).with_suffix(".thumb.jpeg"), "JPEG")

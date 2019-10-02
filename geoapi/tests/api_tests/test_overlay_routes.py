@@ -21,6 +21,7 @@ def test_post_overlay(test_client, dbsession, projects_fixture, image_file_fixtu
     assert data["maxLon"] == 25
     assert data["path"] is not None
 
+
 def test_delete_overlay(test_client, dbsession, projects_fixture, image_file_fixture):
     u1 = dbsession.query(User).get(1)
     test_client.post('/projects/1/overlays/',

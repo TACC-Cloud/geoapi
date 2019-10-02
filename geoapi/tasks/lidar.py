@@ -11,7 +11,7 @@ from geoapi.utils.lidar import Lidar
 from geoapi.celery_app import app
 from geoapi.db import db_session
 from geoapi.models import Task
-from geoapi.utils.assets import make_asset_dir, get_asset_dir
+from geoapi.utils.assets import make_project_asset_dir, get_asset_path
 
 logger = logging.getLogger(__file__)
 
@@ -37,10 +37,10 @@ def convert_to_potree(self, pointCloudId: int) -> None:
 
     point_cloud = PointCloudService.get(pointCloudId)
 
-    path_to_original_point_clouds = get_asset_dir(point_cloud.path, PointCloudService.ORIGINAL_FILES_DIR)
-    path_temp_processed_point_cloud_path = get_asset_dir(point_cloud.path, PointCloudService.PROCESSED_DIR)
+    path_to_original_point_clouds = get_asset_path(point_cloud.path, PointCloudService.ORIGINAL_FILES_DIR)
+    path_temp_processed_point_cloud_path = get_asset_path(point_cloud.path, PointCloudService.PROCESSED_DIR)
 
-    input_files = [get_asset_dir(path_to_original_point_clouds, file) for file in os.listdir(path_to_original_point_clouds)
+    input_files = [get_asset_path(path_to_original_point_clouds, file) for file in os.listdir(path_to_original_point_clouds)
                    if pathlib.Path(file).suffix.lstrip('.') in PointCloudService.LIDAR_FILE_EXTENSIONS]
     outline = Lidar.getBoundingBox(input_files)
 
@@ -67,7 +67,7 @@ def convert_to_potree(self, pointCloudId: int) -> None:
         feature.project_id = point_cloud.project_id
 
         asset_uuid = uuid.uuid4()
-        base_filepath = make_asset_dir(point_cloud.project_id)
+        base_filepath = make_project_asset_dir(point_cloud.project_id)
         asset_path = os.path.join(base_filepath, str(asset_uuid))
         fa = FeatureAsset(
             uuid=asset_uuid,
