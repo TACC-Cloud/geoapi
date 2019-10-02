@@ -4,6 +4,7 @@ import glob
 import shutil
 from geoapi.settings import settings
 
+
 def make_project_asset_dir(projectId: int) -> str:
     """
     Creates a directory for a projects' assets in the ASSETS_BASE_DIR location
@@ -14,6 +15,7 @@ def make_project_asset_dir(projectId: int) -> str:
     pathlib.Path(base_filepath).mkdir(parents=True, exist_ok=True)
     return base_filepath
 
+
 def get_project_asset_dir(projectId: int) -> str:
     """
     Get project's asset directory
@@ -21,6 +23,7 @@ def get_project_asset_dir(projectId: int) -> str:
     :return: string: asset directory
     """
     return os.path.join(settings.ASSETS_BASE_DIR, str(projectId))
+
 
 def get_asset_path(*relative_paths) -> str:
     """
@@ -42,6 +45,7 @@ def get_asset_relative_path(path: str) -> str:
     :return: string: relative path
     """
     return os.path.relpath(path, start=settings.ASSETS_BASE_DIR)
+
 
 def delete_assets(projectId: int, uuid: str):
     """

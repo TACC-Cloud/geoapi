@@ -71,7 +71,7 @@ point_cloud = api.model('PointCloud', {
     'description': fields.String(required=False),
     'conversion_parameters': fields.String(required=False),
     'feature_id': fields.Integer(),
-    'task_id' : fields.Integer()
+    'task_id': fields.Integer()
 })
 
 task = api.model('Task', {
@@ -382,7 +382,7 @@ class ProjectPointCloudResource(Resource):
     @project_permissions
     @project_point_cloud_exists
     def put(self, projectId: int, pointCloudId: int):
-        #TODO consider adding status to point cloud as we aren't returning task
+        # TODO consider adding status to point cloud as we aren't returning task
         return PointCloudService.update(pointCloudId=pointCloudId,
                                         data=api.payload)
 

@@ -40,7 +40,8 @@ def convert_to_potree(self, pointCloudId: int) -> None:
     path_to_original_point_clouds = get_asset_path(point_cloud.path, PointCloudService.ORIGINAL_FILES_DIR)
     path_temp_processed_point_cloud_path = get_asset_path(point_cloud.path, PointCloudService.PROCESSED_DIR)
 
-    input_files = [get_asset_path(path_to_original_point_clouds, file) for file in os.listdir(path_to_original_point_clouds)
+    input_files = [get_asset_path(path_to_original_point_clouds, file)
+                   for file in os.listdir(path_to_original_point_clouds)
                    if pathlib.Path(file).suffix.lstrip('.') in PointCloudService.LIDAR_FILE_EXTENSIONS]
     outline = Lidar.getBoundingBox(input_files)
 

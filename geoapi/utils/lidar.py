@@ -64,7 +64,7 @@ class Lidar:
             las_file.close()
 
             polygons.append(Polygon([min_point,
-                            (max_point[0], min_point[1]),
-                            max_point,
-                            (min_point[0], max_point[1])]))
+                                     (max_point[0], min_point[1]),
+                                     max_point,
+                                     (min_point[0], max_point[1])]))
         return polygons[0] if len(polygons) == 1 else unary_union(polygons)
