@@ -27,9 +27,9 @@ def get_project_asset_dir(projectId: int) -> str:
 
 def get_asset_path(*relative_paths) -> str:
     """
-    Join asset directory with relative paths
+    Join asset directory with relative paths to get absolute path to assets
     :param relative_paths: str
-    :return: string: abosulte path to asset
+    :return: string: absolute path to asset
     """
     return os.path.join(settings.ASSETS_BASE_DIR, *relative_paths)
 
