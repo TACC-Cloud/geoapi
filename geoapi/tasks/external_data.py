@@ -1,13 +1,16 @@
 import os
+from pathlib import Path
 from geoapi.celery_app import app
 from geoapi.models import User, ObservableDataProject, Project, FeatureAsset, Feature
 from geoapi.utils import tenants
 from geoapi.exceptions import ApiException
 from geoapi.utils.agave import AgaveUtils
 from geoapi.log import logging
-from geoapi.services.features import FeaturesService
-from geoapi.services.images import ImageService
-from geoapi.services.videos import VideoService
+import geoapi.services.features as features
+# from geoapi.services.images import ImageService
+# from geoapi.services.videos import VideoService
+# from geoapi.tasks.lidar import convert_to_potree
+
 from geoapi.db import db_session
 logger = logging.getLogger(__file__)
 
@@ -21,7 +24,23 @@ def _parse_rapid_geolocation(loc):
     lon = coords["longitude"]
     return lat, lon
 
+@app.task(rate_limit="1/s")
+def import_file_from_agave(jwt: str, systemId: str, path: str, projectId: int):
+    client = AgaveUtils(jwt)
+    try:
+        tmp_file_uuid = client.getFile(systemId, path)
+        fpath = Path(path)
+        pth = Path("/tmp/" + tmp_file_uuid)
+        with pth.open() as f:
+            f.filename = fpath.name
+            features.FeaturesService.fromFileObj(projectId, f, {})
+        os.remove(os.path.join('/tmp', tmp_file_uuid))
+    except Exception as e:
+        logger.error("Could not import file from agave: {} :: {}".format(systemId, path), e)
 
+
+
+#TODO: Add users to project based on the agave users on the system.
 @app.task(rate_limit="5/s")
 def import_from_agave(user: User, systemId: str, path: str, proj: Project):
     client = AgaveUtils(user.jwt)
@@ -31,7 +50,7 @@ def import_from_agave(user: User, systemId: str, path: str, proj: Project):
         if item.type == "dir":
             import_from_agave(user, systemId, item.path, proj)
         # skip any junk files that are not allowed
-        if item.path.suffix.lower().lstrip('.') not in FeaturesService.ALLOWED_EXTENSIONS:
+        if item.path.suffix.lower().lstrip('.') not in features.FeaturesService.ALLOWED_EXTENSIONS:
             logger.info("Skipping {}".format(item.path))
             continue
         else:
@@ -65,13 +84,13 @@ def import_from_agave(user: User, systemId: str, path: str, proj: Project):
                 # client.getFile will save the asset to /tmp/{uuid}
                 tmp_file_uuid = client.getFile(systemId, item.path)
                 ext = item.ext
-                feat = FeaturesService.fromLatLng(proj.id, lat, lon, {})
+                feat = features.FeaturesService.fromLatLng(proj.id, lat, lon, {})
                 feat.properties = meta
                 fd = open(os.path.join("/tmp", tmp_file_uuid), 'rb')
-                if ext in FeaturesService.IMAGE_FILE_EXTENSIONS:
-                    fa = FeaturesService.createImageFeatureAsset(proj.id, fd)
-                elif ext in FeaturesService.VIDEO_FILE_EXTENSIONS:
-                    fa = FeaturesService.createVideoFeatureAsset(proj.id, fd)
+                if ext in features.FeaturesService.IMAGE_FILE_EXTENSIONS:
+                    fa = features.FeaturesService.createImageFeatureAsset(proj.id, fd)
+                elif ext in features.FeaturesService.VIDEO_FILE_EXTENSIONS:
+                    fa = features.FeaturesService.createVideoFeatureAsset(proj.id, fd)
                 else:
                     raise ApiException("Could not process this file")
                 fa.feature = feat

@@ -12,11 +12,14 @@ from geoalchemy2.shape import from_shape
 import geojson
 
 from geoapi.services.images import ImageService
+from geoapi.settings import settings
 from geoapi.models import Feature, FeatureAsset, Overlay
 from geoapi.db import db_session
 from geoapi.exceptions import InvalidGeoJSON, ApiException
 from geoapi.utils.assets import make_project_asset_dir, delete_assets, get_asset_relative_path
 from geoapi.log import logging
+
+import geoapi.tasks.external_data as data_tasks
 
 logger = logging.getLogger(__name__)
 
@@ -77,7 +80,6 @@ class FeaturesService:
             delete_assets(projectId=feat.project_id, uuid=asset.uuid)
         db_session.delete(feat)
         db_session.commit()
-
     @staticmethod
     def setProperties(featureId: int, props: Dict) -> Feature:
         """
@@ -177,12 +179,14 @@ class FeaturesService:
         return FeaturesService.addGeoJSON(projectId, data)
 
     @staticmethod
-    def fromFileObj(projectId: int, fileObj: IO, metadata: Dict) -> Feature:
+    def fromFileObj(projectId: int, fileObj: IO, metadata: Dict) -> List[Feature]:
         ext = pathlib.Path(fileObj.filename).suffix.lstrip(".")
         if ext in FeaturesService.IMAGE_FILE_EXTENSIONS:
-            return FeaturesService.fromImage(projectId, fileObj, metadata)
+            return [FeaturesService.fromImage(projectId, fileObj, metadata)]
         elif ext in FeaturesService.GPX_FILE_EXTENSIONS:
-            return FeaturesService.fromGPX(projectId, fileObj, metadata)
+            return [FeaturesService.fromGPX(projectId, fileObj, metadata)]
+        elif ext in FeaturesService.GEOJSON_FILE_EXTENSIONS:
+            return FeaturesService.fromGeoJSON(projectId, fileObj, {})
         else:
             raise ApiException("Filetype not supported for direct upload. Create a feature and attach as an asset?")
 
@@ -361,3 +365,9 @@ class FeaturesService:
         delete_assets(projectId=projectId, uuid=ov.uuid)
         db_session.delete(ov)
         db_session.commit()
+
+    @staticmethod
+    def importFromTapis(projectId: int, files: List[Dict], user):
+        for file in files:
+            logger.info(file)
+            data_tasks.import_file_from_agave.apply()

@@ -6,8 +6,10 @@ from geoapi.log import logging
 from geoapi.schemas import FeatureSchema
 from geoapi.services.features import FeaturesService
 from geoapi.services.projects import ProjectsService
+
 from geoapi.services.point_cloud import PointCloudService
 from geoapi.utils.decorators import jwt_decoder, project_permissions, project_feature_exists, project_point_cloud_exists
+from tasks import external_data
 
 logger = logging.getLogger(__name__)
 
@@ -18,6 +20,11 @@ default_response = api.model('DefaultAgaveResponse', {
     "version": fields.String(),
     "status": fields.String(default="success")
 })
+
+ok_response = api.model('OkResponse', {
+    "message": fields.String(default="accepted")
+})
+
 
 feature_schema = api.schema_model('Feature', FeatureSchema)
 
@@ -34,7 +41,7 @@ api_feature = api.model('Feature', {
     "geometry": fields.Raw(required=True),
     "properties": fields.Raw(),
     "styles": fields.Raw(allow_null=True),
-    "assets": fields.Nested(asset, allow_null=True)
+    "assets": fields.List(fields.Nested(asset), allow_null=True)
 })
 
 feature_collection_model = api.model('FeatureCollection', {
@@ -54,17 +61,6 @@ user = api.model('User', {
     'username': fields.String(required=True)
 })
 
-overlay = api.model('Overlay', {
-    'id': fields.Integer(),
-    'uuid': fields.String(),
-    'minLon': fields.Float(),
-    'minLat': fields.Float(),
-    'maxLon': fields.Float(),
-    'maxLat': fields.Float(),
-    'path': fields.String(),
-    'project_id': fields.Integer(),
-    'label': fields.String()
-})
 
 point_cloud = api.model('PointCloud', {
     'id': fields.Integer(),
@@ -82,14 +78,6 @@ task = api.model('Task', {
     'updated': fields.DateTime(dt_format='rfc822')
 })
 
-overlay_parser = api.parser()
-overlay_parser.add_argument('file', location='files', type=FileStorage, required=True)
-overlay_parser.add_argument('label', location='form', type=str, required=True)
-overlay_parser.add_argument('minLon', location='form', type=float, required=True)
-overlay_parser.add_argument('minLat', location='form', type=float, required=True)
-overlay_parser.add_argument('maxLon', location='form', type=float, required=True)
-overlay_parser.add_argument('maxLat', location='form', type=float, required=True)
-
 rapid_project_body = api.model("RapidProject", {
     "system_id": fields.String(),
     "path": fields.String(default="RApp")
@@ -97,6 +85,11 @@ rapid_project_body = api.model("RapidProject", {
 
 file_upload_parser = api.parser()
 file_upload_parser.add_argument('file', location='files', type=FileStorage, required=True)
+
+tapis_file_upload_body = api.model('TapisFileUpload', {
+    "system_id": fields.String(),
+    "path": fields.String()
+})
 
 
 @api.route('/')
@@ -252,7 +245,7 @@ class ProjectFeaturesCollectionResource(Resource):
     @project_permissions
     @project_feature_exists
     def post(self, projectId: int, featureId: int):
-        args = file_upload_parser.parse_args()
+        args = file_upload_parser.parse_args(strict=True)
         return FeaturesService.createFeatureAsset(projectId, featureId, args['file'])
 
 
@@ -265,7 +258,7 @@ class ProjectFeaturesFilesResource(Resource):
                          'Any additional key/value pairs '
                          'in the form will also be placed in the feature metadata')
     @api.expect(file_upload_parser)
-    @api.marshal_with(api_feature)
+    @api.marshal_with(api_feature, as_list=True)
     @project_permissions
     def post(self, projectId: int):
         file = request.files['file']
@@ -273,6 +266,37 @@ class ProjectFeaturesFilesResource(Resource):
         metadata = formData.to_dict()
         feature = FeaturesService.fromFileObj(projectId, file, metadata)
         return feature
+
+
+@api.route('/<int:projectId>/features/files/import/')
+class ProjectFeaturesFileImportResource(Resource):
+
+    parser = api.parser()
+    parser.add_argument('system_id', type=str, required=True)
+    parser.add_argument('path', type=str, required=True)
+
+    tapis_file = api.model('TapisFile', {
+        'system_id': fields.String(required=True),
+        'path': fields.String(required=True)
+    })
+
+    resource_fields = api.model('TapisFileImport', {
+        'files': fields.List(fields.Nested(tapis_file), required=True)
+    })
+
+    @api.doc(id="importFileFromTapis",
+             description='Import a file into a project from Tapis. Current '
+                         'allowed file types are georeferenced image (jpeg), gpx tracks, GeoJSON and shape files. This'
+                         'is an asynchronous operation, files will be imported in the background'
+             )
+    @api.expect(resource_fields, validate=True)
+    @api.marshal_with(ok_response)
+    @project_permissions
+    def post(self, projectId: int):
+        u = request.current_user
+        for file in request.json["files"]:
+            external_data.import_file_from_agave.delay(u.jwt, file["system_id"], file["path"], projectId)
+        return {"message": "accepted"}
 
 
 @api.route('/<int:projectId>/features/cluster/<int:numClusters>/')
@@ -291,6 +315,25 @@ class ProjectFeaturesClustersResource(Resource):
 
 @api.route('/<int:projectId>/overlays/')
 class ProjectOverlaysResource(Resource):
+    overlay = api.model('Overlay', {
+        'id': fields.Integer(),
+        'uuid': fields.String(),
+        'minLon': fields.Float(),
+        'minLat': fields.Float(),
+        'maxLon': fields.Float(),
+        'maxLat': fields.Float(),
+        'path': fields.String(),
+        'project_id': fields.Integer(),
+        'label': fields.String()
+    })
+
+    overlay_parser = api.parser()
+    overlay_parser.add_argument('file', location='files', type=FileStorage, required=True)
+    overlay_parser.add_argument('label', location='form', type=str, required=True)
+    overlay_parser.add_argument('minLon', location='form', type=float, required=True)
+    overlay_parser.add_argument('minLat', location='form', type=float, required=True)
+    overlay_parser.add_argument('maxLon', location='form', type=float, required=True)
+    overlay_parser.add_argument('maxLat', location='form', type=float, required=True)
 
     @api.doc(id="addOverlay",
              description='Add a new overlay to a project.')

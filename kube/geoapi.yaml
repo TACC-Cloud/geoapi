@@ -1,46 +1,50 @@
-apiVersion: v1
-kind: PersistentVolumeClaim
-metadata:
-  labels:
-    io.kompose.service: assets
-  name: assets
-spec:
-  accessModes:
-  - ReadWriteMany
-  storageClassName: rbd
-  resources:
-    requests:
-      storage: 10G
 ---
 apiVersion: v1
 kind: ConfigMap
 metadata:
   name: geoapi-nginx-conf
 data:
-  nginx.conf: |
-    events {
-      worker_connections 1024;
-      accept_mutex off;
-      use epoll;
-    }
-    http {
-        server {
-            include /etc/nginx/mime.types;
-            client_max_body_size 10g;
-            location /assets {
-                max_ranges 0;
-                expires 30d;
-                add_header "Access-Control-Allow-Origin"  *;
-                alias /assets/;
-            }
-        }
-    }
+  site.conf: |
+      server {
+          include /etc/nginx/mime.types;
+          client_max_body_size 10g;
+
+          location / {
+               add_header "Access-Control-Allow-Origin"  *;
+
+              # Preflighted requests
+              if ($request_method = OPTIONS ) {
+                  add_header "Access-Control-Allow-Origin"  *;
+                  add_header "Access-Control-Allow-Methods" "GET, POST, OPTIONS, HEAD, PUT, DELETE";
+                  add_header "Access-Control-Allow-Headers" "*";
+                  add_header 'Access-Control-Max-Age' 1728000;
+                  add_header 'Content-Length' 0;
+                  return 204;
+              }
+              rewrite ^/api(.*) /$1 break;
+              proxy_pass http://geoapi:5000;
+              proxy_http_version 1.1;
+              proxy_set_header Upgrade $http_upgrade;
+              proxy_set_header Connection 'upgrade';
+              proxy_set_header Host $host;
+              proxy_cache_bypass $http_upgrade;
+              proxy_set_header X-Real-IP $remote_addr;
+              proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+          }
+
+          location /assets {
+              max_ranges 0;
+              expires 30d;
+              add_header "Access-Control-Allow-Origin"  *;
+              alias /assets/;
+          }
+      }
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
   labels:
-    io.kompose.service: pgdata
+    app: pgdata
   name: pgdata
 spec:
   accessModes:
@@ -57,16 +61,14 @@ metadata:
     kompose.cmd: kompose convert
     kompose.version: 1.16.0 (0c01309)
   labels:
-    io.kompose.service: geoapi-rabbitmq
+    app: geoapi-rabbitmq
   name: geoapi-rabbitmq
 spec:
-  type: NodePort
   ports:
-  - name: "5672"
-    port: 5672
-    targetPort: 5672
+    - port: 5672
+      targetPort: 5672
   selector:
-    io.kompose.service: geoapi-rabbitmq
+    app: geoapi-rabbitmq
 ---
 apiVersion: v1
 kind: Service
@@ -75,16 +77,14 @@ metadata:
     kompose.cmd: kompose convert
     kompose.version: 1.16.0 (0c01309)
   labels:
-    io.kompose.service: geoapi-postgres
+    app: geoapi-postgres
   name: geoapi-postgres
 spec:
-  type: NodePort
   ports:
-  - name: "5432"
-    port: 5432
+  - port: 5432
     targetPort: 5432
   selector:
-    io.kompose.service: geoapi-postgres
+    app: geoapi-postgres
 ---
 apiVersion: v1
 kind: Service
@@ -93,16 +93,15 @@ metadata:
     kompose.cmd: kompose convert
     kompose.version: 1.16.0 (0c01309)
   labels:
-    io.kompose.service: nginx
+    app: geoapi-nginx
   name: geoapi-nginx
 spec:
   type: NodePort
   ports:
-  - name: "8080"
-    port: 8080
+  - port: 80
     targetPort: 80
   selector:
-    io.kompose.service: nginx
+    app: geoapi-nginx
 ---
 apiVersion: v1
 kind: Service
@@ -110,35 +109,35 @@ metadata:
   annotations:
     kompose.cmd: kompose convert
     kompose.version: 1.16.0 (0c01309)
-  creationTimestamp: null
   labels:
-    io.kompose.service: geoapi
+    app: geoapi
   name: geoapi
 spec:
-  type: NodePort
   ports:
-  - name: "5000"
-    port: 5000
-    targetPort: 5000
+    - port: 5000
+      targetPort: 5000
   selector:
-    io.kompose.service: geoapi
+    app: geoapi
 ---
-apiVersion: extensions/v1beta1
+apiVersion: apps/v1
 kind: Deployment
 metadata:
   annotations:
     kompose.cmd: kompose convert
     kompose.version: 1.16.0 (0c01309)
   labels:
-    io.kompose.service: geoapi-rabbitmq
+    app: geoapi-rabbitmq
   name: geoapi-rabbitmq
 spec:
   replicas: 1
   strategy: {}
+  selector:
+    matchLabels:
+      app: geoapi-rabbitmq
   template:
     metadata:
       labels:
-        io.kompose.service: geoapi-rabbitmq
+        app: geoapi-rabbitmq
     spec:
       containers:
       - env:
@@ -155,56 +154,75 @@ spec:
         resources: {}
       restartPolicy: Always
 ---
-apiVersion: extensions/v1beta1
+apiVersion: apps/v1
 kind: Deployment
 metadata:
   annotations:
     kompose.cmd: kompose convert
     kompose.version: 1.16.0 (0c01309)
   labels:
-    io.kompose.service: nginx
-  name: nginx
+    app: geoapi-nginx
+  name: geoapi-nginx
 spec:
   replicas: 1
+  selector:
+    matchLabels:
+      app: geoapi-nginx
   strategy:
     type: Recreate
   template:
     metadata:
       labels:
-        io.kompose.service: nginx
+        app: geoapi-nginx
     spec:
       containers:
       - image: nginx
-        name: nginx
-        ports:
-        - containerPort: 8000
+        name: geoapi-nginx
         resources: {}
+        ports:
+          - containerPort: 80
         volumeMounts:
-        - mountPath: /assets
-          name: assets
+          - mountPath: /assets
+            name: assets
+          - mountPath: /etc/nginx/conf.d
+            name: config-volume
       restartPolicy: Always
       volumes:
-      - name: assets
-        persistentVolumeClaim:
-          claimName: assets
+        - name: config-volume
+          configMap:
+            name: geoapi-nginx-conf
+        - name: assets
+          cephfs:
+            monitors:
+              - 172.16.120.3:6789
+              - 172.16.120.4:6789
+              - 172.16.120.5:6789
+            path: /jmeiring
+            user: jmeiring
+            readOnly: false
+            secretRef:
+              name: ceph-secret
 ---
-apiVersion: extensions/v1beta1
+apiVersion: apps/v1
 kind: Deployment
 metadata:
   annotations:
     kompose.cmd: kompose convert
     kompose.version: 1.16.0 (0c01309)
   labels:
-    io.kompose.service: geoapi-workers
+    app: geoapi-workers
   name: geoapi-workers
 spec:
   replicas: 3
   strategy:
     type: Recreate
+  selector:
+    matchLabels:
+      app: geoapi-workers
   template:
     metadata:
       labels:
-        io.kompose.service: geoapi-workers
+        app: geoapi-workers
     spec:
       containers:
       - args:
@@ -245,26 +263,38 @@ spec:
       restartPolicy: Always
       volumes:
       - name: assets
-        persistentVolumeClaim:
-          claimName: assets
+        cephfs:
+          monitors:
+            - 172.16.120.3:6789
+            - 172.16.120.4:6789
+            - 172.16.120.5:6789
+          path: /jmeiring
+          user: jmeiring
+          readOnly: false
+          secretRef:
+            name: ceph-secret
+
 ---
-apiVersion: extensions/v1beta1
+apiVersion: apps/v1
 kind: Deployment
 metadata:
   annotations:
     kompose.cmd: kompose convert
     kompose.version: 1.16.0 (0c01309)
   labels:
-    io.kompose.service: geoapi-postgres
+    app: geoapi-postgres
   name: geoapi-postgres
 spec:
   replicas: 1
+  selector:
+    matchLabels:
+      app: geoapi-postgres
   strategy:
     type: Recreate
   template:
     metadata:
       labels:
-        io.kompose.service: geoapi-postgres
+        app: geoapi-postgres
     spec:
       containers:
       - env:
@@ -290,23 +320,26 @@ spec:
         persistentVolumeClaim:
           claimName: pgdata
 ---
-apiVersion: extensions/v1beta1
+apiVersion: apps/v1
 kind: Deployment
 metadata:
   annotations:
     kompose.cmd: kompose convert
     kompose.version: 1.16.0 (0c01309)
   labels:
-    io.kompose.service: geoapi
+    app: geoapi
   name: geoapi
 spec:
   replicas: 1
+  selector:
+    matchLabels:
+      app: geoapi
   strategy:
     type: Recreate
   template:
     metadata:
       labels:
-        io.kompose.service: geoapi
+        app: geoapi
     spec:
       containers:
       - args:
@@ -354,25 +387,48 @@ spec:
       hostname: geoapi
       restartPolicy: Always
       volumes:
-      - name: assets
-        persistentVolumeClaim:
-          claimName: assets
+        - name: assets
+          cephfs:
+            monitors:
+              - 172.16.120.3:6789
+              - 172.16.120.4:6789
+              - 172.16.120.5:6789
+            path: /jmeiring
+            user: jmeiring
+            readOnly: false
+            secretRef:
+              name: ceph-secret
 ---
-apiVersion: extensions/v1beta1
-kind: Ingress
+apiVersion: batch/v1
+kind: Job
 metadata:
-  name: geoapi-ingress
-  annotations:
-    nginx.ingress.kubernetes.io/enable-cors: "true"
+  name: geoapi-migrations
 spec:
-  rules:
-  - http:
-      paths:
-      - path: /assets
-        backend:
-          serviceName: geoapi-nginx
-          servicePort: 8080
-      - path: /
-        backend:
-          serviceName: geoapi
-          servicePort: 5000
+  parallelism: 1
+  backoffLimit: 5
+  activeDeadlineSeconds: 100
+  template:
+    spec:
+      containers:
+      - name: geoapi
+        image: taccaci/geoapi:latest
+        command: ["alembic", "upgrade", "head"]
+      restartPolicy: Never
+#apiVersion: extensions/v1beta1
+#kind: Ingress
+#metadata:
+#  name: geoapi-ingress
+#  annotations:
+#    nginx.ingress.kubernetes.io/enable-cors: "true"
+#spec:
+#  rules:
+#  - http:
+#      paths:
+#      - path: /assets
+#        backend:
+#          serviceName: geoapi-nginx
+#          servicePort: 8080
+#      - path: /
+#        backend:
+#          serviceName: geoapi
+#          servicePort: 5000

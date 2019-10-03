@@ -66,3 +66,10 @@ def test_upload_image(test_client, dbsession, projects_fixture, image_file_fixtu
         headers={'x-jwt-assertion-test': u1.jwt}
     )
     assert resp.status_code == 200
+
+
+
+def test_get_point_cloud(test_client, dbsession, projects_fixture, point_cloud_fixture):
+    u1 = dbsession.query(User).get(1)
+    resp = test_client.get('/projects/1/point-cloud/1/', headers={'x-jwt-assertion-test': u1.jwt})
+    assert resp.status_code == 200

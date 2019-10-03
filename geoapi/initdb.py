@@ -1,6 +1,6 @@
 import random
 from geoapi.db import Base, engine, db_session
-from geoapi.models import Project, Feature, FeatureAsset, User, ProjectUser
+from geoapi.models import *
 from shapely.geometry import Point
 from geoalchemy2.shape import from_shape
 
@@ -8,6 +8,9 @@ from geoalchemy2.shape import from_shape
 def initDB():
     Base.metadata.drop_all(bind=engine)
     Base.metadata.create_all(bind=engine)
+
+def dropDB():
+    Base.metadata.drop_all(bind=engine)
 
 
 def addRandomMarkers():
