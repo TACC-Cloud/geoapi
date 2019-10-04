@@ -2,12 +2,13 @@ import os
 import pathlib
 import uuid
 import json
+import tempfile
 from typing import List, IO, Dict
 
 from geoapi.services.videos import VideoService
 from shapely.geometry import Point, shape
 import fiona
-from geoalchemy2.shape import from_shape, to_shape
+from geoalchemy2.shape import from_shape
 import geojson
 
 from geoapi.services.images import ImageService
@@ -15,6 +16,7 @@ from geoapi.settings import settings
 from geoapi.models import Feature, FeatureAsset, Overlay
 from geoapi.db import db_session
 from geoapi.exceptions import InvalidGeoJSON, ApiException
+from geoapi.utils.assets import make_project_asset_dir, delete_assets, get_asset_relative_path
 from geoapi.log import logging
 
 import geoapi.tasks.external_data as data_tasks
@@ -72,13 +74,12 @@ class FeaturesService:
         :param featureId: int
         :return: None
         """
-        # TODO: remove any assets tied to the feature also
         feat = db_session.query(Feature).get(featureId)
-        base_asset_path = os.path.join(settings.ASSETS_BASE_DIR, str(feat.project_id))
         assets = db_session.query(FeatureAsset).filter(FeatureAsset.feature_id == featureId)
         for asset in assets:
-            asset_path = os.path.join(base_asset_path, str(asset.uuid))
-
+            delete_assets(projectId=feat.project_id, uuid=asset.uuid)
+        db_session.delete(feat)
+        db_session.commit()
     @staticmethod
     def setProperties(featureId: int, props: Dict) -> Feature:
         """
@@ -205,15 +206,14 @@ class FeaturesService:
         f.the_geom = from_shape(point, srid=4326)
         f.properties = metadata
 
-        base_filepath = FeaturesService._makeAssetDir(projectId)
-
         asset_uuid = uuid.uuid4()
+        base_filepath = make_project_asset_dir(projectId)
+        asset_path = os.path.join(base_filepath, str(asset_uuid) + '.jpeg')
 
-        asset_path = os.path.join(base_filepath, str(asset_uuid)+".jpeg")
         fa = FeatureAsset(
             uuid=asset_uuid,
             asset_type="image",
-            path=asset_path,
+            path=get_asset_relative_path(asset_path),
             feature=f,
         )
         f.assets.append(fa)
@@ -250,14 +250,14 @@ class FeaturesService:
     def createImageFeatureAsset(projectId: int, fileObj: IO) -> FeatureAsset:
         asset_uuid = uuid.uuid4()
         imdata = ImageService.resizeImage(fileObj)
-        base_filepath = FeaturesService._makeAssetDir(projectId)
-        imdata.thumb.save(os.path.join(base_filepath, str(asset_uuid) + ".thumb.jpeg"), "JPEG")
-        imdata.resized.save(os.path.join(base_filepath, str(asset_uuid) + ".jpeg"), "JPEG")
-        asset_path = os.path.join(base_filepath, str(asset_uuid)+'.jpeg')
+        base_filepath = make_project_asset_dir(projectId)
+        asset_path = os.path.join(base_filepath, str(asset_uuid) + '.jpeg')
+        imdata.thumb.save(pathlib.Path(asset_path).with_suffix(".thumb.jpeg"), "JPEG")
+        imdata.resized.save(asset_path, "JPEG")
         fa = FeatureAsset(
             uuid=asset_uuid,
             asset_type="image",
-            path=asset_path
+            path=get_asset_relative_path(asset_path)
         )
         return fa
 
@@ -270,20 +270,21 @@ class FeaturesService:
         :return: FeatureAsset
         """
         asset_uuid = uuid.uuid4()
-        base_filepath = FeaturesService._makeAssetDir(projectId)
+        base_filepath = make_project_asset_dir(projectId)
         save_path = os.path.join(base_filepath, str(asset_uuid) + '.mp4')
-        tmp_path = os.path.join('/tmp', str(asset_uuid))
-        with open(tmp_path, 'wb') as tmp:
-            tmp.write(fileObj.read())
-        encodedPath = VideoService.transcode(tmp_path)
-        with open(encodedPath, 'rb') as enc:
-            with open(save_path, 'wb') as f:
-                f.write(enc.read())
+        with tempfile.TemporaryDirectory() as tmpdirname:
+            tmp_path = os.path.join(tmpdirname, str(asset_uuid))
+            with open(tmp_path, 'wb') as tmp:
+                tmp.write(fileObj.read())
+            encoded_path = VideoService.transcode(tmp_path)
+            with open(encoded_path, 'rb') as enc:
+                with open(save_path, 'wb') as f:
+                    f.write(enc.read())
         # clean up the tmp file
-        os.remove(encodedPath)
+        os.remove(encoded_path)
         fa = FeatureAsset(
             uuid=asset_uuid,
-            path=save_path,
+            path=get_asset_relative_path(save_path),
             asset_type="video"
         )
         return fa
@@ -326,17 +327,6 @@ class FeaturesService:
         return clusters
 
     @staticmethod
-    def _makeAssetDir(projectId: int) -> str:
-        """
-        Creates a directory for assets in the ASSETS_BASE_DIR location
-        :param projectId: int
-        :return:
-        """
-        base_filepath = os.path.join(settings.ASSETS_BASE_DIR, str(projectId))
-        pathlib.Path(base_filepath).mkdir(parents=True, exist_ok=True)
-        return base_filepath
-
-    @staticmethod
     def addOverlay(projectId: int, fileObj: IO, bounds: List[float], label: str) -> Overlay:
         """
 
@@ -356,12 +346,10 @@ class FeaturesService:
         ov.maxLat = bounds[3]
         ov.project_id = projectId
         ov.uuid = uuid.uuid4()
-        base_filepath = FeaturesService._makeAssetDir(projectId)
-        asset_path = os.path.join("/", str(projectId), str(ov.uuid))
-        ov.path = asset_path + '.jpeg'
-        fpath = os.path.join(base_filepath, str(ov.uuid))
-        imdata.original.save(fpath + '.jpeg', 'JPEG')
-        imdata.thumb.save(fpath + '.thumb.jpeg', 'JPEG')
+        asset_path = os.path.join(str(make_project_asset_dir(projectId)), str(ov.uuid) + '.jpeg')
+        ov.path = get_asset_relative_path(asset_path)
+        imdata.original.save(asset_path, 'JPEG')
+        imdata.thumb.save(pathlib.Path(asset_path).with_suffix(".thumb.jpeg"), "JPEG")
         db_session.add(ov)
         db_session.commit()
         return ov
@@ -374,9 +362,8 @@ class FeaturesService:
     @staticmethod
     def deleteOverlay(projectId: int, overlayId: int) -> None:
         ov = db_session.query(Overlay).get(overlayId)
-        # TODO: remove assets here too
-        os.remove(os.path.join(settings.ASSETS_BASE_DIR, ov.path))
-        db_session.remove(ov)
+        delete_assets(projectId=projectId, uuid=ov.uuid)
+        db_session.delete(ov)
         db_session.commit()
 
     @staticmethod

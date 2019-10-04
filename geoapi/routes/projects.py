@@ -67,7 +67,7 @@ point_cloud = api.model('PointCloud', {
     'description': fields.String(required=False),
     'conversion_parameters': fields.String(required=False),
     'feature_id': fields.Integer(),
-    'task_id' : fields.Integer()
+    'task_id': fields.Integer()
 })
 
 task = api.model('Task', {
@@ -391,7 +391,7 @@ class ProjectPointCloudsResource(Resource):
     def post(self, projectId: int):
         return PointCloudService.create(projectId=projectId,
                                         user=request.current_user,
-                                        data=request.json)
+                                        data=api.payload)
 
 
 @api.route('/<int:projectId>/point-cloud/<int:pointCloudId>/')
@@ -417,3 +417,36 @@ class ProjectPointCloudResource(Resource):
         metadata = formData.to_dict()
         task = PointCloudService.fromFileObj(pointCloudId, file, metadata)
         return task
+
+    @api.doc(id="updatePointCLoud",
+             description="Update point cloud")
+    @api.marshal_with(point_cloud)
+    @api.expect(point_cloud)
+    @project_permissions
+    @project_point_cloud_exists
+    def put(self, projectId: int, pointCloudId: int):
+        # TODO consider adding status to point cloud as we aren't returning task
+        return PointCloudService.update(pointCloudId=pointCloudId,
+                                        data=api.payload)
+
+    @api.doc(id="deletePointCloud",
+             description="Delete point cloud, all associated point cloud files will be deleted "
+                         "(however associated feature and feature asset will not be deleted). "
+                         "THIS CANNOT BE UNDONE")
+    @project_permissions
+    @project_point_cloud_exists
+    def delete(self, projectId: int, pointCloudId: int):
+        return PointCloudService.delete(pointCloudId)
+
+
+@api.route('/<int:projectId>/tasks/')
+class ProjectTasksResource(Resource):
+
+    @api.doc(id="getTasks",
+             description="Get a listing of all the tasks of a project")
+    @api.marshal_with(task)
+    @project_permissions
+    def get(self, projectId: int):
+        from geoapi.models import Task
+        from geoapi.db import db_session
+        return db_session.query(Task).all()

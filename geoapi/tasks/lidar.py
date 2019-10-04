@@ -11,7 +11,7 @@ from geoapi.utils.lidar import Lidar
 from geoapi.celery_app import app
 from geoapi.db import db_session
 from geoapi.models import Task
-
+from geoapi.utils.assets import make_project_asset_dir, get_asset_path, get_asset_relative_path
 
 logger = logging.getLogger(__file__)
 
@@ -37,11 +37,11 @@ def convert_to_potree(self, pointCloudId: int) -> None:
 
     point_cloud = PointCloudService.get(pointCloudId)
 
-    point_cloud_path = os.path.join(point_cloud.path, PointCloudService.ORIGINAL_FILES_DIR)
-    processed_point_cloud_path = os.path.join(point_cloud.path, PointCloudService.PROCESSED_DIR)
-    processed_point_cloud_path_temp = os.path.join(point_cloud.path, PointCloudService.PROCESSED_DIR + "temp")
+    path_to_original_point_clouds = get_asset_path(point_cloud.path, PointCloudService.ORIGINAL_FILES_DIR)
+    path_temp_processed_point_cloud_path = get_asset_path(point_cloud.path, PointCloudService.PROCESSED_DIR)
 
-    input_files = [os.path.join(point_cloud_path, file) for file in os.listdir(point_cloud_path)
+    input_files = [get_asset_path(path_to_original_point_clouds, file)
+                   for file in os.listdir(path_to_original_point_clouds)
                    if pathlib.Path(file).suffix.lstrip('.') in PointCloudService.LIDAR_FILE_EXTENSIONS]
     outline = Lidar.getBoundingBox(input_files)
 
@@ -49,9 +49,9 @@ def convert_to_potree(self, pointCloudId: int) -> None:
         "PotreeConverter",
         "--verbose",
         "-i",
-        point_cloud_path,
+        path_to_original_point_clouds,
         "-o",
-        processed_point_cloud_path_temp,
+        path_temp_processed_point_cloud_path,
         "--overwrite",
         "--generate-page",
         "index"
@@ -68,11 +68,12 @@ def convert_to_potree(self, pointCloudId: int) -> None:
         feature.project_id = point_cloud.project_id
 
         asset_uuid = uuid.uuid4()
-
+        base_filepath = make_project_asset_dir(point_cloud.project_id)
+        asset_path = os.path.join(base_filepath, str(asset_uuid))
         fa = FeatureAsset(
             uuid=asset_uuid,
             asset_type="point_cloud",
-            path=processed_point_cloud_path,
+            path=get_asset_relative_path(asset_path),
             feature=feature
         )
         feature.assets.append(fa)
@@ -83,8 +84,9 @@ def convert_to_potree(self, pointCloudId: int) -> None:
     feature.the_geom = from_shape(outline, srid=4326)
     point_cloud.task.status = "FINISHED"
 
-    shutil.rmtree(processed_point_cloud_path, ignore_errors=True)
-    shutil.move(processed_point_cloud_path_temp, processed_point_cloud_path)
+    point_cloud_asset_path = get_asset_path(feature.assets[0].path)
+    shutil.rmtree(point_cloud_asset_path, ignore_errors=True)
+    shutil.move(path_temp_processed_point_cloud_path, point_cloud_asset_path)
 
     db_session.add(point_cloud)
     db_session.add(feature)

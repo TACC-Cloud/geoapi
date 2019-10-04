@@ -68,17 +68,6 @@ def test_upload_image(test_client, dbsession, projects_fixture, image_file_fixtu
     assert resp.status_code == 200
 
 
-def test_upload_lidar(test_client, dbsession, projects_fixture, point_cloud_fixture,
-                      lidar_las1pt2_file_fixture, convert_to_potree_mock):
-    u1 = dbsession.query(User).get(1)
-    resp = test_client.post(
-        '/projects/1/point-cloud/1/',
-        data={"file": lidar_las1pt2_file_fixture},
-        headers={'x-jwt-assertion-test': u1.jwt}
-    )
-    assert resp.status_code == 200
-    convert_to_potree_mock.apply_async.assert_called_once()
-
 
 def test_get_point_cloud(test_client, dbsession, projects_fixture, point_cloud_fixture):
     u1 = dbsession.query(User).get(1)
