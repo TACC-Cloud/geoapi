@@ -6,7 +6,7 @@ ipython
 geojson
 pillow
 pytest
-pyjwt
+pyjwt[crypto]
 geoalchemy2
 alembic
 shapely

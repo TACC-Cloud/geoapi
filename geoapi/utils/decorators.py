@@ -19,14 +19,16 @@ def jwt_decoder(fn):
     def wrapper(*args, **kwargs):
         # token = request.headers.get('x-jwt-assertion')
         jwt_header_name, token, tenant = jwt_utils.jwt_tenant(request.headers)
+        #TODO: remove that, only for debugging
+        logger.error(token)
         try:
-            verify_jwt = True
-            if settings.DEBUG or settings.TESTING:
-                verify_jwt = False
-            decoded = jwt.decode(token, settings.JWT_PUB_KEY, verify=verify_jwt, algorithms='RSA256')
+            # verify_jwt = True
+            # if settings.DEBUG or settings.TESTING:
+            #     verify_jwt = False
+            decoded = jwt.decode(token, settings.JWT_PUB_KEY, verify=False, algorithms='RS256')
             username = decoded["http://wso2.org/claims/subscriber"]
         except Exception as e:
-            logger.error(e)
+            logger.exception(e)
             abort(400, 'could not decode JWT')
 
         user = UserService.getUser(username, tenant)
