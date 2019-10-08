@@ -41,6 +41,30 @@ data:
       }
 ---
 apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: geoapi-environment-vars
+data:
+  # These are for the default creds for the rabbitmq container
+  RABBITMQ_DEFAULT_USER: geoapi
+  RABBITMQ_DEFAULT_VHOST: geoapi
+  # These are for the postgres container itself
+  POSTGRES_DB: geoapi
+  POSTGRES_USER: geoapi
+
+
+  ASSETS_BASE_DIR: /assets/
+  JWT_SECRET_KEY: your-256-bit-secret
+  FLASK_APP: /app/geoapi/app.py
+  APP_ENV: production
+  RABBITMQ_HOSTNAME: geoapi-rabbitmq
+  RABBITMQ_VHOST: geoapi
+  RABBITMQ_USERNAME: geoapi
+  DB_USERNAME: geoapi
+  DB_HOST: geoapi-postgres
+  DB_NAME: geoapi
+---
+apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
   labels:
@@ -52,7 +76,7 @@ spec:
   storageClassName: rbd
   resources:
     requests:
-      storage: 5G
+      storage: 10G
 ---
 apiVersion: v1
 kind: Service
@@ -142,11 +166,13 @@ spec:
       containers:
       - env:
         - name: RABBITMQ_DEFAULT_PASS
-          value: dev
-        - name: RABBITMQ_DEFAULT_USER
-          value: dev
-        - name: RABBITMQ_DEFAULT_VHOST
-          value: dev
+          valueFrom:
+            secretKeyRef:
+              name: rabbitmq
+              key: password
+        envFrom:
+          - configMapRef:
+              name: geoapi-environment-vars
         image: rabbitmq
         ports:
           - containerPort: 5672
@@ -197,11 +223,11 @@ spec:
               - 172.16.120.3:6789
               - 172.16.120.4:6789
               - 172.16.120.5:6789
-            path: /jmeiring
-            user: jmeiring
+            path: /geoapi/production
+            user: geoapi
             readOnly: false
             secretRef:
-              name: ceph-secret
+              name: geoapi-ceph-secret
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -230,29 +256,21 @@ spec:
         - -A
         - celery_app
         - worker
+        envFrom:
+          - configMapRef:
+              name: geoapi-environment-vars
         env:
-          - name: ASSETS_BASE_DIR
-            value: /assets
-          - name: FLASK_APP
-            value: /app/geoapi/app.py
-          - name: APP_ENV
-            value: production
-          - name: RABBITMQ_HOSTNAME
-            value: geoapi-rabbitmq
-          - name: RABBITMQ_VHOST
-            value: dev
           - name: RABBITMQ_PASSWD
-            value: dev
-          - name: RABBITMQ_USERNAME
-            value: dev
-          - name: DB_USERNAME
-            value: dev
-          - name: DB_HOST
-            value: geoapi-postgres
+            valueFrom:
+              secretKeyRef:
+                name: rabbitmq
+                key: password
           - name: DB_PASSWD
-            value: dev
-          - name: DB_NAME
-            value: dev
+            valueFrom:
+              secretKeyRef:
+                name: postgres
+                key: password
+
         image: taccaci/geoapi-workers:latest
         name: geoapi-workers
         resources: {}
@@ -268,11 +286,11 @@ spec:
             - 172.16.120.3:6789
             - 172.16.120.4:6789
             - 172.16.120.5:6789
-          path: /jmeiring
-          user: jmeiring
+          path: /geoapi/production
+          user: geoapi
           readOnly: false
           secretRef:
-            name: ceph-secret
+            name: geoapi-ceph-secret
 
 ---
 apiVersion: apps/v1
@@ -298,12 +316,14 @@ spec:
     spec:
       containers:
       - env:
-        - name: POSTGRES_DB
-          value: dev
         - name: POSTGRES_PASSWORD
-          value: dev
-        - name: POSTGRES_USER
-          value: dev
+          valueFrom:
+            secretKeyRef:
+              name: postgres
+              key: password
+        envFrom:
+          - configMapRef:
+              name: geoapi-environment-vars
         image: mdillon/postgis
         name: geoapi-postgres
         ports:
@@ -319,6 +339,7 @@ spec:
       - name: pgdata
         persistentVolumeClaim:
           claimName: pgdata
+
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -349,31 +370,25 @@ spec:
         - -b
         - 0.0.0.0:5000
         - app:app
+        envFrom:
+          - configMapRef:
+              name: geoapi-environment-vars
         env:
-        - name: ASSETS_BASE_DIR
-          value: /assets
-        - name: FLASK_APP
-          value: /app/geoapi/app.py
-        - name: APP_ENV
-          value: production
-        - name: RABBITMQ_HOST
-          value: geoapi-rabbibtmq
-        - name: RABBITMQ_VHOST
-          value: dev
-        - name: RABBITMQ_PASSWD
-          value: dev
-        - name: RABBITMQ_USERNAME
-          value: dev
-        - name: DB_USERNAME
-          value: dev
-        - name: DB_HOST
-          value: geoapi-postgres
-        - name: DB_PASSWD
-          value: dev
-        - name: DB_NAME
-          value: dev
-        - name: JWT_SECRET_KEY
-          value: your-256-bit-secret
+          - name: RABBITMQ_PASSWD
+            valueFrom:
+              secretKeyRef:
+                name: rabbitmq
+                key: password
+          - name: DB_PASSWD
+            valueFrom:
+              secretKeyRef:
+                name: postgres
+                key: password
+          - name: JWT_PUB_KEY
+            valueFrom:
+              secretKeyRef:
+                name: jwt.pub.key
+                key: key
         image: taccaci/geoapi:latest
         name: geoapi
         ports:
@@ -393,11 +408,11 @@ spec:
               - 172.16.120.3:6789
               - 172.16.120.4:6789
               - 172.16.120.5:6789
-            path: /jmeiring
-            user: jmeiring
+            path: /geoapi/production
+            user: geoapi
             readOnly: false
             secretRef:
-              name: ceph-secret
+              name: geoapi-ceph-secret
 ---
 apiVersion: batch/v1
 kind: Job
@@ -411,6 +426,20 @@ spec:
     spec:
       containers:
       - name: geoapi
+        envFrom:
+          - configMapRef:
+              name: geoapi-environment-vars
+        env:
+          - name: RABBITMQ_PASSWD
+            valueFrom:
+              secretKeyRef:
+                name: rabbitmq
+                key: password
+          - name: DB_PASSWD
+            valueFrom:
+              secretKeyRef:
+                name: postgres
+                key: password
         image: taccaci/geoapi:latest
         command: ["alembic", "upgrade", "head"]
       restartPolicy: Never

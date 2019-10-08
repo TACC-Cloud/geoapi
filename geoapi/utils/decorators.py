@@ -10,6 +10,7 @@ from geoapi.services.features import FeaturesService
 from geoapi.services.point_cloud import PointCloudService
 from geoapi.settings import settings
 from geoapi.utils import jwt_utils
+from geoapi.log import logger
 
 parser = reqparse.RequestParser()
 
@@ -19,9 +20,13 @@ def jwt_decoder(fn):
         # token = request.headers.get('x-jwt-assertion')
         jwt_header_name, token, tenant = jwt_utils.jwt_tenant(request.headers)
         try:
-            decoded = jwt.decode(token, settings.JWT_SECRET_KEY, 'HS256')
+            verify_jwt = True
+            if settings.DEBUG or settings.TESTING:
+                verify_jwt = False
+            decoded = jwt.decode(token, settings.JWT_PUB_KEY, verify=verify_jwt, algorithms='RSA256')
             username = decoded["http://wso2.org/claims/subscriber"]
-        except:
+        except Exception as e:
+            logger.error(e)
             abort(400, 'could not decode JWT')
 
         user = UserService.getUser(username, tenant)
