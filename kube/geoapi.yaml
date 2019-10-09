@@ -384,11 +384,6 @@ spec:
               secretKeyRef:
                 name: postgres
                 key: password
-          - name: JWT_PUB_KEY
-            valueFrom:
-              secretKeyRef:
-                name: jwt.pub.key
-                key: key
         image: taccaci/geoapi:latest
         name: geoapi
         ports:

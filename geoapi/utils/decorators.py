@@ -2,7 +2,6 @@
 from functools import wraps
 from flask import abort
 from flask import request
-from flask_restplus import reqparse
 import jwt
 from geoapi.services.users import UserService
 from geoapi.services.projects import ProjectsService
@@ -11,21 +10,26 @@ from geoapi.services.point_cloud import PointCloudService
 from geoapi.settings import settings
 from geoapi.utils import jwt_utils
 from geoapi.log import logger
+from cryptography.hazmat.backends import default_backend
+from cryptography.hazmat.primitives import serialization
+import base64
 
-parser = reqparse.RequestParser()
+def get_pub_key():
+    # settings.JWT_PUB_KEY
+    pkey = base64.b64decode(settings.JWT_PUB_KEY)
+    logger.info(pkey)
+    pub_key = serialization.load_der_public_key(pkey, backend=default_backend())
+    logger.info(pub_key)
+    return pub_key
 
 def jwt_decoder(fn):
     @wraps(fn)
     def wrapper(*args, **kwargs):
-        # token = request.headers.get('x-jwt-assertion')
+        pub_key = get_pub_key()
+        #TODO: validate token
         jwt_header_name, token, tenant = jwt_utils.jwt_tenant(request.headers)
-        #TODO: remove that, only for debugging
-        logger.error(token)
         try:
-            # verify_jwt = True
-            # if settings.DEBUG or settings.TESTING:
-            #     verify_jwt = False
-            decoded = jwt.decode(token, settings.JWT_PUB_KEY, verify=False, algorithms='RS256')
+            decoded = jwt.decode(token, pub_key, verify=False)
             username = decoded["http://wso2.org/claims/subscriber"]
         except Exception as e:
             logger.exception(e)
