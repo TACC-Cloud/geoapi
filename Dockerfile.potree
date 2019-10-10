@@ -17,16 +17,15 @@ cmake -DCMAKE_BUILD_TYPE=Release .. && make && make install && ldconfig
 RUN git clone -b develop https://github.com/potree/PotreeConverter.git && cd PotreeConverter && mkdir build && cd build && \
 cmake -DCMAKE_BUILD_TYPE=Release -DLASZIP_INCLUDE_DIRS=/opt/LAStools/LASzip/dll/ -DLASZIP_LIBRARY=/usr/local/lib/liblaszip.so .. && \
 make && make install && cp -r /opt/PotreeConverter/PotreeConverter/resources /resources
+ADD misc/potree/page_template /resources/page_template
 
 RUN pip install --upgrade pip
 
 COPY requirements.txt /requirements.txt
+RUN pip3 install -r /requirements.txt
 
 WORKDIR /
 RUN mkdir app
-
-RUN pip3 install -r requirements.txt
-
 COPY ./geoapi /app/geoapi
 ENV PYTHONPATH "${PYTHONPATH}:/app"
 WORKDIR /app/geoapi
