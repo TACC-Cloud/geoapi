@@ -120,3 +120,7 @@ dmypy.json
 
 # OS temp files
 .DS_Store
+
+# generated python client
+python_client/
+swagger.json

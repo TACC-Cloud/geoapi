@@ -1,4 +1,4 @@
-# GeoAPI and Viewer
+# GeoAPI
 
 [![Build Status](https://travis-ci.org/TACC-Cloud/geoapi.svg?branch=master)](https://travis-ci.org/TACC-Cloud/geoapi)
 
@@ -10,6 +10,7 @@ can add features to it. The development docker-compose file has 3 containers:
 * the api which exposes port 8000 behind gunicorn
 * an nginx server to serve static files and proxy to the api, running on port 8080. 
 
+See https://github.com/TACC-Cloud/hazmapper which is an associated viewer application.
 
 ## Setup
 
@@ -54,12 +55,15 @@ send a POST request to `localhost:8000/projects` with a body like this:
 
 - send a GET request to `localhost:8000/projects` and you should get that back.
 
+### Client side
 
-#### Client side
+See https://github.com/TACC-Cloud/hazmapper for details.
 
-The viewer is build with Angular 7 at the moment. In the `viewer` folder:
+## Python client
 
-`npm install`
-`ng build --watch`
+Python client is generated from the swagger definition of GeoAPI
 
-Go to localhost:8080/projects/1 and you should see a map
+```
+docker exec -it geoapi python output_swagger.py swagger.json
+docker run --rm -v ${PWD}:/local -w=/local swaggerapi/swagger-codegen-cli  generate -i swagger.json -l python -o python_client -c client_config.json
+```
