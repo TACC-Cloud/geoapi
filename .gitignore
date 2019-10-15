@@ -122,5 +122,5 @@ dmypy.json
 .DS_Store
 
 # generated python client
-python_client/
+geoapi_client/
 swagger.json

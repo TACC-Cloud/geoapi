@@ -55,7 +55,7 @@ send a POST request to `localhost:8000/projects` with a body like this:
 
 - send a GET request to `localhost:8000/projects` and you should get that back.
 
-### Client side
+### Client viewer
 
 See https://github.com/TACC-Cloud/hazmapper for details.
 
@@ -63,7 +63,16 @@ See https://github.com/TACC-Cloud/hazmapper for details.
 
 Python client is generated from the swagger definition of GeoAPI
 
+The following steps can be used to get swagger definition:
 ```
 docker exec -it geoapi python output_swagger.py swagger.json
-docker run --rm -v ${PWD}:/local -w=/local swaggerapi/swagger-codegen-cli  generate -i swagger.json -l python -o python_client -c client_config.json
+docker cp geoapi:/app/geoapi/swagger.json .
+```
+
+Using the swagger definition, the following steps create python client and upload the python client to PyPi
+```
+docker run --rm -v ${PWD}:/local -w=/local swaggerapi/swagger-codegen-cli  generate -i swagger.json -l python -o client/geoapi_client -c client/config.json
+cd client/geoapi_client
+python3 setup.py sdist bdist_wheel
+python3 -m twine upload dist/*
 ```
