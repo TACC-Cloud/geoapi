@@ -17,9 +17,9 @@ import base64
 def get_pub_key():
     # settings.JWT_PUB_KEY
     pkey = base64.b64decode(settings.JWT_PUB_KEY)
-    logger.info(pkey)
+    # logger.info(pkey)
     pub_key = serialization.load_der_public_key(pkey, backend=default_backend())
-    logger.info(pub_key)
+    # logger.info(pub_key)
     return pub_key
 
 def jwt_decoder(fn):

@@ -119,6 +119,10 @@ class ProjectsService:
         :return: GeoJSON
         """
 
+        # query params
+        assetType = query.get("assetType")
+        bbox = query.get("bbox")
+
         select_stmt = text("""
         json_build_object(
             'type', 'FeatureCollection',
@@ -142,19 +146,24 @@ class ProjectsService:
         ) as geojson
         """)
 
+        # The sub select that filters only on this projects ID, filters applied below
         sub_select = select([
             text("""feat.*,  array_remove(array_agg(fa), null) as assets 
               from features as feat
               LEFT JOIN feature_assets fa on feat.id = fa.feature_id
              """)
-        ]).where(text("project_id = :projectId")).group_by(text("feat.id")).alias("tmp")
+        ]).where(text("project_id = :projectId"))
 
-        if query.get("bbox"):
+
+        if bbox:
             print(query)
             # TODO: implement bounding box filters
+        if assetType:
+            sub_select = sub_select.where(text("fa.asset_type = :assetType"))
 
+        sub_select = sub_select.group_by(text("feat.id")).alias("tmp")
         s = select([select_stmt]).select_from(sub_select)
-        result = db_session.execute(s, {'projectId': projectId})
+        result = db_session.execute(s, {'projectId': projectId, "assetType": assetType})
         out = result.fetchone()
         return out.geojson
 
