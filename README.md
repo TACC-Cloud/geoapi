@@ -71,7 +71,10 @@ docker cp geoapi:/app/geoapi/swagger.json .
 
 Using the swagger definition, the following steps create python client and upload the python client to PyPi
 ```
-docker run --rm -v ${PWD}:/local -w=/local swaggerapi/swagger-codegen-cli  generate -i swagger.json -l python -o client/geoapi_client -c client/config.json
+git clone --depth 1 https://github.com/swagger-api/swagger-codegen.git client/swagger-codegen
+cp client/README.mustache client/swagger-codegen/modules/swagger-codegen/src/main/resources/python/README.mustache
+# Convert
+docker run --rm -v ${PWD}:/local -w=/local swaggerapi/swagger-codegen-cli  generate -i swagger.json -l python -o client/geoapi_client -c client/config.json -t client/swagger-codegen/modules/swagger-codegen/src/main/resources/python/
 cd client/geoapi_client
 python3 setup.py sdist bdist_wheel
 python3 -m twine upload dist/*
