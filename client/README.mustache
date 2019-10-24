@@ -40,40 +40,25 @@ Please follow the [installation procedure](#installation--usage) and then run th
 
 ```python
 from __future__ import print_function
-import time
-import {{{packageName}}}
-from {{{packageName}}}.rest import ApiException
+import geoapi_client
+from geoapi_client.rest import ApiException
 from pprint import pprint
-{{#apiInfo}}{{#apis}}{{#-first}}{{#operations}}{{#operation}}{{#-first}}{{#hasAuthMethods}}{{#authMethods}}{{#isBasic}}
-# Configure HTTP basic authorization: {{{name}}}
-configuration = {{{packageName}}}.Configuration()
-configuration.username = 'YOUR_USERNAME'
-configuration.password = 'YOUR_PASSWORD'{{/isBasic}}{{#isApiKey}}
-# Configure API key authorization: {{{name}}}
-configuration = {{{packageName}}}.Configuration()
-configuration.api_key['{{{keyParamName}}}'] = 'YOUR_API_KEY'
-# Uncomment below to setup prefix (e.g. Bearer) for API key, if needed
-# configuration.api_key_prefix['{{{keyParamName}}}'] = 'Bearer'{{/isApiKey}}{{#isOAuth}}
-# Configure OAuth2 access token for authorization: {{{name}}}
-configuration = {{{packageName}}}.Configuration()
-configuration.access_token = 'YOUR_ACCESS_TOKEN'{{/isOAuth}}{{/authMethods}}
-{{/hasAuthMethods}}
 
-# create an instance of the API class
-api_instance = {{{packageName}}}.{{{classname}}}({{{packageName}}}.ApiClient(configuration))
-{{/-first}}{{/operation}}{{/operations}}{{/-first}}{{/apis}}{{/apiInfo}}
-```
+configuration = geoapi_client.Configuration()
+configuration.host = MY_HOST # e.g. https://agave.designsafe-ci.org/geo/v2
+configuration.api_key_prefix['Authorization'] = 'Bearer'
+configuration.api_key['Authorization'] = TOKEN
 
-Create a project and updload a file to create a new feature:
+api_client = geoapi_client.ApiClient(configuration)
+api_instance = geoapi_client.ProjectsApi(api_client=api_client)
 
-```python
 try:
     project = api_instance.create_project(payload={"name": "My project"})
     pprint(project)
     api_response = api_instance.upload_file(project.id, 'image.jpg')
     pprint(api_response)
 except ApiException as e:
-    print("Exception when calling ProjectsApi->upload_file: %s\n" % e)
+    print("Exception: %s\n" % e)
 ```
 
 ## API Endpoints
