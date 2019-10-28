@@ -56,7 +56,8 @@ def test_add_point_cloud_file(dbsession, projects_fixture, point_cloud_fixture,
     assert dbsession.query(Feature).count() == 1
     assert dbsession.query(FeatureAsset).count() == 1
     assert len(os.listdir(get_project_asset_dir(point_cloud.project_id))) == 2
-    assert len(os.listdir(get_asset_path(point_cloud.feature.assets[0].path))) == 3  # index.html, pointclouds, libs
+    assert len(os.listdir(
+        get_asset_path(point_cloud.feature.assets[0].path))) == 4  # index.html, pointclouds, libs, logo
 
 
 def test_delete_point_cloud(dbsession, projects_fixture):
