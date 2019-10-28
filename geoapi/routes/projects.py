@@ -9,7 +9,7 @@ from geoapi.services.projects import ProjectsService
 
 from geoapi.services.point_cloud import PointCloudService
 from geoapi.utils.decorators import jwt_decoder, project_permissions, project_feature_exists, project_point_cloud_exists
-from tasks import external_data
+from geoapi.tasks import external_data
 
 logger = logging.getLogger(__name__)
 
@@ -24,7 +24,6 @@ default_response = api.model('DefaultAgaveResponse', {
 ok_response = api.model('OkResponse', {
     "message": fields.String(default="accepted")
 })
-
 
 feature_schema = api.schema_model('Feature', FeatureSchema)
 
@@ -60,7 +59,6 @@ user = api.model('User', {
     'id': fields.Integer(),
     'username': fields.String(required=True)
 })
-
 
 point_cloud = api.model('PointCloud', {
     'id': fields.Integer(),
@@ -272,11 +270,11 @@ class ProjectFeaturesFilesResource(Resource):
 class ProjectFeaturesFileImportResource(Resource):
 
     parser = api.parser()
-    parser.add_argument('system_id', type=str, required=True)
+    parser.add_argument('systemId', type=str, required=True)
     parser.add_argument('path', type=str, required=True)
 
     tapis_file = api.model('TapisFile', {
-        'system_id': fields.String(required=True),
+        'system': fields.String(required=True),
         'path': fields.String(required=True)
     })
 
@@ -294,8 +292,9 @@ class ProjectFeaturesFileImportResource(Resource):
     @project_permissions
     def post(self, projectId: int):
         u = request.current_user
+        logger.info(request.json["files"])
         for file in request.json["files"]:
-            external_data.import_file_from_agave.delay(u.jwt, file["system_id"], file["path"], projectId)
+            external_data.import_file_from_agave.delay(u.jwt, file["system"], file["path"], projectId)
         return {"message": "accepted"}
 
 
