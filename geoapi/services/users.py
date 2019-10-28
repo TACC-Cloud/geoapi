@@ -31,6 +31,7 @@ class UserService:
     @staticmethod
     def canAccess(user: User, projectId: int) -> bool:
         up = db_session.query(ProjectUser)\
+            .join(Project)\
             .filter(ProjectUser.user_id == user.id)\
             .filter(Project.tenant_id == user.tenant_id)\
             .filter(ProjectUser.project_id == projectId).first()

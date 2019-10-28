@@ -180,12 +180,16 @@ class ProjectUserResource(Resource):
 @api.route('/<int:projectId>/features/')
 class ProjectFeaturesResource(Resource):
 
+    parser = api.parser()
+    parser.add_argument("assetType", location="args")
+
     @api.doc(id="getAllFeatures",
              description="GET all the features of a project as GeoJSON")
     @api.marshal_with(feature_collection_model)
+    @api.expect(parser)
     @project_permissions
     def get(self, projectId: int):
-        query = request.args
+        query = self.parser.parse_args()
         return ProjectsService.getFeatures(projectId, query)
 
     @api.doc(id="addGeoJSONFeature",

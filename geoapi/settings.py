@@ -14,6 +14,7 @@ class Config(object):
     RABBITMQ_PASSWD = 'dev'
     RABBITMQ_VHOST = 'dev'
     RABBITMQ_HOSTNAME = 'rabbitmq'
+    RESTPLUS_MASK_SWAGGER = False
 
 
 class ProductionConfig(Config):
