@@ -253,19 +253,19 @@ class ProjectFeaturesCollectionResource(Resource):
 class ProjectFeaturesFilesResource(Resource):
 
     @api.doc(id="uploadFile",
-             description='Add a new feature to a project from a file that has embedded geospatial information. Current '
-                         'allowed file types are georeferenced image (jpeg) or gpx track. '
+             description='Add a new feature(s) to a project from a file that has embedded geospatial information. Current '
+                         'allowed file types are GeoJSON, georeferenced image (jpeg) or gpx track. '
                          'Any additional key/value pairs '
-                         'in the form will also be placed in the feature metadata')
+                         'in the form will also be placed in the feature(s) metadata')
     @api.expect(file_upload_parser)
-    @api.marshal_with(api_feature)
+    @api.marshal_with(api_feature, as_list=True)
     @project_permissions
     def post(self, projectId: int):
         file = request.files['file']
         formData = request.form
         metadata = formData.to_dict()
-        feature = FeaturesService.fromFileObj(projectId, file, metadata)
-        return feature
+        features = FeaturesService.fromFileObj(projectId, file, metadata)
+        return features
 
 
 @api.route('/<int:projectId>/features/files/import/')

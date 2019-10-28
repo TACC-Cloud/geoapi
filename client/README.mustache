@@ -55,8 +55,8 @@ api_instance = geoapi_client.ProjectsApi(api_client=api_client)
 try:
     project = api_instance.create_project(payload={"name": "My project"})
     pprint(project)
-    api_response = api_instance.upload_file(project.id, 'image.jpg')
-    pprint(api_response)
+    features = api_instance.upload_file(project.id, 'image.jpg')
+    pprint(features)
 except ApiException as e:
     print("Exception: %s\n" % e)
 ```

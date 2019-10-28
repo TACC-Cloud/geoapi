@@ -182,9 +182,9 @@ class FeaturesService:
     def fromFileObj(projectId: int, fileObj: IO, metadata: Dict) -> List[Feature]:
         ext = pathlib.Path(fileObj.filename).suffix.lstrip(".")
         if ext in FeaturesService.IMAGE_FILE_EXTENSIONS:
-            return FeaturesService.fromImage(projectId, fileObj, metadata)
+            return [FeaturesService.fromImage(projectId, fileObj, metadata)]
         elif ext in FeaturesService.GPX_FILE_EXTENSIONS:
-            return FeaturesService.fromGPX(projectId, fileObj, metadata)
+            return [FeaturesService.fromGPX(projectId, fileObj, metadata)]
         elif ext in FeaturesService.GEOJSON_FILE_EXTENSIONS:
             return FeaturesService.fromGeoJSON(projectId, fileObj, {})
         else:
