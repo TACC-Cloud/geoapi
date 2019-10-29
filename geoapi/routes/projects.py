@@ -95,7 +95,7 @@ class ProjectsListing(Resource):
 
     @api.doc(id="getProjects",
              description='Get a listing of projects')
-    @api.marshal_with(project)
+    @api.marshal_with(project, as_list=True)
     def get(self):
         u = request.current_user
         return ProjectsService.list(u)
@@ -150,7 +150,7 @@ class ProjectResource(Resource):
 @api.route('/<int:projectId>/users/')
 class ProjectUsersResource(Resource):
 
-    @api.marshal_with(user)
+    @api.marshal_with(user, as_list=True)
     @project_permissions
     def get(self, projectId: int):
         return ProjectsService.getUsers(projectId)
@@ -185,8 +185,8 @@ class ProjectFeaturesResource(Resource):
 
     @api.doc(id="getAllFeatures",
              description="GET all the features of a project as GeoJSON")
-    @api.marshal_with(feature_collection_model)
-    @api.expect(parser)
+
+    @api.marshal_with(feature_collection_model, as_list=True)
     @project_permissions
     def get(self, projectId: int):
         query = self.parser.parse_args()
@@ -204,7 +204,7 @@ class ProjectFeaturesResource(Resource):
 @api.route('/<int:projectId>/features/<int:featureId>/')
 class ProjectFeatureResource(Resource):
     @api.doc(id="getFeature",
-             description="GET all the features of a project as GeoJSON")
+             description="GET a feature of a project as GeoJSON")
     @api.marshal_with(api_feature)
     @project_permissions
     def get(self, projectId: int, featureId: int):
@@ -255,10 +255,10 @@ class ProjectFeaturesCollectionResource(Resource):
 class ProjectFeaturesFilesResource(Resource):
 
     @api.doc(id="uploadFile",
-             description='Add a new feature to a project from a file that has embedded geospatial information. Current '
-                         'allowed file types are georeferenced image (jpeg) or gpx track. '
+             description='Add a new feature(s) to a project from a file that has embedded geospatial information. Current '
+                         'allowed file types are GeoJSON, georeferenced image (jpeg) or gpx track. '
                          'Any additional key/value pairs '
-                         'in the form will also be placed in the feature metadata')
+                         'in the form will also be placed in the feature(s) metadata')
     @api.expect(file_upload_parser)
     @api.marshal_with(api_feature, as_list=True)
     @project_permissions
@@ -266,8 +266,8 @@ class ProjectFeaturesFilesResource(Resource):
         file = request.files['file']
         formData = request.form
         metadata = formData.to_dict()
-        feature = FeaturesService.fromFileObj(projectId, file, metadata)
-        return feature
+        features = FeaturesService.fromFileObj(projectId, file, metadata)
+        return features
 
 
 @api.route('/<int:projectId>/features/files/import/')
@@ -354,7 +354,7 @@ class ProjectOverlaysResource(Resource):
 
     @api.doc(id="getOverlays",
              description='Get a list of all the overlays associated with the current map project.')
-    @api.marshal_with(overlay)
+    @api.marshal_with(overlay, as_list=True)
     @project_permissions
     def get(self, projectId: int):
         ovs = FeaturesService.getOverlays(projectId)
@@ -377,7 +377,7 @@ class ProjectPointCloudsResource(Resource):
 
     @api.doc(id="getAllPointClouds",
              description="Get a listing of all the points clouds of a project")
-    @api.marshal_with(point_cloud)
+    @api.marshal_with(point_cloud, as_list=True)
     @project_permissions
     def get(self, projectId: int):
         return PointCloudService.list(projectId)
@@ -443,7 +443,7 @@ class ProjectTasksResource(Resource):
 
     @api.doc(id="getTasks",
              description="Get a listing of all the tasks of a project")
-    @api.marshal_with(task)
+    @api.marshal_with(task, as_list=True)
     @project_permissions
     def get(self, projectId: int):
         from geoapi.models import Task

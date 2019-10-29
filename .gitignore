@@ -120,3 +120,8 @@ dmypy.json
 
 # OS temp files
 .DS_Store
+
+# generated python client and associated files
+geoapi_client/
+swagger.json
+client/swagger-codegen/
