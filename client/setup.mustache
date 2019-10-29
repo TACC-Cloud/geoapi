@@ -1,0 +1,56 @@
+# coding: utf-8
+
+{{>partial_header}}
+
+from setuptools import setup, find_packages  # noqa: H301
+
+NAME = "{{{projectName}}}"
+VERSION = "{{packageVersion}}"
+{{#apiInfo}}
+{{#apis}}
+{{^hasMore}}
+# To install the library, run the following
+#
+# python setup.py install
+#
+# prerequisite: setuptools
+# http://pypi.python.org/pypi/setuptools
+
+REQUIRES = [
+    "certifi>=2017.4.17",
+    "python-dateutil>=2.1",
+    "six>=1.10",
+    "urllib3>=1.23"
+]
+    
+{{#asyncio}}
+REQUIRES.append("aiohttp")
+{{/asyncio}}
+{{#tornado}}
+REQUIRES.append("tornado")
+{{/tornado}}
+
+# read the contents of your README file
+from os import path
+import io
+this_directory = path.abspath(path.dirname(__file__))
+with io.open(path.join(this_directory, 'README.md'), encoding='utf-8') as f:
+    long_description = f.read()
+
+setup(
+    name=NAME,
+    version=VERSION,
+    description="{{appName}}: {{appDescription}} ",
+    author="Texas Advanced Computing Center",
+    author_email="CICsupport@tacc.utexas.edu",
+    url="{{packageUrl}}",
+    keywords=["TACC", "{{appName}}"],
+    install_requires=REQUIRES,
+    packages=find_packages(),
+    include_package_data=True,
+    long_description=long_description,
+    long_description_content_type='text/markdown'
+)
+{{/hasMore}}
+{{/apis}}
+{{/apiInfo}}
