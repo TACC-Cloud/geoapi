@@ -273,10 +273,6 @@ class ProjectFeaturesFilesResource(Resource):
 @api.route('/<int:projectId>/features/files/import/')
 class ProjectFeaturesFileImportResource(Resource):
 
-    parser = api.parser()
-    parser.add_argument('systemId', type=str, required=True)
-    parser.add_argument('path', type=str, required=True)
-
     tapis_file = api.model('TapisFile', {
         'system': fields.String(required=True),
         'path': fields.String(required=True)

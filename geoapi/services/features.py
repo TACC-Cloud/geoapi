@@ -11,7 +11,7 @@ import fiona
 from geoalchemy2.shape import from_shape
 import geojson
 
-from geoapi.services.images import ImageService
+from geoapi.services.images import ImageService, ImageData
 from geoapi.settings import settings
 from geoapi.models import Feature, FeatureAsset, Overlay
 from geoapi.db import db_session
@@ -80,6 +80,7 @@ class FeaturesService:
             delete_assets(projectId=feat.project_id, uuid=asset.uuid)
         db_session.delete(feat)
         db_session.commit()
+
     @staticmethod
     def setProperties(featureId: int, props: Dict) -> Feature:
         """
@@ -121,11 +122,14 @@ class FeaturesService:
             data = geojson.loads(json.dumps(feature))
         except ValueError:
             raise InvalidGeoJSON
-
+        logger.info(data)
         features = []
         if data["type"] == "Feature":
             feat = Feature.fromGeoJSON(data)
             feat.project_id = projectId
+            logger.info(feat.properties)
+            # strip out image_src, thumb_src if they are there from the old hazmapper geojson
+            feat = FeaturesService._importHazmapperV1Images(feat)
             db_session.add(feat)
             features.append(feat)
         elif data["type"] == "FeatureCollection":
@@ -133,12 +137,27 @@ class FeaturesService:
             for feature in fc.features:
                 feat = Feature.fromGeoJSON(feature)
                 feat.project_id = projectId
+                feat = FeaturesService._importHazmapperV1Images(feat)
                 db_session.add(feat)
                 features.append(feat)
         else:
             raise InvalidGeoJSON("Valid GeoJSON must be either a Feature or FeatureCollection.")
         db_session.commit()
         return features
+
+    #TODO: we should be able to get rid of the old Hazmapper stuff at some point...
+    @staticmethod
+    def _importHazmapperV1Images(feat: Feature) -> Feature:
+        if feat.properties.get("image_src"):
+            logger.info("Getting image from src")
+            imdata = ImageService.processBase64(feat.properties.get("image_src"))
+            fa = FeaturesService.featureAssetFromImData(feat.project_id, imdata)
+            feat.assets.append(fa)
+            feat.properties.pop("image_src")
+        if feat.properties.get("thumb_src"):
+            feat.properties.pop("thumb_src")
+        return feat
+
 
     @staticmethod
     def fromLatLng(projectId: int, lat: float, lng: float, metadata: Dict) -> Feature:
@@ -245,6 +264,20 @@ class FeaturesService:
         feat.assets.append(fa)
         db_session.commit()
         return feat
+
+    @staticmethod
+    def featureAssetFromImData(projectId: int, imdata: ImageData) -> FeatureAsset:
+        asset_uuid = uuid.uuid4()
+        base_filepath = make_project_asset_dir(projectId)
+        asset_path = os.path.join(base_filepath, str(asset_uuid) + '.jpeg')
+        imdata.thumb.save(pathlib.Path(asset_path).with_suffix(".thumb.jpeg"), "JPEG")
+        imdata.resized.save(asset_path, "JPEG")
+        fa = FeatureAsset(
+            uuid=asset_uuid,
+            asset_type="image",
+            path=get_asset_relative_path(asset_path)
+        )
+        return fa
 
     @staticmethod
     def createImageFeatureAsset(projectId: int, fileObj: IO) -> FeatureAsset:

@@ -11,6 +11,7 @@ from sqlalchemy.dialects.postgresql import UUID
 from geoalchemy2 import Geometry
 from geoalchemy2.shape import from_shape, to_shape
 from geoapi.db import Base
+from typing import TypeVar
 
 
 class Feature(Base):

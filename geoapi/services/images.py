@@ -1,8 +1,10 @@
-import os
+import base64
+import re
+import io
 import PIL
 from PIL import Image
 from PIL.ExifTags import TAGS, GPSTAGS
-from typing import Tuple, IO
+from typing import Tuple, IO, AnyStr
 from dataclasses import dataclass
 from geoapi.exceptions import InvalidEXIFData
 from geoapi.settings import settings
@@ -24,6 +26,16 @@ class ImageService:
 
     THUMBSIZE = (100, 100)
     RESIZE = (1024, 1024)
+
+    @staticmethod
+    def processBase64(encoded: AnyStr) -> ImageData:
+        image_data = re.sub('^data:image/.+;base64,', '', encoded)
+        thumb = Image.open(io.BytesIO(base64.b64decode(image_data)))
+        thumb.thumbnail(ImageService.THUMBSIZE)
+        resized = Image.open(io.BytesIO(base64.b64decode(image_data)))
+        resized.thumbnail(ImageService.RESIZE, PIL.Image.ANTIALIAS)
+        imdata = ImageData(thumb, resized, (0, 0))
+        return imdata
 
     @staticmethod
     def processImage(fileObj: IO) -> ImageData:
