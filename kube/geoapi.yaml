@@ -223,11 +223,11 @@ spec:
               - 172.16.120.3:6789
               - 172.16.120.4:6789
               - 172.16.120.5:6789
-            path: /geoapi/production
-            user: geoapi
+            path: /jmeiring/production
+            user: jmeiring
             readOnly: false
             secretRef:
-              name: geoapi-ceph-secret
+              name: ceph-secret
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -286,11 +286,11 @@ spec:
             - 172.16.120.3:6789
             - 172.16.120.4:6789
             - 172.16.120.5:6789
-          path: /geoapi/production
-          user: geoapi
+          path: /jmeiring/production
+          user: jmeiring
           readOnly: false
           secretRef:
-            name: geoapi-ceph-secret
+            name: ceph-secret
 
 ---
 apiVersion: apps/v1
@@ -403,11 +403,11 @@ spec:
               - 172.16.120.3:6789
               - 172.16.120.4:6789
               - 172.16.120.5:6789
-            path: /geoapi/production
-            user: geoapi
+            path: /jmeiring/production
+            user: jmeiring
             readOnly: false
             secretRef:
-              name: geoapi-ceph-secret
+              name: ceph-secret
 ---
 apiVersion: batch/v1
 kind: Job
@@ -438,21 +438,3 @@ spec:
         image: taccaci/geoapi:latest
         command: ["alembic", "upgrade", "head"]
       restartPolicy: Never
-#apiVersion: extensions/v1beta1
-#kind: Ingress
-#metadata:
-#  name: geoapi-ingress
-#  annotations:
-#    nginx.ingress.kubernetes.io/enable-cors: "true"
-#spec:
-#  rules:
-#  - http:
-#      paths:
-#      - path: /assets
-#        backend:
-#          serviceName: geoapi-nginx
-#          servicePort: 8080
-#      - path: /
-#        backend:
-#          serviceName: geoapi
-#          servicePort: 5000
