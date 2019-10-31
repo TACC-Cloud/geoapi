@@ -9,6 +9,10 @@ data:
           include /etc/nginx/mime.types;
           client_max_body_size 10g;
           proxy_read_timeout 600s;
+          gzip on;
+          gzip_proxied any;
+          gzip_types *;
+          gzip_min_length 250;
 
           location / {
                add_header "Access-Control-Allow-Origin"  *;
@@ -125,6 +129,7 @@ spec:
   ports:
   - port: 80
     targetPort: 80
+    nodePort: 31474
   selector:
     app: geoapi-nginx
 ---
