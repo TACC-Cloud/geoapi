@@ -3,7 +3,7 @@ import pathlib
 import uuid
 from typing import List, IO, Dict
 
-from celery.task.control import revoke
+from geoapi.celery_app import app
 from celery import uuid as celery_uuid
 
 from geoapi.exceptions import ApiException
@@ -141,7 +141,7 @@ class PointCloudService:
 
         if point_cloud.task and point_cloud.task.status != "FINISHED":
             logger.info("Terminating previous unfinished processing task {}.".format(point_cloud.task.process_id))
-            revoke(point_cloud.task.process_id, terminate=True)
+            app.control.revoke(point_cloud.task.process_id, terminate=True)
             point_cloud.task.status = "CANCELED"
             db_session.add(point_cloud.task)
             db_session.commit()

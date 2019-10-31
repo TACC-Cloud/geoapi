@@ -8,6 +8,7 @@ data:
       server {
           include /etc/nginx/mime.types;
           client_max_body_size 10g;
+          proxy_read_timeout 600s;
 
           location / {
                add_header "Access-Control-Allow-Origin"  *;
@@ -369,6 +370,8 @@ spec:
         - "4"
         - -b
         - 0.0.0.0:5000
+        - -k gevent
+        - --timeout 600
         - app:app
         envFrom:
           - configMapRef:

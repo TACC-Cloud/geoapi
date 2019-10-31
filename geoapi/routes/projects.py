@@ -65,7 +65,8 @@ point_cloud = api.model('PointCloud', {
     'description': fields.String(required=False),
     'conversion_parameters': fields.String(required=False),
     'feature_id': fields.Integer(),
-    'task_id': fields.Integer()
+    'task_id': fields.Integer(),
+    'project_id': fields.Integer(),
 })
 
 task = api.model('Task', {
@@ -73,7 +74,7 @@ task = api.model('Task', {
     'status': fields.String(),
     'description': fields.String(required=False),
     'created': fields.DateTime(dt_format='rfc822'),
-    'updated': fields.DateTime(dt_format='rfc822')
+    'updated': fields.DateTime(dt_format='rfc822'),
 })
 
 rapid_project_body = api.model("RapidProject", {
