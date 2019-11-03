@@ -36,6 +36,7 @@ asset = api.model('Asset', {
 
 api_feature = api.model('Feature', {
     "id": fields.Integer(),
+    "project_id": fields.Integer(),
     "type": fields.String(required=True, default="Feature"),
     "geometry": fields.Raw(required=True),
     "properties": fields.Raw(),
@@ -210,6 +211,13 @@ class ProjectFeatureResource(Resource):
     @project_permissions
     def get(self, projectId: int, featureId: int):
         return FeaturesService.get(featureId)
+
+    @api.doc(id="deleteFeature",
+             description="GET a feature of a project as GeoJSON")
+    @api.marshal_with(ok_response)
+    @project_permissions
+    def delete(self, projectId: int, featureId: int):
+        return FeaturesService.delete(featureId)
 
 
 @api.route('/<int:projectId>/features/<int:featureId>/properties/')

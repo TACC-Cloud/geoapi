@@ -134,13 +134,14 @@ class ProjectsService:
             ),
             'features', coalesce(json_agg(
                 json_build_object(
-                    'type',       'Feature',
-                    'id',         tmp.id,
-                    'geometry',   ST_AsGeoJSON(the_geom)::json,
+                    'type',        'Feature',
+                    'id',          tmp.id,
+                    'project_id',  tmp.project_id,
+                    'geometry',     ST_AsGeoJSON(the_geom)::json,
                     'created_date', tmp.created_date,
-                    'assets', assets, 
-                    'styles', tmp.styles, 
-                    'properties', properties
+                    'assets',       assets, 
+                    'styles',       tmp.styles, 
+                    'properties',   properties
                     )
                 ), '[]'::json)
         ) as geojson
