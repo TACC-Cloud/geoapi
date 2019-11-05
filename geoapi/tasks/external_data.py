@@ -31,7 +31,7 @@ def import_file_from_agave(jwt: str, systemId: str, path: str, projectId: int):
         tmp_file_uuid = client.getFile(systemId, path)
         fpath = Path(path)
         pth = Path("/tmp/" + tmp_file_uuid)
-        with pth.open() as f:
+        with pth.open("rb") as f:
             f.filename = fpath.name
             features.FeaturesService.fromFileObj(projectId, f, {})
         os.remove(os.path.join('/tmp', tmp_file_uuid))

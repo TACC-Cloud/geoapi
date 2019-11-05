@@ -7,7 +7,10 @@ from PIL.ExifTags import TAGS, GPSTAGS
 from typing import Tuple, IO, AnyStr
 from dataclasses import dataclass
 from geoapi.exceptions import InvalidEXIFData
-from geoapi.settings import settings
+from geoapi.log import logging
+
+logger = logging.getLogger(__name__)
+
 
 @dataclass
 class ImageData:
@@ -117,7 +120,6 @@ def get_exif_location(image):
     exif_data = get_exif_data(image)
     lat = None
     lon = None
-
     gps_latitude = exif_data['GPSLatitude']
     gps_latitude_ref = exif_data['GPSLatitudeRef']
     gps_longitude = exif_data['GPSLongitude']

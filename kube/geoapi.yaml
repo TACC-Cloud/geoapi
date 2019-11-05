@@ -245,7 +245,7 @@ metadata:
     app: geoapi-workers
   name: geoapi-workers
 spec:
-  replicas: 3
+  replicas: 1
   strategy:
     type: Recreate
   selector:
@@ -262,6 +262,10 @@ spec:
         - -A
         - celery_app
         - worker
+        - -n
+        - worker@%h
+        - -l
+        - INFO
         envFrom:
           - configMapRef:
               name: geoapi-environment-vars
@@ -375,8 +379,10 @@ spec:
         - "4"
         - -b
         - 0.0.0.0:5000
-        - -k gevent
-        - --timeout 600
+        - -k
+        - gevent
+        - --timeout
+        - "600"
         - app:app
         envFrom:
           - configMapRef:
