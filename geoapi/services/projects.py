@@ -118,6 +118,8 @@ class ProjectsService:
         :param projectId: int
         :return: GeoJSON
         """
+        if query is None:
+            query = {}
 
         # query params
         assetType = query.get("assetType")

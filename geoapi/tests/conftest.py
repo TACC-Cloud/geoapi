@@ -14,6 +14,7 @@ from geoapi.models.users import User
 from geoapi.models.project import Project
 from geoapi.models.feature import Feature
 from geoapi.services.point_cloud import PointCloudService
+from geoapi.services.features import FeaturesService
 from geoapi.app import app
 from geoapi.utils.assets import get_project_asset_dir
 
@@ -160,6 +161,11 @@ def feature_fixture(dbsession):
         dbsession.add(feat)
         dbsession.commit()
         yield feat
+
+
+@pytest.fixture(scope="function")
+def image_feature_fixture(image_file_fixture):
+    yield FeaturesService.fromImage(1, image_file_fixture, metadata={})
 
 
 @pytest.fixture(scope="function")
