@@ -76,7 +76,8 @@ def test_get_point_cloud(test_client, dbsession, projects_fixture, point_cloud_f
 
 def test_get_project_features_empty(test_client, dbsession, projects_fixture):
     u1 = dbsession.query(User).get(1)
-    resp = test_client.get('/projects/1/features/', headers={'x-jwt-assertion-test': u1.jwt})
+    resp = test_client.get('/projects/1/features/',
+                           headers={'x-jwt-assertion-test': u1.jwt})
     assert resp.status_code == 200
 
     data = resp.get_json()
@@ -85,10 +86,12 @@ def test_get_project_features_empty(test_client, dbsession, projects_fixture):
 
 def test_get_project_features_single_feature(test_client, dbsession, projects_fixture, feature_fixture):
     u1 = dbsession.query(User).get(1)
-    resp = test_client.get('/projects/1/features/', headers={'x-jwt-assertion-test': u1.jwt})
+    resp = test_client.get('/projects/1/features/',
+                           headers={'x-jwt-assertion-test': u1.jwt})
     data = resp.get_json()
     assert resp.status_code == 200
     assert len(data['features']) != 0
+
 
 def test_get_project_features_filter(test_client, dbsession, projects_fixture, feature_fixture, image_feature_fixture):
     u1 = dbsession.query(User).get(1)

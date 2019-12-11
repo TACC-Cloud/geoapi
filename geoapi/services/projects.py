@@ -3,7 +3,7 @@ from typing import List
 
 from geoapi.models import Project, User, ObservableDataProject
 from geoapi.db import db_session
-from sqlalchemy.sql import select, func, text, and_
+from sqlalchemy.sql import select, text
 from sqlalchemy.exc import IntegrityError
 from geoapi.utils.agave import AgaveUtils
 from geoapi.utils.assets import get_project_asset_dir
@@ -13,7 +13,6 @@ class ProjectsService:
     """
     Central location of all interactions with Projects.
     """
-
 
     @staticmethod
     def create(data: dict, user: User) -> Project:
@@ -64,12 +63,11 @@ class ProjectsService:
             raise e
         return proj
 
-
     @staticmethod
     def list(user: User) -> List[Project]:
         """
         List a users projects
-        :param username: str
+        :param user: User
         :return: List[Project]
         """
         return user.projects
@@ -141,8 +139,8 @@ class ProjectsService:
                     'project_id',  tmp.project_id,
                     'geometry',     ST_AsGeoJSON(the_geom)::json,
                     'created_date', tmp.created_date,
-                    'assets',       assets, 
-                    'styles',       tmp.styles, 
+                    'assets',       assets,
+                    'styles',       tmp.styles,
                     'properties',   properties
                     )
                 ), '[]'::json)
@@ -156,7 +154,6 @@ class ProjectsService:
               LEFT JOIN feature_assets fa on feat.id = fa.feature_id
              """)
         ]).where(text("project_id = :projectId"))
-
 
         if bbox:
             print(query)
@@ -191,7 +188,6 @@ class ProjectsService:
             pass
         return {"status": "ok"}
 
-
     @staticmethod
     def addUserToProject(projectId: int, username: str) -> None:
         """
@@ -207,12 +203,10 @@ class ProjectsService:
         proj.users.append(user)
         db_session.commit()
 
-
     @staticmethod
     def getUsers(projectId: int) -> List[User]:
         proj = db_session.query(Project).get(projectId)
         return proj.users
-
 
     @staticmethod
     def removeUserFromProject(projectId: int, username: str) -> None:
@@ -228,4 +222,3 @@ class ProjectsService:
             .filter(User.username == username).first()
         proj.users.remove(user)
         db_session.commit()
-

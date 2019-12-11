@@ -13,9 +13,11 @@ def test_create_project(dbsession):
     assert len(proj.users) == 1
     assert proj.name == "test name"
 
+
 def test_get_features(projects_fixture, feature_fixture):
     project_features = ProjectsService.getFeatures(projects_fixture.id)
     assert len(project_features['features']) == 1
+
 
 def test_get_features_filter_type(projects_fixture, feature_fixture, image_feature_fixture):
     project_features = ProjectsService.getFeatures(projects_fixture.id)
