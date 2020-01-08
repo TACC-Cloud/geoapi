@@ -122,8 +122,13 @@ class ProjectsService:
         # query params
         assetType = query.get("assetType")
         bbox = query.get("bbox")
+        createdStart = query.get("createdStart")
+        createdEnd = query.get("createdEnd")
 
-        params = {'projectId': projectId}
+        params = {'projectId': projectId,
+                  'assetType': assetType,
+                  'createdStart': createdStart,
+                  'createdEnd': createdEnd}
 
         select_stmt = text("""
         json_build_object(
@@ -167,9 +172,11 @@ class ProjectsService:
                            "bbox_xmax": bbox[2],
                            "bbox_ymax": bbox[3]})
 
+        if createdStart and createdEnd:
+            sub_select = sub_select.where(text("feat.created_date BETWEEN :createdStart AND :createdEnd"))
+
         if assetType:
             sub_select = sub_select.where(text("fa.asset_type = :assetType"))
-            params['assetType'] = assetType
 
         sub_select = sub_select.group_by(text("feat.id")).alias("tmp")
         s = select([select_stmt]).select_from(sub_select)

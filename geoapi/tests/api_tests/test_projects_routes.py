@@ -1,5 +1,6 @@
 from geoapi.models.users import User
 from geoapi.models.project import Project
+import datetime
 
 
 def test_get_projects(test_client, dbsession, projects_fixture):
@@ -112,3 +113,24 @@ def test_get_project_features_filter_with_bounding_box(test_client, dbsession, p
     data = resp.get_json()
     assert resp.status_code == 200
     assert len(data['features']) == 1
+
+def test_get_project_features_filter_with_date_range(test_client, dbsession, projects_fixture, feature_fixture):
+    u1 = dbsession.query(User).get(1)
+    created_start = (datetime.datetime.now()-datetime.timedelta(minutes=5)).isoformat()
+    created_stop = (datetime.datetime.now()+datetime.timedelta(minutes=5)).isoformat()
+    resp = test_client.get('/projects/1/features/',
+                           query_string={'createdStart': created_start,
+                                         'createdEnd': created_stop},
+                           headers={'x-jwt-assertion-test': u1.jwt})
+    data = resp.get_json()
+    assert resp.status_code == 200
+    assert len(data['features']) == 1
+
+    created_start = (datetime.datetime.now()+datetime.timedelta(minutes=1)).isoformat()
+    resp = test_client.get('/projects/1/features/',
+                           query_string={'createdStart': created_start,
+                                         'createdEnd': created_stop},
+                           headers={'x-jwt-assertion-test': u1.jwt})
+    data = resp.get_json()
+    assert resp.status_code == 200
+    assert len(data['features']) == 0

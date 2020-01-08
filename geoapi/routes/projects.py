@@ -1,5 +1,5 @@
 from flask import request, abort
-from flask_restplus import Resource, Namespace, fields
+from flask_restplus import Resource, Namespace, fields, inputs
 from werkzeug.datastructures import FileStorage
 
 from geoapi.log import logging
@@ -190,11 +190,16 @@ class ProjectFeaturesResource(Resource):
                         type=float,
                         help="bounding box: min longitude, min latitude, max longitude, max latitude "
                              "(i.e bbox=minLon,minLat, maxLon,maxLat")
+    parser.add_argument('createdStart', location='args', type=inputs.datetime_from_iso8601,
+                        help="Starting date range when filtering of features by created date."
+                             " createdEnd is also required.")
+    parser.add_argument('createdEnd', location='args', type=inputs.datetime_from_iso8601,
+                        help="Ending date range for when filtering features by created date. "
+                             " createdStart is also required.")
 
     @api.doc(id="getAllFeatures",
              parser=parser,
              description="GET all the features of a project as GeoJSON")
-
     @api.marshal_with(feature_collection_model, as_list=True)
     @project_permissions
     def get(self, projectId: int):
