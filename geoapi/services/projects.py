@@ -123,6 +123,8 @@ class ProjectsService:
         assetType = query.get("assetType")
         bbox = query.get("bbox")
 
+        params = {'projectId': projectId}
+
         select_stmt = text("""
         json_build_object(
             'type', 'FeatureCollection',
@@ -156,14 +158,22 @@ class ProjectsService:
         ]).where(text("project_id = :projectId"))
 
         if bbox:
-            print(query)
-            # TODO: implement bounding box filters
+            sub_select = sub_select.where(
+                text("""feat.the_geom &&
+                ST_MakeEnvelope (:bbox_xmin, :bbox_ymin, :bbox_xmax, :bbox_ymax)
+                """))
+            params.update({"bbox_xmin": bbox[0],
+                           "bbox_ymin": bbox[1],
+                           "bbox_xmax": bbox[2],
+                           "bbox_ymax": bbox[3]})
+
         if assetType:
             sub_select = sub_select.where(text("fa.asset_type = :assetType"))
+            params['assetType'] = assetType
 
         sub_select = sub_select.group_by(text("feat.id")).alias("tmp")
         s = select([select_stmt]).select_from(sub_select)
-        result = db_session.execute(s, {'projectId': projectId, "assetType": assetType})
+        result = db_session.execute(s, params)
         out = result.fetchone()
         return out.geojson
 

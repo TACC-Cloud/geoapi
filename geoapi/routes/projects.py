@@ -184,8 +184,15 @@ class ProjectFeaturesResource(Resource):
 
     parser = api.parser()
     parser.add_argument("assetType", location="args")
+    parser.add_argument('bbox',
+                        location='args',
+                        action='split',
+                        type=float,
+                        help="bounding box: min longitude, min latitude, max longitude, max latitude "
+                             "(i.e bbox=minLon,minLat, maxLon,maxLat")
 
     @api.doc(id="getAllFeatures",
+             parser=parser,
              description="GET all the features of a project as GeoJSON")
 
     @api.marshal_with(feature_collection_model, as_list=True)
