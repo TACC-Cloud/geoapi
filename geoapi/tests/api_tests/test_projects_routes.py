@@ -94,7 +94,8 @@ def test_get_project_features_single_feature(test_client, dbsession, projects_fi
     assert len(data['features']) != 0
 
 
-def test_get_project_features_filter_with_assettype(test_client, dbsession, projects_fixture, feature_fixture, image_feature_fixture):
+def test_get_project_features_filter_with_assettype(test_client, dbsession, projects_fixture,
+                                                    feature_fixture, image_feature_fixture):
     u1 = dbsession.query(User).get(1)
     resp = test_client.get('/projects/1/features/',
                            query_string={'assetType': 'image'},
@@ -104,7 +105,8 @@ def test_get_project_features_filter_with_assettype(test_client, dbsession, proj
     assert len(data['features']) == 1
 
 
-def test_get_project_features_filter_with_bounding_box(test_client, dbsession, projects_fixture, feature_fixture, image_feature_fixture):
+def test_get_project_features_filter_with_bounding_box(test_client, dbsession, projects_fixture,
+                                                       feature_fixture, image_feature_fixture):
     bbox = [-80.9, 32.61, -80, 32.62]
     u1 = dbsession.query(User).get(1)
     resp = test_client.get('/projects/1/features/',
@@ -113,6 +115,7 @@ def test_get_project_features_filter_with_bounding_box(test_client, dbsession, p
     data = resp.get_json()
     assert resp.status_code == 200
     assert len(data['features']) == 1
+
 
 def test_get_project_features_filter_with_date_range(test_client, dbsession, projects_fixture, feature_fixture):
     u1 = dbsession.query(User).get(1)
