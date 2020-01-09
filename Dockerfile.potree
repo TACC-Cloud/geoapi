@@ -14,7 +14,10 @@ ENV PATH /opt/tools/LAStools/bin/:$PATH
 RUN git clone --depth 1 https://github.com/m-schuetz/LAStools.git && cd LAStools/LASzip && mkdir build && cd build && \
 cmake -DCMAKE_BUILD_TYPE=Release .. && make && make install && ldconfig
 
-RUN git clone -b develop https://github.com/potree/PotreeConverter.git && cd PotreeConverter && git checkout c39348e199b0ff6f83150803933ab5c89c4c4052 && mkdir build && cd build && \
+# Note sed-based fix PotreeConverter below (see https://github.com/potree/PotreeConverter/issues/382)
+RUN git clone -b develop https://github.com/potree/PotreeConverter.git && cd PotreeConverter && git checkout 08b83dd292d8ac98cb0f83be44a0cc5b03261aca  && \
+sed -i 's/writer->write(reader->getPoint());/Potree::Point point = reader->getPoint();\\\n writer->write(point); \\\n/g' PotreeConverter/src/PotreeWriter.cpp  && \
+mkdir build && cd build && \
 cmake -DCMAKE_BUILD_TYPE=Release -DLASZIP_INCLUDE_DIRS=/opt/LAStools/LASzip/dll/ -DLASZIP_LIBRARY=/usr/local/lib/liblaszip.so .. && \
 make && make install && cp -r /opt/PotreeConverter/PotreeConverter/resources /resources
 ADD misc/potree/page_template /resources/page_template
