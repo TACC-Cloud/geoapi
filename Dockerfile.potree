@@ -14,7 +14,7 @@ ENV PATH /opt/tools/LAStools/bin/:$PATH
 RUN git clone --depth 1 https://github.com/m-schuetz/LAStools.git && cd LAStools/LASzip && mkdir build && cd build && \
 cmake -DCMAKE_BUILD_TYPE=Release .. && make && make install && ldconfig
 
-RUN git clone -b develop https://github.com/potree/PotreeConverter.git && cd PotreeConverter && mkdir build && cd build && \
+RUN git clone -b develop https://github.com/potree/PotreeConverter.git && cd PotreeConverter && git checkout c39348e199b0ff6f83150803933ab5c89c4c4052 && mkdir build && cd build && \
 cmake -DCMAKE_BUILD_TYPE=Release -DLASZIP_INCLUDE_DIRS=/opt/LAStools/LASzip/dll/ -DLASZIP_LIBRARY=/usr/local/lib/liblaszip.so .. && \
 make && make install && cp -r /opt/PotreeConverter/PotreeConverter/resources /resources
 ADD misc/potree/page_template /resources/page_template
