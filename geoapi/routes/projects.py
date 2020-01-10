@@ -190,12 +190,12 @@ class ProjectFeaturesResource(Resource):
                         type=float,
                         help="bounding box: min longitude, min latitude, max longitude, max latitude "
                              "(i.e bbox=minLon,minLat, maxLon,maxLat")
-    parser.add_argument('createdStart', location='args', type=inputs.datetime_from_iso8601,
-                        help="Starting date range when filtering of features by created date."
-                             " createdEnd is also required.")
-    parser.add_argument('createdEnd', location='args', type=inputs.datetime_from_iso8601,
-                        help="Ending date range for when filtering features by created date. "
-                             " createdStart is also required.")
+    parser.add_argument('startDate', location='args', type=inputs.datetime_from_iso8601,
+                        help="Starting date for filtering of features by created date."
+                             " endDate is also required.")
+    parser.add_argument('endDate', location='args', type=inputs.datetime_from_iso8601,
+                        help="Ending date for filtering features by created date. "
+                             " startDate is also required.")
 
     @api.doc(id="getAllFeatures",
              parser=parser,
