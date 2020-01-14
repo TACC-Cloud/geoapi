@@ -86,4 +86,3 @@ def test_remove_feature_video_asset(dbsession, projects_fixture, feature_fixture
     assert dbsession.query(Feature).count() == 0
     assert dbsession.query(FeatureAsset).count() == 0
     assert len(os.listdir(get_project_asset_dir(feature.project_id))) == 0
-
