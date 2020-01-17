@@ -2,6 +2,7 @@ import os
 import uuid
 import subprocess
 import pathlib
+import re
 import shutil
 import celery
 from geoalchemy2.shape import from_shape
@@ -60,6 +61,14 @@ def convert_to_potree(self, pointCloudId: int) -> None:
         command.extend(point_cloud.conversion_parameters.split())
     logger.info("Processing point cloud (#{}):  {}".format(pointCloudId, " ".join(command)))
     subprocess.run(command, check=True, capture_output=True, text=True)
+
+    # Create preview viewer html (with no menu and now nsf logo)
+    with open(os.path.join(path_temp_processed_point_cloud_path, "preview.html"), 'w+') as preview:
+        with open(os.path.join(path_temp_processed_point_cloud_path, "index.html"), 'r') as viewer:
+            content = viewer.read()
+            content = re.sub(r"<div class=\"nsf_logo\"(.+?)</div>", '', content, flags=re.DOTALL)
+            content = content.replace("viewer.toggleSidebar()", "$('.potree_menu_toggle').hide()")
+            preview.write(content)
 
     if point_cloud.feature_id:
         feature = point_cloud.feature

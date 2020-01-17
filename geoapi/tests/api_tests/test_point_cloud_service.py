@@ -57,7 +57,12 @@ def test_add_point_cloud_file(dbsession, projects_fixture, point_cloud_fixture,
     assert dbsession.query(FeatureAsset).count() == 1
     assert len(os.listdir(get_project_asset_dir(point_cloud.project_id))) == 2
     assert len(os.listdir(
-        get_asset_path(point_cloud.feature.assets[0].path))) == 4  # index.html, pointclouds, libs, logo
+        get_asset_path(point_cloud.feature.assets[0].path))) == 5  # index.html, preview.html, pointclouds, libs, logo
+    assert os.path.isfile(os.path.join(get_asset_path(point_cloud.feature.assets[0].path), "preview.html"))
+    with open(os.path.join(get_asset_path(point_cloud.feature.assets[0].path), "preview.html"), 'r+') as f:
+        preview = f.read()
+        assert "nsf_logo" not in preview
+        assert "$('.potree_menu_toggle').hide()" in preview
 
 
 def test_delete_point_cloud(dbsession, projects_fixture):
