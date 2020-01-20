@@ -57,7 +57,7 @@ class FeatureAsset(Base):
     uuid = Column(UUID(as_uuid=True), default=uuid.uuid4, nullable=False)
     path = Column(String(), nullable=False)
     original_name = Column(String(), nullable=True)
-    original_path = Column(String(), nullable=True, index=True)
+    display_path = Column(String(), nullable=True, index=True)
     asset_type = Column(String(), nullable=False, default="image")
     feature = relationship('Feature')
 

@@ -20,7 +20,7 @@ services:
       - RABBITMQ_DEFAULT_VHOST=dev
 
   postgres:
-    image: mdillon/postgis
+    image: mdillon/postgis:11-alpine
     volumes:
       - pgdata:/var/lib/postgresql/data
     ports:
