@@ -13,6 +13,7 @@ from geoapi.db import Base, db_session
 from geoapi.models.users import User
 from geoapi.models.project import Project
 from geoapi.models.feature import Feature
+from geoapi.models.task import Task
 from geoapi.services.point_cloud import PointCloudService
 from geoapi.services.features import FeaturesService
 from geoapi.app import app
@@ -88,6 +89,14 @@ def point_cloud_fixture(dbsession):
     data = {"description": "description"}
     point_cloud = PointCloudService.create(projectId=1, data=data, user=u1)
     yield point_cloud
+
+
+@pytest.fixture(scope="function")
+def task_fixture(dbsession):
+    task = Task(process_id="1234", status="SUCCESS", description="description")
+    dbsession.add(task)
+    dbsession.commit()
+    yield task
 
 
 @pytest.fixture(scope="function")
