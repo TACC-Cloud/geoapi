@@ -61,22 +61,22 @@ user = api.model('User', {
     'username': fields.String(required=True)
 })
 
-point_cloud = api.model('PointCloud', {
-    'id': fields.Integer(),
-    'description': fields.String(required=False),
-    'conversion_parameters': fields.String(required=False),
-    'feature_id': fields.Integer(),
-    'task_id': fields.Integer(),
-    'project_id': fields.Integer(),
-    'files_info': fields.Raw(required=True)
-})
-
 task = api.model('Task', {
     'id': fields.Integer(),
     'status': fields.String(),
     'description': fields.String(required=False),
     'created': fields.DateTime(dt_format='rfc822'),
     'updated': fields.DateTime(dt_format='rfc822'),
+})
+
+point_cloud = api.model('PointCloud', {
+    'id': fields.Integer(),
+    'description': fields.String(required=False),
+    'conversion_parameters': fields.String(required=False),
+    'feature_id': fields.Integer(),
+    'task': fields.Nested(task),
+    'project_id': fields.Integer(),
+    'files_info': fields.Raw(required=True)
 })
 
 rapid_project_body = api.model("RapidProject", {
