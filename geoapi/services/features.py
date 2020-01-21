@@ -169,7 +169,7 @@ class FeaturesService:
         return f
 
     @staticmethod
-    def fromGPX(projectId: int, fileObj: IO, metadata: Dict) -> Feature:
+    def fromGPX(projectId: int, fileObj: IO, metadata: Dict, original_path=None) -> Feature:
 
         # TODO: Fiona should support reading from the file directly, this MemoryFile business
         #  should not be needed
