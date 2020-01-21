@@ -334,7 +334,7 @@ spec:
         envFrom:
           - configMapRef:
               name: geoapi-environment-vars
-        image: mdillon/postgis
+        image: mdillon/postgis:11
         name: geoapi-postgres
         ports:
         - containerPort: 5432
@@ -382,7 +382,7 @@ spec:
         - -k
         - gevent
         - --timeout
-        - "600"
+        - "1800"
         - app:app
         envFrom:
           - configMapRef:

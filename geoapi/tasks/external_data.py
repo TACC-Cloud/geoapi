@@ -33,7 +33,7 @@ def import_file_from_agave(jwt: str, systemId: str, path: str, projectId: int):
         pth = Path("/tmp/" + tmp_file_uuid)
         with pth.open("rb") as f:
             f.filename = fpath.name
-            features.FeaturesService.fromFileObj(projectId, f, {})
+            features.FeaturesService.fromFileObj(projectId, f, {}, path)
         os.remove(os.path.join('/tmp', tmp_file_uuid))
     except Exception as e:
         logger.error("Could not import file from agave: {} :: {}".format(systemId, path), e)
@@ -87,10 +87,9 @@ def import_from_agave(user: User, systemId: str, path: str, proj: Project):
                 feat = features.FeaturesService.fromLatLng(proj.id, lat, lon, {})
                 feat.properties = meta
                 fd = open(os.path.join("/tmp", tmp_file_uuid), 'rb')
-                if ext in features.FeaturesService.IMAGE_FILE_EXTENSIONS:
-                    fa = features.FeaturesService.createImageFeatureAsset(proj.id, fd)
-                elif ext in features.FeaturesService.VIDEO_FILE_EXTENSIONS:
-                    fa = features.FeaturesService.createVideoFeatureAsset(proj.id, fd)
+
+                if ext in features.FeaturesService.ALLOWED_EXTENSIONS:
+                    fa = features.FeaturesService.createFeatureAsset(proj.id, feat.id, fd, original_path=path)
                 else:
                     raise ApiException("Could not process this file")
                 fa.feature = feat

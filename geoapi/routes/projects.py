@@ -31,7 +31,10 @@ asset = api.model('Asset', {
     "id": fields.Integer(),
     "path": fields.String(),
     "uuid": fields.String(),
-    "asset_type": fields.String()
+    "asset_type": fields.String(),
+    "original_path": fields.String(),
+    "original_name": fields.String(),
+    "display_path": fields.String()
 })
 
 api_feature = api.model('Feature', {
