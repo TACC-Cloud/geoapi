@@ -198,19 +198,19 @@ class FeaturesService:
         return FeaturesService.addGeoJSON(projectId, data)
 
     @staticmethod
-    def fromFileObj(projectId: int, fileObj: IO, metadata: Dict) -> List[Feature]:
+    def fromFileObj(projectId: int, fileObj: IO, metadata: Dict, original_path=None) -> List[Feature]:
         ext = pathlib.Path(fileObj.filename).suffix.lstrip(".")
         if ext in FeaturesService.IMAGE_FILE_EXTENSIONS:
-            return [FeaturesService.fromImage(projectId, fileObj, metadata)]
+            return [FeaturesService.fromImage(projectId, fileObj, metadata, original_path)]
         elif ext in FeaturesService.GPX_FILE_EXTENSIONS:
-            return [FeaturesService.fromGPX(projectId, fileObj, metadata)]
+            return [FeaturesService.fromGPX(projectId, fileObj, metadata, original_path)]
         elif ext in FeaturesService.GEOJSON_FILE_EXTENSIONS:
             return FeaturesService.fromGeoJSON(projectId, fileObj, {})
         else:
             raise ApiException("Filetype not supported for direct upload. Create a feature and attach as an asset?")
 
     @staticmethod
-    def fromImage(projectId: int, fileObj: IO, metadata: Dict) -> Feature:
+    def fromImage(projectId: int, fileObj: IO, metadata: Dict, original_path=None) -> Feature:
         """
         Create a Point feature from a georeferenced image
         :param projectId: int
@@ -232,6 +232,8 @@ class FeaturesService:
         fa = FeatureAsset(
             uuid=asset_uuid,
             asset_type="image",
+            original_path=original_path,
+            display_path=original_path,
             path=get_asset_relative_path(asset_path),
             feature=f,
         )
@@ -243,7 +245,7 @@ class FeaturesService:
         return f
 
     @staticmethod
-    def createFeatureAsset(projectId: int, featureId: int, fileObj: IO) -> Feature:
+    def createFeatureAsset(projectId: int, featureId: int, fileObj: IO, original_path=None) -> Feature:
         """
         Create a feature asset and save the static content to the ASSETS_BASE_DIR
         :param projectId: int
@@ -254,9 +256,9 @@ class FeaturesService:
         fpath = pathlib.Path(fileObj.filename)
         ext = fpath.suffix.lstrip('.')
         if ext in FeaturesService.IMAGE_FILE_EXTENSIONS:
-            fa = FeaturesService.createImageFeatureAsset(projectId, fileObj)
+            fa = FeaturesService.createImageFeatureAsset(projectId, fileObj, original_path=original_path)
         elif ext in FeaturesService.VIDEO_FILE_EXTENSIONS:
-            fa = FeaturesService.createVideoFeatureAsset(projectId, fileObj)
+            fa = FeaturesService.createVideoFeatureAsset(projectId, fileObj, original_path=original_path)
         else:
             raise ApiException("Invalid format for feature assets")
 
@@ -280,7 +282,7 @@ class FeaturesService:
         return fa
 
     @staticmethod
-    def createImageFeatureAsset(projectId: int, fileObj: IO) -> FeatureAsset:
+    def createImageFeatureAsset(projectId: int, fileObj: IO, original_path=None) -> FeatureAsset:
         asset_uuid = uuid.uuid4()
         imdata = ImageService.resizeImage(fileObj)
         base_filepath = make_project_asset_dir(projectId)
@@ -290,12 +292,14 @@ class FeaturesService:
         fa = FeatureAsset(
             uuid=asset_uuid,
             asset_type="image",
+            original_path=original_path,
+            display_path=original_path,
             path=get_asset_relative_path(asset_path)
         )
         return fa
 
     @staticmethod
-    def createVideoFeatureAsset(projectId: int, fileObj: IO) -> FeatureAsset:
+    def createVideoFeatureAsset(projectId: int, fileObj: IO, original_path=None) -> FeatureAsset:
         """
 
         :param projectId:
@@ -317,6 +321,8 @@ class FeaturesService:
         os.remove(encoded_path)
         fa = FeatureAsset(
             uuid=asset_uuid,
+            original_path=original_path,
+            display_path=original_path,
             path=get_asset_relative_path(save_path),
             asset_type="video"
         )

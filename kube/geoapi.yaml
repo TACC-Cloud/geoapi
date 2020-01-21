@@ -382,7 +382,7 @@ spec:
         - -k
         - gevent
         - --timeout
-        - "600"
+        - "1800"
         - app:app
         envFrom:
           - configMapRef:
