@@ -1,6 +1,6 @@
 from sqlalchemy import (
     Column, Integer, String,
-    ForeignKey, DateTime
+    ForeignKey, DateTime, JSON
 )
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
@@ -19,6 +19,7 @@ class PointCloud(Base):
     task_id = Column(ForeignKey('tasks.id'), index=True)
     description = Column(String)
     conversion_parameters = Column(String)
+    files_info = Column(JSON)
     path = Column(String(), nullable=False)
     tenant_id = Column(String, nullable=False)
     created = Column(DateTime(timezone=True), server_default=func.now())

@@ -68,6 +68,7 @@ point_cloud = api.model('PointCloud', {
     'feature_id': fields.Integer(),
     'task_id': fields.Integer(),
     'project_id': fields.Integer(),
+    'files_info': fields.Raw(required=True)
 })
 
 task = api.model('Task', {
