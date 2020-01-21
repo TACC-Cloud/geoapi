@@ -59,6 +59,26 @@ send a POST request to `localhost:8000/projects` with a body like this:
 
 See https://github.com/TACC-Cloud/hazmapper for details.
 
+### Migrations
+
+
+Applying migrations
+
+```
+docker exec -it geoapi alembic upgrade head
+```
+
+Creating migrations
+
+```
+docker exec -it geoapi /bin/bash
+alembic revision --autogenerate
+# Then:
+# - remove drop table commands for postgis
+# - add/commit migrations
+```
+
+
 ## Python client
 
 The python package can be found at [PyPi](https://pypi.org/project/geoapi-client/)
