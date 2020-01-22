@@ -30,14 +30,12 @@ def jwt_decoder(fn):
         jwt_header_name, token, tenant = jwt_utils.jwt_tenant(request.headers)
         try:
             decoded = jwt.decode(token, pub_key, verify=False)
-            logger.info(decoded)
             username = decoded["http://wso2.org/claims/fullname"]
         except Exception as e:
             logger.exception(e)
             abort(400, 'could not decode JWT')
 
         user = UserService.getUser(username, tenant)
-        logger.info(user)
         if not user:
             user = UserService.create(username, token, tenant)
         # In case the JWT was updated for some reason, reset the jwt
