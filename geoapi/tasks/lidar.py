@@ -5,6 +5,7 @@ import pathlib
 import re
 import shutil
 import celery
+import json
 from geoalchemy2.shape import from_shape
 
 from geoapi.log import logging
@@ -44,6 +45,11 @@ def convert_to_potree(self, pointCloudId: int) -> None:
     input_files = [get_asset_path(path_to_original_point_clouds, file)
                    for file in os.listdir(path_to_original_point_clouds)
                    if pathlib.Path(file).suffix.lstrip('.') in PointCloudService.LIDAR_FILE_EXTENSIONS]
+
+    point_cloud.files_info = json.dumps([{'name': os.path.basename(f)} for f in input_files])
+    db_session.add(point_cloud)
+    db_session.commit()
+
     outline = Lidar.getBoundingBox(input_files)
 
     command = [
