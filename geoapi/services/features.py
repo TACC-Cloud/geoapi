@@ -18,6 +18,7 @@ from geoapi.db import db_session
 from geoapi.exceptions import InvalidGeoJSON, ApiException
 from geoapi.utils.assets import make_project_asset_dir, delete_assets, get_asset_relative_path
 from geoapi.log import logging
+from geoapi.utils import geometries
 
 import geoapi.tasks.external_data as data_tasks
 
@@ -111,7 +112,7 @@ class FeaturesService:
         return feat
 
     @staticmethod
-    def addGeoJSON(projectId: int, feature: Dict) -> List[Feature]:
+    def addGeoJSON(projectId: int, feature: Dict, original_path=None) -> List[Feature]:
         """
         Add a GeoJSON feature to a project
         :param projectId: int
@@ -122,15 +123,13 @@ class FeaturesService:
             data = geojson.loads(json.dumps(feature))
         except ValueError:
             raise InvalidGeoJSON
-        logger.info(data)
         features = []
         if data["type"] == "Feature":
             feat = Feature.fromGeoJSON(data)
             feat.project_id = projectId
-            logger.info(feat.properties)
             # strip out image_src, thumb_src if they are there from the old hazmapper geojson
             feat = FeaturesService._importHazmapperV1Images(feat)
-            db_session.add(feat)
+            db_session.add_adll(feat)
             features.append(feat)
         elif data["type"] == "FeatureCollection":
             fc = geojson.FeatureCollection(data)
@@ -179,7 +178,7 @@ class FeaturesService:
                 shp = shape(track["geometry"])
                 feat = Feature()
                 feat.project_id = projectId
-                feat.the_geom = from_shape(shp, srid=4326)
+                feat.the_geom = from_shape(geometries.convert_3D_2D(shp), srid=4326)
                 feat.properties = metadata or {}
                 db_session.add(feat)
                 db_session.commit()

@@ -11,6 +11,7 @@ from sqlalchemy.dialects.postgresql import UUID
 from geoalchemy2 import Geometry
 from geoalchemy2.shape import from_shape, to_shape
 from geoapi.db import Base
+from geoapi.utils import geometries
 from typing import TypeVar
 
 
@@ -36,7 +37,9 @@ class Feature(Base):
     def fromGeoJSON(cls, data: dict):
         shp = shapely.geometry.shape(data["geometry"])
         feat = cls()
-        feat.the_geom = from_shape(shp, srid=4326)
+        # Some features have Z-axis data, the epsg:4326 index doesn't like that
+        # TODO: This might be better to handle in Postgres itself on insert
+        feat.the_geom = from_shape(geometries.convert_3D_2D(shp), srid=4326)
         feat.properties = data.get("properties")
         feat.styles = data.get("styles")
         return feat

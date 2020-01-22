@@ -1,7 +1,9 @@
 import shutil
 from typing import List
 
-from geoapi.models import Project, User, ObservableDataProject
+from sqlalchemy import desc
+
+from geoapi.models import Project, User, ObservableDataProject, ProjectUser
 from geoapi.db import db_session
 from sqlalchemy.sql import select, text
 from sqlalchemy.exc import IntegrityError
@@ -70,7 +72,14 @@ class ProjectsService:
         :param user: User
         :return: List[Project]
         """
-        return user.projects
+        projects = db_session.query(Project) \
+            .join(User.projects)\
+            .filter(User.username == user.username)\
+            .filter(User.tenant_id == user.tenant_id) \
+            .order_by(desc(Project.created))\
+            .all()
+
+        return projects
 
     @staticmethod
     def get(projectId: int) -> Project:
