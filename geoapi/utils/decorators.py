@@ -36,6 +36,7 @@ def jwt_decoder(fn):
             abort(400, 'could not decode JWT')
 
         user = UserService.getUser(username, tenant)
+        logger.info(user)
         if not user:
             user = UserService.create(username, token, tenant)
         # In case the JWT was updated for some reason, reset the jwt
