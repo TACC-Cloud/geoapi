@@ -129,7 +129,7 @@ class FeaturesService:
             feat.project_id = projectId
             # strip out image_src, thumb_src if they are there from the old hazmapper geojson
             feat = FeaturesService._importHazmapperV1Images(feat)
-            db_session.add_adll(feat)
+            db_session.add(feat)
             features.append(feat)
         elif data["type"] == "FeatureCollection":
             fc = geojson.FeatureCollection(data)
