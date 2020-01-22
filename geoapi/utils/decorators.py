@@ -30,6 +30,7 @@ def jwt_decoder(fn):
         jwt_header_name, token, tenant = jwt_utils.jwt_tenant(request.headers)
         try:
             decoded = jwt.decode(token, pub_key, verify=False)
+            logger.info(decoded)
             username = decoded["http://wso2.org/claims/subscriber"]
         except Exception as e:
             logger.exception(e)
