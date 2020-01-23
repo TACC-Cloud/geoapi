@@ -1,4 +1,5 @@
 import shutil
+from pathlib import Path
 from typing import List
 
 from sqlalchemy import desc
@@ -42,12 +43,15 @@ class ProjectsService:
         """
         systemId = data["system_id"]
         path = data["path"]
+        folder_name = Path(path).name
+        name = systemId + '/' + folder_name
 
         # TODO: Handle no storage system found
         system = AgaveUtils(user.jwt).systemsGet(systemId)
         proj = Project(
-            name=system["description"],
-            description=system["description"]
+            name=name,
+            description=system["description"],
+            tenant_id=user.tenant_id
         )
         obs = ObservableDataProject(
             system_id=system["id"],
