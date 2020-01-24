@@ -64,6 +64,25 @@ services:
     hostname: geoapiworkers
     command: "celery -A geoapi.celery_app worker -l info"
 
+  celerybeat:
+    build:
+      context: .
+      dockerfile: ./Dockerfile.potree
+    networks:
+      - geoapi
+    volumes:
+      - .:/app
+      - assets:/assets
+    environment:
+      - FLASK_APP=/app/geoapi/app.py
+      - APP_ENV=development
+      - ASSETS_BASE_DIR=/assets
+    stdin_open: true
+    tty: true
+    container_name: geoapicelerybeat
+    hostname: geoapicelerybeat
+    command: "celery -A geoapi.celery_app beat"
+
   api:
     build:
       context: .

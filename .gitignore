@@ -1,6 +1,7 @@
 .idea
 node_modules/
 assets/
+celerybeat.pid
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
