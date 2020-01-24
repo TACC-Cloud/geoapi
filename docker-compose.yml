@@ -81,7 +81,7 @@ services:
     tty: true
     container_name: geoapicelerybeat
     hostname: geoapicelerybeat
-    command: "celery -A geoapi.celery_app beat"
+    command: "celery -A geoapi.celery_app beat -l info"
 
   api:
     build:

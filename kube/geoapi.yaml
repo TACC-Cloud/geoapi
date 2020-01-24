@@ -260,7 +260,7 @@ spec:
       - args:
         - celery
         - -A
-        - celery_app
+        - geoapi.celery_app
         - worker
         - -n
         - worker@%h
@@ -328,7 +328,7 @@ spec:
       - args:
         - celery
         - -A
-        - celery_app
+        - geoapi.celery_app
         - beat
         - -l
         - INFO
@@ -348,7 +348,7 @@ spec:
                 key: password
 
         image: taccaci/geoapi-workers:latest
-        name: geoapi-workers
+        name: geoapi-celerybeat
         resources: {}
       hostname: geoapi-celerybeat
       restartPolicy: Always
