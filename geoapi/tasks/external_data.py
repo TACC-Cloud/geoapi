@@ -87,7 +87,7 @@ def import_from_agave(user: User, systemId: str, path: str, proj: Project):
                 feat = features.FeaturesService.fromLatLng(proj.id, lat, lon, {})
                 feat.properties = meta
                 fd = open(os.path.join("/tmp", tmp_file_uuid), 'rb')
-
+                fd.filename = Path(item.path).name
                 if ext in features.FeaturesService.ALLOWED_EXTENSIONS:
                     fa = features.FeaturesService.createFeatureAsset(proj.id, feat.id, fd, original_path=path)
                 else:
