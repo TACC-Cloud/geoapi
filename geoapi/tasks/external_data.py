@@ -1,15 +1,11 @@
 import os
 from pathlib import Path
 from geoapi.celery_app import app
-from geoapi.models import User, ObservableDataProject, Project, FeatureAsset, Feature
-from geoapi.utils import tenants
+from geoapi.models import User, ObservableDataProject, Project, FeatureAsset
 from geoapi.exceptions import ApiException
 from geoapi.utils.agave import AgaveUtils
 from geoapi.log import logging
 import geoapi.services.features as features
-# from geoapi.services.images import ImageService
-# from geoapi.services.videos import VideoService
-# from geoapi.tasks.lidar import convert_to_potree
 
 from geoapi.db import db_session
 logger = logging.getLogger(__file__)
@@ -41,6 +37,7 @@ def import_file_from_agave(jwt: str, systemId: str, path: str, projectId: int):
 
 
 #TODO: Add users to project based on the agave users on the system.
+#TODO: This is an abomination
 @app.task(rate_limit="5/s")
 def import_from_agave(user: User, systemId: str, path: str, proj: Project):
     client = AgaveUtils(user.jwt)
@@ -63,41 +60,51 @@ def import_from_agave(user: User, systemId: str, path: str, proj: Project):
                 if asset:
                     logger.info("Already imported {}".format(item_system_path))
                     continue
-                listing = client.listing(systemId, item.path)[0]
-                # f = client.getFile(systemId, item.path)
-                meta = client.getMetaAssociated(listing.uuid)
-                if not meta:
-                    logger.info("No metadata for {}".format(item.path))
-                    continue
-                geolocation = meta.get("geolocation")
-                if not geolocation:
-                    logger.info("NO geolocation for {}".format(item.path))
-                    continue
-                lat, lon = _parse_rapid_geolocation(geolocation)
-                # 1) Get the file from agave, save to /tmp
-                # 2) Resize and thumbnail images or transcode video to mp4
-                # 3) create a FeatureAsset and a Feature
-                # 4) save the image/video to /assets
-                # 5) delete the original in /tmp
-                # 6) db_session.add_all([fa, feat])
 
-                # client.getFile will save the asset to /tmp/{uuid}
-                tmp_file_uuid = client.getFile(systemId, item.path)
-                ext = item.ext
-                feat = features.FeaturesService.fromLatLng(proj.id, lat, lon, {})
-                feat.properties = meta
-                fd = open(os.path.join("/tmp", tmp_file_uuid), 'rb')
-                fd.filename = Path(item.path).name
-                if ext in features.FeaturesService.ALLOWED_EXTENSIONS:
-                    fa = features.FeaturesService.createFeatureAsset(proj.id, feat.id, fd, original_path=path)
+                # If its a RApp project folder, grab the metadata from tapis meta service
+                if Path(item_system_path).match("*/RApp/*"):
+                    logger.info("RApp import {path}".format(path=item_system_path))
+                    listing = client.listing(systemId, item.path)[0]
+                    # f = client.getFile(systemId, item.path)
+                    meta = client.getMetaAssociated(listing.uuid)
+                    if not meta:
+                        logger.info("No metadata for {}".format(item.path))
+                        continue
+                    geolocation = meta.get("geolocation")
+                    if not geolocation:
+                        logger.info("NO geolocation for {}".format(item.path))
+                        continue
+                    lat, lon = _parse_rapid_geolocation(geolocation)
+                    # 1) Get the file from agave, save to /tmp
+                    # 2) Resize and thumbnail images or transcode video to mp4
+                    # 3) create a FeatureAsset and a Feature
+                    # 4) save the image/video to /assets
+                    # 5) delete the original in /tmp
+
+                    # client.getFile will save the asset to /tmp/{uuid}
+                    tmp_file_uuid = client.getFile(systemId, item.path)
+                    ext = item.ext
+                    feat = features.FeaturesService.fromLatLng(proj.id, lat, lon, {})
+                    feat.properties = meta
+                    db_session.add(feat)
+                    db_session.commit()
+                    with open(os.path.join("/tmp", tmp_file_uuid), 'rb') as fd:
+                        fd.filename = Path(item.path).name
+                        if ext in features.FeaturesService.ALLOWED_EXTENSIONS:
+                            fa = features.FeaturesService.createFeatureAsset(proj.id, feat.id, fd, original_path=path)
+                        else:
+                            raise ApiException("Could not process this file")
+                    fa.feature = feat
+                    fa.original_path = item_system_path
+                    db_session.add(fa)
+                    db_session.commit()
+                    os.remove(os.path.join("/tmp", tmp_file_uuid))
                 else:
-                    raise ApiException("Could not process this file")
-                fa.feature = feat
-                fa.original_path = item_system_path
-                db_session.add_all([fa, feat])
-                db_session.commit()
-                fd.close()
-                os.remove(os.path.join("/tmp", tmp_file_uuid))
+                    tmp_file_uuid = client.getFile(systemId, item.path)
+                    with open(os.path.join("/tmp", tmp_file_uuid), 'rb') as fd:
+                        fd.filename = Path(item.path).name
+                        features.FeaturesService.fromFileObj(proj.id, fd, {}, original_path=item_system_path)
+                    os.remove(os.path.join("/tmp", tmp_file_uuid))
             except ApiException as e:
                 logger.exception(e)
                 continue
@@ -110,7 +117,6 @@ def import_from_agave(user: User, systemId: str, path: str, proj: Project):
 @app.task()
 def refresh_observable_projects():
     obs = db_session.query(ObservableDataProject).all()
-    logger.info(obs)
     for o in obs:
         import_from_agave(o.project.users[0], o.system_id, o.path, o.project)
 

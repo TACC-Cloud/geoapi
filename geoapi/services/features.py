@@ -31,7 +31,7 @@ class FeaturesService:
     )
 
     IMAGE_FILE_EXTENSIONS = (
-        'jpeg', 'jpg', 'png', 'tiff'
+        'jpeg', 'jpg',
     )
 
     VIDEO_FILE_EXTENSIONS = (
@@ -45,6 +45,8 @@ class FeaturesService:
     GPX_FILE_EXTENSIONS = (
         'gpx',
     )
+
+    ALLOWED_GEOSPATIAL_EXTENSIONS = IMAGE_FILE_EXTENSIONS + GPX_FILE_EXTENSIONS + GEOJSON_FILE_EXTENSIONS
 
     ALLOWED_EXTENSIONS = IMAGE_FILE_EXTENSIONS + VIDEO_FILE_EXTENSIONS \
                          + AUDIO_FILE_EXTENSIONS + GPX_FILE_EXTENSIONS \
@@ -197,7 +199,7 @@ class FeaturesService:
         return FeaturesService.addGeoJSON(projectId, data)
 
     @staticmethod
-    def fromFileObj(projectId: int, fileObj: IO, metadata: Dict, original_path=None) -> List[Feature]:
+    def fromFileObj(projectId: int, fileObj: IO, metadata: Dict, original_path: str=None) -> List[Feature]:
         ext = pathlib.Path(fileObj.filename).suffix.lstrip(".")
         if ext in FeaturesService.IMAGE_FILE_EXTENSIONS:
             return [FeaturesService.fromImage(projectId, fileObj, metadata, original_path)]
@@ -209,7 +211,7 @@ class FeaturesService:
             raise ApiException("Filetype not supported for direct upload. Create a feature and attach as an asset?")
 
     @staticmethod
-    def fromImage(projectId: int, fileObj: IO, metadata: Dict, original_path=None) -> Feature:
+    def fromImage(projectId: int, fileObj: IO, metadata: Dict, original_path: str=None) -> Feature:
         """
         Create a Point feature from a georeferenced image
         :param projectId: int
@@ -244,7 +246,7 @@ class FeaturesService:
         return f
 
     @staticmethod
-    def createFeatureAsset(projectId: int, featureId: int, fileObj: IO, original_path=None) -> Feature:
+    def createFeatureAsset(projectId: int, featureId: int, fileObj: IO, original_path: str = None) -> Feature:
         """
         Create a feature asset and save the static content to the ASSETS_BASE_DIR
         :param projectId: int
@@ -281,7 +283,7 @@ class FeaturesService:
         return fa
 
     @staticmethod
-    def createImageFeatureAsset(projectId: int, fileObj: IO, original_path=None) -> FeatureAsset:
+    def createImageFeatureAsset(projectId: int, fileObj: IO, original_path: str=None) -> FeatureAsset:
         asset_uuid = uuid.uuid4()
         imdata = ImageService.resizeImage(fileObj)
         base_filepath = make_project_asset_dir(projectId)
@@ -298,7 +300,7 @@ class FeaturesService:
         return fa
 
     @staticmethod
-    def createVideoFeatureAsset(projectId: int, fileObj: IO, original_path=None) -> FeatureAsset:
+    def createVideoFeatureAsset(projectId: int, fileObj: IO, original_path:str =None) -> FeatureAsset:
         """
 
         :param projectId:
