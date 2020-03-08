@@ -200,7 +200,7 @@ class FeaturesService:
 
     @staticmethod
     def fromFileObj(projectId: int, fileObj: IO, metadata: Dict, original_path: str=None) -> List[Feature]:
-        ext = pathlib.Path(fileObj.filename).suffix.lstrip(".")
+        ext = pathlib.Path(fileObj.filename).suffix.lstrip(".").lower()
         if ext in FeaturesService.IMAGE_FILE_EXTENSIONS:
             return [FeaturesService.fromImage(projectId, fileObj, metadata, original_path)]
         elif ext in FeaturesService.GPX_FILE_EXTENSIONS:

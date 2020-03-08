@@ -48,7 +48,6 @@ def import_from_agave(user: User, systemId: str, path: str, proj: Project):
             import_from_agave(user, systemId, item.path, proj)
         # skip any junk files that are not allowed
         if item.path.suffix.lower().lstrip('.') not in features.FeaturesService.ALLOWED_EXTENSIONS:
-            logger.info("Skipping {}".format(item.path))
             continue
         else:
             try:
@@ -99,12 +98,14 @@ def import_from_agave(user: User, systemId: str, path: str, proj: Project):
                     db_session.add(fa)
                     db_session.commit()
                     os.remove(os.path.join("/tmp", tmp_file_uuid))
-                else:
+                elif item.path.suffix.lower().lstrip('.') in features.FeaturesService.ALLOWED_GEOSPATIAL_EXTENSIONS:
                     tmp_file_uuid = client.getFile(systemId, item.path)
                     with open(os.path.join("/tmp", tmp_file_uuid), 'rb') as fd:
                         fd.filename = Path(item.path).name
                         features.FeaturesService.fromFileObj(proj.id, fd, {}, original_path=item_system_path)
                     os.remove(os.path.join("/tmp", tmp_file_uuid))
+                else:
+                    continue
             except ApiException as e:
                 logger.exception(e)
                 continue
