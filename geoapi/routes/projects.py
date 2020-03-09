@@ -436,6 +436,9 @@ class ProjectPointCloudResource(Resource):
     @project_permissions
     @project_point_cloud_exists
     def post(self, projectId: int, pointCloudId: int):
+        """
+        :raises InvalidCoordinateReferenceSystem: in case  file missing coordinate reference system
+        """
         file = request.files['file']
         formData = request.form
         metadata = formData.to_dict()

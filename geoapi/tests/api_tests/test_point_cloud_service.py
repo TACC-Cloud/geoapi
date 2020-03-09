@@ -81,22 +81,23 @@ def test_delete_point_cloud(dbsession, projects_fixture):
 def test_delete_point_cloud_feature(celery_task_always_eager, dbsession, projects_fixture, point_cloud_fixture,
                                     lidar_las1pt2_file_fixture):
     PointCloudService.fromFileObj(point_cloud_fixture.id, FileStorage(lidar_las1pt2_file_fixture), {})
-    point_cloud = dbsession.query(PointCloud).get(1)
+    point_cloud = dbsession.get(1)
     feature_asset_path = get_asset_path(point_cloud.feature.assets[0].path)
 
     FeaturesService.delete(point_cloud.feature.id)
     assert dbsession.query(PointCloud).count() == 1
-    assert dbsession.query(PointCloud).get(1).feature is None
+    assert dbsession.get(1).feature is None
     assert dbsession.query(Feature).count() == 0
     assert dbsession.query(FeatureAsset).count() == 0
     assert os.path.exists(get_asset_path(point_cloud.path, PointCloudService.ORIGINAL_FILES_DIR))
     assert not os.path.exists(feature_asset_path)
 
 
-def test_update_point_cloud(projects_fixture, point_cloud_fixture, convert_to_potree_mock):
+def test_update_point_cloud(projects_fixture, point_cloud_fixture, convert_to_potree_mock, check_point_cloud_mock,get_point_cloud_info_mock):
     data = {'description': "new description", 'conversion_parameters': "--scale 5.0"}
     point_cloud = PointCloudService.update(point_cloud_fixture.id, data=data)
     convert_to_potree_mock.apply_async.assert_called_once()
+    get_point_cloud_info_mock.apply_async.assert_called_once()
     assert point_cloud.description == "new description"
     assert point_cloud.conversion_parameters == "--scale 5.0"
 
