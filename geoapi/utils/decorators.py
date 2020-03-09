@@ -30,7 +30,7 @@ def jwt_decoder(fn):
         jwt_header_name, token, tenant = jwt_utils.jwt_tenant(request.headers)
         try:
             decoded = jwt.decode(token, pub_key, verify=False)
-            username = decoded["http://wso2.org/claims/fullname"]
+            username = decoded["http://wso2.org/claims/enduser"]
         except Exception as e:
             logger.exception(e)
             abort(400, 'could not decode JWT')
