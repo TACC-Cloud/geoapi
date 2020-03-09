@@ -196,11 +196,12 @@ class FeaturesService:
         :return: Feature
         """
         data = json.loads(fileObj.read())
+        fileObj.close()
         return FeaturesService.addGeoJSON(projectId, data)
 
     @staticmethod
     def fromFileObj(projectId: int, fileObj: IO, metadata: Dict, original_path: str=None) -> List[Feature]:
-        ext = pathlib.Path(fileObj.filename).suffix.lstrip(".")
+        ext = pathlib.Path(fileObj.filename).suffix.lstrip(".").lower()
         if ext in FeaturesService.IMAGE_FILE_EXTENSIONS:
             return [FeaturesService.fromImage(projectId, fileObj, metadata, original_path)]
         elif ext in FeaturesService.GPX_FILE_EXTENSIONS:
@@ -220,6 +221,7 @@ class FeaturesService:
         :return: None
         """
         imdata = ImageService.processImage(fileObj)
+        fileObj.close()
         point = Point(imdata.coordinates)
         f = Feature()
         f.project_id = projectId
