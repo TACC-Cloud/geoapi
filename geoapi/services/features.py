@@ -196,6 +196,7 @@ class FeaturesService:
         :return: Feature
         """
         data = json.loads(fileObj.read())
+        fileObj.close()
         return FeaturesService.addGeoJSON(projectId, data)
 
     @staticmethod
@@ -220,6 +221,7 @@ class FeaturesService:
         :return: None
         """
         imdata = ImageService.processImage(fileObj)
+        fileObj.close()
         point = Point(imdata.coordinates)
         f = Feature()
         f.project_id = projectId
