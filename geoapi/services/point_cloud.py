@@ -103,7 +103,7 @@ class PointCloudService:
         db_session.commit()
 
     @staticmethod
-    def fromFileObj(pointCloudId: int, fileObj: IO, metadata: Dict):
+    def fromFileObj(pointCloudId: int, stream: IO, fileName: str):
         """
         Add a point cloud file
 
@@ -111,21 +111,23 @@ class PointCloudService:
         asset containing processed point cloud
 
         :param pointCloudId: int
-        :param fileObj: file
+        :param stream: bytes
+        :param fileName: str
         :return: processingTask: Task
         """
-        ext = pathlib.Path(fileObj.filename).suffix.lstrip('.')
-        if ext not in PointCloudService.LIDAR_FILE_EXTENSIONS:
-            raise ApiException("File type not supported.")
+        # ext = pathlib.Path(fileObj.filename).suffix.lstrip('.')
+        # if ext not in PointCloudService.LIDAR_FILE_EXTENSIONS:
+        #     raise ApiException("File type not supported.")
 
         point_cloud = PointCloudService.get(pointCloudId)
         file_path = get_asset_path(point_cloud.path,
                                    PointCloudService.ORIGINAL_FILES_DIR,
-                                   os.path.basename(fileObj.filename))
+                                   os.path.basename(fileName))
 
+        CHUNK_SIZE = 4096
         with open(file_path, 'wb') as f:
-            f.write(fileObj.read())
-
+            chunk = stream.read(CHUNK_SIZE)
+            f.write(chunk)
         return PointCloudService._process_point_clouds(pointCloudId)
 
     @staticmethod

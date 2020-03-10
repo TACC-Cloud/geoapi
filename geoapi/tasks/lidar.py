@@ -23,7 +23,7 @@ class PointCloudProcessingTask(celery.Task):
         logger.info("Task ({}, point cloud {}) failed: {}".format(task_id, args, exc))
         failed_task = db_session.query(Task).filter(Task.process_id == task_id).first()
         failed_task.status = "FAILED"
-        db_session.add(failed_task)
+        # db_session.add(failed_task)
         db_session.commit()
 
 
