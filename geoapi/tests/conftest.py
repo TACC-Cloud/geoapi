@@ -3,7 +3,7 @@ import os
 import json
 import tempfile
 import shutil
-from unittest.mock import patch
+from unittest.mock import patch, MagicMock
 
 import laspy
 
@@ -211,25 +211,24 @@ def check_point_cloud_mock():
         class FakeAsyncResult:
             def get(self):
                 return None
-        mock_check_point_cloud_mock.apply_async.return_value = FakeAsyncResult
+        mock_check_point_cloud_mock.apply_async.return_value = FakeAsyncResult()
         yield mock_check_point_cloud_mock
 
 
 @pytest.fixture(scope="function")
 def check_point_cloud_mock_missing_crs():
     with patch('geoapi.services.point_cloud.check_point_cloud') as mock_check_point_cloud_mock:
-        class FakeAsyncResult:
-            def get(self):
-                raise InvalidCoordinateReferenceSystem()
-        mock_check_point_cloud_mock.apply_async.return_value = FakeAsyncResult()
+        mock_result = MagicMock()
+        mock_result.get.side_effect = InvalidCoordinateReferenceSystem()
+        mock_check_point_cloud_mock.apply_async.return_value = mock_result
         yield mock_check_point_cloud_mock
 
 
 @pytest.fixture(scope="function")
 def get_point_cloud_info_mock():
     with patch('geoapi.services.point_cloud.get_point_cloud_info') as mock_get_point_cloud_info:
-        class FakePointCloudInfoResult:
-            def get(self):
-                return [{'name': 'test.las'}]
-        mock_get_point_cloud_info.apply_async.return_value = FakePointCloudInfoResult()
+        mock_result = MagicMock()
+        mock_result.get.return_value = [{'name': 'test.las'}]
+
+        mock_get_point_cloud_info.apply_async.return_value = mock_result
         yield mock_get_point_cloud_info

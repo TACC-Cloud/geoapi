@@ -45,10 +45,9 @@ def test_delete_point_cloud(test_client, projects_fixture, point_cloud_fixture):
     assert point_cloud is None
 
 
-def test_upload_lidar(test_client, projects_fixture, point_cloud_fixture,
-                      lidar_las1pt2_file_fixture, check_point_cloud_mock, get_point_cloud_info_mock,
+def test_upload_lidar(test_client, projects_fixture, point_cloud_fixture, lidar_las1pt2_file_fixture,
+                      check_point_cloud_mock, get_point_cloud_info_mock, convert_to_potree_mock):
     u1 = db_session.query(User).get(1)
-    u1 = dbsession.get(1)
     resp = test_client.post(
         '/projects/1/point-cloud/1/',
         data={"file": lidar_las1pt2_file_fixture},
@@ -58,11 +57,11 @@ def test_upload_lidar(test_client, projects_fixture, point_cloud_fixture,
     convert_to_potree_mock.apply_async.assert_called_once()
 
 
-def test_upload_lidar_missing_coordinate_reference_system(test_client, dbsession, projects_fixture, point_cloud_fixture,
+def test_upload_lidar_missing_coordinate_reference_system(test_client, projects_fixture, point_cloud_fixture,
                                                           empty_las_file_fixture, check_point_cloud_mock_missing_crs):
     u1 = db_session.query(User).get(1)
     resp = test_client.post(
-        '/projects/1/point-cloud/files/',
+        '/projects/1/point-cloud/1/',
         data={"file": empty_las_file_fixture},
         headers={'x-jwt-assertion-test': u1.jwt}
     )

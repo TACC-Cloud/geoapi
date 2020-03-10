@@ -1,6 +1,7 @@
 import os
 import pathlib
 import uuid
+import json
 from typing import List, IO, Dict
 
 from geoapi.celery_app import app
@@ -11,7 +12,7 @@ from geoapi.exceptions import ApiException, InvalidCoordinateReferenceSystem
 from geoapi.models import PointCloud, Project, User, Task
 from geoapi.db import db_session
 from geoapi.log import logging
-from geoapi.tasks.lidar import convert_to_potree, check_point_cloud
+from geoapi.tasks.lidar import convert_to_potree, check_point_cloud, get_point_cloud_info
 from geoapi.utils.assets import make_project_asset_dir, delete_assets, get_asset_relative_path, get_asset_path
 
 logger = logging.getLogger(__name__)
@@ -133,6 +134,11 @@ class PointCloudService:
             os.remove(file_path)
             logger.error("Point cloud file ({}) missing required coordinate reference system".format(file_path))
             raise e
+
+        result = get_point_cloud_info.apply_async(args=[pointCloudId])
+        point_cloud.files_info = point_cloud.files_info = json.dumps(result.get());
+        db_session.add(point_cloud)
+        db_session.commit()
 
         return PointCloudService._process_point_clouds(pointCloudId)
 
