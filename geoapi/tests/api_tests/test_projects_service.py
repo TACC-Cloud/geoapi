@@ -1,9 +1,11 @@
+from geoapi.db import db_session
+
 from geoapi.services.projects import ProjectsService
 from geoapi.models import User
 
 
-def test_create_project(dbsession):
-    user = dbsession.query(User).get(1)
+def test_create_project():
+    user = db_session.query(User).get(1)
     data = {
         "name": "test name",
         "description": "test description"
