@@ -439,8 +439,8 @@ class ProjectPointCloudResource(Resource):
         file = request.files['file']
         formData = request.form
         metadata = formData.to_dict()
-        task = PointCloudService.fromFileObj(pointCloudId, file, metadata)
-        return task
+        pcTask = PointCloudService.fromFileObj(pointCloudId, file, metadata)
+        return pcTask
 
     @api.doc(id="updatePointCLoud",
              description="Update point cloud")

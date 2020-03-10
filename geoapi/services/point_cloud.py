@@ -129,7 +129,7 @@ class PointCloudService:
         return PointCloudService._process_point_clouds(pointCloudId)
 
     @staticmethod
-    def _process_point_clouds(pointCloudId: int):
+    def _process_point_clouds(pointCloudId: int) -> Task:
         """
         Process point cloud files
 
