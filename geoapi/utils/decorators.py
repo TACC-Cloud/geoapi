@@ -31,6 +31,8 @@ def jwt_decoder(fn):
         try:
             decoded = jwt.decode(token, pub_key, verify=False)
             username = decoded["http://wso2.org/claims/enduser"]
+            #remove ant @carbon.super or other nonsense, the tenant we get from the header anyway
+            username = username.split("@")[0]
         except Exception as e:
             logger.exception(e)
             abort(400, 'could not decode JWT')
