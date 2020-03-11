@@ -134,6 +134,13 @@ def video_file_fixture():
         yield f
 
 
+@pytest.fixture()
+def hazmpperV1_file():
+    home = os.path.dirname(__file__)
+    with open(os.path.join(home, 'fixtures/hazmapperv1_with_images.json'), 'rb') as f:
+        yield f
+
+
 @pytest.fixture(scope="function")
 def geojson_file_fixture():
     home = os.path.dirname(__file__)
