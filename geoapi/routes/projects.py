@@ -1,12 +1,15 @@
+from pathlib import Path
+
 from flask import request, abort
 from flask_restplus import Resource, Namespace, fields, inputs
 from werkzeug.datastructures import FileStorage
+from werkzeug.utils import secure_filename
 
 from geoapi.log import logging
 from geoapi.schemas import FeatureSchema
 from geoapi.services.features import FeaturesService
 from geoapi.services.projects import ProjectsService
-
+from geoapi.exceptions import ApiException
 from geoapi.services.point_cloud import PointCloudService
 from geoapi.utils.decorators import jwt_decoder, project_permissions, project_feature_exists, project_point_cloud_exists
 from geoapi.tasks import external_data
@@ -436,11 +439,13 @@ class ProjectPointCloudResource(Resource):
     @project_permissions
     @project_point_cloud_exists
     def post(self, projectId: int, pointCloudId: int):
-        file = request.files['file']
-        formData = request.form
-        metadata = formData.to_dict()
-        task = PointCloudService.fromFileObj(pointCloudId, file, metadata)
-        return task
+        f = request.files['file']
+        fileName = secure_filename(f.filename)
+        fileExt = Path(fileName).suffix.lstrip(".")
+        if fileExt not in PointCloudService.LIDAR_FILE_EXTENSIONS:
+            raise ApiException("Invalid lidar file type")
+        pcTask = PointCloudService.fromFileObj(pointCloudId, request.stream, fileName)
+        return pcTask
 
     @api.doc(id="updatePointCLoud",
              description="Update point cloud")
