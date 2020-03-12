@@ -444,7 +444,7 @@ class ProjectPointCloudResource(Resource):
         fileExt = Path(fileName).suffix.lstrip(".")
         if fileExt not in PointCloudService.LIDAR_FILE_EXTENSIONS:
             raise ApiException("Invalid lidar file type")
-        pcTask = PointCloudService.fromFileObj(pointCloudId, request.stream, fileName)
+        pcTask = PointCloudService.fromFileObj(pointCloudId, f, fileName)
         return pcTask
 
     @api.doc(id="updatePointCLoud",
