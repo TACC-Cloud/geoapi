@@ -14,7 +14,11 @@ app = Flask(__name__)
 api.init_app(app)
 app.config.from_object(app_settings)
 
+# api.errorhandler is needed as exceptions aren't being handled in flask-restplus 0.13 or 0.14
+# (only seeing this in testing or dev server)
+# See https://github.com/noirbizarre/flask-restplus/issues/744
 @api.errorhandler(InvalidGeoJSON)
+@app.errorhandler(InvalidGeoJSON)
 def handle_geojson_exception(error: Exception):
     '''Return a custom message and 400 status code'''
     return ({
@@ -24,6 +28,7 @@ def handle_geojson_exception(error: Exception):
     }, 400)
 
 @api.errorhandler(ApiException)
+@app.errorhandler(ApiException)
 def handle_api_exception(error: Exception):
     '''Return a custom message and 400 status code'''
     return {
@@ -33,11 +38,13 @@ def handle_api_exception(error: Exception):
     }, 400
 
 @api.errorhandler(InvalidEXIFData)
+@app.errorhandler(InvalidEXIFData)
 def handle_exif_exception(error: Exception):
     '''Return a custom message and 400 status code'''
     return {'message': 'Invalid EXIF data, geolocation could not be found'}, 400
 
 @api.errorhandler(InvalidCoordinateReferenceSystem)
+@app.errorhandler(InvalidCoordinateReferenceSystem)
 def handle_coordinate_reference_system_exception(error: Exception):
     return {'message': 'Invalid data, coordinate reference system could not be found'}, 400
 
