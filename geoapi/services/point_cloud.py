@@ -122,6 +122,7 @@ class PointCloudService:
         fileExt = pathlib.Path(fileName).suffix.lstrip(".")
         if fileExt not in PointCloudService.LIDAR_FILE_EXTENSIONS:
             raise ApiException("Invalid lidar file type")
+
         point_cloud = PointCloudService.get(pointCloudId)
         file_path = get_asset_path(point_cloud.path,
                                    PointCloudService.ORIGINAL_FILES_DIR,
@@ -129,6 +130,7 @@ class PointCloudService:
 
         with open(file_path, "wb") as f:
             shutil.copyfileobj(fileObj, f)
+
         return PointCloudService._process_point_clouds(pointCloudId)
 
     @staticmethod

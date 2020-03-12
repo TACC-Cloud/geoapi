@@ -37,8 +37,12 @@ def test_add_point_cloud(projects_fixture):
 def test_add_point_cloud_file(projects_fixture, point_cloud_fixture,
                               lidar_las1pt2_file_fixture, convert_to_potree_mock):
 
+<<<<<<< HEAD
     filename = os.path.basename(lidar_las1pt2_file_fixture.name)
     task = PointCloudService.fromFileObj(point_cloud_fixture.id, lidar_las1pt2_file_fixture, filename)
+=======
+    task = PointCloudService.fromFileObj(point_cloud_fixture.id, lidar_las1pt2_file_fixture, lidar_las1pt2_file_fixture.name)
+>>>>>>> master
 
     assert task.status == "RUNNING"
     assert point_cloud_fixture.task_id == task.id
