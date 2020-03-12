@@ -7,10 +7,6 @@ from unittest.mock import patch, MagicMock
 
 import laspy
 
-from sqlalchemy import create_engine
-from sqlalchemy.orm import scoped_session, sessionmaker
-
-from geoapi.settings import settings
 from geoapi.db import Base, db_session, engine
 from geoapi.models.users import User
 from geoapi.models.project import Project
@@ -38,43 +34,6 @@ def test_client():
         yield app.test_client()
         db_session.remove()
         Base.metadata.drop_all(engine)
-
-
-
-# @pytest.fixture
-# def engine():
-#     return create_engine('postgresql://{}:{}@{}/{}'.format(
-#         settings.DB_USERNAME,
-#         settings.DB_PASSWD,
-#         settings.DB_HOST,
-#         settings.DB_NAME)
-#     )
-
-
-# @pytest.fixture(autouse=True)
-# def tables(engine):
-#     Base.metadata.create_all(engine)
-#     yield
-
-
-# @pytest.yield_fixture
-# def dbsession(engine):
-#     """Returns an sqlalchemy session, and after the test tears down everything properly."""
-#     connection = engine.connect()
-#     # begin the nested transaction
-#     transaction = connection.begin()
-#     # use the connection with the already started transaction
-#     session = scoped_session(sessionmaker(autocommit=False,
-#                                          autoflush=False,
-#                                          bind=engine))
-#
-#     yield session
-#     session.remove()
-#     # roll back the broader transaction
-#     transaction.rollback()
-#     # put back the connection to the connection pool
-#     connection.close()
-
 
 
 @pytest.fixture(autouse=True, scope="function")
@@ -132,6 +91,13 @@ def image_file_fixture():
 def video_file_fixture():
     home = os.path.dirname(__file__)
     with open(os.path.join(home, 'fixtures/video.mov'), 'rb') as f:
+        yield f
+
+
+@pytest.fixture()
+def hazmpperV1_file():
+    home = os.path.dirname(__file__)
+    with open(os.path.join(home, 'fixtures/hazmapperv1_with_images.json'), 'rb') as f:
         yield f
 
 

@@ -1,3 +1,5 @@
+from tempfile import NamedTemporaryFile
+
 import requests
 import pathlib
 from typing import List, Dict, IO
@@ -89,7 +91,7 @@ class AgaveUtils:
         out = {k: v for d in results for k, v in d.items()}
         return out
 
-    def getFile(self, systemId: str, path: str) -> (str, IO):
+    def getFile(self, systemId: str, path: str) -> IO:
         """
         Download a file from agave
         :param systemId: str
@@ -102,11 +104,11 @@ class AgaveUtils:
             with self.client.get(self.BASE_URL + url, stream=True) as r:
                 if r.status_code > 400:
                     raise ValueError("Could not fetch file: {}".format(r.status_code))
-                with open('/tmp/{}'.format(struuid), 'wb') as fd:
-                    for chunk in r.iter_content(1024*1024):
-                        fd.write(chunk)
+                tmpFile = NamedTemporaryFile()
+                for chunk in r.iter_content(1024*1024):
+                    tmpFile.write(chunk)
 
-            return struuid
+                return tmpFile
         except Exception as e:
             logger.error(e)
             raise e

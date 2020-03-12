@@ -1,5 +1,6 @@
 import os
 import pathlib
+import shutil
 import uuid
 import json
 from typing import List, IO, Dict
@@ -104,7 +105,7 @@ class PointCloudService:
         db_session.commit()
 
     @staticmethod
-    def fromFileObj(pointCloudId: int, fileObj: IO, metadata: Dict):
+    def fromFileObj(pointCloudId: int, fileObj: IO, fileName: str):
         """
         Add a point cloud file
 
@@ -112,20 +113,21 @@ class PointCloudService:
         asset containing processed point cloud
 
         :param pointCloudId: int
-        :param fileObj: file
+        :param stream: bytes
+        :param fileName: str
         :return: processingTask: Task
         """
-        ext = pathlib.Path(fileObj.filename).suffix.lstrip('.')
-        if ext not in PointCloudService.LIDAR_FILE_EXTENSIONS:
-            raise ApiException("File type not supported.")
+        file_ext = pathlib.Path(fileObj.filename).suffix.lstrip('.')
+        if file_ext not in PointCloudService.LIDAR_FILE_EXTENSIONS:
+            raise ApiException("Invalid file type for point clouds.")
 
         point_cloud = PointCloudService.get(pointCloudId)
         file_path = get_asset_path(point_cloud.path,
                                    PointCloudService.ORIGINAL_FILES_DIR,
-                                   os.path.basename(fileObj.filename))
+                                   os.path.basename(fileName))
 
-        with open(file_path, 'wb') as f:
-            f.write(fileObj.read())
+        with open(file_path, "wb") as f:
+            shutil.copyfileobj(fileObj, f)
 
         try:
             result = check_point_cloud.apply_async(args=[file_path])
@@ -143,7 +145,7 @@ class PointCloudService:
         return PointCloudService._process_point_clouds(pointCloudId)
 
     @staticmethod
-    def _process_point_clouds(pointCloudId: int):
+    def _process_point_clouds(pointCloudId: int) -> Task:
         """
         Process point cloud files
 
