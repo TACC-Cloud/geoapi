@@ -116,12 +116,9 @@ class PointCloudService:
         :param fileName: str
         :return: processingTask: Task
         """
-        # ext = pathlib.Path(fileObj.filename).suffix.lstrip('.')
-        # if ext not in PointCloudService.LIDAR_FILE_EXTENSIONS:
-        #     raise ApiException("File type not supported.")
-        fileExt = pathlib.Path(fileName).suffix.lstrip(".")
-        if fileExt not in PointCloudService.LIDAR_FILE_EXTENSIONS:
-            raise ApiException("Invalid lidar file type")
+        file_ext = pathlib.Path(fileObj.filename).suffix.lstrip('.')
+        if file_ext not in PointCloudService.LIDAR_FILE_EXTENSIONS:
+            raise ApiException("Invalid file type for point clouds.")
 
         point_cloud = PointCloudService.get(pointCloudId)
         file_path = get_asset_path(point_cloud.path,
