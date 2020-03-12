@@ -36,7 +36,8 @@ def test_add_point_cloud(projects_fixture):
 @pytest.mark.worker
 def test_add_point_cloud_file(projects_fixture, point_cloud_fixture,
                               lidar_las1pt2_file_fixture, convert_to_potree_mock):
-    task = PointCloudService.fromFileObj(point_cloud_fixture.id, FileStorage(lidar_las1pt2_file_fixture), {})
+
+    task = PointCloudService.fromFileObj(point_cloud_fixture.id, lidar_las1pt2_file_fixture, lidar_las1pt2_file_fixture.name)
 
     assert task.status == "RUNNING"
     assert point_cloud_fixture.task_id == task.id
@@ -82,7 +83,7 @@ def test_delete_point_cloud(projects_fixture):
 @pytest.mark.worker
 def test_delete_point_cloud_feature(celery_task_always_eager, projects_fixture, point_cloud_fixture,
                                     lidar_las1pt2_file_fixture):
-    PointCloudService.fromFileObj(point_cloud_fixture.id, FileStorage(lidar_las1pt2_file_fixture), {})
+    PointCloudService.fromFileObj(point_cloud_fixture.id, lidar_las1pt2_file_fixture, lidar_las1pt2_file_fixture.name)
     point_cloud = db_session.query(PointCloud).get(1)
     feature_asset_path = get_asset_path(point_cloud.feature.assets[0].path)
 

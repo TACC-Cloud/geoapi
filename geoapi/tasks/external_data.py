@@ -80,30 +80,24 @@ def import_from_agave(user: User, systemId: str, path: str, proj: Project):
                     # 4) save the image/video to /assets
                     # 5) delete the original in /tmp
 
-                    # client.getFile will save the asset to /tmp/{uuid}
-                    tmp_file_uuid = client.getFile(systemId, item.path)
-                    ext = item.ext
+                    # client.getFile will save the asset to tempfile
+
+                    tmpFile = client.getFile(systemId, item.path)
                     feat = features.FeaturesService.fromLatLng(proj.id, lat, lon, {})
                     feat.properties = meta
                     db_session.add(feat)
-                    db_session.commit()
-                    with open(os.path.join("/tmp", tmp_file_uuid), 'rb') as fd:
-                        fd.filename = Path(item.path).name
-                        if ext in features.FeaturesService.ALLOWED_EXTENSIONS:
-                            fa = features.FeaturesService.createFeatureAsset(proj.id, feat.id, fd, original_path=path)
-                        else:
-                            raise ApiException("Could not process this file")
+                    tmpFile.filename = Path(item.path).name
+                    fa = features.FeaturesService.createFeatureAsset(proj.id, feat.id, tmpFile, original_path=path)
                     fa.feature = feat
                     fa.original_path = item_system_path
                     db_session.add(fa)
                     db_session.commit()
-                    os.remove(os.path.join("/tmp", tmp_file_uuid))
+                    tmpFile.close()
                 elif item.path.suffix.lower().lstrip('.') in features.FeaturesService.ALLOWED_GEOSPATIAL_EXTENSIONS:
-                    tmp_file_uuid = client.getFile(systemId, item.path)
-                    with open(os.path.join("/tmp", tmp_file_uuid), 'rb') as fd:
-                        fd.filename = Path(item.path).name
-                        features.FeaturesService.fromFileObj(proj.id, fd, {}, original_path=item_system_path)
-                    os.remove(os.path.join("/tmp", tmp_file_uuid))
+                    tmpFile = client.getFile(systemId, item.path)
+                    tmpFile.filename = Path(item.path).name
+                    features.FeaturesService.fromFileObj(proj.id, tmpFile, {}, original_path=item_system_path)
+                    tmpFile.close()
                 else:
                     continue
             except ApiException as e:
