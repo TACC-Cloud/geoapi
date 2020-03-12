@@ -117,7 +117,7 @@ class PointCloudService:
         :param fileName: str
         :return: processingTask: Task
         """
-        file_ext = pathlib.Path(fileObj.filename).suffix.lstrip('.')
+        file_ext = pathlib.Path(fileName).suffix.lstrip(".")
         if file_ext not in PointCloudService.LIDAR_FILE_EXTENSIONS:
             raise ApiException("Invalid file type for point clouds.")
 
