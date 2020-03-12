@@ -37,7 +37,8 @@ def test_add_point_cloud(projects_fixture):
 def test_add_point_cloud_file(projects_fixture, point_cloud_fixture,
                               lidar_las1pt2_file_fixture, convert_to_potree_mock):
 
-    task = PointCloudService.fromFileObj(point_cloud_fixture.id, lidar_las1pt2_file_fixture, lidar_las1pt2_file_fixture.name)
+    filename = os.path.basename(lidar_las1pt2_file_fixture.name)
+    task = PointCloudService.fromFileObj(point_cloud_fixture.id, lidar_las1pt2_file_fixture, filename)
 
     assert task.status == "RUNNING"
     assert point_cloud_fixture.task_id == task.id
@@ -45,7 +46,10 @@ def test_add_point_cloud_file(projects_fixture, point_cloud_fixture,
     point_cloud = db_session.query(PointCloud).get(1)
     las_files = os.listdir(get_asset_path(point_cloud.path, PointCloudService.ORIGINAL_FILES_DIR))
     assert len(las_files) == 1
-    assert las_files[0] == os.path.basename(lidar_las1pt2_file_fixture.name)
+    assert las_files[0] == os.path.basename(filename)
+    original_file_size = os.fstat(lidar_las1pt2_file_fixture.fileno()).st_size
+    asset_file_path = os.path.join(get_asset_path(point_cloud.path, PointCloudService.ORIGINAL_FILES_DIR), filename)
+    assert os.path.getsize(asset_file_path) == original_file_size
 
     # run conversion tool (that we had mocked)
     _, convert_kwargs = convert_to_potree_mock.apply_async.call_args
