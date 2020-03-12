@@ -1,5 +1,6 @@
 import os
 import pathlib
+import shutil
 import uuid
 from typing import List, IO, Dict
 
@@ -103,7 +104,7 @@ class PointCloudService:
         db_session.commit()
 
     @staticmethod
-    def fromFileObj(pointCloudId: int, stream: IO, fileName: str):
+    def fromFileObj(pointCloudId: int, fileObj: IO, fileName: str):
         """
         Add a point cloud file
 
@@ -115,19 +116,18 @@ class PointCloudService:
         :param fileName: str
         :return: processingTask: Task
         """
-        # ext = pathlib.Path(fileObj.filename).suffix.lstrip('.')
-        # if ext not in PointCloudService.LIDAR_FILE_EXTENSIONS:
-        #     raise ApiException("File type not supported.")
+        file_ext = pathlib.Path(fileObj.filename).suffix.lstrip('.')
+        if file_ext not in PointCloudService.LIDAR_FILE_EXTENSIONS:
+            raise ApiException("Invalid file type for point clouds.")
 
         point_cloud = PointCloudService.get(pointCloudId)
         file_path = get_asset_path(point_cloud.path,
                                    PointCloudService.ORIGINAL_FILES_DIR,
                                    os.path.basename(fileName))
 
-        CHUNK_SIZE = 4096
-        with open(file_path, 'wb') as f:
-            chunk = stream.read(CHUNK_SIZE)
-            f.write(chunk)
+        with open(file_path, "wb") as f:
+            shutil.copyfileobj(fileObj, f)
+
         return PointCloudService._process_point_clouds(pointCloudId)
 
     @staticmethod
