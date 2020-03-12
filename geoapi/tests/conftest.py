@@ -26,7 +26,8 @@ user2JWT = "eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJpc3MiOiJ3c28yLm9yZy9wcm9kdWN
 @pytest.fixture
 def test_client():
     # Disable propagating of exceptions (which is enabled by default in testing/debug)
-    # app.config['PROPAGATE_EXCEPTIONS'] = False
+    # to allow for testing of api exceptions/messages
+    app.config['PROPAGATE_EXCEPTIONS'] = False
 
     with app.app_context():
         Base.metadata.drop_all(engine)
