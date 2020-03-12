@@ -85,6 +85,7 @@ def test_delete_point_cloud(projects_fixture):
     assert len(os.listdir(get_project_asset_dir(point_cloud.project_id))) == 0
 
 
+@pytest.mark.worker
 def test_delete_point_cloud_feature(celery_task_always_eager, projects_fixture, point_cloud_fixture,
                                     lidar_las1pt2_file_fixture):
     PointCloudService.fromFileObj(point_cloud_fixture.id, lidar_las1pt2_file_fixture, lidar_las1pt2_file_fixture.name)
