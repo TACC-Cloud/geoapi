@@ -294,6 +294,7 @@ class ProjectFeaturesFilesResource(Resource):
         file = request.files['file']
         formData = request.form
         metadata = formData.to_dict()
+        logger.info("ProjectFeaturesFilesResource:POST")
         features = FeaturesService.fromFileObj(projectId, file, metadata)
         return features
 
