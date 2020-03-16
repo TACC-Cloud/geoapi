@@ -3,7 +3,7 @@ import os
 import json
 import tempfile
 import shutil
-from unittest.mock import patch
+from unittest.mock import patch, MagicMock
 
 import laspy
 
@@ -16,6 +16,7 @@ from geoapi.services.point_cloud import PointCloudService
 from geoapi.services.features import FeaturesService
 from geoapi.app import app
 from geoapi.utils.assets import get_project_asset_dir
+from geoapi.exceptions import InvalidCoordinateReferenceSystem
 
 #TODO: make these fixtures or something
 user1JWT = "eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJpc3MiOiJ3c28yLm9yZy9wcm9kdWN0cy9hbSIsImV4cCI6MjM4NDQ4MTcxMzg0MiwiaHR0cDovL3dzbzIub3JnL2NsYWltcy9zdWJzY3JpYmVyIjoidGVzdDEiLCJodHRwOi8vd3NvMi5vcmcvY2xhaW1zL2FwcGxpY2F0aW9uaWQiOiI0NCIsImh0dHA6Ly93c28yLm9yZy9jbGFpbXMvYXBwbGljYXRpb25uYW1lIjoiRGVmYXVsdEFwcGxpY2F0aW9uIiwiaHR0cDovL3dzbzIub3JnL2NsYWltcy9hcHBsaWNhdGlvbnRpZXIiOiJVbmxpbWl0ZWQiLCJodHRwOi8vd3NvMi5vcmcvY2xhaW1zL2FwaWNvbnRleHQiOiIvYXBwcyIsImh0dHA6Ly93c28yLm9yZy9jbGFpbXMvdmVyc2lvbiI6IjIuMCIsImh0dHA6Ly93c28yLm9yZy9jbGFpbXMvdGllciI6IlVubGltaXRlZCIsImh0dHA6Ly93c28yLm9yZy9jbGFpbXMva2V5dHlwZSI6IlBST0RVQ1RJT04iLCJodHRwOi8vd3NvMi5vcmcvY2xhaW1zL3VzZXJ0eXBlIjoiQVBQTElDQVRJT05fVVNFUiIsImh0dHA6Ly93c28yLm9yZy9jbGFpbXMvZW5kdXNlciI6InRlc3QxIiwiaHR0cDovL3dzbzIub3JnL2NsYWltcy9lbmR1c2VyVGVuYW50SWQiOiItOTk5OSIsImh0dHA6Ly93c28yLm9yZy9jbGFpbXMvZW1haWxhZGRyZXNzIjoidGVzdHVzZXIzQHRlc3QuY29tIiwiaHR0cDovL3dzbzIub3JnL2NsYWltcy9mdWxsbmFtZSI6IkRldiBVc2VyIiwiaHR0cDovL3dzbzIub3JnL2NsYWltcy9naXZlbm5hbWUiOiJEZXYiLCJodHRwOi8vd3NvMi5vcmcvY2xhaW1zL2xhc3RuYW1lIjoiVXNlciIsImh0dHA6Ly93c28yLm9yZy9jbGFpbXMvcHJpbWFyeUNoYWxsZW5nZVF1ZXN0aW9uIjoiTi9BIiwiaHR0cDovL3dzbzIub3JnL2NsYWltcy9yb2xlIjoiSW50ZXJuYWwvZXZlcnlvbmUiLCJodHRwOi8vd3NvMi5vcmcvY2xhaW1zL3RpdGxlIjoiTi9BIn0.La3pXNXcBlPIAw07U1AjJZscEWa1u4LTqRKGDVF5oeUCJzzbwUUAJo8NKH6GZR47Mks8BFBCTJGeMBLil90AkJyJpLBcKTGeAXDkcHQbPQYmGa3TYznOl6Nw1oHF6L_MX_7FFz2JDbi4OZUCRBV-f-NpNzZLdwcU1h1nalPZ0zhx5gLn2BrEhcrfw6iV6NG3VVYdXE8bPQ0cybL9RdwEi3VAIxjyxTHzYdMFAEFlHS0qav_ZojKO6r8HQg7qztjxGOjngzBIWZ_ROu8W9Msq0hsjZyX5uVqb0Ef4IoCyNkA8mw67HaeQxWZblRe6s9Z3hOv0GbFsiFgQ5xhMrg_o_Q"
@@ -25,7 +26,8 @@ user2JWT = "eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJpc3MiOiJ3c28yLm9yZy9wcm9kdWN
 @pytest.fixture
 def test_client():
     # Disable propagating of exceptions (which is enabled by default in testing/debug)
-    # app.config['PROPAGATE_EXCEPTIONS'] = False
+    # to allow for testing of api exceptions/messages
+    app.config['PROPAGATE_EXCEPTIONS'] = False
 
     with app.app_context():
         Base.metadata.drop_all(engine)
@@ -169,3 +171,31 @@ def convert_to_potree_mock():
 
         mock_convert_to_potree.apply_async.return_value = FakeAsyncResult()
         yield mock_convert_to_potree
+
+@pytest.fixture(scope="function")
+def check_point_cloud_mock():
+    with patch('geoapi.services.point_cloud.check_point_cloud') as mock_check_point_cloud_mock:
+        class FakeAsyncResult:
+            def get(self):
+                return None
+        mock_check_point_cloud_mock.apply_async.return_value = FakeAsyncResult()
+        yield mock_check_point_cloud_mock
+
+
+@pytest.fixture(scope="function")
+def check_point_cloud_mock_missing_crs():
+    with patch('geoapi.services.point_cloud.check_point_cloud') as mock_check_point_cloud_mock:
+        mock_result = MagicMock()
+        mock_result.get.side_effect = InvalidCoordinateReferenceSystem()
+        mock_check_point_cloud_mock.apply_async.return_value = mock_result
+        yield mock_check_point_cloud_mock
+
+
+@pytest.fixture(scope="function")
+def get_point_cloud_info_mock():
+    with patch('geoapi.services.point_cloud.get_point_cloud_info') as mock_get_point_cloud_info:
+        mock_result = MagicMock()
+        mock_result.get.return_value = [{'name': 'test.las'}]
+
+        mock_get_point_cloud_info.apply_async.return_value = mock_result
+        yield mock_get_point_cloud_info

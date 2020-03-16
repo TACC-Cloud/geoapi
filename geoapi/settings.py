@@ -31,7 +31,7 @@ class ProductionConfig(Config):
 
 class DevelopmentConfig(Config):
     DEBUG = True
-
+    PROPAGATE_EXCEPTIONS = False
 
 class TestingConfig(Config):
     DB_USERNAME = 'dev'

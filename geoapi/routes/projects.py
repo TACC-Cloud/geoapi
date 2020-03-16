@@ -440,6 +440,9 @@ class ProjectPointCloudResource(Resource):
     @project_permissions
     @project_point_cloud_exists
     def post(self, projectId: int, pointCloudId: int):
+        """
+        :raises InvalidCoordinateReferenceSystem: in case  file missing coordinate reference system
+        """
         f = request.files['file']
         fileName = secure_filename(f.filename)
         fileExt = Path(fileName).suffix.lstrip(".")
