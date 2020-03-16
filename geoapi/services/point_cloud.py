@@ -135,6 +135,19 @@ class PointCloudService:
                 fileObj.seek(0)
                 shutil.copyfileobj(fileObj, f)
 
+        try:
+            result = check_point_cloud.apply_async(args=[file_path])
+            result.get();
+        except InvalidCoordinateReferenceSystem as e:
+            os.remove(file_path)
+            logger.error("Point cloud file ({}) missing required coordinate reference system".format(file_path))
+            raise e
+
+        result = get_point_cloud_info.apply_async(args=[pointCloudId])
+        point_cloud.files_info = point_cloud.files_info = json.dumps(result.get());
+        db_session.add(point_cloud)
+        db_session.commit()
+
             if is_async:
                 result = check_point_cloud.apply_async(args=[file_path])
                 result.get();
