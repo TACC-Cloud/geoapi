@@ -4,7 +4,6 @@ import requests
 import pathlib
 from typing import List, Dict, IO
 from urllib.parse import quote, urlparse, unquote, parse_qs, urlencode
-import uuid
 import json
 from geoapi.log import logging
 
@@ -99,7 +98,6 @@ class AgaveUtils:
         :return: uuid str
         """
         url = quote('/files/media/system/{}/{}'.format(systemId, path))
-        struuid = str(uuid.uuid4())
         try:
             with self.client.get(self.BASE_URL + url, stream=True) as r:
                 if r.status_code > 400:

@@ -98,6 +98,15 @@ tapis_file_upload_body = api.model('TapisFileUpload', {
     "path": fields.String()
 })
 
+tapis_file = api.model('TapisFile', {
+    'system': fields.String(required=True),
+    'path': fields.String(required=True)
+})
+
+resource_fields = api.model('TapisFileImport', {
+    'files': fields.List(fields.Nested(tapis_file), required=True)
+})
+
 
 @api.route('/')
 class ProjectsListing(Resource):
@@ -301,16 +310,6 @@ class ProjectFeaturesFilesResource(Resource):
 
 @api.route('/<int:projectId>/features/files/import/')
 class ProjectFeaturesFileImportResource(Resource):
-
-    tapis_file = api.model('TapisFile', {
-        'system': fields.String(required=True),
-        'path': fields.String(required=True)
-    })
-
-    resource_fields = api.model('TapisFileImport', {
-        'files': fields.List(fields.Nested(tapis_file), required=True)
-    })
-
     @api.doc(id="importFileFromTapis",
              description='Import a file into a project from Tapis. Current '
                          'allowed file types are georeferenced image (jpeg), gpx tracks, GeoJSON and shape files. This'
@@ -433,8 +432,7 @@ class ProjectPointCloudResource(Resource):
         return PointCloudService.get(pointCloudId)
 
     @api.doc(id="uploadPointCloud",
-             description='Add a file to a point cloud. Current allowed file types are las and laz. Any additional '
-                         'key/value pairs in the form will also be placed in the feature metadata')
+             description='Add a file to a point cloud. Current allowed file types are las and laz.')
     @api.expect(file_upload_parser)
     @api.marshal_with(task)
     @project_permissions
@@ -444,12 +442,9 @@ class ProjectPointCloudResource(Resource):
         :raises InvalidCoordinateReferenceSystem: in case  file missing coordinate reference system
         """
         f = request.files['file']
-        fileName = secure_filename(f.filename)
-        fileExt = Path(fileName).suffix.lstrip(".")
-        if fileExt not in PointCloudService.LIDAR_FILE_EXTENSIONS:
-            raise ApiException("Invalid lidar file type")
-        pcTask = PointCloudService.fromFileObj(pointCloudId, f, fileName)
-        return pcTask
+        file_name = secure_filename(f.filename)
+        pc_task = PointCloudService.fromFileObj(pointCloudId, f, file_name)
+        return pc_task
 
     @api.doc(id="updatePointCLoud",
              description="Update point cloud")
@@ -470,6 +465,27 @@ class ProjectPointCloudResource(Resource):
     @project_point_cloud_exists
     def delete(self, projectId: int, pointCloudId: int):
         return PointCloudService.delete(pointCloudId)
+
+
+@api.route('/<int:projectId>/point-cloud/<int:pointCloudId>/import/')
+class ProjectPointCloudsFileImportResource(Resource):
+    @api.doc(id="importPointCloudFileFromTapis",
+             description='Import a point cloud file into a project from Tapis. Current '
+                         'allowed file types are las and laz. This is an asynchronous operation, '
+                         'files will be imported in the background'
+             )
+    @api.expect(resource_fields, validate=True)
+    @api.marshal_with(ok_response)
+    @project_permissions
+    @project_point_cloud_exists
+    def post(self, projectId: int, pointCloudId: int):
+        u = request.current_user
+        for file in request.json["files"]:
+            external_data.import_point_cloud_from_file_from_agave.delay(u.jwt,
+                                                                        file["system"],
+                                                                        file["path"],
+                                                                        pointCloudId)
+        return {"message": "accepted"}
 
 
 @api.route('/<int:projectId>/tasks/')
