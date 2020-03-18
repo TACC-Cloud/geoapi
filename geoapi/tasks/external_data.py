@@ -24,13 +24,10 @@ def _parse_rapid_geolocation(loc):
 def import_file_from_agave(jwt: str, systemId: str, path: str, projectId: int):
     client = AgaveUtils(jwt)
     try:
-        tmp_file_uuid = client.getFile(systemId, path)
-        fpath = Path(path)
-        pth = Path("/tmp/" + tmp_file_uuid)
-        with pth.open("rb") as f:
-            f.filename = fpath.name
-            features.FeaturesService.fromFileObj(projectId, f, {}, path)
-        os.remove(os.path.join('/tmp', tmp_file_uuid))
+        tmpFile = client.getFile(systemId, path)
+        tmpFile.filename = Path(path).name
+        features.FeaturesService.fromFileObj(projectId, tmpFile, {})
+        tmpFile.close()
     except Exception as e:
         logger.error("Could not import file from agave: {} :: {}".format(systemId, path), e)
 

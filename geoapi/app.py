@@ -14,6 +14,7 @@ app = Flask(__name__)
 api.init_app(app)
 app.config.from_object(app_settings)
 
+
 @api.errorhandler(InvalidGeoJSON)
 def handle_geojson_exception(error: Exception):
     '''Return a custom message and 400 status code'''

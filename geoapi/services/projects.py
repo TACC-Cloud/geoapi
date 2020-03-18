@@ -4,7 +4,7 @@ from typing import List
 
 from sqlalchemy import desc
 
-from geoapi.models import Project, User, ObservableDataProject, ProjectUser
+from geoapi.models import Project, User, ObservableDataProject
 from geoapi.db import db_session
 from sqlalchemy.sql import select, text
 from sqlalchemy.exc import IntegrityError

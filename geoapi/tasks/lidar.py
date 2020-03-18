@@ -18,6 +18,46 @@ from geoapi.utils.assets import make_project_asset_dir, get_asset_path, get_asse
 logger = logging.getLogger(__file__)
 
 
+def get_point_cloud_files(path):
+    """
+    Get all point cloud files in a path
+    :param path: strings
+    :return: list of file paths of point cloud files
+    """
+    from geoapi.services.point_cloud import PointCloudService
+    input_files = [get_asset_path(path, file) for file in os.listdir(path)
+                   if pathlib.Path(file).suffix.lstrip('.') in PointCloudService.LIDAR_FILE_EXTENSIONS]
+    return input_files
+
+
+@app.task()
+def check_point_cloud(file_path: str) -> None:
+    """
+    Check point cloud file that it has required info
+    :param file_path: str
+    :return: None
+    :raises InvalidCoordinateReferenceSystem: if file missing crs
+    """
+    # TODO make this a check about if we have enough info ect.
+    Lidar.getEPSG(file_path)
+
+
+@app.task()
+def get_point_cloud_info(pointCloudId: int) -> None:
+    """
+    Get info on las files
+    :param pointCloudId: int
+    :return: None
+    """
+    from geoapi.services.point_cloud import PointCloudService
+
+    point_cloud = PointCloudService.get(pointCloudId)
+    path_to_original_point_clouds = get_asset_path(point_cloud.path, PointCloudService.ORIGINAL_FILES_DIR)
+    input_files = get_point_cloud_files(path_to_original_point_clouds)
+
+    return [{'name': os.path.basename(f)} for f in input_files]
+
+
 class PointCloudProcessingTask(celery.Task):
     def on_failure(self, exc, task_id, args, kwargs, einfo):
         logger.info("Task ({}, point cloud {}) failed: {}".format(task_id, args, exc))
@@ -45,10 +85,6 @@ def convert_to_potree(self, pointCloudId: int) -> None:
     input_files = [get_asset_path(path_to_original_point_clouds, file)
                    for file in os.listdir(path_to_original_point_clouds)
                    if pathlib.Path(file).suffix.lstrip('.') in PointCloudService.LIDAR_FILE_EXTENSIONS]
-
-    point_cloud.files_info = json.dumps([{'name': os.path.basename(f)} for f in input_files])
-    db_session.add(point_cloud)
-    db_session.commit()
 
     outline = Lidar.getBoundingBox(input_files)
 
