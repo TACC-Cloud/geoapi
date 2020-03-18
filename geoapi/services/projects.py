@@ -230,6 +230,9 @@ class ProjectsService:
         # TODO: Add TAS integration
         proj = db_session.query(Project).get(projectId)
         user = db_session.query(User).filter(User.username == username).first()
+        if not user:
+            user = User(username=username, tenant_id=proj.tenant_id)
+            db_session.add(user)
         proj.users.append(user)
         db_session.commit()
 

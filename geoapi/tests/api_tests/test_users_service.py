@@ -26,3 +26,14 @@ def test_projects_for_user(userdata):
     myProjects = ProjectsService.list(user)
     assert len(myProjects) == 1
     assert myProjects[0].name == 'new project'
+
+def test_add_new_user_to_project(userdata):
+    user = UserService.getUser("test1", "test")
+    data = {
+        "name": 'new project',
+        'description': 'test'
+    }
+    proj = ProjectsService.create(data, user)
+    ProjectsService.addUserToProject(proj.id, "newUser")
+    proj = ProjectsService.get(proj.id)
+    assert len(proj.users) == 2

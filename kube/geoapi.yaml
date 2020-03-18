@@ -7,12 +7,19 @@ data:
   site.conf: |
       server {
           include /etc/nginx/mime.types;
-          client_max_body_size 10g;
+          client_max_body_size 25g;
           proxy_read_timeout 600s;
+          proxy_send_timeout  600s;
+          proxy_connect_timeout  20s;
+
           gzip on;
           gzip_proxied any;
           gzip_types *;
           gzip_min_length 250;
+
+          client_body_buffer_size 70m;
+          client_header_buffer_size 50k;
+          large_client_header_buffers 2 50k;
 
           location / {
                add_header "Access-Control-Allow-Origin"  *;
@@ -183,7 +190,11 @@ spec:
         ports:
           - containerPort: 5672
         name: geoapi-rabbitmq
-        resources: {}
+        resources:
+          requests:
+            memory: '1G'
+          limits:
+            memory: '2G'
       restartPolicy: Always
 ---
 apiVersion: apps/v1
@@ -210,7 +221,11 @@ spec:
       containers:
       - image: nginx
         name: geoapi-nginx
-        resources: {}
+        resources:
+          requests:
+            memory: '512M'
+          limits:
+            memory: '2G'
         ports:
           - containerPort: 80
         volumeMounts:
@@ -283,7 +298,11 @@ spec:
 
         image: taccaci/geoapi-workers:latest
         name: geoapi-workers
-        resources: {}
+        resources:
+          requests:
+            memory: '3G'
+          limits:
+            memory: '8G'
         volumeMounts:
         - mountPath: /assets
           name: assets
@@ -349,7 +368,11 @@ spec:
 
         image: taccaci/geoapi-workers:latest
         name: geoapi-celerybeat
-        resources: {}
+        resources:
+          requests:
+            memory: '512M'
+          limits:
+            memory: '1G'
       hostname: geoapi-celerybeat
       restartPolicy: Always
 ---
@@ -388,7 +411,11 @@ spec:
         name: geoapi-postgres
         ports:
         - containerPort: 5432
-        resources: {}
+        resources:
+          requests:
+            memory: '4G'
+          limits:
+            memory: '8G'
         volumeMounts:
         - mountPath: /var/lib/postgresql/data
           name: pgdata
@@ -452,7 +479,11 @@ spec:
         name: geoapi
         ports:
         - containerPort: 5000
-        resources: {}
+        resources:
+          requests:
+            memory: '2G'
+          limits:
+            memory: '4G'
         stdin: true
         tty: true
         volumeMounts:
