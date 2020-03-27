@@ -239,16 +239,9 @@ spec:
           configMap:
             name: geoapi-nginx-conf
         - name: assets
-          cephfs:
-            monitors:
-              - 172.16.120.3:6789
-              - 172.16.120.4:6789
-              - 172.16.120.5:6789
-            path: /jmeiring/production
-            user: jmeiring
-            readOnly: false
-            secretRef:
-              name: ceph-secret
+          nfs:
+            server: 10.104.129.89
+            path: /
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -310,17 +303,9 @@ spec:
       restartPolicy: Always
       volumes:
       - name: assets
-        cephfs:
-          monitors:
-            - 172.16.120.3:6789
-            - 172.16.120.4:6789
-            - 172.16.120.5:6789
-          path: /jmeiring/production
-          user: jmeiring
-          readOnly: false
-          secretRef:
-            name: ceph-secret
-
+        nfs:
+          server: 10.104.129.89
+          path: /
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -493,16 +478,9 @@ spec:
       restartPolicy: Always
       volumes:
         - name: assets
-          cephfs:
-            monitors:
-              - 172.16.120.3:6789
-              - 172.16.120.4:6789
-              - 172.16.120.5:6789
-            path: /jmeiring/production
-            user: jmeiring
-            readOnly: false
-            secretRef:
-              name: ceph-secret
+          nfs:
+            server: 10.104.129.89
+            path: /
 ---
 apiVersion: batch/v1
 kind: Job

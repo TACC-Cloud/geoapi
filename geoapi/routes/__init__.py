@@ -1,6 +1,6 @@
 from flask_restplus import Api
 from .projects import api as projects
-
+from .notifications import api  as notifications
 api = Api(
     title='GeoAPI',
     version='0.1',
@@ -21,4 +21,5 @@ api = Api(
 )
 
 api.add_namespace(projects)
+api.add_namespace(notifications)
 
