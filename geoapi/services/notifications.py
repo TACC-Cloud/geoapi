@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import List, AnyStr
 
 from geoapi.models import Notification
@@ -13,6 +14,16 @@ class NotificationsService:
             .filter(Notification.tenant_id == user.tenant_id)\
             .order_by(Notification.created.desc()) \
             .limit(100)\
+            .all()
+
+    @staticmethod
+    def getRecent(user: User, startDate: datetime) -> List[Notification]:
+        return db_session.query(Notification) \
+            .filter(Notification.username == user.username) \
+            .filter(Notification.tenant_id == user.tenant_id) \
+            .filter(Notification.created > startDate) \
+            .order_by(Notification.created.desc()) \
+            .limit(100) \
             .all()
 
     @staticmethod
