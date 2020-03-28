@@ -43,7 +43,7 @@ def check_point_cloud(file_path: str) -> None:
 
 
 @app.task()
-def get_point_cloud_info(pointCloudId: int) -> None:
+def get_point_cloud_info(pointCloudId: int) -> dict:
     """
     Get info on las files
     :param pointCloudId: int

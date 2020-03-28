@@ -105,16 +105,19 @@ class PointCloudService:
         db_session.commit()
 
     @staticmethod
-    def fromFileObj(pointCloudId: int, fileObj: IO, fileName: str):
+    def fromFileObj(pointCloudId: int, fileObj: IO, fileName: str, is_async=True):
         """
         Add a point cloud file
 
         When point cloud file has been processed, a feature will be created/updated with feature
         asset containing processed point cloud
 
+        Different processing steps are applied asynchronously by default.
+
         :param pointCloudId: int
         :param stream: bytes
         :param fileName: str
+        :param is_async: bool
         :return: processingTask: Task
         """
         file_ext = pathlib.Path(fileName).suffix.lstrip('.')
@@ -126,26 +129,36 @@ class PointCloudService:
                                    PointCloudService.ORIGINAL_FILES_DIR,
                                    os.path.basename(fileName))
 
-        with open(file_path, "wb") as f:
-            shutil.copyfileobj(fileObj, f)
-
         try:
-            result = check_point_cloud.apply_async(args=[file_path])
-            result.get();
+            with open(file_path, "wb") as f:
+                # set current file position to start so all contents are copied.
+                fileObj.seek(0)
+                shutil.copyfileobj(fileObj, f)
+
+            if is_async:
+                result = check_point_cloud.apply_async(args=[file_path])
+                result.get();
+            else:
+                check_point_cloud.apply(args=[file_path])
         except InvalidCoordinateReferenceSystem as e:
             os.remove(file_path)
             logger.error("Point cloud file ({}) missing required coordinate reference system".format(file_path))
             raise e
 
-        result = get_point_cloud_info.apply_async(args=[pointCloudId])
-        point_cloud.files_info = point_cloud.files_info = json.dumps(result.get());
+        if is_async:
+            result = get_point_cloud_info.apply_async(args=[pointCloudId])
+            point_cloud.files_info = json.dumps(result.get())
+        else:
+            info = get_point_cloud_info(pointCloudId)
+            point_cloud.files_info = json.dumps(info)
+
         db_session.add(point_cloud)
         db_session.commit()
 
-        return PointCloudService._process_point_clouds(pointCloudId)
+        return PointCloudService._process_point_clouds(pointCloudId, is_async)
 
     @staticmethod
-    def _process_point_clouds(pointCloudId: int) -> Task:
+    def _process_point_clouds(pointCloudId: int, is_async=True) -> Task:
         """
         Process point cloud files
 
@@ -174,9 +187,13 @@ class PointCloudService:
         db_session.add(point_cloud)
         db_session.commit()
 
-        # Process asynchronously lidar file and add a feature asset
-        convert_to_potree.apply_async(args=[pointCloudId], task_id=celery_task_id)
         logger.info("Starting potree processing task (#{}:  '{}') for point cloud (#{}).".format(
             task.id, celery_task_id, pointCloudId))
+
+        # Process asynchronously lidar file and add a feature asset
+        if is_async:
+            convert_to_potree.apply_async(args=[pointCloudId], task_id=celery_task_id)
+        else:
+            convert_to_potree.apply(args=[pointCloudId], task_id=celery_task_id)
 
         return task

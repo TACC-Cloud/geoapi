@@ -6,6 +6,7 @@ from geoapi.exceptions import ApiException
 from geoapi.utils.agave import AgaveUtils
 from geoapi.log import logging
 import geoapi.services.features as features
+import geoapi.services.point_cloud as point_cloud
 
 from geoapi.db import db_session
 logger = logging.getLogger(__file__)
@@ -32,6 +33,16 @@ def import_file_from_agave(jwt: str, systemId: str, path: str, projectId: int):
         logger.error("Could not import file from agave: {} :: {}".format(systemId, path), e)
 
 
+@app.task(rate_limit="1/s")
+def import_point_cloud_from_file_from_agave(jwt: str, systemId: str, path: str, pointCloudId: int):
+    client = AgaveUtils(jwt)
+    try:
+        tmpFile = client.getFile(systemId, path)
+        tmpFile.filename = Path(path).name
+        point_cloud.PointCloudService.fromFileObj(pointCloudId, tmpFile, Path(path).name, is_async=False)
+        tmpFile.close()
+    except Exception as e:
+        logger.error("Could not import point cloud file from agave: {} :: {}".format(systemId, path), e)
 
 #TODO: Add users to project based on the agave users on the system.
 #TODO: This is an abomination
