@@ -20,3 +20,21 @@ def test_get_notifications(test_client, notifications):
     data = resp.get_json()
     assert resp.status_code == 200
     assert len(data) == 2
+
+def test_filter_notifications(test_client, notifications):
+    u1 = db_session.query(User).get(1)
+
+    resp = test_client.get('/notifications/?startDate=2222-1-1T12:00:00+00:00',
+                            headers={'x-jwt-assertion-test': u1.jwt})
+    data = resp.get_json()
+    assert resp.status_code == 200
+    assert len(data) == 0
+
+def test_filter_notifications_positive(test_client, notifications):
+    u1 = db_session.query(User).get(1)
+
+    resp = test_client.get('/notifications/?startDate=1900-1-1T12:00:00+00:00',
+                            headers={'x-jwt-assertion-test': u1.jwt})
+    data = resp.get_json()
+    assert resp.status_code == 200
+    assert len(data) == 2
