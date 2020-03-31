@@ -413,8 +413,3 @@ class FeaturesService:
         db_session.delete(ov)
         db_session.commit()
 
-    @staticmethod
-    def importFromTapis(projectId: int, files: List[Dict], user):
-        for file in files:
-            logger.info(file)
-            data_tasks.import_file_from_agave.apply()
