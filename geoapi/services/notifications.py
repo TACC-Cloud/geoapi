@@ -1,4 +1,4 @@
-from typing import List, AnyStr
+from typing import List, AnyStr, Dict
 
 from geoapi.models import Notification
 from geoapi.models import User
@@ -14,6 +14,17 @@ class NotificationsService:
             .order_by(Notification.created.desc()) \
             .limit(100)\
             .all()
+
+    @staticmethod
+    def get(user: User, filters: Dict) -> List[Notification]:
+        q = db_session.query(Notification) \
+            .filter(Notification.username == user.username) \
+            .filter(Notification.tenant_id == user.tenant_id)
+        if filters.get("startDate"):
+            q = q.filter(Notification.created > filters.get("startDate"))
+        return q.order_by(Notification.created.desc()) \
+                .limit(100).all()
+
 
     @staticmethod
     def create(user: User, status: AnyStr, message: AnyStr) -> Notification:

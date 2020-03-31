@@ -9,6 +9,8 @@ import geoapi.services.features as features
 import geoapi.services.point_cloud as point_cloud
 
 from geoapi.db import db_session
+from geoapi.services.notifications import NotificationsService
+
 logger = logging.getLogger(__file__)
 
 def _get_file_and_metadata():
@@ -100,18 +102,18 @@ def import_from_agave(user: User, systemId: str, path: str, proj: Project):
                     fa.original_path = item_system_path
                     db_session.add(fa)
                     db_session.commit()
+                    NotificationsService.create(user, "success", "Imported {f}".format(f=item_system_path))
                     tmpFile.close()
                 elif item.path.suffix.lower().lstrip('.') in features.FeaturesService.ALLOWED_GEOSPATIAL_EXTENSIONS:
                     tmpFile = client.getFile(systemId, item.path)
                     tmpFile.filename = Path(item.path).name
                     features.FeaturesService.fromFileObj(proj.id, tmpFile, {}, original_path=item_system_path)
+                    NotificationsService.create(user, "success", "Imported {f}".format(f=item_system_path))
                     tmpFile.close()
                 else:
                     continue
-            except ApiException as e:
-                logger.exception(e)
-                continue
             except Exception as e:
+                NotificationsService.create(user, "error", "Error importing {f}".format(f=item_system_path))
                 logger.exception(e)
                 continue
 
