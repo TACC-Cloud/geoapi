@@ -47,10 +47,11 @@ def import_point_cloud_from_file_from_agave(userId: int, systemId: str, path: st
         tmpFile.filename = Path(path).name
         point_cloud.PointCloudService.fromFileObj(pointCloudId, tmpFile, Path(path).name, is_async=False)
         tmpFile.close()
-        NotificationsService.create(user, "success", "Imported lidar file {f}".format(f=path))
+        NotificationsService.create(user, "success", "Imported {f}".format(f=path))
     except Exception as e:
         logger.error("Could not import point cloud file from agave: {} :: {}".format(systemId, path), e)
-        NotificationsService.create(user, "error", "Error importing lidar file {f}".format(f=path))
+        NotificationsService.create(user, "error", "Error importing {f}".format(f=path))
+
 
 #TODO: Add users to project based on the agave users on the system.
 #TODO: This is an abomination
