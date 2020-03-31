@@ -3,6 +3,9 @@ from typing import List, AnyStr, Dict
 from geoapi.models import Notification
 from geoapi.models import User
 from geoapi.db import db_session
+from geoapi.log import logging
+
+logger = logging.getLogger(__file__)
 
 class NotificationsService:
 
@@ -36,4 +39,5 @@ class NotificationsService:
         )
         db_session.add(note)
         db_session.commit()
+        logger.info(note)
         return note

@@ -24,27 +24,33 @@ def _parse_rapid_geolocation(loc):
     return lat, lon
 
 @app.task(rate_limit="1/s")
-def import_file_from_agave(jwt: str, systemId: str, path: str, projectId: int):
-    client = AgaveUtils(jwt)
+def import_file_from_agave(userId: int, systemId: str, path: str, projectId: int):
+    user = db_session.query(User).get(userId)
+    client = AgaveUtils(user.jwt)
     try:
         tmpFile = client.getFile(systemId, path)
         tmpFile.filename = Path(path).name
-        features.FeaturesService.fromFileObj(projectId, tmpFile, {})
+        features.FeaturesService.fromFileObj(projectId, tmpFile, {}, original_path=path)
+        NotificationsService.create(user, "success", "Imported {f}".format(f=path))
         tmpFile.close()
     except Exception as e:
         logger.error("Could not import file from agave: {} :: {}".format(systemId, path), e)
+        NotificationsService.create(user, "error", "Error importing {f}".format(f=path))
 
 
 @app.task(rate_limit="1/s")
-def import_point_cloud_from_file_from_agave(jwt: str, systemId: str, path: str, pointCloudId: int):
-    client = AgaveUtils(jwt)
+def import_point_cloud_from_file_from_agave(userId: int, systemId: str, path: str, pointCloudId: int):
+    user = db_session.query(User).get(userId)
+    client = AgaveUtils(user.jwt)
     try:
         tmpFile = client.getFile(systemId, path)
         tmpFile.filename = Path(path).name
         point_cloud.PointCloudService.fromFileObj(pointCloudId, tmpFile, Path(path).name, is_async=False)
         tmpFile.close()
+        NotificationsService.create(user, "success", "Imported lidar file {f}".format(f=path))
     except Exception as e:
         logger.error("Could not import point cloud file from agave: {} :: {}".format(systemId, path), e)
+        NotificationsService.create(user, "error", "Error importing lidar file {f}".format(f=path))
 
 #TODO: Add users to project based on the agave users on the system.
 #TODO: This is an abomination
