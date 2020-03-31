@@ -105,7 +105,7 @@ class AgaveUtils:
                 tmpFile = NamedTemporaryFile()
                 for chunk in r.iter_content(1024*1024):
                     tmpFile.write(chunk)
-
+                tmpFile.seek(0)
                 return tmpFile
         except Exception as e:
             logger.error(e)

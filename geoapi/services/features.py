@@ -188,15 +188,17 @@ class FeaturesService:
                 return feat
 
     @staticmethod
-    def fromGeoJSON(projectId: int, fileObj: IO, metadata: Dict) -> List[Feature]:
+    def fromGeoJSON(projectId: int, fileObj: IO, metadata: Dict, original_path: str = None) -> List[Feature]:
         """
 
         :param projectId: int
         :param fileObj: file descriptor
         :param metadata: Dict of <key, val> pairs
+        :param original_path: str path of original file location
         :return: Feature
         """
         data = json.loads(fileObj.read())
+        logger.info(data)
         fileObj.close()
         return FeaturesService.addGeoJSON(projectId, data)
 
@@ -208,7 +210,7 @@ class FeaturesService:
         elif ext in FeaturesService.GPX_FILE_EXTENSIONS:
             return [FeaturesService.fromGPX(projectId, fileObj, metadata, original_path)]
         elif ext in FeaturesService.GEOJSON_FILE_EXTENSIONS:
-            return FeaturesService.fromGeoJSON(projectId, fileObj, {})
+            return FeaturesService.fromGeoJSON(projectId, fileObj, {}, original_path)
         else:
             raise ApiException("Filetype not supported for direct upload. Create a feature and attach as an asset?")
 
