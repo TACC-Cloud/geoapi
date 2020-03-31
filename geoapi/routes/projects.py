@@ -322,7 +322,7 @@ class ProjectFeaturesFileImportResource(Resource):
         u = request.current_user
         logger.info(request.json["files"])
         for file in request.json["files"]:
-            external_data.import_file_from_agave.delay(u.jwt, file["system"], file["path"], projectId)
+            external_data.import_file_from_agave.delay(u.id, file["system"], file["path"], projectId)
         return {"message": "accepted"}
 
 
@@ -481,7 +481,7 @@ class ProjectPointCloudsFileImportResource(Resource):
     def post(self, projectId: int, pointCloudId: int):
         u = request.current_user
         for file in request.json["files"]:
-            external_data.import_point_cloud_from_file_from_agave.delay(u.jwt,
+            external_data.import_point_cloud_from_file_from_agave.delay(u.id,
                                                                         file["system"],
                                                                         file["path"],
                                                                         pointCloudId)
