@@ -198,7 +198,6 @@ class FeaturesService:
         :return: Feature
         """
         data = json.loads(fileObj.read())
-        logger.info(data)
         fileObj.close()
         return FeaturesService.addGeoJSON(projectId, data)
 

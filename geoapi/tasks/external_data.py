@@ -70,7 +70,6 @@ def import_from_agave(user: User, systemId: str, path: str, proj: Project):
             try:
                 # first check if there already is a file in the DB
                 item_system_path = os.path.join(item.system, str(item.path).lstrip("/"))
-                logger.info(item_system_path)
 
                 asset = db_session.query(FeatureAsset).filter(FeatureAsset.original_path == item_system_path).first()
                 if asset:

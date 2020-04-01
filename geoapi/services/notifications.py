@@ -39,5 +39,4 @@ class NotificationsService:
         )
         db_session.add(note)
         db_session.commit()
-        logger.info(note)
         return note
