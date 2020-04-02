@@ -18,7 +18,8 @@ def test_external_data_good_files(MockAgaveUtils, userdata, projects_fixture, ge
             "type": "dir",
             "length": 4,
             "_links": "links",
-            "mimeType": "folder"
+            "mimeType": "folder",
+            "lastModified": "2020-08-31T12:00:00Z"
         }),
         AgaveFileListing({
             "system": "testSystem",
@@ -26,7 +27,8 @@ def test_external_data_good_files(MockAgaveUtils, userdata, projects_fixture, ge
             "length": 4096,
             "path": "/testPath/file.json",
             "_links": "links",
-            "mimeType": "application/json"
+            "mimeType": "application/json",
+            "lastModified": "2020-08-31T12:00:00Z"
         })
     ]
     u1 = db_session.query(User).filter(User.username == "test1").first()
