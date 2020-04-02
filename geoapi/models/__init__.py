@@ -6,3 +6,4 @@ from .users import User
 from .overlay import Overlay
 from .observable_data import ObservableDataProject
 from .notification import Notification
+from .imported_file import ImportedFile

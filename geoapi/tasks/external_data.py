@@ -2,19 +2,16 @@ import os
 from pathlib import Path
 from geoapi.celery_app import app
 from geoapi.models import User, ObservableDataProject, Project, FeatureAsset
-from geoapi.exceptions import ApiException
 from geoapi.utils.agave import AgaveUtils
 from geoapi.log import logging
 import geoapi.services.features as features
+from geoapi.services.imports import ImportsService
 import geoapi.services.point_cloud as point_cloud
 
 from geoapi.db import db_session
 from geoapi.services.notifications import NotificationsService
 
 logger = logging.getLogger(__file__)
-
-def _get_file_and_metadata():
-    pass
 
 
 def _parse_rapid_geolocation(loc):
@@ -61,6 +58,7 @@ def import_from_agave(user: User, systemId: str, path: str, proj: Project):
     listing = client.listing(systemId, path)
     # First item is always a reference to self
     for item in listing[1:]:
+        logger.info(item)
         if item.type == "dir":
             import_from_agave(user, systemId, item.path, proj)
         # skip any junk files that are not allowed
@@ -70,9 +68,8 @@ def import_from_agave(user: User, systemId: str, path: str, proj: Project):
             try:
                 # first check if there already is a file in the DB
                 item_system_path = os.path.join(item.system, str(item.path).lstrip("/"))
-
-                asset = db_session.query(FeatureAsset).filter(FeatureAsset.original_path == item_system_path).first()
-                if asset:
+                targetFile = ImportsService.getImport(proj.id, systemId, str(item.path))
+                if targetFile:
                     logger.info("Already imported {}".format(item_system_path))
                     continue
 
@@ -107,7 +104,6 @@ def import_from_agave(user: User, systemId: str, path: str, proj: Project):
                     fa.feature = feat
                     fa.original_path = item_system_path
                     db_session.add(fa)
-                    db_session.commit()
                     NotificationsService.create(user, "success", "Imported {f}".format(f=item_system_path))
                     tmpFile.close()
                 elif item.path.suffix.lower().lstrip('.') in features.FeaturesService.ALLOWED_GEOSPATIAL_EXTENSIONS:
@@ -118,6 +114,11 @@ def import_from_agave(user: User, systemId: str, path: str, proj: Project):
                     tmpFile.close()
                 else:
                     continue
+                # Save the row in the database that marks this file as already imported so it doesn't get added again
+                targetFile = ImportsService.createImportedFile(proj.id, systemId, str(item.path), item.lastModified)
+                db_session.add(targetFile)
+                db_session.commit()
+
             except Exception as e:
                 NotificationsService.create(user, "error", "Error importing {f}".format(f=item_system_path))
                 logger.exception(e)
@@ -133,5 +134,4 @@ def refresh_observable_projects():
 
 
 if __name__ =="__main__":
-    u = db_session.query(User).get(1)
-    refresh_observable_projects()
+    pass

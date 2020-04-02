@@ -222,7 +222,6 @@ class FeaturesService:
         :param metadata: dict
         :return: None
         """
-        t1 = datetime.now()
         imdata = ImageService.processImage(fileObj)
         fileObj.close()
         point = Point(imdata.coordinates)
@@ -248,9 +247,6 @@ class FeaturesService:
         imdata.resized.save(os.path.join(base_filepath, str(asset_uuid) + '.jpeg'), "JPEG")
         db_session.add(f)
         db_session.commit()
-        t2 = datetime.now()
-        diff = (t2 - t1).microseconds
-        logger.info("FeaturesService:fromImage :: Feature created in {tdiff}".format(tdiff=diff))
         return f
 
     @staticmethod
