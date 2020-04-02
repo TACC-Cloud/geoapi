@@ -53,14 +53,15 @@ def import_point_cloud_from_file_from_agave(userId: int, systemId: str, path: st
 #TODO: Add users to project based on the agave users on the system.
 #TODO: This is an abomination
 @app.task(rate_limit="5/s")
-def import_from_agave(user: User, systemId: str, path: str, proj: Project):
+def import_from_agave(userId: int, systemId: str, path: str, projectId: int):
+    user = db_session.query(User).get(userId)
     client = AgaveUtils(user.jwt)
     listing = client.listing(systemId, path)
     # First item is always a reference to self
     for item in listing[1:]:
         logger.info(item)
         if item.type == "dir":
-            import_from_agave(user, systemId, item.path, proj)
+            import_from_agave(userId, systemId, item.path, projectId)
         # skip any junk files that are not allowed
         if item.path.suffix.lower().lstrip('.') not in features.FeaturesService.ALLOWED_EXTENSIONS:
             continue
@@ -68,7 +69,7 @@ def import_from_agave(user: User, systemId: str, path: str, proj: Project):
             try:
                 # first check if there already is a file in the DB
                 item_system_path = os.path.join(item.system, str(item.path).lstrip("/"))
-                targetFile = ImportsService.getImport(proj.id, systemId, str(item.path))
+                targetFile = ImportsService.getImport(projectId, systemId, str(item.path))
                 if targetFile:
                     logger.info("Already imported {}".format(item_system_path))
                     continue
@@ -96,11 +97,11 @@ def import_from_agave(user: User, systemId: str, path: str, proj: Project):
                     # client.getFile will save the asset to tempfile
 
                     tmpFile = client.getFile(systemId, item.path)
-                    feat = features.FeaturesService.fromLatLng(proj.id, lat, lon, {})
+                    feat = features.FeaturesService.fromLatLng(projectId, lat, lon, {})
                     feat.properties = meta
                     db_session.add(feat)
                     tmpFile.filename = Path(item.path).name
-                    fa = features.FeaturesService.createFeatureAsset(proj.id, feat.id, tmpFile, original_path=path)
+                    fa = features.FeaturesService.createFeatureAsset(projectId, feat.id, tmpFile, original_path=path)
                     fa.feature = feat
                     fa.original_path = item_system_path
                     db_session.add(fa)
@@ -109,13 +110,13 @@ def import_from_agave(user: User, systemId: str, path: str, proj: Project):
                 elif item.path.suffix.lower().lstrip('.') in features.FeaturesService.ALLOWED_GEOSPATIAL_EXTENSIONS:
                     tmpFile = client.getFile(systemId, item.path)
                     tmpFile.filename = Path(item.path).name
-                    features.FeaturesService.fromFileObj(proj.id, tmpFile, {}, original_path=item_system_path)
+                    features.FeaturesService.fromFileObj(projectId, tmpFile, {}, original_path=item_system_path)
                     NotificationsService.create(user, "success", "Imported {f}".format(f=item_system_path))
                     tmpFile.close()
                 else:
                     continue
                 # Save the row in the database that marks this file as already imported so it doesn't get added again
-                targetFile = ImportsService.createImportedFile(proj.id, systemId, str(item.path), item.lastModified)
+                targetFile = ImportsService.createImportedFile(projectId, systemId, str(item.path), item.lastModified)
                 db_session.add(targetFile)
                 db_session.commit()
 
@@ -125,12 +126,11 @@ def import_from_agave(user: User, systemId: str, path: str, proj: Project):
                 continue
 
 
-
 @app.task()
 def refresh_observable_projects():
     obs = db_session.query(ObservableDataProject).all()
     for o in obs:
-        import_from_agave(o.project.users[0], o.system_id, o.path, o.project)
+        import_from_agave(o.project.users[0].id, o.system_id, o.path, o.project.id)
 
 
 if __name__ =="__main__":

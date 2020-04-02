@@ -10,7 +10,7 @@ from sqlalchemy.sql import select, text
 from sqlalchemy.exc import IntegrityError
 from geoapi.utils.agave import AgaveUtils
 from geoapi.utils.assets import get_project_asset_dir
-
+from geoapi.tasks.external_data import import_from_agave
 
 class ProjectsService:
     """
@@ -67,6 +67,9 @@ class ProjectsService:
             db_session.commit()
         except IntegrityError as e:
             raise e
+
+        import_from_agave.apply_async(args=[obs.project.users[0].id, obs.system_id, obs.path, obs.project_id])
+
         return proj
 
     @staticmethod
