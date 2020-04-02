@@ -53,6 +53,21 @@ def import_point_cloud_from_file_from_agave(userId: int, systemId: str, path: st
         NotificationsService.create(user, "error", "Error importing {f}".format(f=path))
 
 
+@app.task(rate_limit="1/s")
+def import_overlay_from_agave(userId: int, systemId: str, path: str, projectId: int, bounds: dict, label: str):
+    user = db_session.query(User).get(userId)
+    client = AgaveUtils(user.jwt)
+    try:
+        tmpFile = client.getFile(systemId, path)
+        tmpFile.filename = Path(path).name
+        features.FeaturesService.addOverlay(projectId, tmpFile, bounds, label)
+        NotificationsService.create(user, "success", "Imported {f}".format(f=path))
+        tmpFile.close()
+    except Exception as e:
+        logger.error("Could not import overlay file from agave: {} :: {}".format(systemId, path), e)
+        NotificationsService.create(user, "error", "Error importing {f}".format(f=path))
+
+
 #TODO: Add users to project based on the agave users on the system.
 #TODO: This is an abomination
 @app.task(rate_limit="5/s")

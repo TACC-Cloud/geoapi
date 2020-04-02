@@ -1,5 +1,3 @@
-from pathlib import Path
-
 from flask import request, abort
 from flask_restplus import Resource, Namespace, fields, inputs
 from werkzeug.datastructures import FileStorage
@@ -9,7 +7,6 @@ from geoapi.log import logging
 from geoapi.schemas import FeatureSchema
 from geoapi.services.features import FeaturesService
 from geoapi.services.projects import ProjectsService
-from geoapi.exceptions import ApiException
 from geoapi.services.point_cloud import PointCloudService
 from geoapi.utils.decorators import jwt_decoder, project_permissions, project_feature_exists, project_point_cloud_exists
 from geoapi.tasks import external_data
@@ -90,6 +87,18 @@ rapid_project_body = api.model("RapidProject", {
     "path": fields.String(default="RApp")
 })
 
+overlay = api.model('Overlay', {
+    'id': fields.Integer(),
+    'uuid': fields.String(),
+    'minLon': fields.Float(),
+    'minLat': fields.Float(),
+    'maxLon': fields.Float(),
+    'maxLat': fields.Float(),
+    'path': fields.String(),
+    'project_id': fields.Integer(),
+    'label': fields.String()
+})
+
 file_upload_parser = api.parser()
 file_upload_parser.add_argument('file', location='files', type=FileStorage, required=True)
 
@@ -103,9 +112,22 @@ tapis_file = api.model('TapisFile', {
     'path': fields.String(required=True)
 })
 
-resource_fields = api.model('TapisFileImport', {
+tapis_files_import = api.model('TapisFileImport', {
     'files': fields.List(fields.Nested(tapis_file), required=True)
 })
+
+overlay_parser = api.parser()
+overlay_parser.add_argument('file', location='files', type=FileStorage, required=True)
+overlay_parser.add_argument('label', location=['form', 'json'], type=str, required=True)
+overlay_parser.add_argument('minLon', location=['form', 'json'], type=float, required=True)
+overlay_parser.add_argument('minLat', location=['form', 'json'], type=float, required=True)
+overlay_parser.add_argument('maxLon', location=['form', 'json'], type=float, required=True)
+overlay_parser.add_argument('maxLat', location=['form', 'json'], type=float, required=True)
+
+overlay_parser_tapis = overlay_parser.copy()
+overlay_parser_tapis.remove_argument('file')
+overlay_parser_tapis.add_argument('system_id', location='json', type=str, required=True)
+overlay_parser_tapis.add_argument('path', location='json', type=str, required=True)
 
 
 @api.route('/')
@@ -315,7 +337,7 @@ class ProjectFeaturesFileImportResource(Resource):
                          'allowed file types are georeferenced image (jpeg), gpx tracks, GeoJSON and shape files. This'
                          'is an asynchronous operation, files will be imported in the background'
              )
-    @api.expect(resource_fields, validate=True)
+    @api.expect(tapis_files_import, validate=True)
     @api.marshal_with(ok_response)
     @project_permissions
     def post(self, projectId: int):
@@ -342,29 +364,9 @@ class ProjectFeaturesClustersResource(Resource):
 
 @api.route('/<int:projectId>/overlays/')
 class ProjectOverlaysResource(Resource):
-    overlay = api.model('Overlay', {
-        'id': fields.Integer(),
-        'uuid': fields.String(),
-        'minLon': fields.Float(),
-        'minLat': fields.Float(),
-        'maxLon': fields.Float(),
-        'maxLat': fields.Float(),
-        'path': fields.String(),
-        'project_id': fields.Integer(),
-        'label': fields.String()
-    })
-
-    overlay_parser = api.parser()
-    overlay_parser.add_argument('file', location='files', type=FileStorage, required=True)
-    overlay_parser.add_argument('label', location='form', type=str, required=True)
-    overlay_parser.add_argument('minLon', location='form', type=float, required=True)
-    overlay_parser.add_argument('minLat', location='form', type=float, required=True)
-    overlay_parser.add_argument('maxLon', location='form', type=float, required=True)
-    overlay_parser.add_argument('maxLat', location='form', type=float, required=True)
-
     @api.doc(id="addOverlay",
              description='Add a new overlay to a project.')
-    @api.expect(overlay_parser)
+    @api.expect(overlay_parser, validate=True)
     @api.marshal_with(overlay)
     @project_permissions
     def post(self, projectId: int):
@@ -387,6 +389,30 @@ class ProjectOverlaysResource(Resource):
     def get(self, projectId: int):
         ovs = FeaturesService.getOverlays(projectId)
         return ovs
+
+
+@api.route('/<int:projectId>/overlays/import/')
+class ProjectOverlaysImportResource(Resource):
+    @api.doc(id="importOverlayFromTapis",
+             description='Import an overlay from Tapis')
+    @api.expect(point_cloud)
+    @api.expect(overlay_parser_tapis, validate=True)
+    @api.marshal_with(ok_response)
+    @project_permissions
+    def post(self, projectId: int):
+        u = request.current_user
+        file_system_id = request.json['system_id']
+        file_path = request.json['path']
+        bounds = [
+            request.json['minLon'],
+            request.json['minLat'],
+            request.json['maxLon'],
+            request.json['maxLat']
+        ]
+        label = request.json['label']
+        logger.info("Importing overlay file: {} {}".format(file_system_id, file_path))
+        external_data.import_overlay_from_agave.delay(u.id, file_system_id, file_path, projectId, bounds, label)
+        return {"message": "accepted"}
 
 
 @api.route('/<int:projectId>/overlays/<int:overlayId>/')
@@ -474,7 +500,7 @@ class ProjectPointCloudsFileImportResource(Resource):
                          'allowed file types are las and laz. This is an asynchronous operation, '
                          'files will be imported in the background'
              )
-    @api.expect(resource_fields, validate=True)
+    @api.expect(tapis_files_import, validate=True)
     @api.marshal_with(ok_response)
     @project_permissions
     @project_point_cloud_exists

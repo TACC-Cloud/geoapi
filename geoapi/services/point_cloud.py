@@ -75,7 +75,7 @@ class PointCloudService:
     @staticmethod
     def update(pointCloudId: int, data: dict) -> PointCloud:
         """
-        Delete a PointCloud
+        Update a PointCloud
         :param pointCloudId: int
         :param data: dict
         :return: Project
