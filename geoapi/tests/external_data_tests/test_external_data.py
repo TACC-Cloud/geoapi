@@ -35,7 +35,7 @@ def test_external_data_good_files(MockAgaveUtils, userdata, projects_fixture, ge
     proj = db_session.query(Project).get(1)
     MockAgaveUtils().listing.return_value = filesListing
     MockAgaveUtils().getFile.return_value = geojson_file_fixture
-    import_from_agave(u1, "testSystem", "/testPath", proj)
+    import_from_agave(u1.id, "testSystem", "/testPath", proj.id)
     features = db_session.query(Feature).all()
     # the test geojson has 3 features in it
     assert len(features) == 3
