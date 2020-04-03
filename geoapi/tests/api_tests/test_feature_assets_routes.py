@@ -1,12 +1,15 @@
+from unittest.mock import patch
+
 from geoapi.models.users import User
 from geoapi.db import db_session
 
-
-def test_post_image_feature_asset(test_client, projects_fixture, feature_fixture, image_file_fixture):
+@patch("geoapi.services.features.AgaveUtils")
+def test_post_image_feature_asset(MockAgaveUtils, test_client, projects_fixture, feature_fixture, image_file_fixture):
+    MockAgaveUtils().getFile.return_value = image_file_fixture
     u1 = db_session.query(User).filter(User.username == "test1").first()
     resp = test_client.post(
         '/projects/1/features/1/assets/',
-        data={"file": image_file_fixture},
+        json={"system_id": 'test', 'path': '/test/test.jpg'},
         headers={'x-jwt-assertion-test': u1.jwt})
     data = resp.get_json()
     assert resp.status_code == 200
@@ -18,11 +21,13 @@ def test_post_image_feature_asset(test_client, projects_fixture, feature_fixture
     feat = resp2.get_json()
     assert len(feat["assets"]) == 1
 
-def test_post_video_feature_asset(test_client, projects_fixture, feature_fixture, video_file_fixture):
+@patch("geoapi.services.features.AgaveUtils")
+def test_post_video_feature_asset(MockAgaveUtils, test_client, projects_fixture, feature_fixture, video_file_fixture):
+    MockAgaveUtils().getFile.return_value = video_file_fixture
     u1 = db_session.query(User).filter(User.username == "test1").first()
     resp = test_client.post(
         '/projects/1/features/1/assets/',
-        data={"file": video_file_fixture},
+        json={"system_id": 'test', 'path': '/test/test.mp4'},
         headers={'x-jwt-assertion-test': u1.jwt})
     data = resp.get_json()
     assert resp.status_code == 200

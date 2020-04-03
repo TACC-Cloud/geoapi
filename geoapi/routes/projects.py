@@ -279,13 +279,15 @@ class ProjectFeaturesCollectionResource(Resource):
 
     @api.doc(id="addFeatureAsset",
              description='Add a static asset to a collection. Must be an image or video at the moment')
-    @api.expect(file_upload_parser)
+    @api.expect(tapis_file_upload_body)
     @api.marshal_with(api_feature)
     @project_permissions
     @project_feature_exists
     def post(self, projectId: int, featureId: int):
-        args = file_upload_parser.parse_args(strict=True)
-        return FeaturesService.createFeatureAsset(projectId, featureId, args['file'])
+        systemId = request.json["system_id"]
+        path = request.json["path"]
+        u = request.current_user
+        return FeaturesService.createFeatureAssetFromTapis(u, projectId, featureId, systemId, path)
 
 
 @api.route('/<int:projectId>/features/files/')

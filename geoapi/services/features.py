@@ -14,13 +14,13 @@ import geojson
 
 from geoapi.services.images import ImageService, ImageData
 from geoapi.settings import settings
-from geoapi.models import Feature, FeatureAsset, Overlay
+from geoapi.models import Feature, FeatureAsset, Overlay, User
 from geoapi.db import db_session
 from geoapi.exceptions import InvalidGeoJSON, ApiException
 from geoapi.utils.assets import make_project_asset_dir, delete_assets, get_asset_relative_path
 from geoapi.log import logging
 from geoapi.utils import geometries
-
+from geoapi.utils.agave import AgaveUtils
 import geoapi.tasks.external_data as data_tasks
 
 logger = logging.getLogger(__name__)
@@ -271,6 +271,33 @@ class FeaturesService:
         feat.assets.append(fa)
         db_session.commit()
         return feat
+
+    @staticmethod
+    def createFeatureAssetFromTapis(user: User, projectId: int, featureId: int, systemId: str, path: str) -> Feature:
+        """
+        Create a feature asset and save the static content to the ASSETS_BASE_DIR
+        :param user: User
+        :param projectId: int
+        :param featureId: int
+        :param fileObj: file
+        :return: FeatureAsset
+        """
+        client = AgaveUtils(user.jwt)
+        fileObj = client.getFile(systemId, path)
+        filePath = pathlib.Path(path)
+        ext = filePath.suffix.lstrip('.')
+        if ext in FeaturesService.IMAGE_FILE_EXTENSIONS:
+            fa = FeaturesService.createImageFeatureAsset(projectId, fileObj, original_path=path)
+        elif ext in FeaturesService.VIDEO_FILE_EXTENSIONS:
+            fa = FeaturesService.createVideoFeatureAsset(projectId, fileObj, original_path=path)
+        else:
+            raise ApiException("Invalid format for feature assets")
+
+        feat = FeaturesService.get(featureId)
+        feat.assets.append(fa)
+        db_session.commit()
+        return feat
+
 
     @staticmethod
     def featureAssetFromImData(projectId: int, imdata: ImageData) -> FeatureAsset:
