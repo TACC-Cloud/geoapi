@@ -395,24 +395,22 @@ class ProjectOverlaysResource(Resource):
 class ProjectOverlaysImportResource(Resource):
     @api.doc(id="importOverlayFromTapis",
              description='Import an overlay from Tapis')
-    @api.expect(point_cloud)
     @api.expect(overlay_parser_tapis, validate=True)
-    @api.marshal_with(ok_response)
+    @api.marshal_with(overlay)
     @project_permissions
     def post(self, projectId: int):
         u = request.current_user
-        file_system_id = request.json['system_id']
-        file_path = request.json['path']
+        systemId = request.json['system_id']
+        path = request.json['path']
+        label = request.json['label']
         bounds = [
             request.json['minLon'],
             request.json['minLat'],
             request.json['maxLon'],
             request.json['maxLat']
         ]
-        label = request.json['label']
-        logger.info("Importing overlay file: {} {}".format(file_system_id, file_path))
-        external_data.import_overlay_from_agave.delay(u.id, file_system_id, file_path, projectId, bounds, label)
-        return {"message": "accepted"}
+        ov = FeaturesService.addOverlayFromTapis(u, projectId, systemId, path, bounds, label)
+        return ov
 
 
 @api.route('/<int:projectId>/overlays/<int:overlayId>/')
