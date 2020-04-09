@@ -498,7 +498,7 @@ class ProjectPointCloudsFileImportResource(Resource):
                          'allowed file types are las and laz. This is an asynchronous operation, '
                          'files will be imported in the background'
              )
-    @api.expect(tapis_files_import, validate=True)
+    @api.expect(tapis_files_import)
     @api.marshal_with(ok_response)
     @project_permissions
     @project_point_cloud_exists
