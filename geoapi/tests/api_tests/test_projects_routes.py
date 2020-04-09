@@ -71,7 +71,7 @@ def test_upload_image(test_client, projects_fixture, image_file_fixture):
     assert resp.status_code == 200
 
 
-def test_import_image_tapis(test_client, projects_fixture, external_data_mock):
+def test_import_image_tapis(test_client, projects_fixture, import_file_from_agave_mock):
     u1 = db_session.query(User).get(1)
     resp = test_client.post(
         '/projects/1/features/files/import/',

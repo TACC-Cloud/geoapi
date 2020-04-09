@@ -164,9 +164,9 @@ def image_feature_fixture(image_file_fixture):
 
 
 @pytest.fixture(scope="function")
-def external_data_mock():
-    with patch('geoapi.tasks.external_data') as external_data:
-        yield external_data
+def import_file_from_agave_mock():
+    with patch('geoapi.tasks.external_data.import_file_from_agave') as import_file_from_agave:
+        yield import_file_from_agave
 
 
 @pytest.fixture(scope="function")
