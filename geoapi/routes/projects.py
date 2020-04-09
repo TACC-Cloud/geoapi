@@ -480,11 +480,8 @@ class ProjectPointCloudsFileImportResource(Resource):
     @project_point_cloud_exists
     def post(self, projectId: int, pointCloudId: int):
         u = request.current_user
-        for file in request.json["files"]:
-            external_data.import_point_cloud_from_file_from_agave.delay(u.id,
-                                                                        file["system"],
-                                                                        file["path"],
-                                                                        pointCloudId)
+        files = request.json["files"]
+        external_data.import_point_clouds_from_agave.delay(u.id, files, pointCloudId)
         return {"message": "accepted"}
 
 
