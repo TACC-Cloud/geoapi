@@ -1,6 +1,7 @@
 import os
 from pathlib import Path
 from geoapi.celery_app import app
+from geoapi.exceptions import InvalidCoordinateReferenceSystem
 from geoapi.models import User, ObservableDataProject, Project, FeatureAsset
 from geoapi.exceptions import ApiException
 from geoapi.utils.agave import AgaveUtils
@@ -39,18 +40,28 @@ def import_file_from_agave(userId: int, systemId: str, path: str, projectId: int
 
 
 @app.task(rate_limit="1/s")
-def import_point_cloud_from_file_from_agave(userId: int, systemId: str, path: str, pointCloudId: int):
+def import_point_clouds_from_agave(userId: int, files, pointCloudId: int):
     user = db_session.query(User).get(userId)
     client = AgaveUtils(user.jwt)
-    try:
-        tmpFile = client.getFile(systemId, path)
-        tmpFile.filename = Path(path).name
-        point_cloud.PointCloudService.fromFileObj(pointCloudId, tmpFile, Path(path).name, is_async=False)
-        tmpFile.close()
-        NotificationsService.create(user, "success", "Imported {f}".format(f=path))
-    except Exception as e:
-        logger.error("Could not import point cloud file from agave: {} :: {}".format(systemId, path), e)
-        NotificationsService.create(user, "error", "Error importing {f}".format(f=path))
+    for file in files:
+        # this needs to be reworked (DES-1592)
+        systemId = file["system"]
+        path = file["path"]
+        try:
+            tmpFile = client.getFile(systemId, path)
+            tmpFile.filename = Path(path).name
+            point_cloud.PointCloudService.fromFileObj(pointCloudId, tmpFile, Path(path).name, is_async=False)
+            tmpFile.close()
+            NotificationsService.create(user, "success", "Imported {}".format(path))
+        except InvalidCoordinateReferenceSystem as e:
+            logger.error("Could not import point cloud file due to missing"
+                         " coordinate reference system: {} :: {}".format(systemId, path), e)
+            NotificationsService.create(user,
+                                        "error",
+                                        "Error importing {}: missing coordinate reference system".format(path))
+        except Exception as e:
+            logger.error("Could not import point cloud file from agave: {} :: {}".format(systemId, path), e)
+            NotificationsService.create(user, "error", "Error importing point cloud {}".format(path))
 
 
 #TODO: Add users to project based on the agave users on the system.
