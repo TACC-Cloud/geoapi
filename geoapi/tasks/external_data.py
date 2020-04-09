@@ -59,7 +59,6 @@ def import_from_agave(userId: int, systemId: str, path: str, projectId: int):
     listing = client.listing(systemId, path)
     # First item is always a reference to self
     for item in listing[1:]:
-        logger.info(item)
         if item.type == "dir":
             import_from_agave(userId, systemId, item.path, projectId)
         # skip any junk files that are not allowed

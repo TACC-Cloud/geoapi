@@ -23,6 +23,4 @@ class ImportsService():
             path=path,
             last_updated=lastUpdated
         )
-        logger.info("****"*10)
-        logger.info(targetFile)
         return targetFile

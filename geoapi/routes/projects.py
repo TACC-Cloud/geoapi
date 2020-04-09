@@ -305,7 +305,6 @@ class ProjectFeaturesFilesResource(Resource):
         file = request.files['file']
         formData = request.form
         metadata = formData.to_dict()
-        logger.info("ProjectFeaturesFilesResource:POST")
         features = FeaturesService.fromFileObj(projectId, file, metadata)
         return features
 
@@ -322,7 +321,6 @@ class ProjectFeaturesFileImportResource(Resource):
     @project_permissions
     def post(self, projectId: int):
         u = request.current_user
-        logger.info(request.json["files"])
         for file in request.json["files"]:
             external_data.import_file_from_agave.delay(u.id, file["system"], file["path"], projectId)
         return {"message": "accepted"}

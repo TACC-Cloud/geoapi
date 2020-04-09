@@ -74,7 +74,6 @@ class AgaveUtils:
         resp = self.client.get(self.BASE_URL + url)
         listing = resp.json()
         out = [AgaveFileListing(d) for d in listing["result"]]
-        logger.info(out)
         return out
 
     def getMetaAssociated(self, uuid:str)->Dict:

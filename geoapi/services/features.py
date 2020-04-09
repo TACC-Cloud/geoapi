@@ -151,7 +151,6 @@ class FeaturesService:
     @staticmethod
     def _importHazmapperV1Images(feat: Feature) -> Feature:
         if feat.properties.get("image_src"):
-            logger.info("Getting image from src")
             imdata = ImageService.processBase64(feat.properties.get("image_src"))
             fa = FeaturesService.featureAssetFromImData(feat.project_id, imdata)
             feat.assets.append(fa)
