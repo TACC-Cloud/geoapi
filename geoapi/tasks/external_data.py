@@ -3,7 +3,6 @@ from pathlib import Path
 from geoapi.celery_app import app
 from geoapi.exceptions import InvalidCoordinateReferenceSystem
 from geoapi.models import User, ObservableDataProject, Project, FeatureAsset
-from geoapi.exceptions import ApiException
 from geoapi.utils.agave import AgaveUtils
 from geoapi.log import logging
 import geoapi.services.features as features

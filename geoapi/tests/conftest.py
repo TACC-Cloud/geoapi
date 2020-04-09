@@ -164,6 +164,12 @@ def image_feature_fixture(image_file_fixture):
 
 
 @pytest.fixture(scope="function")
+def import_file_from_agave_mock():
+    with patch('geoapi.tasks.external_data.import_file_from_agave') as import_file_from_agave:
+        yield import_file_from_agave
+
+
+@pytest.fixture(scope="function")
 def convert_to_potree_mock():
     with patch('geoapi.services.point_cloud.convert_to_potree') as mock_convert_to_potree:
         class FakeAsyncResult:

@@ -1,13 +1,14 @@
 from geoapi.db import db_session
-
 from geoapi.models.users import User
 from geoapi.models import Overlay
 
+from unittest.mock import patch
 
-def _get_overlay_data(image_file):
+
+def _get_overlay_data(extra):
     data = {"label": "test overlay",
-            "minLat": 10, "maxLat": 20, "minLon": 15, "maxLon": 25,
-            "file": image_file}
+            "minLat": 10, "maxLat": 20, "minLon": 15, "maxLon": 25}
+    data.update(extra)
     return data
 
 
@@ -15,7 +16,21 @@ def test_post_overlay(test_client, projects_fixture, image_file_fixture):
     u1 = db_session.query(User).get(1)
 
     resp = test_client.post('/projects/1/overlays/',
-                            data=_get_overlay_data(image_file_fixture),
+                            data=_get_overlay_data({"file": image_file_fixture}),
+                            headers={'x-jwt-assertion-test': u1.jwt})
+    data = resp.get_json()
+    assert resp.status_code == 200
+    assert data["minLat"] == 10
+    assert data["maxLon"] == 25
+    assert data["path"] is not None
+
+
+@patch("geoapi.services.features.AgaveUtils")
+def test_post_overlay_import_tapis(MockAgaveUtils, test_client, projects_fixture, image_file_fixture):
+    MockAgaveUtils().getFile.return_value = image_file_fixture
+    u1 = db_session.query(User).get(1)
+    resp = test_client.post('/projects/1/overlays/import/',
+                            json=_get_overlay_data({'system_id': "system", "path": "some_path"}),
                             headers={'x-jwt-assertion-test': u1.jwt})
     data = resp.get_json()
     assert resp.status_code == 200
@@ -27,7 +42,7 @@ def test_post_overlay(test_client, projects_fixture, image_file_fixture):
 def test_delete_overlay(test_client, projects_fixture, image_file_fixture):
     u1 = db_session.query(User).get(1)
     test_client.post('/projects/1/overlays/',
-                     data=_get_overlay_data(image_file_fixture),
+                     data=_get_overlay_data({"file": image_file_fixture}),
                      headers={'x-jwt-assertion-test': u1.jwt})
 
     u1 = db_session.query(User).get(1)
