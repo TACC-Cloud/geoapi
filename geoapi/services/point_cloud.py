@@ -75,7 +75,7 @@ class PointCloudService:
     @staticmethod
     def update(pointCloudId: int, data: dict) -> PointCloud:
         """
-        Delete a PointCloud
+        Update a PointCloud
         :param pointCloudId: int
         :param data: dict
         :return: Project
@@ -139,7 +139,7 @@ class PointCloudService:
                 result = check_point_cloud.apply_async(args=[file_path])
                 result.get();
             else:
-                check_point_cloud.apply(args=[file_path])
+                check_point_cloud.apply(args=[file_path], throw=True)
         except InvalidCoordinateReferenceSystem as e:
             os.remove(file_path)
             logger.error("Point cloud file ({}) missing required coordinate reference system".format(file_path))
@@ -194,6 +194,6 @@ class PointCloudService:
         if is_async:
             convert_to_potree.apply_async(args=[pointCloudId], task_id=celery_task_id)
         else:
-            convert_to_potree.apply(args=[pointCloudId], task_id=celery_task_id)
+            convert_to_potree.apply(args=[pointCloudId], task_id=celery_task_id, throw=True)
 
         return task

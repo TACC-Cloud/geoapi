@@ -13,7 +13,6 @@ from geoalchemy2.shape import from_shape
 import geojson
 
 from geoapi.services.images import ImageService, ImageData
-from geoapi.settings import settings
 from geoapi.models import Feature, FeatureAsset, Overlay, User
 from geoapi.db import db_session
 from geoapi.exceptions import InvalidGeoJSON, ApiException
@@ -21,7 +20,6 @@ from geoapi.utils.assets import make_project_asset_dir, delete_assets, get_asset
 from geoapi.log import logging
 from geoapi.utils import geometries
 from geoapi.utils.agave import AgaveUtils
-import geoapi.tasks.external_data as data_tasks
 
 logger = logging.getLogger(__name__)
 
@@ -423,6 +421,16 @@ class FeaturesService:
         db_session.add(ov)
         db_session.commit()
         return ov
+
+
+    @staticmethod
+    def addOverlayFromTapis(user: User, project_id: int, system_id: str,
+                            path: str, bounds: List[float], label: str) -> Overlay:
+        client = AgaveUtils(user.jwt)
+        file_obj = client.getFile(system_id, path)
+        ov = FeaturesService.addOverlay(project_id, file_obj, bounds, label)
+        return ov
+
 
     @staticmethod
     def getOverlays(projectId: int) -> List[Overlay]:
