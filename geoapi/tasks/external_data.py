@@ -6,15 +6,13 @@ from geoapi.models import User, ObservableDataProject, Project, FeatureAsset
 from geoapi.utils.agave import AgaveUtils
 from geoapi.log import logging
 import geoapi.services.features as features
+from geoapi.services.imports import ImportsService
 import geoapi.services.point_cloud as point_cloud
 
 from geoapi.db import db_session
 from geoapi.services.notifications import NotificationsService
 
 logger = logging.getLogger(__file__)
-
-def _get_file_and_metadata():
-    pass
 
 
 def _parse_rapid_geolocation(loc):
@@ -66,13 +64,14 @@ def import_point_clouds_from_agave(userId: int, files, pointCloudId: int):
 #TODO: Add users to project based on the agave users on the system.
 #TODO: This is an abomination
 @app.task(rate_limit="5/s")
-def import_from_agave(user: User, systemId: str, path: str, proj: Project):
+def import_from_agave(userId: int, systemId: str, path: str, projectId: int):
+    user = db_session.query(User).get(userId)
     client = AgaveUtils(user.jwt)
     listing = client.listing(systemId, path)
     # First item is always a reference to self
     for item in listing[1:]:
         if item.type == "dir":
-            import_from_agave(user, systemId, item.path, proj)
+            import_from_agave(userId, systemId, item.path, projectId)
         # skip any junk files that are not allowed
         if item.path.suffix.lower().lstrip('.') not in features.FeaturesService.ALLOWED_EXTENSIONS:
             continue
@@ -80,9 +79,8 @@ def import_from_agave(user: User, systemId: str, path: str, proj: Project):
             try:
                 # first check if there already is a file in the DB
                 item_system_path = os.path.join(item.system, str(item.path).lstrip("/"))
-
-                asset = db_session.query(FeatureAsset).filter(FeatureAsset.original_path == item_system_path).first()
-                if asset:
+                targetFile = ImportsService.getImport(projectId, systemId, str(item.path))
+                if targetFile:
                     logger.info("Already imported {}".format(item_system_path))
                     continue
 
@@ -109,39 +107,41 @@ def import_from_agave(user: User, systemId: str, path: str, proj: Project):
                     # client.getFile will save the asset to tempfile
 
                     tmpFile = client.getFile(systemId, item.path)
-                    feat = features.FeaturesService.fromLatLng(proj.id, lat, lon, {})
+                    feat = features.FeaturesService.fromLatLng(projectId, lat, lon, {})
                     feat.properties = meta
                     db_session.add(feat)
                     tmpFile.filename = Path(item.path).name
-                    fa = features.FeaturesService.createFeatureAsset(proj.id, feat.id, tmpFile, original_path=path)
+                    fa = features.FeaturesService.createFeatureAsset(projectId, feat.id, tmpFile, original_path=path)
                     fa.feature = feat
                     fa.original_path = item_system_path
                     db_session.add(fa)
-                    db_session.commit()
                     NotificationsService.create(user, "success", "Imported {f}".format(f=item_system_path))
                     tmpFile.close()
                 elif item.path.suffix.lower().lstrip('.') in features.FeaturesService.ALLOWED_GEOSPATIAL_EXTENSIONS:
                     tmpFile = client.getFile(systemId, item.path)
                     tmpFile.filename = Path(item.path).name
-                    features.FeaturesService.fromFileObj(proj.id, tmpFile, {}, original_path=item_system_path)
+                    features.FeaturesService.fromFileObj(projectId, tmpFile, {}, original_path=item_system_path)
                     NotificationsService.create(user, "success", "Imported {f}".format(f=item_system_path))
                     tmpFile.close()
                 else:
                     continue
+                # Save the row in the database that marks this file as already imported so it doesn't get added again
+                targetFile = ImportsService.createImportedFile(projectId, systemId, str(item.path), item.lastModified)
+                db_session.add(targetFile)
+                db_session.commit()
+
             except Exception as e:
                 NotificationsService.create(user, "error", "Error importing {f}".format(f=item_system_path))
                 logger.exception(e)
                 continue
 
 
-
 @app.task()
 def refresh_observable_projects():
     obs = db_session.query(ObservableDataProject).all()
     for o in obs:
-        import_from_agave(o.project.users[0], o.system_id, o.path, o.project)
+        import_from_agave(o.project.users[0].id, o.system_id, o.path, o.project.id)
 
 
 if __name__ =="__main__":
-    u = db_session.query(User).get(1)
-    refresh_observable_projects()
+    pass

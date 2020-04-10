@@ -6,7 +6,7 @@ from typing import List, Dict, IO
 from urllib.parse import quote, urlparse, unquote, parse_qs, urlencode
 import json
 from geoapi.log import logging
-
+from dateutil import parser
 logger = logging.getLogger(__name__)
 
 class AgaveFileListing:
@@ -18,6 +18,7 @@ class AgaveFileListing:
         self.length = data["length"]
         self.path = pathlib.Path(data["path"])
         self.mimeType = data["mimeType"]
+        self.lastModified = parser.parse(data["lastModified"])
 
     def __repr__(self):
         return "<AgaveFileListing {}>".format(self.path)

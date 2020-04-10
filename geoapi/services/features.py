@@ -21,7 +21,6 @@ from geoapi.log import logging
 from geoapi.utils import geometries
 from geoapi.utils.agave import AgaveUtils
 
-
 logger = logging.getLogger(__name__)
 
 
@@ -150,7 +149,6 @@ class FeaturesService:
     @staticmethod
     def _importHazmapperV1Images(feat: Feature) -> Feature:
         if feat.properties.get("image_src"):
-            logger.info("Getting image from src")
             imdata = ImageService.processBase64(feat.properties.get("image_src"))
             fa = FeaturesService.featureAssetFromImData(feat.project_id, imdata)
             feat.assets.append(fa)
@@ -221,7 +219,6 @@ class FeaturesService:
         :param metadata: dict
         :return: None
         """
-        t1 = datetime.now()
         imdata = ImageService.processImage(fileObj)
         fileObj.close()
         point = Point(imdata.coordinates)
@@ -247,9 +244,6 @@ class FeaturesService:
         imdata.resized.save(os.path.join(base_filepath, str(asset_uuid) + '.jpeg'), "JPEG")
         db_session.add(f)
         db_session.commit()
-        t2 = datetime.now()
-        diff = (t2 - t1).microseconds
-        logger.info("FeaturesService:fromImage :: Feature created in {tdiff}".format(tdiff=diff))
         return f
 
     @staticmethod
@@ -274,6 +268,33 @@ class FeaturesService:
         feat.assets.append(fa)
         db_session.commit()
         return feat
+
+    @staticmethod
+    def createFeatureAssetFromTapis(user: User, projectId: int, featureId: int, systemId: str, path: str) -> Feature:
+        """
+        Create a feature asset and save the static content to the ASSETS_BASE_DIR
+        :param user: User
+        :param projectId: int
+        :param featureId: int
+        :param fileObj: file
+        :return: FeatureAsset
+        """
+        client = AgaveUtils(user.jwt)
+        fileObj = client.getFile(systemId, path)
+        filePath = pathlib.Path(path)
+        ext = filePath.suffix.lstrip('.')
+        if ext in FeaturesService.IMAGE_FILE_EXTENSIONS:
+            fa = FeaturesService.createImageFeatureAsset(projectId, fileObj, original_path=path)
+        elif ext in FeaturesService.VIDEO_FILE_EXTENSIONS:
+            fa = FeaturesService.createVideoFeatureAsset(projectId, fileObj, original_path=path)
+        else:
+            raise ApiException("Invalid format for feature assets")
+
+        feat = FeaturesService.get(featureId)
+        feat.assets.append(fa)
+        db_session.commit()
+        return feat
+
 
     @staticmethod
     def featureAssetFromImData(projectId: int, imdata: ImageData) -> FeatureAsset:
