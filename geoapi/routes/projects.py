@@ -138,6 +138,7 @@ class ProjectsListing(Resource):
     @api.marshal_with(project, as_list=True)
     def get(self):
         u = request.current_user
+        logger.info("Get all projects for user:{}".format(u.username))
         return ProjectsService.list(u)
 
     @api.doc(id="createProject",
@@ -146,6 +147,8 @@ class ProjectsListing(Resource):
     @api.marshal_with(project)
     def post(self):
         u = request.current_user
+        logger.info("Create project for user:{} : {}".format(u.username,
+                                                            api.payload))
         return ProjectsService.create(api.payload, u)
 
 
@@ -157,6 +160,8 @@ class RapidProject(Resource):
     @api.marshal_with(project)
     def post(self):
         u = request.current_user
+        logger.info("Create rapid project for user {}: {}".format(
+            u.username, api.payload))
         try:
             return ProjectsService.createRapidProject(api.payload, u)
         except Exception as e:
@@ -178,6 +183,9 @@ class ProjectResource(Resource):
              description="Delete a project, all associated features and metadata. THIS CANNOT BE UNDONE")
     @project_permissions
     def delete(self, projectId: int):
+        u = request.current_user
+        logger.info("Delete project:{} for user:{}".format(projectId,
+                                                           u.username))
         return ProjectsService.delete(projectId)
 
     @api.doc(id="updateProject",
@@ -241,6 +249,8 @@ class ProjectFeaturesResource(Resource):
     @api.marshal_with(feature_collection_model, as_list=True)
     @project_permissions
     def get(self, projectId: int):
+        logger.info("Get features of project:{} for user:{}".format(
+            projectId, request.current_user.username))
         query = self.parser.parse_args()
         return ProjectsService.getFeatures(projectId, query)
 
@@ -250,6 +260,8 @@ class ProjectFeaturesResource(Resource):
     @api.expect(feature_schema)
     @project_permissions
     def post(self, projectId: int):
+        logger.info("Add GeoJSON feature to project:{} for user:{}".format(
+            projectId, request.current_user.username))
         return FeaturesService.addGeoJSON(projectId, request.json)
 
 
@@ -267,6 +279,8 @@ class ProjectFeatureResource(Resource):
     @api.marshal_with(ok_response)
     @project_permissions
     def delete(self, projectId: int, featureId: int):
+        logger.info("Delete feature:{} from project:{} for user:{}".format(
+            featureId, projectId, request.current_user.username))
         return FeaturesService.delete(featureId)
 
 
@@ -309,6 +323,8 @@ class ProjectFeaturesCollectionResource(Resource):
         systemId = request.json["system_id"]
         path = request.json["path"]
         u = request.current_user
+        logger.info("Add feature asset to project:{} for user:{}: {}/{}".format(
+            projectId, u.username, systemId, path))
         return FeaturesService.createFeatureAssetFromTapis(u, projectId, featureId, systemId, path)
 
 
@@ -325,6 +341,8 @@ class ProjectFeaturesFilesResource(Resource):
     @project_permissions
     def post(self, projectId: int):
         file = request.files['file']
+        logger.info("Add feature to project:{} for user:{} : {}".format(
+            projectId, request.current_user.username, file.filename))
         formData = request.form
         metadata = formData.to_dict()
         features = FeaturesService.fromFileObj(projectId, file, metadata)
@@ -343,6 +361,8 @@ class ProjectFeaturesFileImportResource(Resource):
     @project_permissions
     def post(self, projectId: int):
         u = request.current_user
+        logger.info("Import feature to project:{} for user:{} : {}".format(
+            projectId, request.current_user.username, request.json["files"]))
         for file in request.json["files"]:
             external_data.import_file_from_agave.delay(u.id, file["system"], file["path"], projectId)
         return {"message": "accepted"}
@@ -371,6 +391,10 @@ class ProjectOverlaysResource(Resource):
     @project_permissions
     def post(self, projectId: int):
         file = request.files['file']
+
+        logger.info("Add overlay to project:{} for user:{} : {}".format(
+            projectId, request.current_user.username, file.filename))
+
         formData = request.form
         bounds = [
             formData['minLon'],
@@ -400,6 +424,8 @@ class ProjectOverlaysImportResource(Resource):
     @project_permissions
     def post(self, projectId: int):
         u = request.current_user
+        logger.info("Import overlay to project:{} for user:{} : {}".format(
+            projectId, u.username, request.json))
         systemId = request.json['system_id']
         path = request.json['path']
         label = request.json['label']
@@ -420,6 +446,8 @@ class ProjectOverlayResource(Resource):
              description='Remove an overlay from a project')
     @project_permissions
     def delete(self, projectId: int, overlayId: int) -> str:
+        logger.info("Delete overlay:{} in project:{} for user:{}".format(
+            overlayId, projectId, request.current_user.username))
         FeaturesService.deleteOverlay(projectId, overlayId)
         return "Overlay {id} deleted".format(id=overlayId)
 
@@ -440,6 +468,8 @@ class ProjectPointCloudsResource(Resource):
     @api.expect(point_cloud)
     @project_permissions
     def post(self, projectId: int):
+        logger.info("Add point cloud to project:{} for user:{}".format(
+            projectId, request.current_user.username))
         return PointCloudService.create(projectId=projectId,
                                         user=request.current_user,
                                         data=api.payload)
@@ -467,6 +497,8 @@ class ProjectPointCloudResource(Resource):
         """
         f = request.files['file']
         file_name = secure_filename(f.filename)
+        logger.info("Add a file to a point cloud:{} in project:{} for user:{}: {}".format(
+            pointCloudId, projectId, request.current_user.username, file_name))
         pc_task = PointCloudService.fromFileObj(pointCloudId, f, file_name)
         return pc_task
 
@@ -488,6 +520,8 @@ class ProjectPointCloudResource(Resource):
     @project_permissions
     @project_point_cloud_exists
     def delete(self, projectId: int, pointCloudId: int):
+        logger.info("Delete point cloud:{} in project:{} for user:{}".format(
+            pointCloudId, projectId, request.current_user.username))
         return PointCloudService.delete(pointCloudId)
 
 
@@ -505,6 +539,8 @@ class ProjectPointCloudsFileImportResource(Resource):
     def post(self, projectId: int, pointCloudId: int):
         u = request.current_user
         files = request.json["files"]
+        logger.info("Import file(s) to a point cloud:{} in project:{} for user:{}: {}".format(
+            pointCloudId, projectId, request.current_user.username, files))
         external_data.import_point_clouds_from_agave.delay(u.id, files, pointCloudId)
         return {"message": "accepted"}
 
