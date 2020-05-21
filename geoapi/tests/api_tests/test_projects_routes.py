@@ -51,6 +51,46 @@ def test_delete_unauthorized(test_client, projects_fixture):
     assert proj is not None
 
 
+def test_add_user(test_client, projects_fixture):
+    u1 = db_session.query(User).get(1)
+    resp = test_client.post(
+        '/projects/1/users/',
+        json={"username": "newUser"},
+        headers={'x-jwt-assertion-test': u1.jwt}
+    )
+    assert resp.status_code == 200
+
+
+def test_add_user_unauthorized(test_client, projects_fixture):
+    u2 = db_session.query(User).get(2)
+    resp = test_client.post(
+        '/projects/1/users/',
+        json={"username": "newUser"},
+        headers={'x-jwt-assertion-test': u2.jwt}
+    )
+    assert resp.status_code == 403
+
+
+def test_delete_user(test_client, projects_fixture):
+    u1 = db_session.query(User).get(1)
+    resp = test_client.post(
+        '/projects/1/users/',
+        json={"username": "newUser"},
+        headers={'x-jwt-assertion-test': u1.jwt}
+    )
+    assert resp.status_code == 200
+    resp = test_client.delete('/projects/1/users/newUser/',
+                              headers={'x-jwt-assertion-test': u1.jwt})
+    assert resp.status_code == 200
+
+
+def test_delete_user_unauthorized(test_client, projects_fixture):
+    u2 = db_session.query(User).get(2)
+    resp = test_client.delete('/projects/1/users/test1/',
+                              headers={'x-jwt-assertion-test': u2.jwt})
+    assert resp.status_code == 403
+
+
 def test_upload_gpx(test_client, projects_fixture, gpx_file_fixture):
     u1 = db_session.query(User).get(1)
     resp = test_client.post(

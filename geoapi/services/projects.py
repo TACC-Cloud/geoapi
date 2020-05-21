@@ -11,6 +11,8 @@ from sqlalchemy.exc import IntegrityError
 from geoapi.utils.agave import AgaveUtils
 from geoapi.utils.assets import get_project_asset_dir
 from geoapi.tasks.external_data import import_from_agave
+from geoapi.exceptions import ApiException
+
 
 class ProjectsService:
     """
@@ -245,16 +247,26 @@ class ProjectsService:
         return proj.users
 
     @staticmethod
-    def removeUserFromProject(projectId: int, username: str) -> None:
+    def removeUserFromProject(projectId: int, username: str, ) -> None:
         """
         Remove a user from a Project.
         :param projectId: int
         :param username: str
         :return: None
         """
-        proj = db_session.query(Project) \
-            .filter(Project.id == projectId).first()
-        user = db_session.query(User) \
-            .filter(User.username == username).first()
+        proj = db_session.query(Project).get(projectId)
+        user = db_session.query(User).filter(User.username == username).first()
+        observable_project = db_session.query(ObservableDataProject) \
+            .filter(ObservableDataProject.id == projectId).first()
+
+        if len(proj.users) == 1:
+            raise ApiException("Unable to remove last user of project")
+
+        if observable_project and proj.users[0].username == username:
+            raise ApiException("Unable to remove main user of observable project")
+
+        if user not in proj.users:
+            raise ApiException("User not in project")
+
         proj.users.remove(user)
         db_session.commit()
