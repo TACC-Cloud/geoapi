@@ -203,7 +203,7 @@ class ProjectUsersResource(Resource):
     def post(self, projectId: int):
         payload = request.json
         username = payload["username"]
-        logger.info("Add user:{} to project{} for user:{}".format(
+        logger.info("Add user:{} to project:{} for user:{}".format(
             username,
             projectId,
             request.current_user.username))
@@ -218,7 +218,7 @@ class ProjectUserResource(Resource):
              description="Remove a user from a project")
     @project_permissions
     def delete(self, projectId: int, username: str):
-        logger.info("Delete user:{} from project{} for user:{}".format(
+        logger.info("Delete user:{} from project:{} for user:{}".format(
             username,
             projectId,
             request.current_user.username))
