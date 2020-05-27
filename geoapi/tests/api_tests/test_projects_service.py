@@ -21,7 +21,9 @@ def test_get_features(projects_fixture, feature_fixture):
     assert len(project_features['features']) == 1
 
 
-def test_get_features_filter_type(projects_fixture, feature_fixture, image_feature_fixture):
+def test_get_features_filter_type(projects_fixture,
+                                  feature_fixture,
+                                  image_feature_fixture):
     project_features = ProjectsService.getFeatures(projects_fixture.id)
     assert len(project_features['features']) == 2
 

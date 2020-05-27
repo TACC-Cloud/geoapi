@@ -203,6 +203,10 @@ class ProjectUsersResource(Resource):
     def post(self, projectId: int):
         payload = request.json
         username = payload["username"]
+        logger.info("Add user:{} to project:{} for user:{}".format(
+            username,
+            projectId,
+            request.current_user.username))
         ProjectsService.addUserToProject(projectId, username)
         return "ok"
 
@@ -213,8 +217,13 @@ class ProjectUserResource(Resource):
     @api.doc(id="removeUser",
              description="Remove a user from a project")
     @project_permissions
-    def delete(self, projectId: int):
-        return ProjectsService.removeUserFromProject(projectId, request.current_user.username)
+    def delete(self, projectId: int, username: str):
+        logger.info("Delete user:{} from project:{} for user:{}".format(
+            username,
+            projectId,
+            request.current_user.username))
+        return ProjectsService.removeUserFromProject(projectId,
+                                                     username)
 
 
 @api.route('/<int:projectId>/features/')
