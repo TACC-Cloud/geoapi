@@ -256,7 +256,7 @@ class FeaturesService:
         :return: FeatureAsset
         """
         fpath = pathlib.Path(fileObj.filename)
-        ext = fpath.suffix.lstrip('.')
+        ext = fpath.suffix.lstrip('.').lower()
         if ext in FeaturesService.IMAGE_FILE_EXTENSIONS:
             fa = FeaturesService.createImageFeatureAsset(projectId, fileObj, original_path=original_path)
         elif ext in FeaturesService.VIDEO_FILE_EXTENSIONS:
@@ -282,7 +282,7 @@ class FeaturesService:
         client = AgaveUtils(user.jwt)
         fileObj = client.getFile(systemId, path)
         filePath = pathlib.Path(path)
-        ext = filePath.suffix.lstrip('.')
+        ext = filePath.suffix.lstrip('.').lower()
         if ext in FeaturesService.IMAGE_FILE_EXTENSIONS:
             fa = FeaturesService.createImageFeatureAsset(projectId, fileObj, original_path=path)
         elif ext in FeaturesService.VIDEO_FILE_EXTENSIONS:

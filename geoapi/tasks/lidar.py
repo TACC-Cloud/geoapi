@@ -26,7 +26,7 @@ def get_point_cloud_files(path):
     """
     from geoapi.services.point_cloud import PointCloudService
     input_files = [get_asset_path(path, file) for file in os.listdir(path)
-                   if pathlib.Path(file).suffix.lstrip('.') in PointCloudService.LIDAR_FILE_EXTENSIONS]
+                   if pathlib.Path(file).suffix.lstrip('.').lower() in PointCloudService.LIDAR_FILE_EXTENSIONS]
     return input_files
 
 
@@ -84,7 +84,7 @@ def convert_to_potree(self, pointCloudId: int) -> None:
 
     input_files = [get_asset_path(path_to_original_point_clouds, file)
                    for file in os.listdir(path_to_original_point_clouds)
-                   if pathlib.Path(file).suffix.lstrip('.') in PointCloudService.LIDAR_FILE_EXTENSIONS]
+                   if pathlib.Path(file).suffix.lstrip('.').lower() in PointCloudService.LIDAR_FILE_EXTENSIONS]
 
     outline = Lidar.getBoundingBox(input_files)
 
