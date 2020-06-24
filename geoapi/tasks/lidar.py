@@ -5,11 +5,10 @@ import pathlib
 import re
 import shutil
 import celery
-import json
 from geoalchemy2.shape import from_shape
 
 from geoapi.log import logging
-from geoapi.utils.lidar import Lidar
+from geoapi.utils.lidar import getProj4, getBoundingBox
 from geoapi.celery_app import app
 from geoapi.db import db_session
 from geoapi.models import Task
@@ -39,7 +38,7 @@ def check_point_cloud(file_path: str) -> None:
     :raises InvalidCoordinateReferenceSystem: if file missing crs
     """
     # TODO make this a check about if we have enough info ect.
-    Lidar.getEPSG(file_path)
+    getProj4(file_path)
 
 
 @app.task()
@@ -86,7 +85,7 @@ def convert_to_potree(self, pointCloudId: int) -> None:
                    for file in os.listdir(path_to_original_point_clouds)
                    if pathlib.Path(file).suffix.lstrip('.').lower() in PointCloudService.LIDAR_FILE_EXTENSIONS]
 
-    outline = Lidar.getBoundingBox(input_files)
+    outline = getBoundingBox(input_files)
 
     command = [
         "PotreeConverter",

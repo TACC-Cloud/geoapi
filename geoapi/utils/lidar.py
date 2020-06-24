@@ -1,5 +1,5 @@
 import subprocess
-import regex as re
+import json
 import laspy
 from shapely.geometry import MultiPolygon, Polygon
 from shapely.ops import unary_union
@@ -8,63 +8,64 @@ from geoapi.exceptions import InvalidCoordinateReferenceSystem
 from typing import List
 
 
-def _transform_to_geojson(epsg, point: tuple) -> tuple:
+def _transform_to_geojson(proj4, point: tuple) -> tuple:
     """
     Transform point to epsg:4326
-    :param epsg: int
+    :param proj4: proj string
     :param point
     :return: point
     """
-    input_projection = Proj(init='EPSG:{}'.format(epsg))
+    input_projection = Proj(proj4)
     geojson_default_projection = Proj(init="epsg:4326")
     x, y = transform(input_projection, geojson_default_projection, point[0], point[1], errcheck=True)
     return x, y
 
 
-class Lidar:
+def getProj4(filePath: str):
+    """
+    Get proj4 of las file
+    :param filePath
+    :return: str
+    :raises InvalidCoordinateReferenceSystem
+    """
+    result = subprocess.run([
+        "pdal",
+        "info",
+        filePath,
+        "--metadata"
+    ], capture_output=True, text=True, check=True)
+    info = json.loads(result.stdout)
+    try:
+        proj4 = info['metadata']['srs']['proj4']
+        if proj4:
+            return proj4
+    except KeyError:
+        pass
 
-    @staticmethod
-    def getEPSG(filePath: str):
-        """
-        Get EPSG of las file
-        :param filePath
-        :return: int
-        """
+    raise InvalidCoordinateReferenceSystem()
 
-        result = subprocess.run([
-            "lasinfo",
-            "-i",
-            filePath,
-            "-stdout"
-        ], capture_output=True, text=True, check=True)
-        wkt_re = '(?<=\"EPSG\"\,\")\d+(?=\"\]\])(?!.*EPSG)'  # LAS 1.4
-        geotiff_re = '\d+(?=\s*- ProjectedCSTypeGeoKey)'  # LAS < 1.4
-        for epsg_re in [wkt_re, geotiff_re]:
-            epsg = re.search(epsg_re, result.stdout)
-            if epsg:
-                return int(epsg.group())
+def getBoundingBox(filePaths: List[str]) -> MultiPolygon:
+    """
+    Get bounding box(s) from las file(s)
 
-        raise InvalidCoordinateReferenceSystem()
+    :param filePaths: List[Project]
+    :return: MultiPolygon or Polygon
+    """
 
-    @staticmethod
-    def getBoundingBox(filePaths: List[str]) -> MultiPolygon:
-        """
-        Get bounding box(s) from las file(s)
+    # TODO this could all be replaced by calling `pdal info` which provides
+    #  an EPSG:4326 boundary box in our desired 4326 crs. The only
+    #  downside is that pdal info takes a long time (single threaded?)
+    polygons = []
+    for input_file in filePaths:
+        proj4 = getProj4(input_file)
 
-        :param filePaths: List[Project]
-        :return: MultiPolygon or Polygon
-        """
-        polygons = []
-        for input_file in filePaths:
-            epsg = Lidar.getEPSG(input_file)
+        las_file = laspy.file.File(input_file, mode="r-")
+        min_point = _transform_to_geojson(proj4=proj4, point=tuple(las_file.header.min[:2]))
+        max_point = _transform_to_geojson(proj4=proj4, point=tuple(las_file.header.max[:2]))
+        las_file.close()
 
-            las_file = laspy.file.File(input_file, mode="r-")
-            min_point = _transform_to_geojson(epsg=epsg, point=tuple(las_file.header.min[:2]))
-            max_point = _transform_to_geojson(epsg=epsg, point=tuple(las_file.header.max[:2]))
-            las_file.close()
-
-            polygons.append(Polygon([min_point,
-                                     (max_point[0], min_point[1]),
-                                     max_point,
-                                     (min_point[0], max_point[1])]))
-        return polygons[0] if len(polygons) == 1 else unary_union(polygons)
+        polygons.append(Polygon([min_point,
+                                 (max_point[0], min_point[1]),
+                                 max_point,
+                                 (min_point[0], max_point[1])]))
+    return polygons[0] if len(polygons) == 1 else unary_union(polygons)

@@ -137,9 +137,26 @@ def lidar_las1pt2_file_path_fixture():
 
 
 @pytest.fixture()
+def lidar_las_epsg7030_file_path_fixture():
+    home = os.path.dirname(__file__)
+    return os.path.join(home, 'fixtures/lidar_subset_epsg7030.las')
+
+
+@pytest.fixture()
 def lidar_las1pt4_file_path_fixture():
     home = os.path.dirname(__file__)
     return os.path.join(home, 'fixtures/lidar_subset_las1pt4.laz')
+
+
+@pytest.fixture(scope="function")
+def empty_las_file_path_fixture():
+    with tempfile.TemporaryDirectory() as temp_dir:
+        empty_las_file_path = os.path.join(temp_dir, "empty.las")
+
+        header = laspy.header.Header()
+        outfile = laspy.file.File(empty_las_file_path, mode="w", header=header)
+        outfile.close()
+        yield empty_las_file_path
 
 
 @pytest.fixture(scope="function")
@@ -149,16 +166,9 @@ def lidar_las1pt2_file_fixture(lidar_las1pt2_file_path_fixture):
 
 
 @pytest.fixture(scope="function")
-def empty_las_file_fixture(lidar_las1pt2_file_path_fixture):
-    with tempfile.TemporaryDirectory() as temp_dir:
-        empty_las_file_path = os.path.join(temp_dir, "empty.las")
-
-        header = laspy.header.Header()
-        outfile = laspy.file.File(empty_las_file_path, mode="w", header=header)
-        outfile.close()
-
-        with open(empty_las_file_path, 'rb') as f:
-            yield f
+def empty_las_file_fixture(empty_las_file_path_fixture):
+    with open(empty_las_file_path, 'rb') as f:
+        yield f
 
 
 @pytest.fixture(scope="function")
