@@ -167,7 +167,7 @@ def lidar_las1pt2_file_fixture(lidar_las1pt2_file_path_fixture):
 
 @pytest.fixture(scope="function")
 def empty_las_file_fixture(empty_las_file_path_fixture):
-    with open(empty_las_file_path, 'rb') as f:
+    with open(empty_las_file_path_fixture, 'rb') as f:
         yield f
 
 
