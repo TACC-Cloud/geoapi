@@ -107,11 +107,12 @@ def import_point_clouds_from_agave(userId: int, files, pointCloudId: int):
     try:
         convert_to_potree.apply(args=[pointCloudId], task_id=celery_task_id, throw=True)
     except:
-        logger.exception("pointcloud:{} conversion failed for user:{}".format(pointCloudId, user.username))
+        logger.exception("point cloud:{} conversion failed for user:{}".format(pointCloudId, user.username))
         task.status = "FAILED"
         task.description = ""
         db_session.add(task)
         db_session.commit()
+        NotificationsService.create(user, "error", "Processing failed for point cloud ({})!".format(pointCloudId))
 
 
 #TODO: Add users to project based on the agave users on the system.
