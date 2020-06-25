@@ -1,5 +1,7 @@
 from geoapi.models import User, PointCloud
 from geoapi.db import db_session
+from unittest.mock import patch
+
 
 def test_get_all_point_cloud(test_client, projects_fixture, point_cloud_fixture):
     u1 = db_session.query(User).get(1)
@@ -57,8 +59,11 @@ def test_upload_lidar(test_client, projects_fixture, point_cloud_fixture, lidar_
     convert_to_potree_mock.apply_async.assert_called_once()
 
 
-def test_upload_lidar_missing_coordinate_reference_system(test_client, projects_fixture, point_cloud_fixture,
-                                                          empty_las_file_fixture, check_point_cloud_mock_missing_crs):
+def test_upload_lidar_missing_crs(test_client,
+                                  projects_fixture,
+                                  point_cloud_fixture,
+                                  empty_las_file_fixture,
+                                  check_point_cloud_mock_missing_crs):
     u1 = db_session.query(User).get(1)
     resp = test_client.post(
         '/projects/1/point-cloud/1/',
@@ -67,3 +72,29 @@ def test_upload_lidar_missing_coordinate_reference_system(test_client, projects_
     )
     assert resp.status_code == 400
     assert "coordinate reference system could not be found" in resp.json['message']
+
+
+@patch("geoapi.tasks.external_data.import_point_clouds_from_agave")
+def test_import_lidar_tapis(import_point_clouds_from_agave_mock,
+                            test_client,
+                            projects_fixture,
+                            point_cloud_fixture):
+    u1 = db_session.query(User).get(1)
+    resp = test_client.post(
+        '/projects/1/point-cloud/1/import/',
+        json={"files": [{"system": "designsafe.storage.default", "path": "file.LAS"}]},
+        headers={'x-jwt-assertion-test': u1.jwt}
+    )
+    assert resp.status_code == 200
+    import_point_clouds_from_agave_mock.delay.assert_called_once()
+
+
+def test_import_lidar_tapis_wrong_file(test_client, projects_fixture, point_cloud_fixture):
+    u1 = db_session.query(User).get(1)
+    resp = test_client.post(
+        '/projects/1/point-cloud/1/import/',
+        json={"files": [{"system": "designsafe.storage.default", "path": "file.jpg"}]},
+        headers={'x-jwt-assertion-test': u1.jwt}
+    )
+    assert resp.status_code == 400
+    assert "Invalid file type for point clouds." in resp.json['message']

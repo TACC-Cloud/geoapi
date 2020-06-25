@@ -555,6 +555,10 @@ class ProjectPointCloudsFileImportResource(Resource):
         files = request.json["files"]
         logger.info("Import file(s) to a point cloud:{} in project:{} for user:{}: {}".format(
             pointCloudId, projectId, request.current_user.username, files))
+
+        for file in files:
+            PointCloudService.check_file_extension(file["path"])
+
         external_data.import_point_clouds_from_agave.delay(u.id, files, pointCloudId)
         return {"message": "accepted"}
 

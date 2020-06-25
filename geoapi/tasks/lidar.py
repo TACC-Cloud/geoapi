@@ -62,6 +62,7 @@ class PointCloudProcessingTask(celery.Task):
         logger.info("Task ({}, point cloud {}) failed: {}".format(task_id, args, exc))
         failed_task = db_session.query(Task).filter(Task.process_id == task_id).first()
         failed_task.status = "FAILED"
+        failed_task.description = ""
         db_session.add(failed_task)
         db_session.commit()
 
@@ -133,6 +134,7 @@ def convert_to_potree(self, pointCloudId: int) -> None:
 
     feature.the_geom = from_shape(outline, srid=4326)
     point_cloud.task.status = "FINISHED"
+    point_cloud.task.description = ""
 
     point_cloud_asset_path = get_asset_path(feature.assets[0].path)
     shutil.rmtree(point_cloud_asset_path, ignore_errors=True)
