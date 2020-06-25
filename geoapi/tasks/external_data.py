@@ -1,6 +1,7 @@
 import os
 from pathlib import Path
 from celery import uuid as celery_uuid
+import json
 
 from geoapi.celery_app import app
 from geoapi.exceptions import InvalidCoordinateReferenceSystem
@@ -10,7 +11,7 @@ from geoapi.log import logging
 import geoapi.services.features as features
 from geoapi.services.imports import ImportsService
 import geoapi.services.point_cloud as pointcloud
-from geoapi.tasks.lidar import convert_to_potree, check_point_cloud
+from geoapi.tasks.lidar import convert_to_potree, check_point_cloud, get_point_cloud_info
 from geoapi.db import db_session
 from geoapi.services.notifications import NotificationsService
 
@@ -101,6 +102,9 @@ def import_point_clouds_from_agave(userId: int, files, pointCloudId: int):
 
     task.status = "RUNNING"
     task.description = "Running potree converter"
+    point_cloud.files_info = json.dumps(get_point_cloud_info(pointCloudId));
+
+    db_session.add(point_cloud)
     db_session.add(task)
     db_session.commit()
     NotificationsService.create(user,
