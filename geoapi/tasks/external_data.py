@@ -103,9 +103,15 @@ def import_point_clouds_from_agave(userId: int, files, pointCloudId: int):
     task.description = "Running potree converter"
     db_session.add(task)
     db_session.commit()
+    NotificationsService.create(user,
+                                "success",
+                                "Running potree converter (for point cloud {}).".format(pointCloudId))
 
     try:
         convert_to_potree.apply(args=[pointCloudId], task_id=celery_task_id, throw=True)
+        NotificationsService.create(user,
+                                    "success",
+                                    "Completed potree converter (for point cloud {}).".format(pointCloudId))
     except:
         logger.exception("point cloud:{} conversion failed for user:{}".format(pointCloudId, user.username))
         task.status = "FAILED"
