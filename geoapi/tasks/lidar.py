@@ -9,6 +9,7 @@ from geoalchemy2.shape import from_shape
 
 from geoapi.log import logging
 from geoapi.utils.lidar import getProj4, getBoundingBox
+from geoapi.utils import geometries
 from geoapi.celery_app import app
 from geoapi.db import db_session
 from geoapi.models import Task
@@ -131,7 +132,7 @@ def convert_to_potree(self, pointCloudId: int) -> None:
         point_cloud.feature = feature
         db_session.add(point_cloud)
 
-    feature.the_geom = from_shape(outline, srid=4326)
+    feature.the_geom = from_shape(geometries.convert_3D_2D(outline), srid=4326)
     point_cloud.task.status = "FINISHED"
     point_cloud.task.description = ""
 
