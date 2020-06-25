@@ -168,13 +168,6 @@ class PointCloudService:
         # TODO lock point cloud while we cancel previous task and start a new one (e.g. with_for_update)
         point_cloud = PointCloudService.get(pointCloudId)
 
-        if point_cloud.task and point_cloud.task.status != "FINISHED":
-            logger.info("Terminating previous unfinished processing task {}.".format(point_cloud.task.process_id))
-            app.control.revoke(point_cloud.task.process_id, terminate=True)
-            point_cloud.task.status = "CANCELED"
-            db_session.add(point_cloud.task)
-            db_session.commit()
-
         celery_task_id = celery_uuid()
         task = Task()
         task.status = "RUNNING"

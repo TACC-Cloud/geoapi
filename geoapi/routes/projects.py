@@ -8,7 +8,8 @@ from geoapi.schemas import FeatureSchema
 from geoapi.services.features import FeaturesService
 from geoapi.services.projects import ProjectsService
 from geoapi.services.point_cloud import PointCloudService
-from geoapi.utils.decorators import jwt_decoder, project_permissions, project_feature_exists, project_point_cloud_exists
+from geoapi.utils.decorators import jwt_decoder, project_permissions, project_feature_exists, \
+    project_point_cloud_exists, project_point_cloud_not_processing
 from geoapi.tasks import external_data
 
 logger = logging.getLogger(__name__)
@@ -500,6 +501,7 @@ class ProjectPointCloudResource(Resource):
     @api.marshal_with(task)
     @project_permissions
     @project_point_cloud_exists
+    @project_point_cloud_not_processing
     def post(self, projectId: int, pointCloudId: int):
         """
         :raises InvalidCoordinateReferenceSystem: in case  file missing coordinate reference system
@@ -517,6 +519,7 @@ class ProjectPointCloudResource(Resource):
     @api.expect(point_cloud)
     @project_permissions
     @project_point_cloud_exists
+    @project_point_cloud_not_processing
     def put(self, projectId: int, pointCloudId: int):
         # TODO consider adding status to point cloud as we aren't returning task
         return PointCloudService.update(pointCloudId=pointCloudId,
@@ -528,6 +531,7 @@ class ProjectPointCloudResource(Resource):
                          "THIS CANNOT BE UNDONE")
     @project_permissions
     @project_point_cloud_exists
+    @project_point_cloud_not_processing
     def delete(self, projectId: int, pointCloudId: int):
         logger.info("Delete point cloud:{} in project:{} for user:{}".format(
             pointCloudId, projectId, request.current_user.username))
@@ -545,6 +549,7 @@ class ProjectPointCloudsFileImportResource(Resource):
     @api.marshal_with(ok_response)
     @project_permissions
     @project_point_cloud_exists
+    @project_point_cloud_not_processing
     def post(self, projectId: int, pointCloudId: int):
         u = request.current_user
         files = request.json["files"]
