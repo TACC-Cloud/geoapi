@@ -5,11 +5,11 @@ import pathlib
 import re
 import shutil
 import celery
-import json
 from geoalchemy2.shape import from_shape
 
 from geoapi.log import logging
-from geoapi.utils.lidar import Lidar
+from geoapi.utils.lidar import getProj4, getBoundingBox
+from geoapi.utils import geometries
 from geoapi.celery_app import app
 from geoapi.db import db_session
 from geoapi.models import Task
@@ -26,7 +26,7 @@ def get_point_cloud_files(path):
     """
     from geoapi.services.point_cloud import PointCloudService
     input_files = [get_asset_path(path, file) for file in os.listdir(path)
-                   if pathlib.Path(file).suffix.lstrip('.') in PointCloudService.LIDAR_FILE_EXTENSIONS]
+                   if pathlib.Path(file).suffix.lstrip('.').lower() in PointCloudService.LIDAR_FILE_EXTENSIONS]
     return input_files
 
 
@@ -39,8 +39,7 @@ def check_point_cloud(file_path: str) -> None:
     :raises InvalidCoordinateReferenceSystem: if file missing crs
     """
     # TODO make this a check about if we have enough info ect.
-    Lidar.getEPSG(file_path)
-
+    getProj4(file_path)
 
 @app.task()
 def get_point_cloud_info(pointCloudId: int) -> dict:
@@ -63,6 +62,7 @@ class PointCloudProcessingTask(celery.Task):
         logger.info("Task ({}, point cloud {}) failed: {}".format(task_id, args, exc))
         failed_task = db_session.query(Task).filter(Task.process_id == task_id).first()
         failed_task.status = "FAILED"
+        failed_task.description = ""
         db_session.add(failed_task)
         db_session.commit()
 
@@ -84,9 +84,9 @@ def convert_to_potree(self, pointCloudId: int) -> None:
 
     input_files = [get_asset_path(path_to_original_point_clouds, file)
                    for file in os.listdir(path_to_original_point_clouds)
-                   if pathlib.Path(file).suffix.lstrip('.') in PointCloudService.LIDAR_FILE_EXTENSIONS]
+                   if pathlib.Path(file).suffix.lstrip('.').lower() in PointCloudService.LIDAR_FILE_EXTENSIONS]
 
-    outline = Lidar.getBoundingBox(input_files)
+    outline = getBoundingBox(input_files)
 
     command = [
         "PotreeConverter",
@@ -132,8 +132,9 @@ def convert_to_potree(self, pointCloudId: int) -> None:
         point_cloud.feature = feature
         db_session.add(point_cloud)
 
-    feature.the_geom = from_shape(outline, srid=4326)
+    feature.the_geom = from_shape(geometries.convert_3D_2D(outline), srid=4326)
     point_cloud.task.status = "FINISHED"
+    point_cloud.task.description = ""
 
     point_cloud_asset_path = get_asset_path(feature.assets[0].path)
     shutil.rmtree(point_cloud_asset_path, ignore_errors=True)

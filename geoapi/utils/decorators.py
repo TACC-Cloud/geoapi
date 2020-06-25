@@ -14,24 +14,25 @@ from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import serialization
 import base64
 
+
 def get_pub_key():
-    # settings.JWT_PUB_KEY
     pkey = base64.b64decode(settings.JWT_PUB_KEY)
-    # logger.info(pkey)
-    pub_key = serialization.load_der_public_key(pkey, backend=default_backend())
-    # logger.info(pub_key)
+    pub_key = serialization.load_der_public_key(pkey,
+                                                backend=default_backend())
     return pub_key
+
 
 def jwt_decoder(fn):
     @wraps(fn)
     def wrapper(*args, **kwargs):
         pub_key = get_pub_key()
-        #TODO: validate token
+        # TODO: validate token
         jwt_header_name, token, tenant = jwt_utils.jwt_tenant(request.headers)
         try:
             decoded = jwt.decode(token, pub_key, verify=False)
             username = decoded["http://wso2.org/claims/enduser"]
-            #remove ant @carbon.super or other nonsense, the tenant we get from the header anyway
+            # remove ant @carbon.super or other nonsense, the tenant
+            # we get from the header anyway
             username = username.split("@")[0]
         except Exception as e:
             logger.exception(e)
@@ -61,6 +62,7 @@ def project_permissions(fn):
         return fn(*args, **kwargs)
     return wrapper
 
+
 def project_feature_exists(fn):
     @wraps(fn)
     def wrapper(*args, **kwargs):
@@ -77,6 +79,7 @@ def project_feature_exists(fn):
         return fn(*args, **kwargs)
     return wrapper
 
+
 def project_point_cloud_exists(fn):
     @wraps(fn)
     def wrapper(*args, **kwargs):
@@ -91,5 +94,16 @@ def project_point_cloud_exists(fn):
         if point_cloud.project_id != projectId:
             abort(404, "Point cloud not part of project")
         return fn(*args, **kwargs)
+    return wrapper
 
+
+def project_point_cloud_not_processing(fn):
+    @wraps(fn)
+    def wrapper(*args, **kwargs):
+        point_cloud_id = kwargs.get("pointCloudId")
+        point_cloud = PointCloudService.get(point_cloud_id)
+        if point_cloud.task \
+                and point_cloud.task.status not in ["FINISHED", "FAILED"]:
+            abort(404, "Point cloud is currently being updated")
+        return fn(*args, **kwargs)
     return wrapper

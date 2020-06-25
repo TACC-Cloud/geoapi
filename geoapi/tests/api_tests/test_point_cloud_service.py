@@ -2,7 +2,6 @@ import pytest
 import os
 
 from geoapi.db import db_session
-from werkzeug.datastructures import FileStorage
 from geoapi.services.point_cloud import PointCloudService
 from geoapi.services.features import FeaturesService
 from geoapi.models import User, Feature, FeatureAsset, PointCloud

@@ -1,16 +1,20 @@
 import os
 from pathlib import Path
+from celery import uuid as celery_uuid
+import json
+
 from geoapi.celery_app import app
 from geoapi.exceptions import InvalidCoordinateReferenceSystem
-from geoapi.models import User, ObservableDataProject, Project, FeatureAsset
+from geoapi.models import User, ObservableDataProject, Task
 from geoapi.utils.agave import AgaveUtils
 from geoapi.log import logging
 import geoapi.services.features as features
 from geoapi.services.imports import ImportsService
-import geoapi.services.point_cloud as point_cloud
-
+import geoapi.services.point_cloud as pointcloud
+from geoapi.tasks.lidar import convert_to_potree, check_point_cloud, get_point_cloud_info
 from geoapi.db import db_session
 from geoapi.services.notifications import NotificationsService
+
 
 logger = logging.getLogger(__file__)
 
@@ -20,6 +24,7 @@ def _parse_rapid_geolocation(loc):
     lat = coords["latitude"]
     lon = coords["longitude"]
     return lat, lon
+
 
 @app.task(rate_limit="1/s")
 def import_file_from_agave(userId: int, systemId: str, path: str, projectId: int):
@@ -40,25 +45,84 @@ def import_file_from_agave(userId: int, systemId: str, path: str, projectId: int
 def import_point_clouds_from_agave(userId: int, files, pointCloudId: int):
     user = db_session.query(User).get(userId)
     client = AgaveUtils(user.jwt)
+
+    point_cloud = pointcloud.PointCloudService.get(pointCloudId)
+    celery_task_id = celery_uuid()
+
+    task = Task()
+    task.process_id = celery_task_id
+    task.status = "RUNNING"
+
+    point_cloud.task = task
+    db_session.add(point_cloud)
+
+    new_asset_files = []
+    failed_message = None
     for file in files:
-        # this needs to be reworked (DES-1592)
-        systemId = file["system"]
+        task.description = "Importing file ({}/{})".format(len(new_asset_files) + 1, len(files))
+        db_session.add(task)
+        db_session.commit()
+        NotificationsService.create(user, "success", task.description)
+
+        system_id = file["system"]
         path = file["path"]
+
         try:
-            tmpFile = client.getFile(systemId, path)
-            tmpFile.filename = Path(path).name
-            point_cloud.PointCloudService.fromFileObj(pointCloudId, tmpFile, Path(path).name, is_async=False)
-            tmpFile.close()
-            NotificationsService.create(user, "success", "Imported {}".format(path))
-        except InvalidCoordinateReferenceSystem as e:
+            tmp_file = client.getFile(system_id, path)
+            tmp_file.filename = Path(path).name
+            file_path = pointcloud.PointCloudService.putPointCloudInOriginalsFileDir(point_cloud.path,
+                                                                          tmp_file,
+                                                                          tmp_file.filename)
+            tmp_file.close()
+
+            # save file path as we might need to delete it if there is a problem
+            new_asset_files.append(file_path)
+
+            # check if file is okay
+            check_point_cloud.apply(args=[file_path], throw=True)
+
+        except InvalidCoordinateReferenceSystem:
             logger.error("Could not import point cloud file due to missing"
-                         " coordinate reference system: {} :: {}".format(systemId, path), e)
-            NotificationsService.create(user,
-                                        "error",
-                                        "Error importing {}: missing coordinate reference system".format(path))
+                         " coordinate reference system: {}:{}".format(system_id, path))
+            failed_message = 'Error importing {}: missing coordinate reference system'.format(path)
         except Exception as e:
-            logger.error("Could not import point cloud file from agave: {} :: {}".format(systemId, path), e)
-            NotificationsService.create(user, "error", "Error importing point cloud {}".format(path))
+            logger.error("Could not import point cloud file from tapis: {}:{} : {}".format(system_id, path, e))
+            failed_message = 'Unknown error importing {}:{}'.format(system_id, path)
+
+        if failed_message:
+            task.status = "FAILED"
+            task.description = failed_message
+            db_session.add(task)
+            db_session.commit()
+            NotificationsService.create(user, "error", failed_message)
+            for file_path in new_asset_files:
+                print("removing {}!!!!!!!".format(file_path))
+                os.remove(file_path)
+            return
+
+    task.status = "RUNNING"
+    task.description = "Running potree converter"
+    point_cloud.files_info = json.dumps(get_point_cloud_info(pointCloudId));
+
+    db_session.add(point_cloud)
+    db_session.add(task)
+    db_session.commit()
+    NotificationsService.create(user,
+                                "success",
+                                "Running potree converter (for point cloud {}).".format(pointCloudId))
+
+    try:
+        convert_to_potree.apply(args=[pointCloudId], task_id=celery_task_id, throw=True)
+        NotificationsService.create(user,
+                                    "success",
+                                    "Completed potree converter (for point cloud {}).".format(pointCloudId))
+    except:
+        logger.exception("point cloud:{} conversion failed for user:{}".format(pointCloudId, user.username))
+        task.status = "FAILED"
+        task.description = ""
+        db_session.add(task)
+        db_session.commit()
+        NotificationsService.create(user, "error", "Processing failed for point cloud ({})!".format(pointCloudId))
 
 
 #TODO: Add users to project based on the agave users on the system.
@@ -143,5 +207,5 @@ def refresh_observable_projects():
         import_from_agave(o.project.users[0].id, o.system_id, o.path, o.project.id)
 
 
-if __name__ =="__main__":
+if __name__ == "__main__":
     pass
