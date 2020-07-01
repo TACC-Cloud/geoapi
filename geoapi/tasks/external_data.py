@@ -37,8 +37,23 @@ def import_file_from_agave(userId: int, systemId: str, path: str, projectId: int
         NotificationsService.create(user, "success", "Imported {f}".format(f=path))
         tmpFile.close()
     except Exception as e:
+        db_session.rollback()
         logger.error("Could not import file from agave: {} :: {}".format(systemId, path), e)
         NotificationsService.create(user, "error", "Error importing {f}".format(f=path))
+
+
+def _update_point_cloud_task(pointCloudId: int, description:str = None, status:str = None):
+    task = pointcloud.PointCloudService.get(pointCloudId).task
+    if description is not None:
+        task.description = description
+    if status is not None:
+        task.status = status
+    try:
+        db_session.add(task)
+        db_session.commit()
+    except:
+        db_session.rollback()
+        raise
 
 
 @app.task(rate_limit="1/s")
@@ -59,10 +74,10 @@ def import_point_clouds_from_agave(userId: int, files, pointCloudId: int):
     new_asset_files = []
     failed_message = None
     for file in files:
-        task.description = "Importing file ({}/{})".format(len(new_asset_files) + 1, len(files))
-        db_session.add(task)
-        db_session.commit()
-        NotificationsService.create(user, "success", task.description)
+        _update_point_cloud_task(pointCloudId,
+                                 description="Importing file ({}/{})".format(len(new_asset_files) + 1, len(files)))
+
+        NotificationsService.create_with_rollback(user, "success", task.description)
 
         system_id = file["system"]
         path = file["path"]
@@ -90,39 +105,40 @@ def import_point_clouds_from_agave(userId: int, files, pointCloudId: int):
             failed_message = 'Unknown error importing {}:{}'.format(system_id, path)
 
         if failed_message:
-            task.status = "FAILED"
-            task.description = failed_message
-            db_session.add(task)
-            db_session.commit()
-            NotificationsService.create(user, "error", failed_message)
             for file_path in new_asset_files:
-                print("removing {}!!!!!!!".format(file_path))
+                logger.error("removing {}!!!!!!!".format(file_path))
                 os.remove(file_path)
+            _update_point_cloud_task(pointCloudId, description=failed_message, status="FAILED")
+            NotificationsService.create_with_rollback(user, "error", failed_message)
             return
 
-    task.status = "RUNNING"
-    task.description = "Running potree converter"
-    point_cloud.files_info = json.dumps(get_point_cloud_info(pointCloudId));
+    _update_point_cloud_task(pointCloudId, description="Running potree converter", status="RUNNING")
 
-    db_session.add(point_cloud)
-    db_session.add(task)
-    db_session.commit()
-    NotificationsService.create(user,
-                                "success",
-                                "Running potree converter (for point cloud {}).".format(pointCloudId))
+    point_cloud.files_info = json.dumps(get_point_cloud_info(pointCloudId));
+    try:
+        db_session.add(point_cloud)
+        db_session.add(task)
+        db_session.commit()
+    except:
+        db_session.rollback()
+        raise
+    NotificationsService.create_with_rollback(user,
+                                              "success",
+                                              "Running potree converter (for point cloud {}).".format(pointCloudId))
 
     try:
         convert_to_potree.apply(args=[pointCloudId], task_id=celery_task_id, throw=True)
-        NotificationsService.create(user,
-                                    "success",
-                                    "Completed potree converter (for point cloud {}).".format(pointCloudId))
+        NotificationsService.create_with_rollback(user,
+                                                  "success",
+                                                  "Completed potree converter (for point cloud {}).".format(
+                                                      pointCloudId))
     except:
         logger.exception("point cloud:{} conversion failed for user:{}".format(pointCloudId, user.username))
-        task.status = "FAILED"
-        task.description = ""
-        db_session.add(task)
-        db_session.commit()
-        NotificationsService.create(user, "error", "Processing failed for point cloud ({})!".format(pointCloudId))
+        _update_point_cloud_task(pointCloudId, description="", status="FAILED")
+        NotificationsService.create_with_rollback(user,
+                                                  "error",
+                                                  "Processing failed for point cloud ({})!".format(pointCloudId))
+        return
 
 
 #TODO: Add users to project based on the agave users on the system.
@@ -195,7 +211,8 @@ def import_from_agave(userId: int, systemId: str, path: str, projectId: int):
                 db_session.commit()
 
             except Exception as e:
-                NotificationsService.create(user, "error", "Error importing {f}".format(f=item_system_path))
+                db_session.rollback()
+                NotificationsService.create_with_rollback(user, "error", "Error importing {f}".format(f=item_system_path))
                 logger.exception(e)
                 continue
 

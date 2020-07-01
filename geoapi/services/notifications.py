@@ -40,3 +40,12 @@ class NotificationsService:
         db_session.add(note)
         db_session.commit()
         return note
+
+
+    @staticmethod
+    def create_with_rollback(user: User, status: AnyStr, message: AnyStr) -> Notification:
+        try:
+            NotificationsService.create(user, status, message)
+        except:
+            db_session.rollback()
+            raise
