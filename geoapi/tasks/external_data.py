@@ -51,7 +51,7 @@ def _update_point_cloud_task(pointCloudId: int, description:str = None, status:s
     try:
         db_session.add(task)
         db_session.commit()
-    except:
+    except Exception:
         db_session.rollback()
         raise
 
@@ -77,7 +77,7 @@ def import_point_clouds_from_agave(userId: int, files, pointCloudId: int):
         _update_point_cloud_task(pointCloudId,
                                  description="Importing file ({}/{})".format(len(new_asset_files) + 1, len(files)))
 
-        NotificationsService.create_with_rollback(user, "success", task.description)
+        NotificationsService.create(user, "success", task.description)
 
         system_id = file["system"]
         path = file["path"]
@@ -122,20 +122,20 @@ def import_point_clouds_from_agave(userId: int, files, pointCloudId: int):
     except:
         db_session.rollback()
         raise
-    NotificationsService.create_with_rollback(user,
+    NotificationsService.create(user,
                                               "success",
                                               "Running potree converter (for point cloud {}).".format(pointCloudId))
 
     try:
         convert_to_potree.apply(args=[pointCloudId], task_id=celery_task_id, throw=True)
-        NotificationsService.create_with_rollback(user,
+        NotificationsService.create(user,
                                                   "success",
                                                   "Completed potree converter (for point cloud {}).".format(
                                                       pointCloudId))
     except:
         logger.exception("point cloud:{} conversion failed for user:{}".format(pointCloudId, user.username))
         _update_point_cloud_task(pointCloudId, description="", status="FAILED")
-        NotificationsService.create_with_rollback(user,
+        NotificationsService.create(user,
                                                   "error",
                                                   "Processing failed for point cloud ({})!".format(pointCloudId))
         return
@@ -212,7 +212,7 @@ def import_from_agave(userId: int, systemId: str, path: str, projectId: int):
 
             except Exception as e:
                 db_session.rollback()
-                NotificationsService.create_with_rollback(user, "error", "Error importing {f}".format(f=item_system_path))
+                NotificationsService.create(user, "error", "Error importing {f}".format(f=item_system_path))
                 logger.exception(e)
                 continue
 

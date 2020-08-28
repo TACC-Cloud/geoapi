@@ -31,21 +31,16 @@ class NotificationsService:
 
     @staticmethod
     def create(user: User, status: AnyStr, message: AnyStr) -> Notification:
-        note = Notification(
-            username=user.username,
-            tenant_id=user.tenant_id,
-            status=status,
-            message=message
-        )
-        db_session.add(note)
-        db_session.commit()
-        return note
-
-
-    @staticmethod
-    def create_with_rollback(user: User, status: AnyStr, message: AnyStr) -> Notification:
         try:
-            NotificationsService.create(user, status, message)
+            note = Notification(
+                username=user.username,
+                tenant_id=user.tenant_id,
+                status=status,
+                message=message
+            )
+            db_session.add(note)
+            db_session.commit()
+            return note
         except:
             db_session.rollback()
             raise
