@@ -219,9 +219,13 @@ def import_from_agave(userId: int, systemId: str, path: str, projectId: int):
 
 @app.task()
 def refresh_observable_projects():
-    obs = db_session.query(ObservableDataProject).all()
-    for o in obs:
-        import_from_agave(o.project.users[0].id, o.system_id, o.path, o.project.id)
+    try:
+        obs = db_session.query(ObservableDataProject).all()
+        for o in obs:
+            import_from_agave(o.project.users[0].id, o.system_id, o.path, o.project.id)
+    except Exception:
+        logger.exception("Unhandled exception when importing observable project")
+        db_session.rollback()
 
 
 if __name__ == "__main__":

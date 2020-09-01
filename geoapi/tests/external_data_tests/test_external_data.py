@@ -2,9 +2,9 @@ from unittest.mock import patch
 import pytest
 import os
 
-from geoapi.models import User, Project, Feature
+from geoapi.models import User, Feature
 from geoapi.db import db_session
-from geoapi.tasks.external_data import import_from_agave, import_point_clouds_from_agave
+from geoapi.tasks.external_data import import_from_agave, import_point_clouds_from_agave, refresh_observable_projects
 from geoapi.utils.agave import AgaveFileListing
 from geoapi.utils.assets import get_project_asset_dir, get_asset_path
 from geoapi.exceptions import InvalidCoordinateReferenceSystem
@@ -50,6 +50,7 @@ def agave_utils_with_geojson_file(geojson_file_fixture):
         yield MockAgaveUtils()
 
 
+@pytest.mark.worker
 def test_external_data_good_files(userdata, projects_fixture, agave_utils_with_geojson_file):
     u1 = db_session.query(User).filter(User.username == "test1").first()
 
@@ -165,6 +166,7 @@ def test_import_point_clouds_failed_dbsession_rollback(MockAgaveUtils,
     rollback_side_effect.assert_called_once()
 
 
+@pytest.mark.worker
 def test_import_from_agave_failed_dbsession_rollback(agave_utils_with_geojson_file,
                                                      userdata,
                                                      projects_fixture,
@@ -173,4 +175,13 @@ def test_import_from_agave_failed_dbsession_rollback(agave_utils_with_geojson_fi
     with pytest.raises(Exception):
         import_from_agave(userdata.id, "testSystem", "/testPath", projects_fixture.id)
 
+    rollback_side_effect.assert_called()
+
+
+@pytest.mark.worker
+def test_refresh_observable_projects_dbsession_rollback(agave_utils_with_geojson_file,
+                                                        observable_projects_fixture,
+                                                        db_session_commit_throws_exception,
+                                                        rollback_side_effect):
+    refresh_observable_projects()
     rollback_side_effect.assert_called()
