@@ -109,7 +109,7 @@ def import_point_clouds_from_agave(userId: int, files, pointCloudId: int):
                 logger.error("removing {}!!!!!!!".format(file_path))
                 os.remove(file_path)
             _update_point_cloud_task(pointCloudId, description=failed_message, status="FAILED")
-            NotificationsService.create_with_rollback(user, "error", failed_message)
+            NotificationsService.create(user, "error", failed_message)
             return
 
     _update_point_cloud_task(pointCloudId, description="Running potree converter", status="RUNNING")
