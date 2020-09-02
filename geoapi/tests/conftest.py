@@ -17,6 +17,7 @@ from geoapi.services.point_cloud import PointCloudService
 from geoapi.services.features import FeaturesService
 from geoapi.app import app
 from geoapi.utils.assets import get_project_asset_dir
+from geoapi.utils.agave import AgaveFileListing
 from geoapi.exceptions import InvalidCoordinateReferenceSystem
 
 
@@ -67,8 +68,8 @@ def observable_projects_fixture():
                    description="description",
                    tenant_id=u1.tenant_id)
     obs = ObservableDataProject(
-        system_id="system_id",
-        path="/system_path"
+        system_id="testSystem",
+        path="/testPath"
     )
     obs.project = proj
     proj.users.append(u1)
@@ -202,6 +203,12 @@ def import_file_from_agave_mock():
 
 
 @pytest.fixture(scope="function")
+def import_from_agave_mock():
+    with patch('geoapi.tasks.external_data.import_from_agave') as mock_import:
+        yield mock_import
+
+
+@pytest.fixture(scope="function")
 def convert_to_potree_mock():
     with patch('geoapi.services.point_cloud.convert_to_potree') as mock_convert_to_potree:
         class FakeAsyncResult:
@@ -238,3 +245,28 @@ def get_point_cloud_info_mock():
 
         mock_get_point_cloud_info.apply_async.return_value = mock_result
         yield mock_get_point_cloud_info
+
+
+@pytest.fixture(scope="function")
+def agave_file_listings_mock():
+    filesListing = [
+        AgaveFileListing({
+            "system": "testSystem",
+            "path": "/testPath",
+            "type": "dir",
+            "length": 4,
+            "_links": "links",
+            "mimeType": "folder",
+            "lastModified": "2020-08-31T12:00:00Z"
+        }),
+        AgaveFileListing({
+            "system": "testSystem",
+            "type": "file",
+            "length": 4096,
+            "path": "/testPath/file.json",
+            "_links": "links",
+            "mimeType": "application/json",
+            "lastModified": "2020-08-31T12:00:00Z"
+        })
+    ]
+    yield filesListing

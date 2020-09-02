@@ -161,13 +161,8 @@ class RapidProject(Resource):
     @api.marshal_with(project)
     def post(self):
         u = request.current_user
-        logger.info("Create rapid project for user {}: {}".format(
-            u.username, api.payload))
-        try:
-            return ProjectsService.createRapidProject(api.payload, u)
-        except Exception as e:
-            logger.exception(e)
-            return abort(409, "A project for this storage system/path already exists!")
+        logger.info("Create rapid project for user {}: {}".format(u.username, api.payload))
+        return ProjectsService.createRapidProject(api.payload, u);
 
 
 @api.route('/<int:projectId>/')

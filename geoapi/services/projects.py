@@ -11,7 +11,10 @@ from sqlalchemy.exc import IntegrityError
 from geoapi.utils.agave import AgaveUtils
 from geoapi.utils.assets import get_project_asset_dir
 from geoapi.tasks.external_data import import_from_agave
-from geoapi.exceptions import ApiException
+from geoapi.log import logging
+from geoapi.exceptions import ApiException, ObservableProjectAlreadyExists
+
+logger = logging.getLogger(__name__)
 
 
 class ProjectsService:
@@ -68,6 +71,10 @@ class ProjectsService:
             db_session.add(proj)
             db_session.commit()
         except IntegrityError as e:
+            db_session.rollback()
+            if "already exists" in str(e):
+                raise ObservableProjectAlreadyExists("'{}' project already exists".format(name))
+            logger.exception(e)
             raise e
 
         import_from_agave.apply_async(args=[obs.project.users[0].id, obs.system_id, obs.path, obs.project_id])
