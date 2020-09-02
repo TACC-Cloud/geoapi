@@ -102,7 +102,9 @@ class AgaveUtils:
         try:
             with self.client.get(self.BASE_URL + url, stream=True) as r:
                 if r.status_code > 400:
-                    raise ValueError("Could not fetch file: {}".format(r.status_code))
+                    raise ValueError("Could not fetch file ({}/{}) status_code:{}".format(systemId,
+                                                                                          path,
+                                                                                          r.status_code))
                 tmpFile = NamedTemporaryFile()
                 for chunk in r.iter_content(1024*1024):
                     tmpFile.write(chunk)

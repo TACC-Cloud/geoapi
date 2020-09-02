@@ -37,7 +37,7 @@ def import_file_from_agave(userId: int, systemId: str, path: str, projectId: int
         NotificationsService.create(user, "success", "Imported {f}".format(f=path))
         tmpFile.close()
     except Exception as e:
-        logger.error("Could not import file from agave: {} :: {}".format(systemId, path), e)
+        logger.error("Could not import file for user {} from agave: {}/{}: {}".format(user.username, systemId, path, e))
         NotificationsService.create(user, "error", "Error importing {f}".format(f=path))
 
 
@@ -86,7 +86,9 @@ def import_point_clouds_from_agave(userId: int, files, pointCloudId: int):
                          " coordinate reference system: {}:{}".format(system_id, path))
             failed_message = 'Error importing {}: missing coordinate reference system'.format(path)
         except Exception as e:
-            logger.error("Could not import point cloud file from tapis: {}:{} : {}".format(system_id, path, e))
+            logger.error("Could not import point cloud file for user:{} from tapis: {}/{} : {}".format(user.username,
+                                                                                                       system_id,
+                                                                                                       path, e))
             failed_message = 'Unknown error importing {}:{}'.format(system_id, path)
 
         if failed_message:
@@ -152,7 +154,6 @@ def import_from_agave(userId: int, systemId: str, path: str, projectId: int):
                 if Path(item_system_path).match("*/RApp/*"):
                     logger.info("RApp import {path}".format(path=item_system_path))
                     listing = client.listing(systemId, item.path)[0]
-                    # f = client.getFile(systemId, item.path)
                     meta = client.getMetaAssociated(listing.uuid)
                     if not meta:
                         logger.info("No metadata for {}".format(item.path))
@@ -195,6 +196,8 @@ def import_from_agave(userId: int, systemId: str, path: str, projectId: int):
                 db_session.commit()
 
             except Exception as e:
+                logger.error(
+                    "Could not import for user {} from agave: {}/{}".format(user.username, systemId, path))
                 NotificationsService.create(user, "error", "Error importing {f}".format(f=item_system_path))
                 logger.exception(e)
                 continue
