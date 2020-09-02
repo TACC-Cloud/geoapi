@@ -39,6 +39,7 @@ def import_file_from_agave(userId: int, systemId: str, path: str, projectId: int
     except Exception as e:
         logger.error("Could not import file for user {} from agave: {}/{}: {}".format(user.username, systemId, path, e))
         NotificationsService.create(user, "error", "Error importing {f}".format(f=path))
+        raise e
 
 
 @app.task(rate_limit="1/s")
