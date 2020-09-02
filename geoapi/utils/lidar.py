@@ -44,9 +44,11 @@ def getProj4(filePath: str):
 
     raise InvalidCoordinateReferenceSystem()
 
-def get2DBoundingBox(filePaths: List[str]) -> MultiPolygon:
+def get_bounding_box_2d(filePaths: List[str]) -> MultiPolygon:
     """
     Get 2D bounding box(s) from las file(s)
+
+    Bounding box is in epsg:4326
 
     :param filePaths: List[Project]
     :return: MultiPolygon or Polygon
