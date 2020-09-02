@@ -8,7 +8,7 @@ import celery
 from geoalchemy2.shape import from_shape
 
 from geoapi.log import logging
-from geoapi.utils.lidar import getProj4, getBoundingBox
+from geoapi.utils.lidar import getProj4, get2DBoundingBox
 from geoapi.utils import geometries
 from geoapi.celery_app import app
 from geoapi.db import db_session
@@ -86,7 +86,7 @@ def convert_to_potree(self, pointCloudId: int) -> None:
                    for file in os.listdir(path_to_original_point_clouds)
                    if pathlib.Path(file).suffix.lstrip('.').lower() in PointCloudService.LIDAR_FILE_EXTENSIONS]
 
-    outline = getBoundingBox(input_files)
+    outline = get2DBoundingBox(input_files)
 
     command = [
         "PotreeConverter",

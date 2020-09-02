@@ -17,7 +17,7 @@ def _transform_to_geojson(proj4, point: tuple) -> tuple:
     """
     input_projection = Proj(proj4)
     geojson_default_projection = Proj(init="epsg:4326")
-    x, y = transform(input_projection, geojson_default_projection, point[0], point[1], errcheck=True)
+    x, y, _ = transform(input_projection, geojson_default_projection, point[0], point[1], point[2], errcheck=True)
     return x, y
 
 
@@ -44,24 +44,24 @@ def getProj4(filePath: str):
 
     raise InvalidCoordinateReferenceSystem()
 
-def getBoundingBox(filePaths: List[str]) -> MultiPolygon:
+def get2DBoundingBox(filePaths: List[str]) -> MultiPolygon:
     """
-    Get bounding box(s) from las file(s)
+    Get 2D bounding box(s) from las file(s)
 
     :param filePaths: List[Project]
     :return: MultiPolygon or Polygon
     """
 
     # TODO this could all be replaced by calling `pdal info` which provides
-    #  an EPSG:4326 boundary box in our desired 4326 crs. The only
-    #  downside is that pdal info takes a long time (single threaded?)
+    #  an EPSG:4326 boundary box in our desired 4326 crs. The downside is that
+    #  pdal info takes a long time (single threaded)
     polygons = []
     for input_file in filePaths:
         proj4 = getProj4(input_file)
 
         las_file = laspy.file.File(input_file, mode="r-")
-        min_point = _transform_to_geojson(proj4=proj4, point=tuple(las_file.header.min[:2]))
-        max_point = _transform_to_geojson(proj4=proj4, point=tuple(las_file.header.max[:2]))
+        min_point = _transform_to_geojson(proj4=proj4, point=tuple(las_file.header.min[:3]))
+        max_point = _transform_to_geojson(proj4=proj4, point=tuple(las_file.header.max[:3]))
         las_file.close()
 
         polygons.append(Polygon([min_point,
