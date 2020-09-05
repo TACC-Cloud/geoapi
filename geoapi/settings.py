@@ -15,6 +15,7 @@ class Config(object):
     RABBITMQ_VHOST = 'dev'
     RABBITMQ_HOSTNAME = 'rabbitmq'
     RESTPLUS_MASK_SWAGGER = False
+    TAPIS_SUPER_TOKEN = "ABCDEFG12344"
 
 
 class ProductionConfig(Config):
@@ -27,6 +28,7 @@ class ProductionConfig(Config):
     RABBITMQ_PASSWD = os.environ.get("RABBITMQ_PASSWD")
     RABBITMQ_VHOST = os.environ.get("RABBITMQ_VHOST")
     RABBITMQ_HOSTNAME = os.environ.get("RABBITMQ_HOSTNAME")
+    TAPIS_SUPER_TOKEN = os.environ.get("TAPIS_SUPER_TOKEN")
 
 
 class DevelopmentConfig(Config):
@@ -40,6 +42,7 @@ class TestingConfig(Config):
     DB_HOST = os.environ.get('DB_HOST', 'postgres')
     TESTING = True
     ASSETS_BASE_DIR = '/tmp'
+    TAPIS_SUPER_TOKEN = "ABCDEFG12344"
 
 
 APP_ENV = os.environ.get('APP_ENV', '').lower()

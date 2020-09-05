@@ -3,10 +3,13 @@ from tempfile import NamedTemporaryFile
 import requests
 import pathlib
 from typing import List, Dict, IO
-from urllib.parse import quote, urlparse, unquote, parse_qs, urlencode
+from urllib.parse import quote, urlparse, parse_qs
 import json
 from geoapi.log import logging
 from dateutil import parser
+
+from geoapi.settings import settings
+
 logger = logging.getLogger(__name__)
 
 class AgaveFileListing:
@@ -51,10 +54,13 @@ class AgaveFileListing:
 class AgaveUtils:
     BASE_URL = 'http://api.prod.tacc.cloud'
 
-    def __init__(self, jwt):
-        self.jwt = jwt
+    def __init__(self, jwt=None, token=None):
         client = requests.Session()
-        client.headers.update({'X-JWT-Assertion-designsafe': jwt})
+        if jwt:
+            client.headers.update({'X-JWT-Assertion-designsafe': jwt})
+        if token:
+            client.headers.update({'Authorization: Bearer': token})
+
         self.client = client
 
     def systemsList(self):
@@ -65,6 +71,12 @@ class AgaveUtils:
 
     def systemsGet(self, systemId: str) -> Dict:
         url = quote('/systems/{}'.format(systemId))
+        resp = self.client.get(self.BASE_URL + url)
+        listing = resp.json()
+        return listing["result"]
+
+    def systemsRolesGet(self, systemId: str) -> Dict:
+        url = quote('/systems/{}/roles'.format(systemId))
         resp = self.client.get(self.BASE_URL + url)
         listing = resp.json()
         return listing["result"]
@@ -111,3 +123,25 @@ class AgaveUtils:
         except Exception as e:
             logger.error(e)
             raise e
+
+def get_system_users(jwt, system_id: str):
+    """
+    Get systems users from the requesting user and try service account
+
+    Tapis provides all roles for owner of system which is why we attempt
+    to use the service account super token as well.
+
+    :param: jwt: jwt of a user
+    :param system_id: str
+    :return: list of usernames
+    """
+    client = AgaveUtils(jwt)
+    roles = client.systemsRolesGet(system_id)
+
+    try:
+        roles = set(client.systemsRolesGet(system_id), roles)
+    except:
+        logger.debug("Unable to get system roles for {} using service account".format(system_id))
+
+    logger.info("System:{} to have the following roles: {}".format(system_id, roles))
+    return [entry["username"] for entry in roles]

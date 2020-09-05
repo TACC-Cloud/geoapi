@@ -11,7 +11,7 @@ def test_user_get(userdata):
 
 
 def test_user_create(userdata):
-    user = UserService.create("newUser", "testjwt", "test")
+    user = UserService.create(username="newUser", jwt="testjwt", tenant="test")
     assert user.id is not None
     assert user.created is not None
     assert user.username == 'newUser'

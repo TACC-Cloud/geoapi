@@ -5,17 +5,6 @@ from geoapi.db import db_session
 from geoapi.services.projects import ProjectsService
 from geoapi.models import User
 from geoapi.exceptions import ObservableProjectAlreadyExists
-from unittest.mock import patch
-
-
-@pytest.fixture(scope="function")
-def agave_utils_with_geojson_file_mock(agave_file_listings_mock, geojson_file_fixture):
-    with patch('geoapi.services.projects.AgaveUtils') as MockAgaveUtils:
-        MockAgaveUtils().listing.return_value = agave_file_listings_mock
-        MockAgaveUtils().getFile.return_value = geojson_file_fixture
-        MockAgaveUtils().systemsGet.return_value = {"id": "testSystem",
-                                                    "description": "System Description"}
-        yield MockAgaveUtils()
 
 
 def test_create_project():
@@ -32,6 +21,7 @@ def test_create_project():
 
 def test_create_observable_project_already_exists(observable_projects_fixture,
                                                   agave_utils_with_geojson_file_mock,
+                                                  get_system_users_mock,
                                                   import_from_agave_mock):
     user = db_session.query(User).get(1)
     data = {

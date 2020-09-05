@@ -1,8 +1,8 @@
-from geoapi.db import db_session
+import datetime
 
+from geoapi.db import db_session
 from geoapi.models.users import User
 from geoapi.models.project import Project
-import datetime
 
 
 def test_get_projects(test_client, projects_fixture):
@@ -189,3 +189,36 @@ def test_get_project_features_filter_with_date_range(test_client, projects_fixtu
     data = resp.get_json()
     assert resp.status_code == 200
     assert len(data['features']) == 0
+
+
+def test_observable_project(test_client,
+                            userdata,
+                            get_system_users_mock,
+                            agave_utils_with_geojson_file_mock,
+                            import_from_agave_mock):
+    u1 = db_session.query(User).get(1)
+    resp = test_client.post(
+        '/projects/rapid/',
+        json={"system_id": 'my_system', 'path': '/some_path'},
+        headers={'x-jwt-assertion-test': u1.jwt}
+    )
+    assert resp.status_code == 200
+
+
+def test_observable_project_already_exists(test_client,
+                                           observable_projects_fixture,
+                                           agave_utils_with_geojson_file_mock,
+                                           get_system_users_mock):
+    u1 = db_session.query(User).get(1)
+    data = {
+        "system_id": observable_projects_fixture.system_id,
+        "path": observable_projects_fixture.path
+    }
+    resp = test_client.post(
+        '/projects/rapid/',
+        json=data,
+        headers={'x-jwt-assertion-test': u1.jwt}
+    )
+    assert resp.status_code == 409
+    assert "Conflict, a project for this storage system/path already exists" in resp.json['message']
+

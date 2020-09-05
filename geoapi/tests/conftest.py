@@ -270,3 +270,21 @@ def agave_file_listings_mock():
         })
     ]
     yield filesListing
+
+
+@pytest.fixture(scope="function")
+def agave_utils_with_geojson_file_mock(agave_file_listings_mock, geojson_file_fixture):
+    with patch('geoapi.services.projects.AgaveUtils') as MockAgaveUtils:
+        MockAgaveUtils().listing.return_value = agave_file_listings_mock
+        MockAgaveUtils().getFile.return_value = geojson_file_fixture
+        MockAgaveUtils().systemsGet.return_value = {"id": "testSystem",
+                                                    "description": "System Description"}
+        yield MockAgaveUtils()
+
+
+@pytest.fixture(scope="function")
+def get_system_users_mock(userdata):
+    u1 = db_session.query(User).get(1)
+    u2 = db_session.query(User).get(2)
+    with patch('geoapi.services.projects.get_system_users', return_value=[u1.username, u2.username]) as get_system_users:
+        yield get_system_users

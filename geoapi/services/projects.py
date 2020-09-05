@@ -3,12 +3,12 @@ from pathlib import Path
 from typing import List
 
 from sqlalchemy import desc
-
 from geoapi.models import Project, User, ObservableDataProject
 from geoapi.db import db_session
 from sqlalchemy.sql import select, text
 from sqlalchemy.exc import IntegrityError
-from geoapi.utils.agave import AgaveUtils
+from geoapi.services.users import UserService
+from geoapi.utils.agave import AgaveUtils, get_system_users
 from geoapi.utils.assets import get_project_asset_dir
 from geoapi.tasks.external_data import import_from_agave
 from geoapi.log import logging
@@ -59,24 +59,29 @@ class ProjectsService:
             tenant_id=user.tenant_id
         )
         obs = ObservableDataProject(
-            system_id=system["id"],
+            system_id=systemId,
             path=path
         )
-        # roles = client.systems.listRoles(systemId=system.id)
-        # print(roles)
+
+        # todo what about world read  (probably best to have a JIRA ticket for this. might have one already)
+        # todo add rest of user. first remove main user then add others
+        # todo: should we update users if tapis user changes?
+        # todo: front end exception handling assume duplicates always :(
+        users = get_system_users(user.jwt, systemId)
+        logger.info("Updating project:{} to have the following users: {}".format(name, users))
+        project_users = [UserService.getOrCreateUser(u, tenant=proj.tenant_id) for u in users]
+        proj.users = project_users
+
         obs.project = proj
-        proj.users.append(user)
+
         try:
             db_session.add(obs)
             db_session.add(proj)
             db_session.commit()
         except IntegrityError as e:
             db_session.rollback()
-            if "already exists" in str(e):
-                raise ObservableProjectAlreadyExists("'{}' project already exists".format(name))
             logger.exception(e)
-            raise e
-
+            raise ObservableProjectAlreadyExists("'{}' project already exists".format(name))
         import_from_agave.apply_async(args=[obs.project.users[0].id, obs.system_id, obs.path, obs.project_id])
 
         return proj
@@ -230,6 +235,7 @@ class ProjectsService:
             pass
         return {"status": "ok"}
 
+
     @staticmethod
     def addUserToProject(projectId: int, username: str) -> None:
         """
@@ -241,10 +247,7 @@ class ProjectsService:
 
         # TODO: Add TAS integration
         proj = db_session.query(Project).get(projectId)
-        user = db_session.query(User).filter(User.username == username).first()
-        if not user:
-            user = User(username=username, tenant_id=proj.tenant_id)
-            db_session.add(user)
+        user = UserService.getOrCreateUser(username, proj.tenant_id)
         proj.users.append(user)
         db_session.commit()
 
