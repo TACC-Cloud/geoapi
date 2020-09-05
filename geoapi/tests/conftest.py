@@ -204,7 +204,7 @@ def import_file_from_agave_mock():
 
 @pytest.fixture(scope="function")
 def import_from_agave_mock():
-    with patch('geoapi.tasks.external_data.import_from_agave') as mock_import:
+    with patch('geoapi.services.projects.import_from_agave') as mock_import:
         yield mock_import
 
 

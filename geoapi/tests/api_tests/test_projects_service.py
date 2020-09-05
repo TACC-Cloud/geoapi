@@ -19,10 +19,23 @@ def test_create_project():
     assert proj.name == "test name"
 
 
+def test_create_observable_project(userdata,
+                                   get_system_users_mock,
+                                   agave_utils_with_geojson_file_mock,
+                                   import_from_agave_mock):
+    user = db_session.query(User).get(1)
+    data = {
+        "system_id": "system",
+        "path": "/path"
+    }
+    proj = ProjectsService.createRapidProject(data, user)
+    assert len(proj.users) == 2
+    assert proj.name == "system/path"
+
+
 def test_create_observable_project_already_exists(observable_projects_fixture,
                                                   agave_utils_with_geojson_file_mock,
-                                                  get_system_users_mock,
-                                                  import_from_agave_mock):
+                                                  get_system_users_mock):
     user = db_session.query(User).get(1)
     data = {
         "system_id": observable_projects_fixture.system_id,
