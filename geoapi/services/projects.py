@@ -269,14 +269,16 @@ class ProjectsService:
         observable_project = db_session.query(ObservableDataProject) \
             .filter(ObservableDataProject.id == projectId).first()
 
+        if user not in proj.users:
+            raise ApiException("User is not in project")
+
         if len(proj.users) == 1:
             raise ApiException("Unable to remove last user of project")
 
-        if observable_project and proj.users[0].username == username:
-            raise ApiException("Unable to remove main user of observable project")
-
-        if user not in proj.users:
-            raise ApiException("User not in project")
+        if observable_project:
+            number_of_potential_observers = len([u for u in proj.users if u.jwt])
+            if user.jwt and number_of_potential_observers == 1:
+                raise ApiException("Unable to remove last user of observable project who can observe file system")
 
         proj.users.remove(user)
         db_session.commit()

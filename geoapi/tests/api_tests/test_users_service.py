@@ -73,7 +73,7 @@ def test_remove_user_from_observable_project(observable_projects_fixture):
     assert len(project.users) == 1
 
 
-def test_remove_first_user_from_observable_project_failure(
+def test_remove_last_user_with_jwt_from_observable_project_failure(
         observable_projects_fixture):
     project = observable_projects_fixture.project
 

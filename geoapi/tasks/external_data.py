@@ -96,7 +96,7 @@ def import_point_clouds_from_agave(userId: int, files, pointCloudId: int):
             db_session.commit()
             NotificationsService.create(user, "error", failed_message)
             for file_path in new_asset_files:
-                print("removing {}!!!!!!!".format(file_path))
+                logger.info("removing {}".format(file_path))
                 os.remove(file_path)
             return
 
@@ -203,8 +203,12 @@ def import_from_agave(userId: int, systemId: str, path: str, projectId: int):
 @app.task()
 def refresh_observable_projects():
     obs = db_session.query(ObservableDataProject).all()
-    for o in obs:
-        import_from_agave(o.project.users[0].id, o.system_id, o.path, o.project.id)
+    for i, o in enumerate(obs):
+        user = next((u for u in obs.users if u.jwt))
+        logger.info("Refreshing observable project ({}/{}): observer:{} system:{} path:{}".format(i, len(obs), user,
+                                                                                                  o.system_id, o.path,
+                                                                                                  o.project.id))
+        import_from_agave(user, o.system_id, o.path, o.project.id)
 
 
 if __name__ == "__main__":
