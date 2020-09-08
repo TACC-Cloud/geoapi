@@ -63,10 +63,6 @@ class ProjectsService:
             path=path
         )
 
-        # todo what about world read  (probably best to have a JIRA ticket for this. might have one already)
-        # todo add rest of user. first remove main user then add others
-        # todo: should we update users if tapis user changes?
-        # todo: front end exception handling assume duplicates always :(
         users = get_system_users(user.jwt, systemId)
         logger.info("Updating project:{} to have the following users: {}".format(name, users))
         project_users = [UserService.getOrCreateUser(u, tenant=proj.tenant_id) for u in users]
