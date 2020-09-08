@@ -40,7 +40,7 @@ def jwt_decoder(fn):
 
         user = UserService.getUser(username, tenant)
         if not user:
-            user = UserService.create(username, token, tenant)
+            user = UserService.create(username=username, jwt=token, tenant=tenant)
         # In case the JWT was updated for some reason, reset the jwt
         UserService.setJWT(user, token)
         request.current_user = user
