@@ -7,6 +7,7 @@ from geoapi.log import logging
 
 logger = logging.getLogger(__file__)
 
+
 class NotificationsService:
 
     @staticmethod
@@ -28,7 +29,6 @@ class NotificationsService:
         return q.order_by(Notification.created.desc()) \
                 .limit(100).all()
 
-
     @staticmethod
     def create(user: User, status: AnyStr, message: AnyStr) -> Notification:
         note = Notification(
@@ -37,6 +37,10 @@ class NotificationsService:
             status=status,
             message=message
         )
-        db_session.add(note)
-        db_session.commit()
-        return note
+        try:
+            db_session.add(note)
+            db_session.commit()
+            return note
+        except Exception:
+            db_session.rollback()
+            raise
