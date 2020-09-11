@@ -46,6 +46,7 @@ def userdata(test_client):
     u2 = User(username="test2", jwt=user2JWT, tenant_id="test")
     db_session.add_all([u1, u2])
     db_session.commit()
+    yield u1
 
 
 @pytest.fixture(scope="function")

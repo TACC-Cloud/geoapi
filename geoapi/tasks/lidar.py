@@ -8,7 +8,7 @@ import celery
 from geoalchemy2.shape import from_shape
 
 from geoapi.log import logging
-from geoapi.utils.lidar import getProj4, getBoundingBox
+from geoapi.utils.lidar import getProj4, get_bounding_box_2d
 from geoapi.utils import geometries
 from geoapi.celery_app import app
 from geoapi.db import db_session
@@ -86,7 +86,7 @@ def convert_to_potree(self, pointCloudId: int) -> None:
                    for file in os.listdir(path_to_original_point_clouds)
                    if pathlib.Path(file).suffix.lstrip('.').lower() in PointCloudService.LIDAR_FILE_EXTENSIONS]
 
-    outline = getBoundingBox(input_files)
+    outline = get_bounding_box_2d(input_files)
 
     command = [
         "PotreeConverter",
@@ -128,9 +128,7 @@ def convert_to_potree(self, pointCloudId: int) -> None:
             feature=feature
         )
         feature.assets.append(fa)
-
         point_cloud.feature = feature
-        db_session.add(point_cloud)
 
     feature.the_geom = from_shape(geometries.convert_3D_2D(outline), srid=4326)
     point_cloud.task.status = "FINISHED"
@@ -140,6 +138,10 @@ def convert_to_potree(self, pointCloudId: int) -> None:
     shutil.rmtree(point_cloud_asset_path, ignore_errors=True)
     shutil.move(path_temp_processed_point_cloud_path, point_cloud_asset_path)
 
-    db_session.add(point_cloud)
-    db_session.add(feature)
-    db_session.commit()
+    try:
+        db_session.add(point_cloud)
+        db_session.add(feature)
+        db_session.commit()
+    except:
+        db_session.rollback()
+        raise
