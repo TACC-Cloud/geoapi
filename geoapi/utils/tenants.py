@@ -25,3 +25,8 @@ def get_api_server(tenant_name):
     if tenant_name.upper() == 'VDJSERVER-ORG':
         return 'https://vdj-agave-api.tacc.utexas.edu'
     return 'http://172.17.0.1:8000'
+
+
+def get_service_accounts(tenant_name):
+    service_accounts = {"DESIGNSAFE": ["prjadmin", "ds_admin"]}
+    return service_accounts.get(tenant_name.upper(), [])

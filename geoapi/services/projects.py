@@ -63,7 +63,7 @@ class ProjectsService:
             path=path
         )
 
-        users = get_system_users(user.jwt, systemId)
+        users = get_system_users(proj.tenant_id, user.jwt, systemId)
         logger.info("Updating project:{} to have the following users: {}".format(name, users))
         project_users = [UserService.getOrCreateUser(u, tenant=proj.tenant_id) for u in users]
         proj.users = project_users

@@ -9,6 +9,7 @@ from geoapi.log import logging
 from dateutil import parser
 
 from geoapi.settings import settings
+from geoapi.utils.tenants import get_api_server, get_service_accounts
 
 logger = logging.getLogger(__name__)
 
@@ -54,36 +55,36 @@ class AgaveFileListing:
 class AgaveUtils:
     BASE_URL = 'http://api.prod.tacc.cloud'
 
-    def __init__(self, jwt=None, token=None):
+    def __init__(self, jwt=None, token=None, tenant=None):
         client = requests.Session()
         if jwt:
             client.headers.update({'X-JWT-Assertion-designsafe': jwt})
         if token:
-            client.headers.update({'Authorization: Bearer': token})
-
+            client.headers.update({'Authorization': 'Bearer {}'.format(token)})
+        self.base_url = get_api_server(tenant) if tenant else self.BASE_URL
         self.client = client
 
     def systemsList(self):
         url = quote('/systems/')
-        resp = self.client.get(self.BASE_URL + url)
+        resp = self.client.get(self.base_url + url)
         listing = resp.json()
         return listing["result"]
 
     def systemsGet(self, systemId: str) -> Dict:
         url = quote('/systems/{}'.format(systemId))
-        resp = self.client.get(self.BASE_URL + url)
+        resp = self.client.get(self.base_url + url)
         listing = resp.json()
         return listing["result"]
 
     def systemsRolesGet(self, systemId: str) -> Dict:
         url = quote('/systems/{}/roles'.format(systemId))
-        resp = self.client.get(self.BASE_URL + url)
+        resp = self.client.get(self.base_url + url)
         listing = resp.json()
         return listing["result"]
 
     def listing(self, systemId: str, path: str) -> List[AgaveFileListing]:
         url = quote('/files/listings/system/{}/{}?limit=10000'.format(systemId, path))
-        resp = self.client.get(self.BASE_URL + url)
+        resp = self.client.get(self.base_url + url)
         listing = resp.json()
         out = [AgaveFileListing(d) for d in listing["result"]]
         return out
@@ -97,7 +98,7 @@ class AgaveUtils:
         q = {'associationIds': uuid}
         qstring = quote(json.dumps(q), safe='')
         url = '/meta/data?q={}'.format(qstring)
-        resp = self.client.get(self.BASE_URL + url)
+        resp = self.client.get(self.base_url + url)
         meta = resp.json()
         results = [rec["value"] for rec in meta["result"]]
         out = {k: v for d in results for k, v in d.items()}
@@ -112,7 +113,7 @@ class AgaveUtils:
         """
         url = quote('/files/media/system/{}/{}'.format(systemId, path))
         try:
-            with self.client.get(self.BASE_URL + url, stream=True) as r:
+            with self.client.get(self.base_url + url, stream=True) as r:
                 if r.status_code > 400:
                     raise ValueError("Could not fetch file: {}".format(r.status_code))
                 tmpFile = NamedTemporaryFile()
@@ -124,24 +125,31 @@ class AgaveUtils:
             logger.error(e)
             raise e
 
-def get_system_users(jwt, system_id: str):
+def get_system_users(tenant_id, jwt, system_id: str):
     """
-    Get systems users from the requesting user and try service account
+    Get systems users for a system using a user's jwt and (potentially) the tenant's service account
 
     Tapis provides all roles for owner of system which is why we attempt
     to use the service account super token as well.
 
+    :param: tenant: tenant id
     :param: jwt: jwt of a user
     :param system_id: str
     :return: list of usernames
     """
     client = AgaveUtils(jwt)
-    roles = client.systemsRolesGet(system_id)
+    user_names = [entry["username"] for entry in client.systemsRolesGet(system_id)]
 
     try:
-        roles = set(client.systemsRolesGet(system_id), roles)
+        client = AgaveUtils(token=settings.TAPIS_SUPER_TOKEN, tenant=tenant_id)
+        user_names_from_service_account = [entry["username"] for entry in client.systemsRolesGet(system_id)]
+        user_names = set(user_names + user_names_from_service_account)
     except:
-        logger.debug("Unable to get system roles for {} using service account".format(system_id))
+        logger.exception("Unable to get system roles/users for {} using service account".format(system_id))
 
-    logger.info("System:{} to have the following roles: {}".format(system_id, roles))
-    return [entry["username"] for entry in roles]
+    # remove any service accounts
+    for u in get_service_accounts(tenant_id):
+        user_names.discard(u)
+
+    logger.info("System:{} has the following users: {}".format(system_id, user_names))
+    return user_names

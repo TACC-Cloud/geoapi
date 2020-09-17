@@ -6,7 +6,7 @@ import json
 from geoapi.celery_app import app
 from geoapi.exceptions import InvalidCoordinateReferenceSystem
 from geoapi.models import User, ObservableDataProject, Task
-from geoapi.utils.agave import AgaveUtils
+from geoapi.utils.agave import AgaveUtils, get_system_users
 from geoapi.log import logging
 import geoapi.services.features as features
 from geoapi.services.imports import ImportsService
@@ -14,6 +14,7 @@ import geoapi.services.point_cloud as pointcloud
 from geoapi.tasks.lidar import convert_to_potree, check_point_cloud, get_point_cloud_info
 from geoapi.db import db_session
 from geoapi.services.notifications import NotificationsService
+from geoapi.services.users import UserService
 
 
 logger = logging.getLogger(__file__)
@@ -221,9 +222,30 @@ def refresh_observable_projects():
     try:
         obs = db_session.query(ObservableDataProject).all()
         for i, o in enumerate(obs):
-            user = next((u for u in obs.users if u.jwt))
-            logger.info("Refreshing observable project ({}/{}): observer:{} system:{} path:{}".format(i, len(obs), user, o.system_id, o.path)
-            import_from_agave(o.project.users[0].id, o.system_id, o.path, o.project.id)
+            # we need a user with a jwt for importing
+            importing_user = next((u for u in o.project.users if u.jwt))
+            logger.info("Refreshing observable project ({}/{}): observer:{} system:{} path:{}".format(i,
+                                                                                                      len(obs),
+                                                                                                      importing_user,
+                                                                                                      o.system_id,
+                                                                                                      o.path))
+            current_user_names = set([u.username for u in o.project.users])
+
+            # we need to add any users who have been added to the system roles
+            # (note that we do not delete any that are no longer listed on system roles; we only add users)
+            system_users = set(get_system_users(o.project.tenant_id, importing_user.jwt, o.system_id))
+            updated_user_names = system_users.union(current_user_names)
+            if updated_user_names != current_user_names:
+                logger.info("Updating to add the following users: {}   "
+                            "Updated user list is now: {}".format(updated_user_names - current_user_names,
+                                                                  updated_user_names))
+                o.project.users = [UserService.getOrCreateUser(u, tenant=o.project.tenant_id)
+                                   for u in updated_user_names]
+                db_session.add(o)
+                db_session.commit()
+
+            # perform the importing
+            import_from_agave(importing_user.id, o.system_id, o.path, o.project.id)
     except Exception:
         logger.exception("Unhandled exception when importing observable project")
         db_session.rollback()

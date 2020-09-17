@@ -15,8 +15,7 @@ class Config(object):
     RABBITMQ_VHOST = 'dev'
     RABBITMQ_HOSTNAME = 'rabbitmq'
     RESTPLUS_MASK_SWAGGER = False
-    TAPIS_SUPER_TOKEN = "ABCDEFG12344"
-
+    TAPIS_SUPER_TOKEN = os.environ.get("TAPIS_SUPER_TOKEN")
 
 class ProductionConfig(Config):
     DEBUG = False
@@ -28,7 +27,6 @@ class ProductionConfig(Config):
     RABBITMQ_PASSWD = os.environ.get("RABBITMQ_PASSWD")
     RABBITMQ_VHOST = os.environ.get("RABBITMQ_VHOST")
     RABBITMQ_HOSTNAME = os.environ.get("RABBITMQ_HOSTNAME")
-    TAPIS_SUPER_TOKEN = os.environ.get("TAPIS_SUPER_TOKEN")
 
 
 class DevelopmentConfig(Config):
