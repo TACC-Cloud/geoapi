@@ -2,7 +2,7 @@ import base64
 import re
 import io
 import PIL
-from PIL import Image
+from PIL import Image, ExifTags
 from PIL.ExifTags import TAGS, GPSTAGS
 from typing import Tuple, IO, AnyStr
 from dataclasses import dataclass
@@ -58,7 +58,11 @@ class ImageService:
 
     @staticmethod
     def resizeImage(fileObj: IO) -> ImageData:
+
         thumb = Image.open(fileObj)
+        for orientation in ExifTags.TAGS.keys():
+            if ExifTags.TAGS[orientation] == 'Orientation': break
+
         thumb.thumbnail(ImageService.THUMBSIZE)
         resized = Image.open(fileObj)
         resized.thumbnail(ImageService.RESIZE, PIL.Image.ANTIALIAS)
