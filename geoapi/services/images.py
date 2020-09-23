@@ -2,7 +2,8 @@ import base64
 import re
 import io
 import PIL
-from PIL import Image, ExifTags
+from PIL import Image
+from PIL.Image import Image as PILImage
 from PIL.ExifTags import TAGS, GPSTAGS
 from typing import Tuple, IO, AnyStr
 from dataclasses import dataclass
@@ -59,12 +60,9 @@ class ImageService:
     @staticmethod
     def resizeImage(fileObj: IO) -> ImageData:
 
-        thumb = Image.open(fileObj)
-        for orientation in ExifTags.TAGS.keys():
-            if ExifTags.TAGS[orientation] == 'Orientation': break
-
+        thumb = _fix_orientation(fileObj)
         thumb.thumbnail(ImageService.THUMBSIZE)
-        resized = Image.open(fileObj)
+        resized = _fix_orientation(fileObj)
         resized.thumbnail(ImageService.RESIZE, PIL.Image.ANTIALIAS)
         imdata = ImageData(thumb, resized, (0,0))
         return imdata
@@ -77,7 +75,35 @@ class ImageService:
         imdata = ImageOverlay(thumb, original)
         return imdata
 
-
+def _fix_orientation(fileObj: IO) -> PILImage:
+    im = Image.open(fileObj)
+    try:
+        image_exif = im._getexif()
+        # 274 is a magic number here and I don't like it. Alternatively
+        # can do something like:
+        #         for orientation in ExifTags.TAGS.keys():
+        #             if ExifTags.TAGS[orientation] == 'Orientation': break
+        # That will also return 274, the key for the value of 'Orientation'. I have no idea
+        # why PIL would arrange things that way, it seems a bit insane.
+        image_orientation = image_exif[274]
+        if image_orientation in (2, '2'):
+            return im.transpose(Image.FLIP_LEFT_RIGHT)
+        elif image_orientation in (3, '3'):
+            return im.transpose(Image.ROTATE_180)
+        elif image_orientation in (4, '4'):
+            return im.transpose(Image.FLIP_TOP_BOTTOM)
+        elif image_orientation in (5, '5'):
+            return im.transpose(Image.ROTATE_90).transpose(Image.FLIP_TOP_BOTTOM)
+        elif image_orientation in (6, '6'):
+            return im.transpose(Image.ROTATE_270)
+        elif image_orientation in (7, '7'):
+            return im.transpose(Image.ROTATE_270).transpose(Image.FLIP_TOP_BOTTOM)
+        elif image_orientation in (8, '8'):
+            return im.transpose(Image.ROTATE_90)
+        else:
+            return im
+    except (KeyError, AttributeError, TypeError, IndexError):
+        return im
 
 
 def get_exif_data(image):

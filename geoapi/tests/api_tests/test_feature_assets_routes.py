@@ -9,7 +9,7 @@ def test_post_image_feature_asset(MockAgaveUtils, test_client, projects_fixture,
     u1 = db_session.query(User).filter(User.username == "test1").first()
     resp = test_client.post(
         '/projects/1/features/1/assets/',
-        json={"system_id": 'test', 'path': '/test/test.jpg'},
+        json={"system_id": 'test', 'path': '/test/corrected_image.jpg'},
         headers={'x-jwt-assertion-test': u1.jwt})
     data = resp.get_json()
     assert resp.status_code == 200
