@@ -174,6 +174,23 @@ def empty_las_file_fixture(empty_las_file_path_fixture):
 
 
 @pytest.fixture(scope="function")
+def shapefile_fixture():
+    home = os.path.dirname(__file__)
+    with open(os.path.join(home, 'fixtures/shapefile.shp'), 'rb') as f:
+        yield f
+
+
+@pytest.fixture(scope="function")
+def shapefile_additional_files_fixture():
+    home = os.path.dirname(__file__)
+    with open(os.path.join(home, 'fixtures/shapefile.cpg'), 'rb') as cpg,\
+            open(os.path.join(home, 'fixtures/shapefile.dbf'), 'rb') as dbf,\
+            open(os.path.join(home, 'fixtures/shapefile.prj'), 'rb') as prj,\
+            open(os.path.join(home, 'fixtures/shapefile.shx'), 'rb') as shx:
+        yield [cpg, dbf, prj, shx]
+
+
+@pytest.fixture(scope="function")
 def feature_properties_file_fixture():
     home = os.path.dirname(__file__)
     with open(os.path.join(home, 'fixtures/properties.json'), 'rb') as f:
