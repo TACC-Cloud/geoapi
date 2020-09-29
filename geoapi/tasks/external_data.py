@@ -10,6 +10,7 @@ from geoapi.utils.agave import AgaveUtils
 from geoapi.log import logging
 import geoapi.services.features as features
 from geoapi.services.imports import ImportsService
+from geoapi.services.vectors import SHAPEFILE_FILE_ADDITIONAL_FILES
 import geoapi.services.point_cloud as pointcloud
 from geoapi.tasks.lidar import convert_to_potree, check_point_cloud, get_point_cloud_info
 from geoapi.db import db_session
@@ -26,6 +27,26 @@ def _parse_rapid_geolocation(loc):
     return lat, lon
 
 
+def get_additional_files(systemId: str, path: str, client):
+    path = Path(path)
+    if path.suffix.lower().lstrip('.') == "shp":
+        additional_files = []
+        for extension, required in SHAPEFILE_FILE_ADDITIONAL_FILES.items():
+            additional_file_path = path.with_suffix(extension)
+            try:
+                tmpFile = client.getFile(systemId, additional_file_path)
+                tmpFile.filename = Path(additional_file_path).name
+                additional_files.append(tmpFile)
+            except Exception as e:
+                if required:
+                    logger.error("Could not import required required shapefile-related file: "
+                                 "agave: {} :: {}".format(systemId, additional_file_path), e)
+                    raise e
+    else:
+        additional_files = None
+    return additional_files
+
+
 @app.task(rate_limit="1/s")
 def import_file_from_agave(userId: int, systemId: str, path: str, projectId: int):
     user = db_session.query(User).get(userId)
@@ -33,7 +54,12 @@ def import_file_from_agave(userId: int, systemId: str, path: str, projectId: int
     try:
         tmpFile = client.getFile(systemId, path)
         tmpFile.filename = Path(path).name
-        features.FeaturesService.fromFileObj(projectId, tmpFile, {}, original_path=path)
+        additional_files = get_additional_files(systemId, path, client)
+        features.FeaturesService.fromFileObj(projectId,
+                                             tmpFile,
+                                             {},
+                                             original_path=path,
+                                             additional_files=additional_files)
         NotificationsService.create(user, "success", "Imported {f}".format(f=path))
         tmpFile.close()
     except Exception as e:
@@ -42,7 +68,7 @@ def import_file_from_agave(userId: int, systemId: str, path: str, projectId: int
         NotificationsService.create(user, "error", "Error importing {f}".format(f=path))
 
 
-def _update_point_cloud_task(pointCloudId: int, description:str = None, status:str = None):
+def _update_point_cloud_task(pointCloudId: int, description: str = None, status: str = None):
     task = pointcloud.PointCloudService.get(pointCloudId).task
     if description is not None:
         task.description = description
@@ -86,8 +112,8 @@ def import_point_clouds_from_agave(userId: int, files, pointCloudId: int):
             tmp_file = client.getFile(system_id, path)
             tmp_file.filename = Path(path).name
             file_path = pointcloud.PointCloudService.putPointCloudInOriginalsFileDir(point_cloud.path,
-                                                                          tmp_file,
-                                                                          tmp_file.filename)
+                                                                                     tmp_file,
+                                                                                     tmp_file.filename)
             tmp_file.close()
 
             # save file path as we might need to delete it if there is a problem
@@ -114,7 +140,7 @@ def import_point_clouds_from_agave(userId: int, files, pointCloudId: int):
 
     _update_point_cloud_task(pointCloudId, description="Running potree converter", status="RUNNING")
 
-    point_cloud.files_info = json.dumps(get_point_cloud_info(pointCloudId));
+    point_cloud.files_info = json.dumps(get_point_cloud_info(pointCloudId))
     try:
         db_session.add(point_cloud)
         db_session.add(task)
@@ -123,21 +149,18 @@ def import_point_clouds_from_agave(userId: int, files, pointCloudId: int):
         db_session.rollback()
         raise
     NotificationsService.create(user,
-                                              "success",
-                                              "Running potree converter (for point cloud {}).".format(pointCloudId))
+                                "success",
+                                "Running potree converter (for point cloud {}).".format(pointCloudId))
 
     try:
         convert_to_potree.apply(args=[pointCloudId], task_id=celery_task_id, throw=True)
         NotificationsService.create(user,
-                                                  "success",
-                                                  "Completed potree converter (for point cloud {}).".format(
-                                                      pointCloudId))
+                                    "success",
+                                    "Completed potree converter (for point cloud {}).".format(pointCloudId))
     except:
         logger.exception("point cloud:{} conversion failed for user:{}".format(pointCloudId, user.username))
         _update_point_cloud_task(pointCloudId, description="", status="FAILED")
-        NotificationsService.create(user,
-                                                  "error",
-                                                  "Processing failed for point cloud ({})!".format(pointCloudId))
+        NotificationsService.create(user, "error", "Processing failed for point cloud ({})!".format(pointCloudId))
         return
 
 

@@ -43,11 +43,11 @@ class VectorService:
         with tempfile.TemporaryDirectory() as tmpdirname:
             # save files together
             for f in all_files:
-                tmp_path = os.path.join(tmpdirname, os.path.basename(f.name))
+                tmp_path = os.path.join(tmpdirname, os.path.basename(f.filename))
                 with open(tmp_path, 'wb') as tmp:
                     tmp.write(f.read())
 
-            shapefile_path = os.path.join(tmpdirname, os.path.basename(shape_file.name))
+            shapefile_path = os.path.join(tmpdirname, os.path.basename(shape_file.filename))
             shapefile = gpd.read_file(shapefile_path)
             shapefile.to_crs(epsg=4326)
             for index, row in shapefile.iterrows():

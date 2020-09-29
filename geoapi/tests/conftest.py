@@ -4,7 +4,7 @@ import json
 import tempfile
 import shutil
 from unittest.mock import patch, MagicMock
-
+from werkzeug.datastructures import FileStorage
 import laspy
 
 from geoapi.db import Base, db_session, engine
@@ -177,7 +177,7 @@ def empty_las_file_fixture(empty_las_file_path_fixture):
 def shapefile_fixture():
     home = os.path.dirname(__file__)
     with open(os.path.join(home, 'fixtures/shapefile.shp'), 'rb') as f:
-        yield f
+        yield FileStorage(f)
 
 
 @pytest.fixture(scope="function")
@@ -187,7 +187,7 @@ def shapefile_additional_files_fixture():
             open(os.path.join(home, 'fixtures/shapefile.dbf'), 'rb') as dbf,\
             open(os.path.join(home, 'fixtures/shapefile.prj'), 'rb') as prj,\
             open(os.path.join(home, 'fixtures/shapefile.shx'), 'rb') as shx:
-        yield [cpg, dbf, prj, shx]
+        yield [FileStorage(cpg), FileStorage(dbf), FileStorage(prj), FileStorage(shx)]
 
 
 @pytest.fixture(scope="function")
