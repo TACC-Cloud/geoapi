@@ -17,7 +17,7 @@ SHAPEFILE_FILE_ADDITIONAL_FILES = {".shx": True,
                                    ".atx": False,
                                    ".ixs": False,
                                    ".mxs": False,
-                                   ".prj": False,  # Note: feels like this should be True for our purposes
+                                   ".prj": True,  # Note: listed as True for our purposes
                                    ".xml": False,
                                    ".cpg": False}
 
