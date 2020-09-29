@@ -27,21 +27,38 @@ def _parse_rapid_geolocation(loc):
     return lat, lon
 
 
-def get_additional_files(systemId: str, path: str, client):
+def get_additional_files(systemId: str, path: str, client, available_files=None):
+    """
+    Get any additional files needed for processing
+    :param systemId: str
+    :param path: str
+    :param client
+    :param available_files: list of files that exist (optional)
+    :return: list of additional files
+    """
     path = Path(path)
     if path.suffix.lower().lstrip('.') == "shp":
         additional_files = []
         for extension, required in SHAPEFILE_FILE_ADDITIONAL_FILES.items():
             additional_file_path = path.with_suffix(extension)
             try:
-                tmpFile = client.getFile(systemId, additional_file_path)
-                tmpFile.filename = Path(additional_file_path).name
-                additional_files.append(tmpFile)
+                if available_files and str(additional_file_path) not in available_files:
+                    if required:
+                        raise Exception("Required file ({}) missing".format(additional_file_path))
+                    else:
+                        continue
+
+                tmp_file = client.getFile(systemId, additional_file_path)
+                tmp_file.filename = Path(additional_file_path).name
+                additional_files.append(tmp_file)
             except Exception as e:
                 if required:
                     logger.error("Could not import required required shapefile-related file: "
-                                 "agave: {} :: {}".format(systemId, additional_file_path), e)
+                                 "agave: {} :: {}".format(systemId, additional_file_path))
                     raise e
+                else:
+                    logger.debug("Unable to get non-required shapefile-related file: "
+                                 "agave: {} :: {}".format(systemId, additional_file_path))
     else:
         additional_files = None
     return additional_files
@@ -172,7 +189,9 @@ def import_from_agave(userId: int, systemId: str, path: str, projectId: int):
     client = AgaveUtils(user.jwt)
     listing = client.listing(systemId, path)
     # First item is always a reference to self
-    for item in listing[1:]:
+    files_in_directory = listing[1:]
+    filenames_in_directory = [str(f.path) for f in files_in_directory]
+    for item in files_in_directory:
         if item.type == "dir":
             import_from_agave(userId, systemId, item.path, projectId)
         # skip any junk files that are not allowed
@@ -223,7 +242,12 @@ def import_from_agave(userId: int, systemId: str, path: str, projectId: int):
                 elif item.path.suffix.lower().lstrip('.') in features.FeaturesService.ALLOWED_GEOSPATIAL_EXTENSIONS:
                     tmpFile = client.getFile(systemId, item.path)
                     tmpFile.filename = Path(item.path).name
-                    features.FeaturesService.fromFileObj(projectId, tmpFile, {}, original_path=item_system_path)
+                    additional_files = get_additional_files(systemId, item.path, client, filenames_in_directory)
+                    features.FeaturesService.fromFileObj(projectId,
+                                                         tmpFile,
+                                                         {},
+                                                         original_path=item_system_path,
+                                                         additional_files=additional_files)
                     NotificationsService.create(user, "success", "Imported {f}".format(f=item_system_path))
                     tmpFile.close()
                 else:

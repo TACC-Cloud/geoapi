@@ -191,10 +191,50 @@ def test_refresh_observable_projects_dbsession_rollback(agave_utils_with_geojson
     rollback_side_effect.assert_called()
 
 
+def test_get_additional_files_none(agave_utils_with_geojson_file):
+    assert not get_additional_files("testSystem", "/testPath/file.jpg", agave_utils_with_geojson_file)
+
+
 def test_get_additional_files(agave_utils_with_geojson_file):
     files = get_additional_files("testSystem", "/testPath/file.shp", agave_utils_with_geojson_file)
     assert len(files) == 14
 
 
-def test_get_additional_files_none(agave_utils_with_geojson_file):
-    assert not get_additional_files("testSystem", "/testPath/file.jpg", agave_utils_with_geojson_file)
+def test_get_additional_files_with_available_files(agave_utils_with_geojson_file):
+    available_files = ["/testPath/file.shx",
+                       "/testPath/file.dbf",
+                       "/testPath/file.sbn",
+                       "/testPath/file.sbx",
+                       "/testPath/file.fbn",
+                       "/testPath/file.fbx",
+                       "/testPath/file.ain",
+                       "/testPath/file.aih",
+                       "/testPath/file.atx",
+                       "/testPath/file.ixs",
+                       "/testPath/file.mxs",
+                       "/testPath/file.prj",
+                       "/testPath/file.xml",
+                       "/testPath/file.cpg"]
+    files = get_additional_files("testSystem",
+                                 "/testPath/file.shp",
+                                 agave_utils_with_geojson_file,
+                                 available_files=available_files)
+    assert len(files) == 14
+
+    available_files = ["/testPath/file.shx",
+                       "/testPath/file.dbf",
+                       "/testPath/file.prj"]
+    files = get_additional_files("testSystem",
+                                 "/testPath/file.shp",
+                                 agave_utils_with_geojson_file,
+                                 available_files=available_files)
+    assert len(files) == 3
+
+
+def test_get_additional_files_but_missing_prj(agave_utils_with_geojson_file):
+    available_files_missing_prj = ["/testPath/file.shx", "/testPath/file.dbf"]
+    with pytest.raises(Exception):
+        get_additional_files("testSystem",
+                             "/testPath/file.shp",
+                             agave_utils_with_geojson_file,
+                             available_files=available_files_missing_prj)

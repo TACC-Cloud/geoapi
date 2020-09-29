@@ -54,7 +54,7 @@ class FeaturesService:
 
     ALLOWED_EXTENSIONS = IMAGE_FILE_EXTENSIONS + VIDEO_FILE_EXTENSIONS \
                          + AUDIO_FILE_EXTENSIONS + GPX_FILE_EXTENSIONS \
-                         + GEOJSON_FILE_EXTENSIONS
+                         + GEOJSON_FILE_EXTENSIONS + SHAPEFILE_FILE_EXTENSIONS
 
     @staticmethod
     def get(featureId: int) -> Feature:
