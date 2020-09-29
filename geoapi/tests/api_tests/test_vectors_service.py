@@ -64,6 +64,8 @@ def test_process_shapefile(shapefile_fixture, shapefile_additional_files_fixture
                         " -70.40396582709502 -23.62899667734457, -70.09124589708074 -21.39331918710126,"
                         " -70.16441972520605 -19.75646819425616, -70.37257239447771 -18.34797535570887,"
                         " -69.85844356960587 -18.09269378018701, -69.59042375352405 -17.58001189541933)))")
+    assert properties == {'continent': 'South America', 'gdp_md_est': 436100.0, 'iso_a3': 'CHL',
+                          'name': 'Chile', 'pop_est': 17789267}
 
 
 def test_process_shapefile_missing_additional_files(shapefile_fixture):

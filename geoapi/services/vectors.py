@@ -51,5 +51,5 @@ class VectorService:
             shapefile = gpd.read_file(shapefile_path)
             shapefile.to_crs(epsg=4326)
             for index, row in shapefile.iterrows():
-                properties = {}  # TODO
+                properties = {key: value for key, value in row.items() if key != 'geometry'}
                 yield row['geometry'], properties
