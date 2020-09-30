@@ -41,7 +41,7 @@ class VectorService:
         all_files.append(shape_file)
 
         with tempfile.TemporaryDirectory() as tmpdirname:
-            # save files together
+            # save files together for processing purposes
             for f in all_files:
                 tmp_path = os.path.join(tmpdirname, os.path.basename(f.filename))
                 with open(tmp_path, 'wb') as tmp:
@@ -49,7 +49,7 @@ class VectorService:
 
             shapefile_path = os.path.join(tmpdirname, os.path.basename(shape_file.filename))
             shapefile = gpd.read_file(shapefile_path)
-            shapefile.to_crs(epsg=4326)
+            shapefile = shapefile.to_crs(epsg=4326)
             for index, row in shapefile.iterrows():
                 properties = {key: value for key, value in row.items() if key != 'geometry'}
                 yield row['geometry'], properties
