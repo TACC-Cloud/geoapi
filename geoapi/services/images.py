@@ -15,15 +15,15 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class ImageData:
-    thumb: Image
-    resized: Image
+    thumb: PILImage
+    resized: PILImage
     coordinates: Tuple[float, float]
 
 
 @dataclass
 class ImageOverlay:
-    thumb: Image
-    original: Image
+    thumb: PILImage
+    original: PILImage
 
 
 class ImageService:
@@ -109,7 +109,7 @@ def _fix_orientation(fileObj: IO) -> PILImage:
 def get_exif_data(image):
     """Returns a dictionary from the exif data of an PIL Image item. Also converts the GPS Tags"""
     exif_data = {}
-    info = image._getexif()
+    info = image.getexif()
     for tag, value in info.items():
         decoded = TAGS.get(tag, tag)
         if decoded == "GPSInfo":
