@@ -1,6 +1,9 @@
 import os
+import concurrent
 from pathlib import Path
 from celery import uuid as celery_uuid
+import concurrent.futures
+
 import json
 
 from geoapi.celery_app import app
@@ -27,6 +30,19 @@ def _parse_rapid_geolocation(loc):
     return lat, lon
 
 
+def get_file(client, system_id, path, required):
+    """
+    Get file callable function to be used for asynchronous future task
+    """
+    result_file = None
+    error = None
+    try:
+        result_file = client.getFile(system_id, path)
+    except Exception as e:
+        error = e
+    return system_id, path, required, result_file, error
+
+
 def get_additional_files(systemId: str, path: str, client, available_files=None):
     """
     Get any additional files needed for processing
@@ -38,27 +54,33 @@ def get_additional_files(systemId: str, path: str, client, available_files=None)
     """
     path = Path(path)
     if path.suffix.lower().lstrip('.') == "shp":
-        additional_files = []
+        paths_to_get = []
         for extension, required in SHAPEFILE_FILE_ADDITIONAL_FILES.items():
             additional_file_path = path.with_suffix(extension)
-            try:
-                if available_files and str(additional_file_path) not in available_files:
-                    if required:
-                        raise Exception("Required file ({}) missing".format(additional_file_path))
-                    else:
-                        continue
-
-                tmp_file = client.getFile(systemId, additional_file_path)
-                tmp_file.filename = Path(additional_file_path).name
-                additional_files.append(tmp_file)
-            except Exception as e:
+            if available_files and str(additional_file_path) not in available_files:
                 if required:
-                    logger.error("Could not import required required shapefile-related file: "
+                    logger.error("Could not import required shapefile-related file: "
                                  "agave: {} :: {}".format(systemId, additional_file_path))
-                    raise e
+                    raise Exception("Required file ({}) missing".format(additional_file_path))
                 else:
+                    continue
+            paths_to_get.append(additional_file_path)
+
+        additional_files = []
+        with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
+            getting_files_futures = [executor.submit(get_file, client, systemId, additional_file_path, required)
+                                     for additional_file_path in paths_to_get]
+            for future in concurrent.futures.as_completed(getting_files_futures):
+                _, additional_file_path, required, result_file, error = future.result()
+                if not result_file and required:
+                    logger.error("Could not import a required shapefile-related file: "
+                                 "agave: {} :: {}   ---- error: {}".format(systemId, additional_file_path, error))
+                if not result_file:
                     logger.debug("Unable to get non-required shapefile-related file: "
                                  "agave: {} :: {}".format(systemId, additional_file_path))
+                    continue
+                result_file.filename = Path(additional_file_path).name
+                additional_files.append(result_file)
     else:
         additional_files = None
     return additional_files
@@ -81,7 +103,7 @@ def import_file_from_agave(userId: int, systemId: str, path: str, projectId: int
         tmpFile.close()
     except Exception as e:
         db_session.rollback()
-        logger.error("Could not import file from agave: {} :: {}".format(systemId, path), e)
+        logger.exception("Could not import file from agave: {} :: {}".format(systemId, path))
         NotificationsService.create(user, "error", "Error importing {f}".format(f=path))
 
 
