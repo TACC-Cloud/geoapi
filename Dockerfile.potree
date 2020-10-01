@@ -27,6 +27,9 @@ RUN pip3 install --upgrade pip
 COPY requirements.txt /requirements.txt
 RUN pip3 install -r /requirements.txt
 
+# Multiple gdal's are installed but we want 2.2 to get needed crs information
+ENV GDAL_DATA "/usr/share/gdal/2.2"
+
 WORKDIR /
 RUN mkdir app
 COPY ./geoapi /app/geoapi

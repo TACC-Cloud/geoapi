@@ -4,7 +4,10 @@ import os
 
 from geoapi.models import User, Feature
 from geoapi.db import db_session
-from geoapi.tasks.external_data import import_from_agave, import_point_clouds_from_agave, refresh_observable_projects
+from geoapi.tasks.external_data import (import_from_agave,
+                                        import_point_clouds_from_agave,
+                                        refresh_observable_projects,
+                                        get_additional_files)
 from geoapi.utils.agave import AgaveFileListing
 from geoapi.utils.assets import get_project_asset_dir, get_asset_path
 from geoapi.exceptions import InvalidCoordinateReferenceSystem
@@ -21,6 +24,7 @@ def rollback_side_effect():
 def db_session_commit_throws_exception():
     with patch('geoapi.db.db_session.commit', side_effect=Exception) as commit:
         yield commit
+
 
 @pytest.fixture(scope="function")
 def agave_utils_with_geojson_file(geojson_file_fixture):
@@ -185,3 +189,52 @@ def test_refresh_observable_projects_dbsession_rollback(agave_utils_with_geojson
                                                         rollback_side_effect):
     refresh_observable_projects()
     rollback_side_effect.assert_called()
+
+
+def test_get_additional_files_none(agave_utils_with_geojson_file):
+    assert not get_additional_files("testSystem", "/testPath/file.jpg", agave_utils_with_geojson_file)
+
+
+def test_get_additional_files(agave_utils_with_geojson_file):
+    files = get_additional_files("testSystem", "/testPath/file.shp", agave_utils_with_geojson_file)
+    assert len(files) == 14
+
+
+def test_get_additional_files_with_available_files(agave_utils_with_geojson_file):
+    available_files = ["/testPath/file.shx",
+                       "/testPath/file.dbf",
+                       "/testPath/file.sbn",
+                       "/testPath/file.sbx",
+                       "/testPath/file.fbn",
+                       "/testPath/file.fbx",
+                       "/testPath/file.ain",
+                       "/testPath/file.aih",
+                       "/testPath/file.atx",
+                       "/testPath/file.ixs",
+                       "/testPath/file.mxs",
+                       "/testPath/file.prj",
+                       "/testPath/file.xml",
+                       "/testPath/file.cpg"]
+    files = get_additional_files("testSystem",
+                                 "/testPath/file.shp",
+                                 agave_utils_with_geojson_file,
+                                 available_files=available_files)
+    assert len(files) == 14
+
+    available_files = ["/testPath/file.shx",
+                       "/testPath/file.dbf",
+                       "/testPath/file.prj"]
+    files = get_additional_files("testSystem",
+                                 "/testPath/file.shp",
+                                 agave_utils_with_geojson_file,
+                                 available_files=available_files)
+    assert len(files) == 3
+
+
+def test_get_additional_files_but_missing_prj(agave_utils_with_geojson_file):
+    available_files_missing_prj = ["/testPath/file.shx", "/testPath/file.dbf"]
+    with pytest.raises(Exception):
+        get_additional_files("testSystem",
+                             "/testPath/file.shp",
+                             agave_utils_with_geojson_file,
+                             available_files=available_files_missing_prj)
