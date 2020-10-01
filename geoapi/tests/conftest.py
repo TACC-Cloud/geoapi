@@ -117,6 +117,18 @@ def video_file_fixture():
     with open(os.path.join(home, 'fixtures/video.mov'), 'rb') as f:
         yield f
 
+@pytest.fixture(scope="function")
+def flipped_image_fixture():
+    home = os.path.dirname(__file__)
+    with open(os.path.join(home, 'fixtures/flipped_image.jpg'), 'rb') as f:
+        yield f
+
+@pytest.fixture(scope="function")
+def corrected_image_fixture():
+    home = os.path.dirname(__file__)
+    with open(os.path.join(home, 'fixtures/corrected_image.jpg'), 'rb') as f:
+        yield f
+
 
 @pytest.fixture()
 def hazmpperV1_file():
@@ -239,3 +251,4 @@ def get_point_cloud_info_mock():
 
         mock_get_point_cloud_info.apply_async.return_value = mock_result
         yield mock_get_point_cloud_info
+
