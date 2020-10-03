@@ -58,7 +58,7 @@ services:
       - FLASK_APP=/app/geoapi/app.py
       - APP_ENV=development
       - ASSETS_BASE_DIR=/assets
-      - TAPIS_SUPER_TOKEN
+      - TAPIS_TENANT_SECRETS
     stdin_open: true
     tty: true
     container_name: geoapiworkers
@@ -102,7 +102,7 @@ services:
       - FLASK_APP=/app/geoapi/app.py
       - APP_ENV=development
       - ASSETS_BASE_DIR=/assets
-      - TAPIS_SUPER_TOKEN
+      - TAPIS_TENANT_SECRETS
     stdin_open: true
     tty: true
     container_name: geoapi

@@ -15,6 +15,10 @@ class ObservableProjectAlreadyExists(Exception):
     """ Observable Project already exists for this path"""
     pass
 
+class MissingServiceAccount(Exception):
+    """ No service account for this tenant """
+    pass
+
 class ApiException(Exception):
     """ A generic exception from the api"""
     pass

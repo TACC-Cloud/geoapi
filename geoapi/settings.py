@@ -15,7 +15,7 @@ class Config(object):
     RABBITMQ_VHOST = 'dev'
     RABBITMQ_HOSTNAME = 'rabbitmq'
     RESTPLUS_MASK_SWAGGER = False
-    TAPIS_SUPER_TOKEN = os.environ.get("TAPIS_SUPER_TOKEN")
+    TAPIS_TENANT_SECRETS = os.environ.get("TAPIS_TENANT_SECRETS")
 
 class ProductionConfig(Config):
     DEBUG = False
@@ -40,7 +40,7 @@ class TestingConfig(Config):
     DB_HOST = os.environ.get('DB_HOST', 'postgres')
     TESTING = True
     ASSETS_BASE_DIR = '/tmp'
-    TAPIS_SUPER_TOKEN = "ABCDEFG12344"
+    TAPIS_TENANT_SECRETS = "{\"DESIGNSAFE\": {\"service_account_token\": \"ABCDEFG12344\"} }"
 
 
 APP_ENV = os.environ.get('APP_ENV', '').lower()

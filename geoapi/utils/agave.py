@@ -10,6 +10,7 @@ from dateutil import parser
 
 from geoapi.settings import settings
 from geoapi.utils.tenants import get_api_server, get_service_accounts
+from geoapi.exceptions import MissingServiceAccount
 
 logger = logging.getLogger(__name__)
 
@@ -125,6 +126,17 @@ class AgaveUtils:
             logger.error(e)
             raise e
 
+
+def service_account_client(tenant_id):
+    tenant_secrets = json.loads(settings.TAPIS_TENANT_SECRETS)
+    if tenant_id.upper() not in tenant_secrets:
+        raise MissingServiceAccount
+
+    client = AgaveUtils(token=tenant_secrets[tenant_id.upper()]['service_account_token'], tenant=tenant_id)
+
+    return client
+
+
 def get_system_users(tenant_id, jwt, system_id: str):
     """
     Get systems users for a system using a user's jwt and (potentially) the tenant's service account
@@ -141,9 +153,11 @@ def get_system_users(tenant_id, jwt, system_id: str):
     user_names = [entry["username"] for entry in client.systemsRolesGet(system_id)]
 
     try:
-        client = AgaveUtils(token=settings.TAPIS_SUPER_TOKEN, tenant=tenant_id)
+        client = service_account_client(tenant_id)
         user_names_from_service_account = [entry["username"] for entry in client.systemsRolesGet(system_id)]
         user_names = set(user_names + user_names_from_service_account)
+    except MissingServiceAccount:
+        logger.error("No service account. Unable to get system roles/users for {}".format(system_id))
     except:
         logger.exception("Unable to get system roles/users for {} using service account".format(system_id))
 
