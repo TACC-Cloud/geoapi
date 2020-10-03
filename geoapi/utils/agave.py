@@ -161,9 +161,12 @@ def get_system_users(tenant_id, jwt, system_id: str):
     except:
         logger.exception("Unable to get system roles/users for {} using service account".format(system_id))
 
-    # remove any service accounts
+    # remove any possible service accounts
     for u in get_service_accounts(tenant_id):
-        user_names.discard(u)
+        try:
+            user_names.remove(u)
+        except ValueError:
+            pass  # do nothing if no service account
 
     logger.info("System:{} has the following users: {}".format(system_id, user_names))
     return user_names
