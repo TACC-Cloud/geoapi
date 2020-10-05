@@ -62,6 +62,8 @@ class AgaveUtils:
             client.headers.update({'X-JWT-Assertion-designsafe': jwt})
         if token:
             client.headers.update({'Authorization': 'Bearer {}'.format(token)})
+        # Use tenant's api server (if tenant is provided) to allow for use
+        # of service account which are specific to a tenant
         self.base_url = get_api_server(tenant) if tenant else self.BASE_URL
         self.client = client
 
