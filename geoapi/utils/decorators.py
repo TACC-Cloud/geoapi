@@ -104,6 +104,8 @@ def project_point_cloud_not_processing(fn):
         point_cloud = PointCloudService.get(point_cloud_id)
         if point_cloud.task \
                 and point_cloud.task.status not in ["FINISHED", "FAILED"]:
+            logger.info("point cloud:{} is not in terminal state".format(
+                point_cloud_id))
             abort(404, "Point cloud is currently being updated")
         return fn(*args, **kwargs)
     return wrapper

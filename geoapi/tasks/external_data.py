@@ -1,6 +1,9 @@
 import os
+import concurrent
 from pathlib import Path
 from celery import uuid as celery_uuid
+import concurrent.futures
+
 import json
 
 from geoapi.celery_app import app
@@ -10,6 +13,7 @@ from geoapi.utils.agave import AgaveUtils
 from geoapi.log import logging
 import geoapi.services.features as features
 from geoapi.services.imports import ImportsService
+from geoapi.services.vectors import SHAPEFILE_FILE_ADDITIONAL_FILES
 import geoapi.services.point_cloud as pointcloud
 from geoapi.tasks.lidar import convert_to_potree, check_point_cloud, get_point_cloud_info
 from geoapi.db import db_session
@@ -26,6 +30,62 @@ def _parse_rapid_geolocation(loc):
     return lat, lon
 
 
+def get_file(client, system_id, path, required):
+    """
+    Get file callable function to be used for asynchronous future task
+    """
+    result_file = None
+    error = None
+    try:
+        result_file = client.getFile(system_id, path)
+    except Exception as e:
+        error = e
+    return system_id, path, required, result_file, error
+
+
+def get_additional_files(systemId: str, path: str, client, available_files=None):
+    """
+    Get any additional files needed for processing
+    :param systemId: str
+    :param path: str
+    :param client
+    :param available_files: list of files that exist (optional)
+    :return: list of additional files
+    """
+    path = Path(path)
+    if path.suffix.lower().lstrip('.') == "shp":
+        paths_to_get = []
+        for extension, required in SHAPEFILE_FILE_ADDITIONAL_FILES.items():
+            additional_file_path = path.with_suffix(extension)
+            if available_files and str(additional_file_path) not in available_files:
+                if required:
+                    logger.error("Could not import required shapefile-related file: "
+                                 "agave: {} :: {}".format(systemId, additional_file_path))
+                    raise Exception("Required file ({}) missing".format(additional_file_path))
+                else:
+                    continue
+            paths_to_get.append(additional_file_path)
+
+        additional_files = []
+        with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
+            getting_files_futures = [executor.submit(get_file, client, systemId, additional_file_path, required)
+                                     for additional_file_path in paths_to_get]
+            for future in concurrent.futures.as_completed(getting_files_futures):
+                _, additional_file_path, required, result_file, error = future.result()
+                if not result_file and required:
+                    logger.error("Could not import a required shapefile-related file: "
+                                 "agave: {} :: {}   ---- error: {}".format(systemId, additional_file_path, error))
+                if not result_file:
+                    logger.debug("Unable to get non-required shapefile-related file: "
+                                 "agave: {} :: {}".format(systemId, additional_file_path))
+                    continue
+                result_file.filename = Path(additional_file_path).name
+                additional_files.append(result_file)
+    else:
+        additional_files = None
+    return additional_files
+
+
 @app.task(rate_limit="1/s")
 def import_file_from_agave(userId: int, systemId: str, path: str, projectId: int):
     user = db_session.query(User).get(userId)
@@ -33,13 +93,33 @@ def import_file_from_agave(userId: int, systemId: str, path: str, projectId: int
     try:
         tmpFile = client.getFile(systemId, path)
         tmpFile.filename = Path(path).name
-        features.FeaturesService.fromFileObj(projectId, tmpFile, {}, original_path=path)
+        additional_files = get_additional_files(systemId, path, client)
+        features.FeaturesService.fromFileObj(projectId,
+                                             tmpFile,
+                                             {},
+                                             original_path=path,
+                                             additional_files=additional_files)
         NotificationsService.create(user, "success", "Imported {f}".format(f=path))
         tmpFile.close()
     except Exception as e:
-        logger.error("Could not import file for user {} from agave: {}/{}: {}".format(user.username, systemId, path, e))
+        db_session.rollback()
+        logger.exception("Could not import file from agave: {} :: {}".format(systemId, path))
         NotificationsService.create(user, "error", "Error importing {f}".format(f=path))
         raise e
+
+
+def _update_point_cloud_task(pointCloudId: int, description: str = None, status: str = None):
+    task = pointcloud.PointCloudService.get(pointCloudId).task
+    if description is not None:
+        task.description = description
+    if status is not None:
+        task.status = status
+    try:
+        db_session.add(task)
+        db_session.commit()
+    except Exception:
+        db_session.rollback()
+        raise
 
 
 @app.task(rate_limit="1/s")
@@ -60,9 +140,9 @@ def import_point_clouds_from_agave(userId: int, files, pointCloudId: int):
     new_asset_files = []
     failed_message = None
     for file in files:
-        task.description = "Importing file ({}/{})".format(len(new_asset_files) + 1, len(files))
-        db_session.add(task)
-        db_session.commit()
+        _update_point_cloud_task(pointCloudId,
+                                 description="Importing file ({}/{})".format(len(new_asset_files) + 1, len(files)))
+
         NotificationsService.create(user, "success", task.description)
 
         system_id = file["system"]
@@ -72,8 +152,8 @@ def import_point_clouds_from_agave(userId: int, files, pointCloudId: int):
             tmp_file = client.getFile(system_id, path)
             tmp_file.filename = Path(path).name
             file_path = pointcloud.PointCloudService.putPointCloudInOriginalsFileDir(point_cloud.path,
-                                                                          tmp_file,
-                                                                          tmp_file.filename)
+                                                                                     tmp_file,
+                                                                                     tmp_file.filename)
             tmp_file.close()
 
             # save file path as we might need to delete it if there is a problem
@@ -93,23 +173,23 @@ def import_point_clouds_from_agave(userId: int, files, pointCloudId: int):
             failed_message = 'Unknown error importing {}:{}'.format(system_id, path)
 
         if failed_message:
-            task.status = "FAILED"
-            task.description = failed_message
-            db_session.add(task)
-            db_session.commit()
-            NotificationsService.create(user, "error", failed_message)
             for file_path in new_asset_files:
-                print("removing {}!!!!!!!".format(file_path))
+                logger.error("removing {}!!!!!!!".format(file_path))
                 os.remove(file_path)
+            _update_point_cloud_task(pointCloudId, description=failed_message, status="FAILED")
+            NotificationsService.create(user, "error", failed_message)
             return
 
-    task.status = "RUNNING"
-    task.description = "Running potree converter"
-    point_cloud.files_info = json.dumps(get_point_cloud_info(pointCloudId));
+    _update_point_cloud_task(pointCloudId, description="Running potree converter", status="RUNNING")
 
-    db_session.add(point_cloud)
-    db_session.add(task)
-    db_session.commit()
+    point_cloud.files_info = json.dumps(get_point_cloud_info(pointCloudId))
+    try:
+        db_session.add(point_cloud)
+        db_session.add(task)
+        db_session.commit()
+    except:
+        db_session.rollback()
+        raise
     NotificationsService.create(user,
                                 "success",
                                 "Running potree converter (for point cloud {}).".format(pointCloudId))
@@ -121,11 +201,9 @@ def import_point_clouds_from_agave(userId: int, files, pointCloudId: int):
                                     "Completed potree converter (for point cloud {}).".format(pointCloudId))
     except:
         logger.exception("point cloud:{} conversion failed for user:{}".format(pointCloudId, user.username))
-        task.status = "FAILED"
-        task.description = ""
-        db_session.add(task)
-        db_session.commit()
+        _update_point_cloud_task(pointCloudId, description="", status="FAILED")
         NotificationsService.create(user, "error", "Processing failed for point cloud ({})!".format(pointCloudId))
+        return
 
 
 #TODO: Add users to project based on the agave users on the system.
@@ -136,7 +214,9 @@ def import_from_agave(userId: int, systemId: str, path: str, projectId: int):
     client = AgaveUtils(user.jwt)
     listing = client.listing(systemId, path)
     # First item is always a reference to self
-    for item in listing[1:]:
+    files_in_directory = listing[1:]
+    filenames_in_directory = [str(f.path) for f in files_in_directory]
+    for item in files_in_directory:
         if item.type == "dir":
             import_from_agave(userId, systemId, item.path, projectId)
         # skip any junk files that are not allowed
@@ -186,7 +266,12 @@ def import_from_agave(userId: int, systemId: str, path: str, projectId: int):
                 elif item.path.suffix.lower().lstrip('.') in features.FeaturesService.ALLOWED_GEOSPATIAL_EXTENSIONS:
                     tmpFile = client.getFile(systemId, item.path)
                     tmpFile.filename = Path(item.path).name
-                    features.FeaturesService.fromFileObj(projectId, tmpFile, {}, original_path=item_system_path)
+                    additional_files = get_additional_files(systemId, item.path, client, filenames_in_directory)
+                    features.FeaturesService.fromFileObj(projectId,
+                                                         tmpFile,
+                                                         {},
+                                                         original_path=item_system_path,
+                                                         additional_files=additional_files)
                     NotificationsService.create(user, "success", "Imported {f}".format(f=item_system_path))
                     tmpFile.close()
                 else:
@@ -197,6 +282,7 @@ def import_from_agave(userId: int, systemId: str, path: str, projectId: int):
                 db_session.commit()
 
             except Exception as e:
+                db_session.rollback()
                 logger.error(
                     "Could not import for user {} from agave: {}/{}".format(user.username, systemId, path))
                 NotificationsService.create(user, "error", "Error importing {f}".format(f=item_system_path))
@@ -206,9 +292,13 @@ def import_from_agave(userId: int, systemId: str, path: str, projectId: int):
 
 @app.task()
 def refresh_observable_projects():
-    obs = db_session.query(ObservableDataProject).all()
-    for o in obs:
-        import_from_agave(o.project.users[0].id, o.system_id, o.path, o.project.id)
+    try:
+        obs = db_session.query(ObservableDataProject).all()
+        for o in obs:
+            import_from_agave(o.project.users[0].id, o.system_id, o.path, o.project.id)
+    except Exception:
+        logger.exception("Unhandled exception when importing observable project")
+        db_session.rollback()
 
 
 if __name__ == "__main__":

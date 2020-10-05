@@ -3,7 +3,6 @@ import pathlib
 import uuid
 import json
 import tempfile
-from datetime import datetime
 from typing import List, IO, Dict
 
 from geoapi.services.videos import VideoService
@@ -13,6 +12,7 @@ from geoalchemy2.shape import from_shape
 import geojson
 
 from geoapi.services.images import ImageService, ImageData
+from geoapi.services.vectors import VectorService
 from geoapi.models import Feature, FeatureAsset, Overlay, User
 from geoapi.db import db_session
 from geoapi.exceptions import InvalidGeoJSON, ApiException
@@ -45,11 +45,16 @@ class FeaturesService:
         'gpx',
     )
 
-    ALLOWED_GEOSPATIAL_EXTENSIONS = IMAGE_FILE_EXTENSIONS + GPX_FILE_EXTENSIONS + GEOJSON_FILE_EXTENSIONS
+    SHAPEFILE_FILE_EXTENSIONS = (
+        'shp',
+    )
+
+    ALLOWED_GEOSPATIAL_EXTENSIONS = IMAGE_FILE_EXTENSIONS + GPX_FILE_EXTENSIONS + GEOJSON_FILE_EXTENSIONS + \
+                                    SHAPEFILE_FILE_EXTENSIONS
 
     ALLOWED_EXTENSIONS = IMAGE_FILE_EXTENSIONS + VIDEO_FILE_EXTENSIONS \
                          + AUDIO_FILE_EXTENSIONS + GPX_FILE_EXTENSIONS \
-                         + GEOJSON_FILE_EXTENSIONS
+                         + GEOJSON_FILE_EXTENSIONS + SHAPEFILE_FILE_EXTENSIONS
 
     @staticmethod
     def get(featureId: int) -> Feature:
@@ -198,8 +203,32 @@ class FeaturesService:
         fileObj.close()
         return FeaturesService.addGeoJSON(projectId, data)
 
+
     @staticmethod
-    def fromFileObj(projectId: int, fileObj: IO, metadata: Dict, original_path: str=None) -> List[Feature]:
+    def fromShapefile(projectId: int, fileObj: IO, metadata: Dict, additional_files: List[IO], original_path=None) -> Feature:
+        """ Create features from shapefile
+
+        :param projectId: int
+        :param fileObj: file descriptor
+        :param additional_files: file descriptor for all the other non-.shp files
+        :param metadata: Dict of <key, val> pairs   [IGNORED}
+        :param original_path: str path of original file location  [IGNORED}
+        :return: Feature
+        """
+        features = []
+        for geom, properties in VectorService.process_shapefile(fileObj, additional_files):
+            feat = Feature()
+            feat.project_id = projectId
+            feat.the_geom = from_shape(geometries.convert_3D_2D(geom), srid=4326)
+            feat.properties = properties
+            db_session.add(feat)
+            features.append(feat)
+
+        db_session.commit()
+        return features
+
+    @staticmethod
+    def fromFileObj(projectId: int, fileObj: IO, metadata: Dict, original_path: str=None, additional_files=None) -> List[Feature]:
         ext = pathlib.Path(fileObj.filename).suffix.lstrip(".").lower()
         if ext in FeaturesService.IMAGE_FILE_EXTENSIONS:
             return [FeaturesService.fromImage(projectId, fileObj, metadata, original_path)]
@@ -207,6 +236,8 @@ class FeaturesService:
             return [FeaturesService.fromGPX(projectId, fileObj, metadata, original_path)]
         elif ext in FeaturesService.GEOJSON_FILE_EXTENSIONS:
             return FeaturesService.fromGeoJSON(projectId, fileObj, {}, original_path)
+        elif ext in FeaturesService.SHAPEFILE_FILE_EXTENSIONS:
+            return FeaturesService.fromShapefile(projectId, fileObj, {}, additional_files, original_path)
         else:
             raise ApiException("Filetype not supported for direct upload. Create a feature and attach as an asset?")
 

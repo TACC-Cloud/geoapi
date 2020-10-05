@@ -189,3 +189,14 @@ def test_get_project_features_filter_with_date_range(test_client, projects_fixtu
     data = resp.get_json()
     assert resp.status_code == 200
     assert len(data['features']) == 0
+
+
+def test_import_shapefile_tapis(test_client, projects_fixture, import_file_from_agave_mock):
+    u1 = db_session.query(User).get(1)
+    resp = test_client.post(
+        '/projects/1/features/files/import/',
+        json={"files": [{"system": "designsafe.storage.default", "path": "file.shp"}]},
+        headers={'x-jwt-assertion-test': u1.jwt}
+    )
+    assert resp.status_code == 200
+

@@ -96,7 +96,7 @@ class AgaveUtils:
         Download a file from agave
         :param systemId: str
         :param path: str
-        :return: uuid str
+        :return: temporary file
         """
         url = quote('/files/media/system/{}/{}'.format(systemId, path))
         try:
