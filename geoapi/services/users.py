@@ -6,12 +6,14 @@ from typing import List
 class UserService:
 
     @staticmethod
-    def create(username: str, jwt: str, tenant: str) -> User:
+    def create(username: str, tenant: str, jwt: str = None) -> User:
         """
 
         :rtype: User
         """
-        u = User(username=username, jwt=jwt, tenant_id=tenant)
+        u = User(username=username, tenant_id=tenant)
+        if jwt:
+            u.jwt = jwt
         db_session.add(u)
         db_session.commit()
         return u
@@ -20,6 +22,13 @@ class UserService:
     def checkUser(username: str) -> bool:
         # TODO: Add in TAS check
         pass
+
+    @staticmethod
+    def getOrCreateUser(username: str, tenant: str) -> User:
+        user = UserService.getUser(username, tenant)
+        if not user:
+            user = UserService.create(username, tenant)
+        return user
 
     @staticmethod
     def getUser(username: str, tenant: str) -> User:

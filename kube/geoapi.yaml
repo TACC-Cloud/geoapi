@@ -288,7 +288,11 @@ spec:
               secretKeyRef:
                 name: postgres
                 key: password
-
+          - name: TENANT
+            valueFrom:
+              secretKeyRef:
+                name: tapis
+                key: tenant
         image: taccaci/geoapi-workers:latest
         name: geoapi-workers
         resources:
@@ -350,6 +354,11 @@ spec:
               secretKeyRef:
                 name: postgres
                 key: password
+          - name: TENANT
+            valueFrom:
+              secretKeyRef:
+                name: tapis
+                key: tenant
 
         image: taccaci/geoapi-workers:latest
         name: geoapi-celerybeat
@@ -460,6 +469,11 @@ spec:
               secretKeyRef:
                 name: postgres
                 key: password
+          - name: TENANT
+            valueFrom:
+              secretKeyRef:
+                name: tapis
+                key: tenant
         image: taccaci/geoapi:latest
         name: geoapi
         ports:

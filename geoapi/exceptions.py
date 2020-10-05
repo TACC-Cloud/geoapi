@@ -11,6 +11,14 @@ class InvalidCoordinateReferenceSystem(Exception):
     """ Custom exception to notify caller they have supplied data with missing or invalid coordinate reference system"""
     pass
 
+class ObservableProjectAlreadyExists(Exception):
+    """ Observable Project already exists for this path"""
+    pass
+
+class MissingServiceAccount(Exception):
+    """ No service account for this tenant """
+    pass
+
 class ApiException(Exception):
     """ A generic exception from the api"""
     pass
