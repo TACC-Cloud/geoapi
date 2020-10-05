@@ -128,8 +128,8 @@ class AgaveUtils:
 
 
 def service_account_client(tenant_id):
-    tenant_secrets = json.loads(settings.TAPIS_TENANT_SECRETS)
-    if tenant_id.upper() not in tenant_secrets:
+    tenant_secrets = json.loads(settings.TENANT)
+    if tenant_secrets is None or tenant_id.upper() not in tenant_secrets:
         raise MissingServiceAccount
 
     client = AgaveUtils(token=tenant_secrets[tenant_id.upper()]['service_account_token'], tenant=tenant_id)
