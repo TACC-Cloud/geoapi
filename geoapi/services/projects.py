@@ -182,7 +182,7 @@ class ProjectsService:
 
         # The sub select that filters only on this projects ID, filters applied below
         sub_select = select([
-            text("""feat.*,  array_remove(array_agg(fa), null) as assets 
+            text("""feat.*,  array_remove(array_agg(fa), null) as assets
               from features as feat
               LEFT JOIN feature_assets fa on feat.id = fa.feature_id
              """)
@@ -211,8 +211,20 @@ class ProjectsService:
         return out.geojson
 
     @staticmethod
-    def update(projectId: int, data) -> Project:
-        pass
+    def update(projectId: int, data: dict) -> Project:
+        """
+        Update the metadata associated with a project
+        :param projectId: int
+        :param data: dict
+        :return: Project
+        """
+        current_project = ProjectsService.get(projectId)
+
+        current_project.name = data['name']
+        current_project.description = data['description']
+        db_session.commit()
+
+        return current_project
 
     @staticmethod
     def delete(projectId: int) -> dict:
