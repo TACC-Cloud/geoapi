@@ -190,8 +190,8 @@ class ProjectResource(Resource):
     @project_permissions
     def put(self, projectId: int):
         u = request.current_user
-        logger.info("Update project:{} for user".format(projectId,
-                                                        u.username))
+        logger.info("Update project:{} for user:{}".format(projectId,
+                                                           u.username))
         return ProjectsService.update(projectId=projectId,
                                       data=api.payload)
 
