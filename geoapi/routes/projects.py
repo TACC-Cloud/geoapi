@@ -161,13 +161,8 @@ class RapidProject(Resource):
     @api.marshal_with(project)
     def post(self):
         u = request.current_user
-        logger.info("Create rapid project for user {}: {}".format(
-            u.username, api.payload))
-        try:
-            return ProjectsService.createRapidProject(api.payload, u)
-        except Exception as e:
-            logger.exception(e)
-            return abort(409, "A project for this storage system/path already exists!")
+        logger.info("Create rapid project for user {}: {}".format(u.username, api.payload))
+        return ProjectsService.createRapidProject(api.payload, u);
 
 
 @api.route('/<int:projectId>/')
@@ -191,9 +186,14 @@ class ProjectResource(Resource):
 
     @api.doc(id="updateProject",
              description="Update metadata about a project")
+    @api.marshal_with(project)
     @project_permissions
     def put(self, projectId: int):
-        return True
+        u = request.current_user
+        logger.info("Update project:{} for user:{}".format(projectId,
+                                                           u.username))
+        return ProjectsService.update(projectId=projectId,
+                                      data=api.payload)
 
 
 @api.route('/<int:projectId>/users/')

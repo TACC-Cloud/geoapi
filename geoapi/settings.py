@@ -15,7 +15,7 @@ class Config(object):
     RABBITMQ_VHOST = 'dev'
     RABBITMQ_HOSTNAME = 'rabbitmq'
     RESTPLUS_MASK_SWAGGER = False
-
+    TENANT = os.environ.get("TENANT")
 
 class ProductionConfig(Config):
     DEBUG = False
@@ -40,6 +40,7 @@ class TestingConfig(Config):
     DB_HOST = os.environ.get('DB_HOST', 'postgres')
     TESTING = True
     ASSETS_BASE_DIR = '/tmp'
+    TENANT = "{\"DESIGNSAFE\": {\"service_account_token\": \"ABCDEFG12344\"} }"
 
 
 APP_ENV = os.environ.get('APP_ENV', '').lower()

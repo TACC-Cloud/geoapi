@@ -3,15 +3,18 @@ from pathlib import Path
 from typing import List
 
 from sqlalchemy import desc
-
 from geoapi.models import Project, User, ObservableDataProject
 from geoapi.db import db_session
 from sqlalchemy.sql import select, text
 from sqlalchemy.exc import IntegrityError
-from geoapi.utils.agave import AgaveUtils
+from geoapi.services.users import UserService
+from geoapi.utils.agave import AgaveUtils, get_system_users
 from geoapi.utils.assets import get_project_asset_dir
 from geoapi.tasks.external_data import import_from_agave
-from geoapi.exceptions import ApiException
+from geoapi.log import logging
+from geoapi.exceptions import ApiException, ObservableProjectAlreadyExists
+
+logger = logging.getLogger(__name__)
 
 
 class ProjectsService:
@@ -56,20 +59,25 @@ class ProjectsService:
             tenant_id=user.tenant_id
         )
         obs = ObservableDataProject(
-            system_id=system["id"],
+            system_id=systemId,
             path=path
         )
-        # roles = client.systems.listRoles(systemId=system.id)
-        # print(roles)
+
+        users = get_system_users(proj.tenant_id, user.jwt, systemId)
+        logger.info("Updating project:{} to have the following users: {}".format(name, users))
+        project_users = [UserService.getOrCreateUser(u, tenant=proj.tenant_id) for u in users]
+        proj.users = project_users
+
         obs.project = proj
-        proj.users.append(user)
+
         try:
             db_session.add(obs)
             db_session.add(proj)
             db_session.commit()
         except IntegrityError as e:
-            raise e
-
+            db_session.rollback()
+            logger.exception("User:{} tried to create an observable project that already exists: '{}'".format(user.username, name))
+            raise ObservableProjectAlreadyExists("'{}' project already exists".format(name))
         import_from_agave.apply_async(args=[obs.project.users[0].id, obs.system_id, obs.path, obs.project_id])
 
         return proj
@@ -174,7 +182,7 @@ class ProjectsService:
 
         # The sub select that filters only on this projects ID, filters applied below
         sub_select = select([
-            text("""feat.*,  array_remove(array_agg(fa), null) as assets 
+            text("""feat.*,  array_remove(array_agg(fa), null) as assets
               from features as feat
               LEFT JOIN feature_assets fa on feat.id = fa.feature_id
              """)
@@ -203,8 +211,20 @@ class ProjectsService:
         return out.geojson
 
     @staticmethod
-    def update(projectId: int, data) -> Project:
-        pass
+    def update(projectId: int, data: dict) -> Project:
+        """
+        Update the metadata associated with a project
+        :param projectId: int
+        :param data: dict
+        :return: Project
+        """
+        current_project = ProjectsService.get(projectId)
+
+        current_project.name = data['name']
+        current_project.description = data['description']
+        db_session.commit()
+
+        return current_project
 
     @staticmethod
     def delete(projectId: int) -> dict:
@@ -223,6 +243,7 @@ class ProjectsService:
             pass
         return {"status": "ok"}
 
+
     @staticmethod
     def addUserToProject(projectId: int, username: str) -> None:
         """
@@ -234,10 +255,7 @@ class ProjectsService:
 
         # TODO: Add TAS integration
         proj = db_session.query(Project).get(projectId)
-        user = db_session.query(User).filter(User.username == username).first()
-        if not user:
-            user = User(username=username, tenant_id=proj.tenant_id)
-            db_session.add(user)
+        user = UserService.getOrCreateUser(username, proj.tenant_id)
         proj.users.append(user)
         db_session.commit()
 
@@ -259,14 +277,16 @@ class ProjectsService:
         observable_project = db_session.query(ObservableDataProject) \
             .filter(ObservableDataProject.id == projectId).first()
 
+        if user not in proj.users:
+            raise ApiException("User is not in project")
+
         if len(proj.users) == 1:
             raise ApiException("Unable to remove last user of project")
 
-        if observable_project and proj.users[0].username == username:
-            raise ApiException("Unable to remove main user of observable project")
-
-        if user not in proj.users:
-            raise ApiException("User not in project")
+        if observable_project:
+            number_of_potential_observers = len([u for u in proj.users if u.jwt])
+            if user.jwt and number_of_potential_observers == 1:
+                raise ApiException("Unable to remove last user of observable project who can observe file system")
 
         proj.users.remove(user)
         db_session.commit()

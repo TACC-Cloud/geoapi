@@ -3,10 +3,15 @@ from tempfile import NamedTemporaryFile
 import requests
 import pathlib
 from typing import List, Dict, IO
-from urllib.parse import quote, urlparse, unquote, parse_qs, urlencode
+from urllib.parse import quote, urlparse, parse_qs
 import json
 from geoapi.log import logging
 from dateutil import parser
+
+from geoapi.settings import settings
+from geoapi.utils.tenants import get_api_server, get_service_accounts
+from geoapi.exceptions import MissingServiceAccount
+
 logger = logging.getLogger(__name__)
 
 class AgaveFileListing:
@@ -51,27 +56,38 @@ class AgaveFileListing:
 class AgaveUtils:
     BASE_URL = 'http://api.prod.tacc.cloud'
 
-    def __init__(self, jwt):
-        self.jwt = jwt
+    def __init__(self, jwt=None, token=None, tenant=None):
         client = requests.Session()
-        client.headers.update({'X-JWT-Assertion-designsafe': jwt})
+        if jwt:
+            client.headers.update({'X-JWT-Assertion-designsafe': jwt})
+        if token:
+            client.headers.update({'Authorization': 'Bearer {}'.format(token)})
+        # Use tenant's api server (if tenant is provided) to allow for use
+        # of service account which are specific to a tenant
+        self.base_url = get_api_server(tenant) if tenant else self.BASE_URL
         self.client = client
 
     def systemsList(self):
         url = quote('/systems/')
-        resp = self.client.get(self.BASE_URL + url)
+        resp = self.client.get(self.base_url + url)
         listing = resp.json()
         return listing["result"]
 
     def systemsGet(self, systemId: str) -> Dict:
         url = quote('/systems/{}'.format(systemId))
-        resp = self.client.get(self.BASE_URL + url)
+        resp = self.client.get(self.base_url + url)
+        listing = resp.json()
+        return listing["result"]
+
+    def systemsRolesGet(self, systemId: str) -> Dict:
+        url = quote('/systems/{}/roles'.format(systemId))
+        resp = self.client.get(self.base_url + url)
         listing = resp.json()
         return listing["result"]
 
     def listing(self, systemId: str, path: str) -> List[AgaveFileListing]:
         url = quote('/files/listings/system/{}/{}?limit=10000'.format(systemId, path))
-        resp = self.client.get(self.BASE_URL + url)
+        resp = self.client.get(self.base_url + url)
         listing = resp.json()
         out = [AgaveFileListing(d) for d in listing["result"]]
         return out
@@ -85,7 +101,7 @@ class AgaveUtils:
         q = {'associationIds': uuid}
         qstring = quote(json.dumps(q), safe='')
         url = '/meta/data?q={}'.format(qstring)
-        resp = self.client.get(self.BASE_URL + url)
+        resp = self.client.get(self.base_url + url)
         meta = resp.json()
         results = [rec["value"] for rec in meta["result"]]
         out = {k: v for d in results for k, v in d.items()}
@@ -100,7 +116,7 @@ class AgaveUtils:
         """
         url = quote('/files/media/system/{}/{}'.format(systemId, path))
         try:
-            with self.client.get(self.BASE_URL + url, stream=True) as r:
+            with self.client.get(self.base_url + url, stream=True) as r:
                 if r.status_code > 400:
                     raise ValueError("Could not fetch file ({}/{}) status_code:{}".format(systemId,
                                                                                           path,
@@ -113,3 +129,48 @@ class AgaveUtils:
         except Exception as e:
             logger.error(e)
             raise e
+
+
+def service_account_client(tenant_id):
+    tenant_secrets = json.loads(settings.TENANT)
+    if tenant_secrets is None or tenant_id.upper() not in tenant_secrets:
+        raise MissingServiceAccount
+
+    client = AgaveUtils(token=tenant_secrets[tenant_id.upper()]['service_account_token'], tenant=tenant_id)
+
+    return client
+
+
+def get_system_users(tenant_id, jwt, system_id: str):
+    """
+    Get systems users for a system using a user's jwt and (potentially) the tenant's service account
+
+    Tapis provides all roles for owner of system which is why we attempt
+    to use the service account super token as well.
+
+    :param: tenant: tenant id
+    :param: jwt: jwt of a user
+    :param system_id: str
+    :return: list of usernames
+    """
+    client = AgaveUtils(jwt)
+    user_names = [entry["username"] for entry in client.systemsRolesGet(system_id)]
+
+    try:
+        client = service_account_client(tenant_id)
+        user_names_from_service_account = [entry["username"] for entry in client.systemsRolesGet(system_id)]
+        user_names = set(user_names + user_names_from_service_account)
+    except MissingServiceAccount:
+        logger.error("No service account. Unable to get system roles/users for {}".format(system_id))
+    except:
+        logger.exception("Unable to get system roles/users for {} using service account".format(system_id))
+
+    # remove any possible service accounts
+    for u in get_service_accounts(tenant_id):
+        try:
+            user_names.remove(u)
+        except ValueError:
+            pass  # do nothing if no service account
+
+    logger.info("System:{} has the following users: {}".format(system_id, user_names))
+    return user_names
