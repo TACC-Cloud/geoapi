@@ -164,7 +164,6 @@ class FeaturesService:
             feat.properties.pop("thumb_src")
         return feat
 
-
     @staticmethod
     def fromLatLng(projectId: int, lat: float, lng: float, metadata: Dict) -> Feature:
         point = Point(lng, lat)
@@ -172,6 +171,8 @@ class FeaturesService:
         f.project_id = projectId
         f.the_geom = from_shape(point, srid=4326)
         f.properties = metadata or {}
+        db_session.add(f)
+        db_session.commit()
         return f
 
     @staticmethod
@@ -204,7 +205,6 @@ class FeaturesService:
         data = json.loads(fileObj.read())
         fileObj.close()
         return FeaturesService.addGeoJSON(projectId, data)
-
 
     @staticmethod
     def fromShapefile(projectId: int, fileObj: IO, metadata: Dict, additional_files: List[IO], original_path=None) -> Feature:
