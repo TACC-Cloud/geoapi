@@ -127,7 +127,7 @@ class AgaveUtils:
                 tmpFile.seek(0)
                 return tmpFile
         except Exception as e:
-            logger.error(e)
+            logger.error("Could not fetch file ({}/{}): {}".format(systemId, path, e))
             raise e
 
 

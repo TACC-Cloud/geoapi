@@ -284,7 +284,7 @@ def import_from_agave(userId: int, systemId: str, path: str, projectId: int):
             except Exception as e:
                 db_session.rollback()
                 logger.error(
-                    "Could not import for user {} from agave: {}/{}".format(user.username, systemId, path))
+                    "Could not import for user:{} from agave:{}/{}".format(user.username, systemId, path))
                 NotificationsService.create(user, "error", "Error importing {f}".format(f=item_system_path))
                 logger.exception(e)
                 continue
@@ -309,7 +309,7 @@ def refresh_observable_projects():
             system_users = set(get_system_users(o.project.tenant_id, importing_user.jwt, o.system_id))
             updated_user_names = system_users.union(current_user_names)
             if updated_user_names != current_user_names:
-                logger.info("Updating to add the following users: {}   "
+                logger.info("Updating to add the following users:{}   "
                             "Updated user list is now: {}".format(updated_user_names - current_user_names,
                                                                   updated_user_names))
                 o.project.users = [UserService.getOrCreateUser(u, tenant=o.project.tenant_id)
