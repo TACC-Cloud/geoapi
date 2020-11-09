@@ -54,6 +54,35 @@ def agave_utils_with_geojson_file(geojson_file_fixture):
         yield MockAgaveUtils()
 
 
+@pytest.fixture(scope="function")
+def agave_utils_with_image_file_from_rapp_folder(image_file_fixture):
+    with patch('geoapi.tasks.external_data.AgaveUtils') as MockAgaveUtils:
+        filesListing = [
+            AgaveFileListing({
+                "system": "testSystem",
+                "path": "/RApp",
+                "type": "dir",
+                "length": 4,
+                "_links": "links",
+                "mimeType": "folder",
+                "lastModified": "2020-08-31T12:00:00Z"
+            }),
+            AgaveFileListing({
+                "system": "testSystem",
+                "type": "file",
+                "length": 4096,
+                "path": "/RApp/file.jpg",
+                "_links": "links",
+                "mimeType": "application/jpg",
+                "lastModified": "2020-08-31T12:00:00Z"
+            })
+        ]
+        MockAgaveUtils().listing.return_value = filesListing
+        MockAgaveUtils().getFile.return_value = image_file_fixture
+        MockAgaveUtils().getMetaAssociated.return_value = {"geolocation": [{"longitude": 20, "latitude": 30}]}
+        yield MockAgaveUtils()
+
+
 @pytest.mark.worker
 def test_external_data_good_files(userdata, projects_fixture, agave_utils_with_geojson_file):
     u1 = db_session.query(User).filter(User.username == "test1").first()
@@ -65,6 +94,20 @@ def test_external_data_good_files(userdata, projects_fixture, agave_utils_with_g
     # This should only have been called once, since there is only
     # one FILE in the listing
     agave_utils_with_geojson_file.getFile.assert_called_once()
+
+
+@pytest.mark.worker
+def test_external_data_rapp(userdata, projects_fixture, agave_utils_with_image_file_from_rapp_folder):
+    u1 = db_session.query(User).filter(User.username == "test1").first()
+
+    import_from_agave(u1.id, "testSystem", "/Rapp", projects_fixture.id)
+    features = db_session.query(Feature).all()
+    # should be one feature with a single image asset
+    assert len(features) == 1
+    assert len(features[0].assets) == 1
+    assert len(os.listdir(get_project_asset_dir(features[0].project_id))) == 2 # processed image + thumbnail
+    # This should only have been called once, since there is only one FILE in the listing
+    agave_utils_with_image_file_from_rapp_folder.getFile.assert_called_once()
 
 
 @pytest.mark.worker

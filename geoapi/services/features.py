@@ -286,7 +286,7 @@ class FeaturesService:
         :param projectId: int
         :param featureId: int
         :param fileObj: file
-        :return: FeatureAsset
+        :return: Feature
         """
         fpath = pathlib.Path(fileObj.filename)
         ext = fpath.suffix.lstrip('.').lower()
@@ -302,6 +302,7 @@ class FeaturesService:
         db_session.commit()
         return feat
 
+
     @staticmethod
     def createFeatureAssetFromTapis(user: User, projectId: int, featureId: int, systemId: str, path: str) -> Feature:
         """
@@ -310,24 +311,12 @@ class FeaturesService:
         :param projectId: int
         :param featureId: int
         :param fileObj: file
-        :return: FeatureAsset
+        :return: Feature
         """
         client = AgaveUtils(user.jwt)
         fileObj = client.getFile(systemId, path)
-        filePath = pathlib.Path(path)
-        ext = filePath.suffix.lstrip('.').lower()
-        if ext in FeaturesService.IMAGE_FILE_EXTENSIONS:
-            fa = FeaturesService.createImageFeatureAsset(projectId, fileObj, original_path=path)
-        elif ext in FeaturesService.VIDEO_FILE_EXTENSIONS:
-            fa = FeaturesService.createVideoFeatureAsset(projectId, fileObj, original_path=path)
-        else:
-            raise ApiException("Invalid format for feature assets")
-
-        feat = FeaturesService.get(featureId)
-        feat.assets.append(fa)
-        db_session.commit()
-        return feat
-
+        fileObj.filename = pathlib.Path(path).name
+        return FeaturesService.createFeatureAsset(projectId, featureId, fileObj, original_path=path)
 
     @staticmethod
     def featureAssetFromImData(projectId: int, imdata: ImageData) -> FeatureAsset:
