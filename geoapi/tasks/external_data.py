@@ -11,7 +11,7 @@ from geoapi.exceptions import InvalidCoordinateReferenceSystem
 from geoapi.models import User, ObservableDataProject, Task
 from geoapi.utils.agave import AgaveUtils, get_system_users
 from geoapi.log import logging
-import geoapi.services.features as features
+from geoapi.services.features import FeaturesService
 from geoapi.services.imports import ImportsService
 from geoapi.services.vectors import SHAPEFILE_FILE_ADDITIONAL_FILES
 import geoapi.services.point_cloud as pointcloud
@@ -95,11 +95,7 @@ def import_file_from_agave(userId: int, systemId: str, path: str, projectId: int
         tmpFile = client.getFile(systemId, path)
         tmpFile.filename = Path(path).name
         additional_files = get_additional_files(systemId, path, client)
-        features.FeaturesService.fromFileObj(projectId,
-                                             tmpFile,
-                                             {},
-                                             original_path=path,
-                                             additional_files=additional_files)
+        FeaturesService.fromFileObj(projectId, tmpFile, {}, original_path=path, additional_files=additional_files)
         NotificationsService.create(user, "success", "Imported {f}".format(f=path))
         tmpFile.close()
     except Exception as e:
@@ -207,7 +203,6 @@ def import_point_clouds_from_agave(userId: int, files, pointCloudId: int):
         return
 
 
-#TODO: This is an abomination
 @app.task(rate_limit="5/s")
 def import_from_agave(userId: int, systemId: str, path: str, projectId: int):
     user = db_session.query(User).get(userId)
@@ -220,7 +215,7 @@ def import_from_agave(userId: int, systemId: str, path: str, projectId: int):
         if item.type == "dir":
             import_from_agave(userId, systemId, item.path, projectId)
         # skip any junk files that are not allowed
-        if item.path.suffix.lower().lstrip('.') not in features.FeaturesService.ALLOWED_EXTENSIONS:
+        if item.path.suffix.lower().lstrip('.') not in FeaturesService.ALLOWED_EXTENSIONS:
             continue
         else:
             try:
@@ -232,7 +227,8 @@ def import_from_agave(userId: int, systemId: str, path: str, projectId: int):
                     continue
 
                 # If its a RApp project folder, grab the metadata from tapis meta service
-                if Path(item_system_path).match("*/RApp/*"):
+                if Path(item_system_path).match("*/RApp/*") \
+                        and item.path.suffix.lower().lstrip('.') in FeaturesService.ALLOWED_GEOSPATIAL_FEATURE_ASSET_EXTENSIONS:
                     logger.info("RApp import {path}".format(path=item_system_path))
                     listing = client.listing(systemId, item.path)[0]
                     meta = client.getMetaAssociated(listing.uuid)
@@ -253,25 +249,22 @@ def import_from_agave(userId: int, systemId: str, path: str, projectId: int):
                     # client.getFile will save the asset to tempfile
 
                     tmpFile = client.getFile(systemId, item.path)
-                    feat = features.FeaturesService.fromLatLng(projectId, lat, lon, {})
+                    feat = FeaturesService.fromLatLng(projectId, lat, lon, {})
                     feat.properties = meta
                     db_session.add(feat)
                     tmpFile.filename = Path(item.path).name
-                    fa = features.FeaturesService.createFeatureAsset(projectId, feat.id, tmpFile, original_path=path)
+                    fa = FeaturesService.createFeatureAsset(projectId, feat.id, tmpFile, original_path=path)
                     fa.feature = feat
                     fa.original_path = item_system_path
                     db_session.add(fa)
                     NotificationsService.create(user, "success", "Imported {f}".format(f=item_system_path))
                     tmpFile.close()
-                elif item.path.suffix.lower().lstrip('.') in features.FeaturesService.ALLOWED_GEOSPATIAL_EXTENSIONS:
+                elif item.path.suffix.lower().lstrip('.') in FeaturesService.ALLOWED_GEOSPATIAL_EXTENSIONS:
                     tmpFile = client.getFile(systemId, item.path)
                     tmpFile.filename = Path(item.path).name
                     additional_files = get_additional_files(systemId, item.path, client, filenames_in_directory)
-                    features.FeaturesService.fromFileObj(projectId,
-                                                         tmpFile,
-                                                         {},
-                                                         original_path=item_system_path,
-                                                         additional_files=additional_files)
+                    FeaturesService.fromFileObj(projectId, tmpFile, {},
+                                                original_path=item_system_path, additional_files=additional_files)
                     NotificationsService.create(user, "success", "Imported {f}".format(f=item_system_path))
                     tmpFile.close()
                 else:
