@@ -31,6 +31,14 @@ def _parse_rapid_geolocation(loc):
     return lat, lon
 
 
+def is_member_of_rapp_project_folder(path):
+    """
+    Check to see if path is contained within RApp project folder
+    :param path: str
+    """
+    return "/RApp/" in path
+
+
 def get_file(client, system_id, path, required):
     """
     Get file callable function to be used for asynchronous future task
@@ -227,9 +235,11 @@ def import_from_agave(userId: int, systemId: str, path: str, projectId: int):
                     continue
 
                 # If its a RApp project folder, grab the metadata from tapis meta service
-                if Path(item_system_path).match("*/RApp/*") \
-                        and item.path.suffix.lower().lstrip('.') in FeaturesService.ALLOWED_GEOSPATIAL_FEATURE_ASSET_EXTENSIONS:
+                if is_member_of_rapp_project_folder(item_system_path):
                     logger.info("RApp import {path}".format(path=item_system_path))
+                    if item.path.suffix.lower().lstrip('.') not in FeaturesService.ALLOWED_GEOSPATIAL_FEATURE_ASSET_EXTENSIONS:
+                        logger.info("{path} is unsupported; skipping.".format(path=item_system_path))
+                        continue
                     listing = client.listing(systemId, item.path)[0]
                     meta = client.getMetaAssociated(listing.uuid)
                     if not meta:

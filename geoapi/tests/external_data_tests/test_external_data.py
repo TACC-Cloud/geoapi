@@ -7,7 +7,8 @@ from geoapi.db import db_session
 from geoapi.tasks.external_data import (import_from_agave,
                                         import_point_clouds_from_agave,
                                         refresh_observable_projects,
-                                        get_additional_files)
+                                        get_additional_files,
+                                        is_member_of_rapp_project_folder)
 from geoapi.utils.agave import AgaveFileListing
 from geoapi.utils.assets import get_project_asset_dir, get_asset_path
 from geoapi.exceptions import InvalidCoordinateReferenceSystem
@@ -250,6 +251,14 @@ def test_refresh_observable_projects_dbsession_rollback(agave_utils_with_geojson
                                                         rollback_side_effect):
     refresh_observable_projects()
     rollback_side_effect.assert_called()
+
+
+def test_is_member_of_rapp_project_folder():
+    assert is_member_of_rapp_project_folder("/bar/RApp/foo.jpg")
+    assert is_member_of_rapp_project_folder("/bar/RApp/foo.jpg")
+    assert is_member_of_rapp_project_folder("/bar/RApp/bar/foo.jpg")
+    assert is_member_of_rapp_project_folder("/RApp/bar/foo.jpg")
+    assert not is_member_of_rapp_project_folder("/something/test.jpg")
 
 
 def test_get_additional_files_none(agave_utils_with_geojson_file):
