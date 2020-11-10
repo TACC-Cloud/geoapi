@@ -15,6 +15,14 @@ from geoapi.services.point_cloud import PointCloudService
 
 
 @pytest.fixture(scope="function")
+def get_system_users_mock(userdata):
+    u1 = db_session.query(User).get(1)
+    u2 = db_session.query(User).get(2)
+    with patch('geoapi.tasks.external_data.get_system_users', return_value=[u1.username, u2.username]) as get_system_users:
+        yield get_system_users
+
+
+@pytest.fixture(scope="function")
 def rollback_side_effect():
     with patch('geoapi.db.db_session.rollback', side_effect=db_session.rollback) as rollback:
         yield rollback
@@ -223,6 +231,16 @@ def test_import_from_agave_failed_dbsession_rollback(agave_utils_with_geojson_fi
         import_from_agave(userdata.id, "testSystem", "/testPath", projects_fixture.id)
 
     rollback_side_effect.assert_called()
+
+
+@pytest.mark.worker
+def test_refresh_observable_projects(agave_utils_with_image_file_from_rapp_folder,
+                                     observable_projects_fixture,
+                                     get_system_users_mock,
+                                     rollback_side_effect):
+    refresh_observable_projects()
+    rollback_side_effect.assert_not_called()
+    assert len(os.listdir(get_project_asset_dir(observable_projects_fixture.project_id))) == 2
 
 
 @pytest.mark.worker
