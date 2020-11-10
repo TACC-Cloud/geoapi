@@ -236,7 +236,7 @@ def import_from_agave(userId: int, systemId: str, path: str, projectId: int):
 
                 # If its a RApp project folder, grab the metadata from tapis meta service
                 if is_member_of_rapp_project_folder(item_system_path):
-                    logger.info("RApp import {path}".format(path=item_system_path))
+                    logger.info("RApp: importing:{} for user:{}".format(item_system_path, user.username))
                     if item.path.suffix.lower().lstrip('.') not in FeaturesService.ALLOWED_GEOSPATIAL_FEATURE_ASSET_EXTENSIONS:
                         logger.info("{path} is unsupported; skipping.".format(path=item_system_path))
                         continue
@@ -270,6 +270,7 @@ def import_from_agave(userId: int, systemId: str, path: str, projectId: int):
                     NotificationsService.create(user, "success", "Imported {f}".format(f=item_system_path))
                     tmpFile.close()
                 elif item.path.suffix.lower().lstrip('.') in FeaturesService.ALLOWED_GEOSPATIAL_EXTENSIONS:
+                    logger.info("importing:{} for user:{}".format(item_system_path, user.username))
                     tmpFile = client.getFile(systemId, item.path)
                     tmpFile.filename = Path(item.path).name
                     additional_files = get_additional_files(systemId, item.path, client, filenames_in_directory)
