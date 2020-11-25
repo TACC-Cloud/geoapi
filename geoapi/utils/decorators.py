@@ -15,6 +15,14 @@ from cryptography.hazmat.primitives import serialization
 import base64
 
 
+class AnonymousUser:
+    username = "Guest"
+
+
+def is_anonymous(user):
+    return isinstance(user, AnonymousUser)
+
+
 def get_pub_key():
     pkey = base64.b64decode(settings.JWT_PUB_KEY)
     pub_key = serialization.load_der_public_key(pkey,
@@ -26,23 +34,30 @@ def jwt_decoder(fn):
     @wraps(fn)
     def wrapper(*args, **kwargs):
         pub_key = get_pub_key()
-        # TODO: validate token
-        jwt_header_name, token, tenant = jwt_utils.jwt_tenant(request.headers)
+        user = None
         try:
-            decoded = jwt.decode(token, pub_key, verify=False)
-            username = decoded["http://wso2.org/claims/enduser"]
-            # remove ant @carbon.super or other nonsense, the tenant
-            # we get from the header anyway
-            username = username.split("@")[0]
-        except Exception as e:
-            logger.exception(e)
-            abort(400, 'could not decode JWT')
+            jwt_header_name, token, tenant = jwt_utils.jwt_tenant(request.headers)
+        except ValueError:
+            # TODO consider using something else like Flask-Login
+            # if not JWT information is provided in header, then this is a guest user
+            user = AnonymousUser()
+        if user is None:
+            try:
+                # TODO: validate token
+                decoded = jwt.decode(token, pub_key, verify=False)
+                username = decoded["http://wso2.org/claims/enduser"]
+                # remove ant @carbon.super or other nonsense, the tenant
+                # we get from the header anyway
+                username = username.split("@")[0]
+            except Exception as e:
+                logger.exception(e)
+                abort(400, 'could not decode JWT')
 
-        user = UserService.getUser(username, tenant)
-        if not user:
-            user = UserService.create(username=username, jwt=token, tenant=tenant)
-        # In case the JWT was updated for some reason, reset the jwt
-        UserService.setJWT(user, token)
+            user = UserService.getUser(username, tenant)
+            if not user:
+                user = UserService.create(username=username, jwt=token, tenant=tenant)
+            # In case the JWT was updated for some reason, reset the jwt
+            UserService.setJWT(user, token)
         request.current_user = user
         return fn(*args, **kwargs)
     return wrapper
@@ -56,9 +71,26 @@ def project_permissions(fn):
         if not proj:
             abort(404, "No project found")
         current_user = request.current_user
-        access = UserService.canAccess(current_user, projectId)
+        access = False if is_anonymous(current_user) else UserService.canAccess(current_user, projectId)
         if not access:
             abort(403, "Access denied")
+        return fn(*args, **kwargs)
+    return wrapper
+
+
+def project_permissions_allow_public(fn):
+    @wraps(fn)
+    def wrapper(*args, **kwargs):
+        projectId = kwargs.get("projectId")
+        proj = ProjectsService.get(projectId)
+        if not proj:
+            abort(404, "No project found")
+        if not proj.public:
+            current_user = request.current_user
+            access = False if is_anonymous(current_user) else UserService.canAccess(current_user, projectId)
+            logger.info("access:{}".format(access))
+            if not access:
+                abort(403, "Access denied")
         return fn(*args, **kwargs)
     return wrapper
 

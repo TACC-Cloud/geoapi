@@ -63,6 +63,14 @@ def projects_fixture():
 
 
 @pytest.fixture(scope="function")
+def public_projects_fixture(projects_fixture):
+    projects_fixture.public = True
+    db_session.add(projects_fixture)
+    db_session.commit()
+    yield projects_fixture
+
+
+@pytest.fixture(scope="function")
 def observable_projects_fixture():
     u1 = db_session.query(User).filter(User.username == "test1").first()
     proj = Project(name="test_observable",
@@ -118,11 +126,13 @@ def video_file_fixture():
     with open(os.path.join(home, 'fixtures/video.mov'), 'rb') as f:
         yield f
 
+
 @pytest.fixture(scope="function")
 def flipped_image_fixture():
     home = os.path.dirname(__file__)
     with open(os.path.join(home, 'fixtures/flipped_image.jpg'), 'rb') as f:
         yield f
+
 
 @pytest.fixture(scope="function")
 def corrected_image_fixture():

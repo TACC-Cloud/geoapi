@@ -8,7 +8,7 @@ from geoapi.schemas import FeatureSchema
 from geoapi.services.features import FeaturesService
 from geoapi.services.projects import ProjectsService
 from geoapi.services.point_cloud import PointCloudService
-from geoapi.utils.decorators import jwt_decoder, project_permissions, project_feature_exists, \
+from geoapi.utils.decorators import jwt_decoder, project_permissions_allow_public, project_permissions, project_feature_exists, \
     project_point_cloud_exists, project_point_cloud_not_processing
 from geoapi.tasks import external_data
 
@@ -171,7 +171,7 @@ class ProjectResource(Resource):
     @api.doc(id="getProjectById",
              description="Get the metadata about a project")
     @api.marshal_with(project)
-    @project_permissions
+    @project_permissions_allow_public
     def get(self, projectId: int):
         return ProjectsService.get(projectId)
 
@@ -257,7 +257,7 @@ class ProjectFeaturesResource(Resource):
              parser=parser,
              description="GET all the features of a project as GeoJSON")
     @api.marshal_with(feature_collection_model, as_list=True)
-    @project_permissions
+    @project_permissions_allow_public
     def get(self, projectId: int):
         logger.info("Get features of project:{} for user:{}".format(
             projectId, request.current_user.username))
@@ -280,7 +280,7 @@ class ProjectFeatureResource(Resource):
     @api.doc(id="getFeature",
              description="GET a feature of a project as GeoJSON")
     @api.marshal_with(api_feature)
-    @project_permissions
+    @project_permissions_allow_public
     def get(self, projectId: int, featureId: int):
         return FeaturesService.get(featureId)
 
@@ -419,7 +419,7 @@ class ProjectOverlaysResource(Resource):
     @api.doc(id="getOverlays",
              description='Get a list of all the overlays associated with the current map project.')
     @api.marshal_with(overlay, as_list=True)
-    @project_permissions
+    @project_permissions_allow_public
     def get(self, projectId: int):
         ovs = FeaturesService.getOverlays(projectId)
         return ovs

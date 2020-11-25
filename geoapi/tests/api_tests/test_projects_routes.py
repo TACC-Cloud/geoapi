@@ -35,6 +35,21 @@ def test_project_data(test_client, projects_fixture):
     assert data[0]["description"] == "description"
 
 
+def test_project_data_protected(test_client, projects_fixture):
+    u2 = db_session.query(User).get(2)
+    resp = test_client.get('/projects/{}/'.format(projects_fixture.id), headers={'x-jwt-assertion-test': u2.jwt})
+    assert resp.status_code == 403
+
+
+def test_project_data_allow_public_access(test_client, public_projects_fixture):
+    resp = test_client.get('/projects/{}/'.format(public_projects_fixture.id))
+    assert resp.status_code == 200
+
+    u2 = db_session.query(User).get(2)
+    resp = test_client.get('/projects/{}/'.format(public_projects_fixture.id), headers={'x-jwt-assertion-test': u2.jwt})
+    assert resp.status_code == 200
+
+
 def test_delete_empty_project(test_client, projects_fixture):
     u1 = db_session.query(User).get(1)
     resp = test_client.delete('/projects/1/', headers={'x-jwt-assertion-test': u1.jwt})
@@ -46,6 +61,13 @@ def test_delete_empty_project(test_client, projects_fixture):
 def test_delete_unauthorized(test_client, projects_fixture):
     u2 = db_session.query(User).get(2)
     resp = test_client.delete('/projects/1/', headers={'x-jwt-assertion-test': u2.jwt})
+    assert resp.status_code == 403
+    proj = db_session.query(Project).get(1)
+    assert proj is not None
+
+
+def test_delete_unauthorized_guest(test_client, projects_fixture):
+    resp = test_client.delete('/projects/1/')
     assert resp.status_code == 403
     proj = db_session.query(Project).get(1)
     assert proj is not None
@@ -88,6 +110,9 @@ def test_delete_user_unauthorized(test_client, projects_fixture):
     u2 = db_session.query(User).get(2)
     resp = test_client.delete('/projects/1/users/test1/',
                               headers={'x-jwt-assertion-test': u2.jwt})
+    assert resp.status_code == 403
+
+    test_client.delete('/projects/1/users/test1/')
     assert resp.status_code == 403
 
 
@@ -137,10 +162,24 @@ def test_get_project_features_empty(test_client, projects_fixture):
     assert len(data['features']) == 0
 
 
+def test_get_project_features_empty_public_access(test_client, public_projects_fixture):
+    resp = test_client.get('/projects/{}/features/'.format(public_projects_fixture.id))
+    assert resp.status_code == 200
+    data = resp.get_json()
+    assert len(data['features']) == 0
+
+
 def test_get_project_features_single_feature(test_client, projects_fixture, feature_fixture):
     u1 = db_session.query(User).get(1)
     resp = test_client.get('/projects/1/features/',
                            headers={'x-jwt-assertion-test': u1.jwt})
+    data = resp.get_json()
+    assert resp.status_code == 200
+    assert len(data['features']) != 0
+
+
+def test_get_project_features_single_feature_public_access(test_client, public_projects_fixture, feature_fixture):
+    resp = test_client.get('/projects/{}/features/'.format(public_projects_fixture.id))
     data = resp.get_json()
     assert resp.status_code == 200
     assert len(data['features']) != 0
@@ -199,6 +238,7 @@ def test_import_shapefile_tapis(test_client, projects_fixture, import_file_from_
         headers={'x-jwt-assertion-test': u1.jwt}
     )
     assert resp.status_code == 200
+
 
 def test_observable_project(test_client,
                             userdata,
