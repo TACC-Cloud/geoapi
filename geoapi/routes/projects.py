@@ -149,7 +149,7 @@ class ProjectsListing(Resource):
     def post(self):
         u = request.current_user
         logger.info("Create project for user:{} : {}".format(u.username,
-                                                            api.payload))
+                                                             api.payload))
         return ProjectsService.create(api.payload, u)
 
 
@@ -162,7 +162,7 @@ class RapidProject(Resource):
     def post(self):
         u = request.current_user
         logger.info("Create rapid project for user {}: {}".format(u.username, api.payload))
-        return ProjectsService.createRapidProject(api.payload, u);
+        return ProjectsService.createRapidProject(api.payload, u)
 
 
 @api.route('/<int:projectId>/')

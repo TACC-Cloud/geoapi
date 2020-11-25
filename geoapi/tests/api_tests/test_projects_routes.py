@@ -271,6 +271,7 @@ def test_observable_project_already_exists(test_client,
     assert resp.status_code == 409
     assert "Conflict, a project for this storage system/path already exists" in resp.json['message']
 
+
 def test_update_project(test_client, projects_fixture):
     u1 = db_session.query(User).get(1)
     data = {'name': "Renamed Project", 'description': "New Description"}
