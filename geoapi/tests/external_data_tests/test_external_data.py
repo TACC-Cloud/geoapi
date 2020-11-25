@@ -114,7 +114,7 @@ def test_external_data_rapp(userdata, projects_fixture, agave_utils_with_image_f
     # should be one feature with a single image asset
     assert len(features) == 1
     assert len(features[0].assets) == 1
-    assert len(os.listdir(get_project_asset_dir(features[0].project_id))) == 2 # processed image + thumbnail
+    assert len(os.listdir(get_project_asset_dir(features[0].project_id))) == 2  # processed image + thumbnail
     # This should only have been called once, since there is only one FILE in the listing
     agave_utils_with_image_file_from_rapp_folder.getFile.assert_called_once()
 
