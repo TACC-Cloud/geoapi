@@ -100,6 +100,19 @@ overlay = api.model('Overlay', {
     'label': fields.String()
 })
 
+tile_server = api.model('TileServer', {
+    'id': fields.Integer(),
+    'name': fields.String(),
+    'type': fields.String(),
+    'url': fields.String(),
+    'attribution': fields.String(),
+    'opacity': fields.Integer(),
+    'zIndex': fields.Integer(),
+    'maxZoom': fields.Integer(),
+    'minZoom': fields.Integer(),
+    'isActive': fields.Boolean()
+})
+
 file_upload_parser = api.parser()
 file_upload_parser.add_argument('file', location='files', type=FileStorage, required=True)
 
@@ -574,3 +587,41 @@ class ProjectTasksResource(Resource):
         from geoapi.models import Task
         from geoapi.db import db_session
         return db_session.query(Task).all()
+
+@api.route('/<int:projectId>/tile-servers/')
+class ProjectTileServersResource(Resource):
+    @api.doc(id="addTileServer",
+             description='Add a new tile server to a project.')
+    @api.expect(tile_server)
+    @api.marshal_with(tile_server)
+    @project_permissions
+    def post(self, projectId: int):
+        logger.info("Add tile server to project:{} for user:{}".format(
+            projectId, request.current_user.username))
+
+        formData = request.form
+        metadata = formData.to_dict()
+        
+        ts = FeaturesService.addTileServer(projectId, metadata)
+        return ts
+
+    @api.doc(id="getTileServers",
+             description='Get a list of all the tile servers associated with the current map project.')
+    @api.marshal_with(tile_server, as_list=True)
+    @project_permissions
+    def get(self, projectId: int):
+        tsv = FeaturesService.getTileServers(projectId)
+        return tsv
+    
+
+@api.route('/<int:projectId>/tile-servers/<int:tileServerId>/')
+class ProjectTileServerResource(Resource):
+
+    @api.doc(id="removeTileServer",
+             description='Remove a tile server from a project')
+    @project_permissions
+    def delete(self, projectId: int, tileServerId: int) -> str:
+        logger.info("Delete tile server:{} in project:{} for user:{}".format(
+            tileServerId, projectId, request.current_user.username))
+        FeaturesService.deleteTileServer(projectId, tileServerId)
+        return "Tile Server {id} deleted".format(id=tileServerId)

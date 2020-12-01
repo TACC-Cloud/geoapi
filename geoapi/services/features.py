@@ -13,7 +13,7 @@ import geojson
 
 from geoapi.services.images import ImageService, ImageData
 from geoapi.services.vectors import VectorService
-from geoapi.models import Feature, FeatureAsset, Overlay, User
+from geoapi.models import Feature, FeatureAsset, Overlay, User, TileServer
 from geoapi.db import db_session
 from geoapi.exceptions import InvalidGeoJSON, ApiException
 from geoapi.utils.assets import make_project_asset_dir, delete_assets, get_asset_relative_path
@@ -475,3 +475,42 @@ class FeaturesService:
         db_session.delete(ov)
         db_session.commit()
 
+
+    @staticmethod
+    def addTileServer(projectId: int, metadata: Dict):
+        """
+
+        :param projectId: int
+        :param metadata: Dict
+        :return: ts: TileServer
+        """
+        ts = TileServer()
+        
+        ts.name = metadata['name']
+        ts.type = metadata['type']
+        ts.url = metadata['url']
+        ts.attribution = metadata['attribution']
+        ts.opacity = metadata['opacity']
+        ts.zIndex = metadata['zIndex']
+        ts.maxZoom = metadata['maxZoom']
+        ts.minZoom = metadata['minZoom']
+        ts.isActive = metadata['isActive']
+        ts.project_id = projectId
+        ts.isActive = True
+        
+        db_session.add(ts)
+        db_session.commit()
+        return ts
+        
+    @staticmethod
+    def getTileServers(projectId: int) -> List[TileServer]:
+        tile_servers = db_session.query(TileServer).filter_by(project_id=projectId).all()
+        print(tile_servers[0].name)
+        print(tile_servers[0].id)
+        return tile_servers
+
+    @staticmethod
+    def deleteTileServer(projectId: int, tileServerId: int) -> None:
+        ts = db_session.query(TileServer).get(tileServerId)
+        db_session.delete(ts)
+        db_session.commit()
