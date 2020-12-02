@@ -27,6 +27,8 @@ def test_insert_feature_geojson(projects_fixture, feature_properties_file_fixtur
     assert db_session.query(Feature).count() == 1
     assert db_session.query(FeatureAsset).count() == 0
 
+    assert features[0].properties == {"name": "test"}
+
 
 def test_insert_feature_collection(projects_fixture, geojson_file_fixture):
     features = FeaturesService.fromGeoJSON(projects_fixture.id, geojson_file_fixture, metadata={})
@@ -34,6 +36,9 @@ def test_insert_feature_collection(projects_fixture, geojson_file_fixture):
         assert feature.project_id == projects_fixture.id
     assert db_session.query(Feature).count() == 3
     assert db_session.query(FeatureAsset).count() == 0
+    assert features[0].properties == {"prop0": "value0"}
+    assert features[1].properties == {"prop0": "value0", "prop1": 0.0}
+    assert features[2].properties == {"prop0": "value0", "prop1": {"this": "that"}}
 
 
 def test_remove_feature(projects_fixture, feature_fixture):
