@@ -106,7 +106,7 @@ tile_server = api.model('TileServer', {
     'type': fields.String(),
     'url': fields.String(),
     'attribution': fields.String(),
-    'opacity': fields.Integer(),
+    'opacity': fields.Float(),
     'zIndex': fields.Integer(),
     'maxZoom': fields.Integer(),
     'minZoom': fields.Integer(),
@@ -611,7 +611,22 @@ class ProjectTileServersResource(Resource):
     @project_permissions
     def get(self, projectId: int):
         tsv = FeaturesService.getTileServers(projectId)
+        print(tsv[0].name)
+        print(tsv[0].opacity)        
         return tsv
+
+    @api.doc(id="updateTileServers",
+             description="Update metadata about a tile servers")
+    @api.marshal_with(tile_server, as_list=True)
+    @project_permissions
+    def put(self, projectId: int):
+        u = request.current_user
+        logger.info("Update project:{} for user:{}".format(projectId,
+                                                           u.username))
+
+        FeaturesService.updateTileServers(projectId=projectId,
+                                          dataList=api.payload)
+        
     
 
 @api.route('/<int:projectId>/tile-servers/<int:tileServerId>/')
@@ -625,3 +640,17 @@ class ProjectTileServerResource(Resource):
             tileServerId, projectId, request.current_user.username))
         FeaturesService.deleteTileServer(projectId, tileServerId)
         return "Tile Server {id} deleted".format(id=tileServerId)
+
+    @api.doc(id="updateTileServer",
+             description="Update metadata about a tile server")
+    @api.marshal_with(tile_server)
+    @project_permissions
+    def put(self, projectId: int, tileServerId: int):
+        u = request.current_user
+        logger.info("Update project:{} for user:{}".format(projectId,
+                                                           u.username))
+        
+        return FeaturesService.updateTileServer(projectId=projectId,
+                                                tileServerId=tileServerId,
+                                                data=api.payload)
+    

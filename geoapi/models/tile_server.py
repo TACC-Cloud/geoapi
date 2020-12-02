@@ -17,6 +17,7 @@ class TileServer(Base):
     url = Column(String(), nullable=False)
     attribution = Column(String(), nullable=False)
     opacity = Column(Numeric(), nullable=False)
+    zIndex = Column(Numeric(), nullable=True)
     maxZoom = Column(Numeric(), nullable=False)
     minZoom = Column(Numeric(), nullable=False)
     isActive = Column(Boolean(), nullable=False)
