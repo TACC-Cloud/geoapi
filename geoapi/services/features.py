@@ -49,12 +49,12 @@ class FeaturesService:
         'shp',
     )
 
-    ALLOWED_GEOSPATIAL_EXTENSIONS = IMAGE_FILE_EXTENSIONS + GPX_FILE_EXTENSIONS + GEOJSON_FILE_EXTENSIONS + \
-                                    SHAPEFILE_FILE_EXTENSIONS
+    ALLOWED_GEOSPATIAL_EXTENSIONS = IMAGE_FILE_EXTENSIONS + GPX_FILE_EXTENSIONS + GEOJSON_FILE_EXTENSIONS \
+        + SHAPEFILE_FILE_EXTENSIONS
 
     ALLOWED_EXTENSIONS = IMAGE_FILE_EXTENSIONS + VIDEO_FILE_EXTENSIONS \
-                         + AUDIO_FILE_EXTENSIONS + GPX_FILE_EXTENSIONS \
-                         + GEOJSON_FILE_EXTENSIONS + SHAPEFILE_FILE_EXTENSIONS
+        + AUDIO_FILE_EXTENSIONS + GPX_FILE_EXTENSIONS \
+        + GEOJSON_FILE_EXTENSIONS + SHAPEFILE_FILE_EXTENSIONS
 
     @staticmethod
     def get(featureId: int) -> Feature:
@@ -129,7 +129,6 @@ class FeaturesService:
             feat.properties.pop("thumb_src")
         return feat
 
-
     @staticmethod
     def fromLatLng(projectId: int, lat: float, lng: float, metadata: Dict) -> Feature:
         point = Point(lng, lat)
@@ -190,7 +189,8 @@ class FeaturesService:
         return features
 
     @staticmethod
-    def fromShapefile(projectId: int, fileObj: IO, metadata: Dict, additional_files: List[IO], original_path=None) -> Feature:
+    def fromShapefile(projectId: int, fileObj: IO, metadata: Dict, additional_files: List[IO],
+                      original_path=None) -> Feature:
         """ Create features from shapefile
 
         :param projectId: int
@@ -213,7 +213,7 @@ class FeaturesService:
         return features
 
     @staticmethod
-    def fromFileObj(projectId: int, fileObj: IO, metadata: Dict, original_path: str=None, additional_files=None) -> List[Feature]:
+    def fromFileObj(projectId: int, fileObj: IO, metadata: Dict, original_path: str = None, additional_files=None) -> List[Feature]:
         ext = pathlib.Path(fileObj.filename).suffix.lstrip(".").lower()
         if ext in FeaturesService.IMAGE_FILE_EXTENSIONS:
             return [FeaturesService.fromImage(projectId, fileObj, metadata, original_path)]
@@ -227,7 +227,7 @@ class FeaturesService:
             raise ApiException("Filetype not supported for direct upload. Create a feature and attach as an asset?")
 
     @staticmethod
-    def fromImage(projectId: int, fileObj: IO, metadata: Dict, original_path: str=None) -> Feature:
+    def fromImage(projectId: int, fileObj: IO, metadata: Dict, original_path: str = None) -> Feature:
         """
         Create a Point feature from a georeferenced image
         :param projectId: int
@@ -311,7 +311,6 @@ class FeaturesService:
         db_session.commit()
         return feat
 
-
     @staticmethod
     def featureAssetFromImData(projectId: int, imdata: ImageData) -> FeatureAsset:
         asset_uuid = uuid.uuid4()
@@ -327,7 +326,7 @@ class FeaturesService:
         return fa
 
     @staticmethod
-    def createImageFeatureAsset(projectId: int, fileObj: IO, original_path: str=None) -> FeatureAsset:
+    def createImageFeatureAsset(projectId: int, fileObj: IO, original_path: str = None) -> FeatureAsset:
         asset_uuid = uuid.uuid4()
         imdata = ImageService.resizeImage(fileObj)
         base_filepath = make_project_asset_dir(projectId)
@@ -344,7 +343,7 @@ class FeaturesService:
         return fa
 
     @staticmethod
-    def createVideoFeatureAsset(projectId: int, fileObj: IO, original_path:str =None) -> FeatureAsset:
+    def createVideoFeatureAsset(projectId: int, fileObj: IO, original_path: str = None) -> FeatureAsset:
         """
 
         :param projectId:
@@ -438,7 +437,6 @@ class FeaturesService:
         db_session.commit()
         return ov
 
-
     @staticmethod
     def addOverlayFromTapis(user: User, project_id: int, system_id: str,
                             path: str, bounds: List[float], label: str) -> Overlay:
@@ -446,7 +444,6 @@ class FeaturesService:
         file_obj = client.getFile(system_id, path)
         ov = FeaturesService.addOverlay(project_id, file_obj, bounds, label)
         return ov
-
 
     @staticmethod
     def getOverlays(projectId: int) -> List[Overlay]:
@@ -459,4 +456,3 @@ class FeaturesService:
         delete_assets(projectId=projectId, uuid=ov.uuid)
         db_session.delete(ov)
         db_session.commit()
-
