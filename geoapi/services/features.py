@@ -1,7 +1,6 @@
 import os
 import pathlib
 import uuid
-import json
 import tempfile
 from typing import List, IO, Dict
 
@@ -9,7 +8,8 @@ from geoapi.services.videos import VideoService
 from shapely.geometry import Point, shape
 import fiona
 from geoalchemy2.shape import from_shape
-import geojson
+import geopandas
+import pandas
 
 from geoapi.services.images import ImageService, ImageData
 from geoapi.services.vectors import VectorService
@@ -117,40 +117,7 @@ class FeaturesService:
         db_session.commit()
         return feat
 
-    @staticmethod
-    def addGeoJSON(projectId: int, feature: Dict, original_path=None) -> List[Feature]:
-        """
-        Add a GeoJSON feature to a project
-        :param projectId: int
-        :param feature: dict
-        :return: Feature
-        """
-        try:
-            data = geojson.loads(json.dumps(feature))
-        except ValueError:
-            raise InvalidGeoJSON
-        features = []
-        if data["type"] == "Feature":
-            feat = Feature.fromGeoJSON(data)
-            feat.project_id = projectId
-            # strip out image_src, thumb_src if they are there from the old hazmapper geojson
-            feat = FeaturesService._importHazmapperV1Images(feat)
-            db_session.add(feat)
-            features.append(feat)
-        elif data["type"] == "FeatureCollection":
-            fc = geojson.FeatureCollection(data)
-            for feature in fc.features:
-                feat = Feature.fromGeoJSON(feature)
-                feat.project_id = projectId
-                feat = FeaturesService._importHazmapperV1Images(feat)
-                db_session.add(feat)
-                features.append(feat)
-        else:
-            raise InvalidGeoJSON("Valid GeoJSON must be either a Feature or FeatureCollection.")
-        db_session.commit()
-        return features
-
-    #TODO: we should be able to get rid of the old Hazmapper stuff at some point...
+    # TODO: we should be able to get rid of the old Hazmapper stuff at some point...
     @staticmethod
     def _importHazmapperV1Images(feat: Feature) -> Feature:
         if feat.properties.get("image_src"):
@@ -195,14 +162,32 @@ class FeaturesService:
 
         :param projectId: int
         :param fileObj: file descriptor
-        :param metadata: Dict of <key, val> pairs
-        :param original_path: str path of original file location
+        :param metadata: Dict of <key, val> pairs [IGNORED}
+        :param original_path: str path of original file location [IGNORED}
         :return: Feature
         """
-        data = json.loads(fileObj.read())
-        fileObj.close()
-        return FeaturesService.addGeoJSON(projectId, data)
+        try:
+            data_frame = geopandas.read_file(fileObj)
+        except ValueError:
+            raise InvalidGeoJSON
+        features = []
+        for index, row in data_frame.iterrows():
+            properties = {key: value for key, value in row.items()
+                          if (key != 'geometry' and key != 'id' and value is not None and pandas.notna(value))}
+            geometry = row['geometry']
+            if geometry:
+                feat = Feature()
+                feat.project_id = projectId
+                feat.the_geom = from_shape(geometries.convert_3D_2D(geometry), srid=4326)
+                feat.properties = properties
+                # strip out image_src, thumb_src if they are there from the old hazmapper geojson
+                feat = FeaturesService._importHazmapperV1Images(feat)
+                db_session.add(feat)
+                features.append(feat)
 
+        # todo raise InvalidGeoJSON("Valid GeoJSON must be either a Feature or FeatureCollection.")
+        db_session.commit()
+        return features
 
     @staticmethod
     def fromShapefile(projectId: int, fileObj: IO, metadata: Dict, additional_files: List[IO], original_path=None) -> Feature:

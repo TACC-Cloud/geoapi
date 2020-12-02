@@ -15,8 +15,7 @@ def test_hazmapperv1_file_with_images(projects_fixture, hazmpperV1_file):
 
 def test_hazmapperv1_file_with_null_coordinate_feature(projects_fixture, hazmpperV1_null_coordinates_file):
     features = FeaturesService.fromGeoJSON(projects_fixture.id, hazmpperV1_null_coordinates_file, metadata={})
-    assert len(features) == 2
-    assert len(features[1].assets) == 0
+    assert len(features) == 1  # 2 features in file but only one is valid as the other has null coordinates
 
 
 def test_insert_feature_geojson(projects_fixture, feature_properties_file_fixture):
@@ -37,8 +36,8 @@ def test_insert_feature_collection(projects_fixture, geojson_file_fixture):
     assert db_session.query(Feature).count() == 3
     assert db_session.query(FeatureAsset).count() == 0
     assert features[0].properties == {"prop0": "value0"}
-    assert features[1].properties == {"prop0": "value0", "prop1": 0.0}
-    assert features[2].properties == {"prop0": "value0", "prop1": {"this": "that"}}
+    assert features[1].properties == {"prop0": "value0", "prop1": 0}
+    assert features[2].properties == {"prop0": "value0", "prop3": {"this": "that"}}
 
 
 def test_remove_feature(projects_fixture, feature_fixture):
@@ -120,3 +119,8 @@ def test_create_feature_shpfile(projects_fixture, shapefile_fixture, shapefile_a
     assert len(features) == 10
     assert db_session.query(Feature).count() == 10
     assert features[0].project_id == projects_fixture.id
+    assert features[0].properties == {'continent': 'South America',
+                                      'gdp_md_est': 436100.0,
+                                      'iso_a3': 'CHL',
+                                      'name': 'Chile',
+                                      'pop_est': 17789267}
