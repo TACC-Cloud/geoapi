@@ -168,11 +168,12 @@ class FeaturesService:
         try:
             data_frame = geopandas.read_file(fileObj)
         except ValueError:
+            logger.exception("Error reading geojson file")
             raise InvalidGeoJSON
         features = []
         for index, row in data_frame.iterrows():
             properties = {key: value for key, value in row.items()
-                          if (key != 'geometry' and key != 'id' and value is not None and pandas.notna(value))}
+                          if (key != 'geometry' and key != 'id' and pandas.notna(value))}
             geometry = row['geometry']
             if geometry:
                 feat = Feature()
@@ -184,7 +185,8 @@ class FeaturesService:
                 db_session.add(feat)
                 features.append(feat)
 
-        # todo raise InvalidGeoJSON("Valid GeoJSON must be either a Feature or FeatureCollection.")
+        if len(features) == 0:
+            raise InvalidGeoJSON("Valid GeoJSON must be either a Feature or FeatureCollection (and have a valid geometry")
         db_session.commit()
         return features
 
