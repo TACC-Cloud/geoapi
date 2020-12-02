@@ -13,6 +13,12 @@ def test_hazmapperv1_file_with_images(projects_fixture, hazmpperV1_file):
     assert len(features[1].assets) == 1
 
 
+def test_hazmapperv1_file_with_null_coordinate_feature(projects_fixture, hazmpperV1_null_coordinates_file):
+    features = FeaturesService.fromGeoJSON(projects_fixture.id, hazmpperV1_null_coordinates_file, metadata={})
+    assert len(features) == 2
+    assert len(features[1].assets) == 0
+
+
 def test_insert_feature_geojson(projects_fixture, feature_properties_file_fixture):
     features = FeaturesService.fromGeoJSON(projects_fixture.id, feature_properties_file_fixture, metadata={})
     feature = features[0]

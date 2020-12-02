@@ -138,6 +138,13 @@ def hazmpperV1_file():
         yield f
 
 
+@pytest.fixture()
+def hazmpperV1_null_coordinates_file():
+    home = os.path.dirname(__file__)
+    with open(os.path.join(home, 'fixtures/hazmapperv1_null_coordinate_feature.json'), 'rb') as f:
+        yield f
+
+
 @pytest.fixture(scope="function")
 def geojson_file_fixture():
     home = os.path.dirname(__file__)

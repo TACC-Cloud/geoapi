@@ -1,0 +1,59 @@
+{
+    "type": "FeatureCollection",
+    "features": [
+        {
+            "type": "Feature",
+            "properties": {
+                "name": "Start",
+                "time": "2019-07-06T00:06:03Z",
+                "sym": "",
+                "color": "#ff0000",
+                "fillColor": "#ff0000",
+                "opacity": 1,
+                "metadata": [
+                    {
+                        "key": "Offset (in)",
+                        "value": "2"
+                    }
+                ]
+            },
+            "geometry": {
+                "type": "Point",
+                "coordinates": [
+                    null,
+                    null,
+                    733.803171
+                ]
+            },
+            "layer_group_index": 1
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "name": "End",
+                "time": "2019-07-06T00:24:27Z",
+                "sym": "",
+                "color": "#ff0000",
+                "fillColor": "#ff0000",
+                "opacity": 1
+            },
+            "geometry": {
+                "type": "Point",
+                "coordinates": [
+                    -117.669831,
+                    35.615781,
+                    697.156967
+                ]
+            },
+            "layer_group_index": 1
+        }
+    ],
+    "ds_map": true,
+    "name": "Day1",
+    "description": null,
+    "num_layers": 2,
+    "layer_groups": [
+        "New Group",
+        "New Group"
+    ]
+}
