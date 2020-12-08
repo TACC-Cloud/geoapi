@@ -282,7 +282,7 @@ def test_observable_project_already_exists(test_client,
 
 def test_update_project(test_client, projects_fixture):
     u1 = db_session.query(User).get(1)
-    data = {'name': "Renamed Project", 'description': "New Description"}
+    data = {'name': "Renamed Project", 'description': "New Description", 'public': True}
     resp = test_client.put(
         '/projects/1/',
         json=data,
@@ -292,6 +292,7 @@ def test_update_project(test_client, projects_fixture):
     proj = db_session.query(Project).get(1)
     assert proj.name == "Renamed Project"
     assert proj.description == "New Description"
+    assert proj.public == True
 
 
 def test_update_project_unauthorized_guest(test_client, public_projects_fixture):
