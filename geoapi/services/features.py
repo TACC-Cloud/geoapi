@@ -485,7 +485,7 @@ class FeaturesService:
         :return: ts: TileServer
         """
         ts = TileServer()
-        
+
         ts.name = metadata['name']
         ts.type = metadata['type']
         ts.url = metadata['url']
@@ -494,17 +494,16 @@ class FeaturesService:
         ts.zIndex = metadata['zIndex']
         ts.maxZoom = metadata['maxZoom']
         ts.minZoom = metadata['minZoom']
-        ts.isActive = json.loads(metadata['isActive'])                    
+        ts.isActive = json.loads(metadata['isActive'])
         ts.project_id = projectId
-        
+
         db_session.add(ts)
         db_session.commit()
         return ts
-        
+
     @staticmethod
     def getTileServers(projectId: int) -> List[TileServer]:
         tile_servers = db_session.query(TileServer).filter_by(project_id=projectId).all()
-        print("HeHe", tile_servers[0].zIndex)
         return tile_servers
 
     @staticmethod
@@ -520,19 +519,20 @@ class FeaturesService:
         ts.opacity = data['opacity']
         ts.zIndex = data['zIndex']
         ts.isActive = json.loads(data['isActive'])
-        print(ts.opacity, "\n\n\n\n\n")
-        
+
         db_session.commit()
         return ts
-        
+
 
     @staticmethod
     def updateTileServers(projectId: int, dataList: List[dict]):
+        ret_list = []
         for tsv in dataList:
             ts = db_session.query(TileServer).get(int(tsv['id']))
             ts.name = tsv['name']
             ts.opacity = tsv['opacity']
             ts.zIndex = tsv['zIndex']
-            print(tsv['zIndex'])
             ts.isActive = json.loads(tsv['isActive'])
+            ret_list.append(ts)
             db_session.commit()
+        return ret_list

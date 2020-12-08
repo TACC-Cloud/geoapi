@@ -3,7 +3,7 @@ import os
 from werkzeug.datastructures import FileStorage
 from geoapi.db import db_session
 from geoapi.services.features import FeaturesService
-from geoapi.models import Feature, FeatureAsset
+from geoapi.models import Feature, FeatureAsset, TileServer
 from geoapi.utils.assets import get_project_asset_dir, get_asset_path
 
 
@@ -109,3 +109,114 @@ def test_create_feature_shpfile(projects_fixture, shapefile_fixture, shapefile_a
     assert len(features) == 10
     assert db_session.query(Feature).count() == 10
     assert features[0].project_id == projects_fixture.id
+
+def test_create_tile_server(projects_fixture):
+    data = {"name": "OSM",
+            "type": "tms",
+            "url": "png",
+            "attribution": "contributors",
+            "opacity": 1,
+            "zIndex": 0,
+            "minZoom": 0,
+            "maxZoom": 19,
+            "isActive": "true"}
+
+    tile_server = FeaturesService.addTileServer(projectId=projects_fixture.id, metadata=data)
+    assert tile_server.name == "OSM"
+    assert tile_server.type == "tms"
+    assert tile_server.url == "png"
+    assert tile_server.attribution == "contributors"
+    assert tile_server.opacity == 1
+    assert tile_server.zIndex == 0
+    assert tile_server.minZoom == 0
+    assert tile_server.maxZoom == 19
+    assert tile_server.isActive == True
+
+def test_remove_tile_server(projects_fixture):
+    data = {"name": "OSM",
+            "type": "tms",
+            "url": "png",
+            "attribution": "contributors",
+            "opacity": 1,
+            "zIndex": 0,
+            "minZoom": 0,
+            "maxZoom": 19,
+            "isActive": "true"}
+
+    tile_server = FeaturesService.addTileServer(projectId=projects_fixture.id, metadata=data)
+    FeaturesService.deleteTileServer(projects_fixture.id,
+                                     tile_server.id)
+
+    assert db_session.query(TileServer).count() == 0
+
+def test_update_tile_server(projects_fixture):
+    data = {"name": "OSM",
+            "type": "tms",
+            "url": "png",
+            "attribution": "contributors",
+            "opacity": 0,
+            "zIndex": 0,
+            "minZoom": 0,
+            "maxZoom": 19,
+            "isActive": "true"}
+
+    tile_server = FeaturesService.addTileServer(projectId=projects_fixture.id, metadata=data)
+
+    updated_data = {
+        "name": "NewTestName",
+        "opacity": 1,
+        "zIndex": -5,
+        "isActive": "false"
+    }
+
+    updated_tile_server = FeaturesService.updateTileServer(projectId=projects_fixture.id,
+                                                           tileServerId=1,
+                                                           data=updated_data)
+    assert updated_tile_server.name == "NewTestName"
+    assert updated_tile_server.opacity == 1
+    assert updated_tile_server.zIndex == -5
+    assert updated_tile_server.isActive == False
+
+def test_update_tile_servers(projects_fixture):
+    data = {"name": "Test1",
+            "type": "tms",
+            "url": "png",
+            "attribution": "contributors",
+            "opacity": 1,
+            "zIndex": 0,
+            "minZoom": 0,
+            "maxZoom": 19,
+            "isActive": "true"}
+
+    tile_server1 = FeaturesService.addTileServer(projectId=projects_fixture.id, metadata=data)
+    data['name'] = 'Test2'
+    tile_server2 = FeaturesService.addTileServer(projectId=projects_fixture.id, metadata=data)
+
+    updated_data = [
+        {
+            "name": "NewTestName",
+            "id": tile_server1.id,
+            "opacity": 0,
+            "zIndex": -5,
+            "isActive": "false"
+        },
+        {
+            "name": "OtherTestName",
+            "id": tile_server2.id,
+            "opacity": 1,
+            "zIndex": -3,
+            "isActive": "false"
+        }
+    ]
+
+    updated_tile_server_list = FeaturesService.updateTileServers(projectId=projects_fixture.id, dataList=updated_data)
+
+    assert updated_tile_server_list[0].name == "NewTestName"
+    assert updated_tile_server_list[0].opacity == 0
+    assert updated_tile_server_list[0].zIndex == -5
+    assert updated_tile_server_list[0].isActive == False
+
+    assert updated_tile_server_list[1].name == "OtherTestName"
+    assert updated_tile_server_list[1].opacity == 1
+    assert updated_tile_server_list[1].zIndex == -3
+    assert updated_tile_server_list[1].isActive == False

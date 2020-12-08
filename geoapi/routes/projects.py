@@ -601,7 +601,7 @@ class ProjectTileServersResource(Resource):
 
         formData = request.form
         metadata = formData.to_dict()
-        
+
         ts = FeaturesService.addTileServer(projectId, metadata)
         return ts
 
@@ -612,7 +612,7 @@ class ProjectTileServersResource(Resource):
     def get(self, projectId: int):
         tsv = FeaturesService.getTileServers(projectId)
         print(tsv[0].name)
-        print(tsv[0].opacity)        
+        print(tsv[0].opacity)
         return tsv
 
     @api.doc(id="updateTileServers",
@@ -624,10 +624,11 @@ class ProjectTileServersResource(Resource):
         logger.info("Update project:{} for user:{}".format(projectId,
                                                            u.username))
 
-        FeaturesService.updateTileServers(projectId=projectId,
-                                          dataList=api.payload)
-        
-    
+        tsvs = FeaturesService.updateTileServers(projectId=projectId,
+                                                 dataList=api.payload)
+        return tsvs
+
+
 
 @api.route('/<int:projectId>/tile-servers/<int:tileServerId>/')
 class ProjectTileServerResource(Resource):
@@ -649,8 +650,7 @@ class ProjectTileServerResource(Resource):
         u = request.current_user
         logger.info("Update project:{} for user:{}".format(projectId,
                                                            u.username))
-        
+
         return FeaturesService.updateTileServer(projectId=projectId,
                                                 tileServerId=tileServerId,
                                                 data=api.payload)
-    

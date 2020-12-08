@@ -243,4 +243,3 @@ def test_update_project(test_client, projects_fixture):
     proj = db_session.query(Project).get(1)
     assert proj.name == "Renamed Project"
     assert proj.description == "New Description"
-    db_session.commit()
