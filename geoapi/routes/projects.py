@@ -57,7 +57,8 @@ project = api.model('Project', {
     'id': fields.Integer(),
     'name': fields.String(required=True),
     'description': fields.String(required=False),
-    'uuid': fields.String(),
+    'public': fields.Boolean(required=False),
+    'uuid': fields.String()
 })
 
 user = api.model('User', {

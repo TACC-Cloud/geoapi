@@ -222,6 +222,8 @@ class ProjectsService:
 
         current_project.name = data['name']
         current_project.description = data['description']
+        if 'public' in data:
+            current_project.public = data['public']
         db_session.commit()
 
         return current_project
