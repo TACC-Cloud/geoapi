@@ -93,6 +93,14 @@ def test_add_user_unauthorized(test_client, projects_fixture):
     assert resp.status_code == 403
 
 
+def test_add_user_unauthorized_guest(test_client, projects_fixture):
+    resp = test_client.post(
+        '/projects/1/users/',
+        json={"username": "newUser"},
+    )
+    assert resp.status_code == 403
+
+
 def test_delete_user(test_client, projects_fixture):
     u1 = db_session.query(User).get(1)
     resp = test_client.post(
@@ -284,4 +292,12 @@ def test_update_project(test_client, projects_fixture):
     proj = db_session.query(Project).get(1)
     assert proj.name == "Renamed Project"
     assert proj.description == "New Description"
-    db_session.commit()
+
+
+def test_update_project_unauthorized_guest(test_client, public_projects_fixture):
+    data = {'name': "Renamed Project", 'description': "New Description"}
+    resp = test_client.put(
+        '/projects/1/',
+        json=data
+    )
+    assert resp.status_code == 403
