@@ -63,17 +63,22 @@ def jwt_decoder(fn):
     return wrapper
 
 
-def project_permissions(fn):
-    @wraps(fn)
-    def wrapper(*args, **kwargs):
-        projectId = kwargs.get("projectId")
-        proj = ProjectsService.get(projectId)
-        if not proj:
-            abort(404, "No project found")
+def _project_permission(projectId, allow_public_use=False):
+    proj = ProjectsService.get(projectId)
+    if not proj:
+        abort(404, "No project found")
+    if not allow_public_use or not proj.public:
         current_user = request.current_user
         access = False if is_anonymous(current_user) else UserService.canAccess(current_user, projectId)
         if not access:
             abort(403, "Access denied")
+
+
+def project_permissions(fn):
+    @wraps(fn)
+    def wrapper(*args, **kwargs):
+        projectId = kwargs.get("projectId")
+        _project_permission(projectId)
         return fn(*args, **kwargs)
     return wrapper
 
@@ -82,15 +87,7 @@ def project_permissions_allow_public(fn):
     @wraps(fn)
     def wrapper(*args, **kwargs):
         projectId = kwargs.get("projectId")
-        proj = ProjectsService.get(projectId)
-        if not proj:
-            abort(404, "No project found")
-        if not proj.public:
-            current_user = request.current_user
-            access = False if is_anonymous(current_user) else UserService.canAccess(current_user, projectId)
-            logger.info("access:{}".format(access))
-            if not access:
-                abort(403, "Access denied")
+        _project_permission(projectId, allow_public_use=True)
         return fn(*args, **kwargs)
     return wrapper
 
