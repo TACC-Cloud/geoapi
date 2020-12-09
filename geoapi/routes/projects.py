@@ -611,8 +611,6 @@ class ProjectTileServersResource(Resource):
     @project_permissions
     def get(self, projectId: int):
         tsv = FeaturesService.getTileServers(projectId)
-        print(tsv[0].name)
-        print(tsv[0].opacity)
         return tsv
 
     @api.doc(id="updateTileServers",
