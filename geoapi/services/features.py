@@ -3,6 +3,7 @@ import pathlib
 import uuid
 import json
 import tempfile
+import configparser
 from typing import List, IO, Dict
 
 from geoapi.services.videos import VideoService
@@ -49,12 +50,17 @@ class FeaturesService:
         'shp',
     )
 
+    INI_FILE_EXTENSIONS = (
+        'ini',
+    )
+
     ALLOWED_GEOSPATIAL_EXTENSIONS = IMAGE_FILE_EXTENSIONS + GPX_FILE_EXTENSIONS + GEOJSON_FILE_EXTENSIONS + \
                                     SHAPEFILE_FILE_EXTENSIONS
 
     ALLOWED_EXTENSIONS = IMAGE_FILE_EXTENSIONS + VIDEO_FILE_EXTENSIONS \
                          + AUDIO_FILE_EXTENSIONS + GPX_FILE_EXTENSIONS \
-                         + GEOJSON_FILE_EXTENSIONS + SHAPEFILE_FILE_EXTENSIONS
+                         + GEOJSON_FILE_EXTENSIONS + SHAPEFILE_FILE_EXTENSIONS \
+                         + INI_FILE_EXTENSIONS
 
     @staticmethod
     def get(featureId: int) -> Feature:
@@ -203,7 +209,6 @@ class FeaturesService:
         fileObj.close()
         return FeaturesService.addGeoJSON(projectId, data)
 
-
     @staticmethod
     def fromShapefile(projectId: int, fileObj: IO, metadata: Dict, additional_files: List[IO], original_path=None) -> Feature:
         """ Create features from shapefile
@@ -227,6 +232,57 @@ class FeaturesService:
         db_session.commit()
         return features
 
+    # # TODO: Refactor
+    @staticmethod
+    def fromINI(projectId: int, fileObj: IO, metadata: Dict, original_path: str = None) -> TileServer:
+        """
+
+        :param projectId: int
+        :param fileObj: file descriptor
+        :param metadata: Dict of <key, val> pairs
+        :param original_path: str path of original file location
+        :return: Feature
+        """
+        config = configparser.ConfigParser(allow_no_value=True)
+        config.read_string(fileObj.read().decode('utf-8'))
+
+        tile_server_data = {}
+
+        general_config = config['general']
+
+        tile_server_data['name'] = general_config.get('id', '')
+        tile_server_data['type'] = general_config.get('type', '').lower()
+
+        if (config.has_section('license')):
+            license_config = config['license']
+            tile_server_data['attribution'] = license_config.get('name', '') \
+                + license_config.get('link', '') \
+                + license_config.get('copyright_text', '') \
+                + license_config.get('copyright_link', '') \
+                + license_config.get('terms_of_use', '')
+        else:
+            tile_server_data['attribution'] = ''
+
+        if (tile_server_data['type'] == 'tms'):
+            tms_config = config['tms']
+            tile_server_data['url'] = tms_config.get('url', fallback='')
+            tile_server_data['maxZoom'] = tms_config.getint('zmax', fallback=19)
+            tile_server_data['minZoom'] = tms_config.getint('zmin', fallback=0)
+        elif (tile_server_data['type'] == 'wms'):
+            wms_config = config['wms']
+            tile_server_data['url'] = wms_config.get('url', fallback='')
+            tile_server_data['wmsLayers'] = wms_config.get('layers', fallback='')
+            tile_server_data['wmsParams'] = wms_config.get('params', fallback='')
+
+        tile_server_data['isActive'] = True
+        tile_server_data['opacity'] = 1
+        tile_server_data['zIndex'] = 0
+
+        fileObj.close()
+
+        return FeaturesService.addTileServer(projectId, tile_server_data)
+
+
     @staticmethod
     def fromFileObj(projectId: int, fileObj: IO, metadata: Dict, original_path: str=None, additional_files=None) -> List[Feature]:
         ext = pathlib.Path(fileObj.filename).suffix.lstrip(".").lower()
@@ -238,6 +294,8 @@ class FeaturesService:
             return FeaturesService.fromGeoJSON(projectId, fileObj, {}, original_path)
         elif ext in FeaturesService.SHAPEFILE_FILE_EXTENSIONS:
             return FeaturesService.fromShapefile(projectId, fileObj, {}, additional_files, original_path)
+        elif ext in FeaturesService.INI_FILE_EXTENSIONS:
+            return FeaturesService.fromINI(projectId, fileObj, {}, original_path)
         else:
             raise ApiException("Filetype not supported for direct upload. Create a feature and attach as an asset?")
 
@@ -492,10 +550,16 @@ class FeaturesService:
         ts.attribution = metadata['attribution']
         ts.opacity = metadata['opacity']
         ts.zIndex = metadata['zIndex']
-        ts.maxZoom = metadata['maxZoom']
-        ts.minZoom = metadata['minZoom']
-        ts.isActive = json.loads(metadata['isActive'])
         ts.project_id = projectId
+        ts.isActive = metadata['isActive']
+
+        if metadata['type'] == 'tms':
+            ts.maxZoom = metadata['maxZoom']
+            ts.minZoom = metadata['minZoom']
+        elif metadata['type'] == 'wms':
+            ts.wmsLayers = metadata['wmsLayers']
+            ts.wmsFormat = metadata['wmsFormat']
+            ts.wmsParams = metadata['wmsParams']
 
         db_session.add(ts)
         db_session.commit()
@@ -518,11 +582,10 @@ class FeaturesService:
         ts.name = data['name']
         ts.opacity = data['opacity']
         ts.zIndex = data['zIndex']
-        ts.isActive = json.loads(data['isActive'])
+        ts.isActive = data['isActive']
 
         db_session.commit()
         return ts
-
 
     @staticmethod
     def updateTileServers(projectId: int, dataList: List[dict]):
@@ -532,7 +595,7 @@ class FeaturesService:
             ts.name = tsv['name']
             ts.opacity = tsv['opacity']
             ts.zIndex = tsv['zIndex']
-            ts.isActive = json.loads(tsv['isActive'])
+            ts.isActive = tsv['isActive']
             ret_list.append(ts)
             db_session.commit()
         return ret_list

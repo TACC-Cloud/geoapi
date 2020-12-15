@@ -18,9 +18,12 @@ class TileServer(Base):
     attribution = Column(String(), nullable=False)
     opacity = Column(Numeric(), nullable=False)
     zIndex = Column(Numeric(), nullable=True)
-    maxZoom = Column(Numeric(), nullable=False)
-    minZoom = Column(Numeric(), nullable=False)
+    maxZoom = Column(Numeric(), nullable=True)
+    minZoom = Column(Numeric(), nullable=True)
     isActive = Column(Boolean(), nullable=False)
+    wmsLayers = Column(String())
+    wmsFormat = Column(String())
+    wmsParams = Column(String())
 
     project = relationship('Project')
 

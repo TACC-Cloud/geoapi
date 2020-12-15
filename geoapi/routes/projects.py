@@ -143,7 +143,6 @@ overlay_parser_tapis.remove_argument('file')
 overlay_parser_tapis.add_argument('system_id', location='json', type=str, required=True)
 overlay_parser_tapis.add_argument('path', location='json', type=str, required=True)
 
-
 @api.route('/')
 class ProjectsListing(Resource):
 
@@ -599,11 +598,9 @@ class ProjectTileServersResource(Resource):
         logger.info("Add tile server to project:{} for user:{}".format(
             projectId, request.current_user.username))
 
-        formData = request.form
-        metadata = formData.to_dict()
-
-        ts = FeaturesService.addTileServer(projectId, metadata)
+        ts = FeaturesService.addTileServer(projectId, api.payload)
         return ts
+
 
     @api.doc(id="getTileServers",
              description='Get a list of all the tile servers associated with the current map project.')
@@ -612,6 +609,7 @@ class ProjectTileServersResource(Resource):
     def get(self, projectId: int):
         tsv = FeaturesService.getTileServers(projectId)
         return tsv
+
 
     @api.doc(id="updateTileServers",
              description="Update metadata about a tile servers")
@@ -622,10 +620,9 @@ class ProjectTileServersResource(Resource):
         logger.info("Update project:{} for user:{}".format(projectId,
                                                            u.username))
 
-        tsvs = FeaturesService.updateTileServers(projectId=projectId,
+        ts = FeaturesService.updateTileServers(projectId=projectId,
                                                  dataList=api.payload)
-        return tsvs
-
+        return ts
 
 
 @api.route('/<int:projectId>/tile-servers/<int:tileServerId>/')
@@ -640,6 +637,7 @@ class ProjectTileServerResource(Resource):
         FeaturesService.deleteTileServer(projectId, tileServerId)
         return "Tile Server {id} deleted".format(id=tileServerId)
 
+
     @api.doc(id="updateTileServer",
              description="Update metadata about a tile server")
     @api.marshal_with(tile_server)
@@ -648,6 +646,7 @@ class ProjectTileServerResource(Resource):
         u = request.current_user
         logger.info("Update project:{} for user:{}".format(projectId,
                                                            u.username))
+
 
         return FeaturesService.updateTileServer(projectId=projectId,
                                                 tileServerId=tileServerId,

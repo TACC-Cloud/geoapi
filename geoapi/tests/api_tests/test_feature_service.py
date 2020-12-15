@@ -119,7 +119,7 @@ def test_create_tile_server(projects_fixture):
             "zIndex": 0,
             "minZoom": 0,
             "maxZoom": 19,
-            "isActive": "true"}
+            "isActive": True}
 
     tile_server = FeaturesService.addTileServer(projectId=projects_fixture.id, metadata=data)
     assert tile_server.name == "OSM"
@@ -141,7 +141,7 @@ def test_remove_tile_server(projects_fixture):
             "zIndex": 0,
             "minZoom": 0,
             "maxZoom": 19,
-            "isActive": "true"}
+            "isActive": True}
 
     tile_server = FeaturesService.addTileServer(projectId=projects_fixture.id, metadata=data)
     FeaturesService.deleteTileServer(projects_fixture.id,
@@ -158,7 +158,7 @@ def test_update_tile_server(projects_fixture):
             "zIndex": 0,
             "minZoom": 0,
             "maxZoom": 19,
-            "isActive": "true"}
+            "isActive": True}
 
     tile_server = FeaturesService.addTileServer(projectId=projects_fixture.id, metadata=data)
 
@@ -166,7 +166,7 @@ def test_update_tile_server(projects_fixture):
         "name": "NewTestName",
         "opacity": 1,
         "zIndex": -5,
-        "isActive": "false"
+        "isActive": False
     }
 
     updated_tile_server = FeaturesService.updateTileServer(projectId=projects_fixture.id,
@@ -186,7 +186,7 @@ def test_update_tile_servers(projects_fixture):
             "zIndex": 0,
             "minZoom": 0,
             "maxZoom": 19,
-            "isActive": "true"}
+            "isActive": True}
 
     tile_server1 = FeaturesService.addTileServer(projectId=projects_fixture.id, metadata=data)
     data['name'] = 'Test2'
@@ -198,14 +198,14 @@ def test_update_tile_servers(projects_fixture):
             "id": tile_server1.id,
             "opacity": 0,
             "zIndex": -5,
-            "isActive": "false"
+            "isActive": False
         },
         {
             "name": "OtherTestName",
             "id": tile_server2.id,
             "opacity": 1,
             "zIndex": -3,
-            "isActive": "false"
+            "isActive": False
         }
     ]
 
@@ -220,3 +220,18 @@ def test_update_tile_servers(projects_fixture):
     assert updated_tile_server_list[1].opacity == 1
     assert updated_tile_server_list[1].zIndex == -3
     assert updated_tile_server_list[1].isActive == False
+
+def test_create_tile_server_from_file(projects_fixture, tile_server_ini_file_fixture):
+    tile_server = FeaturesService.fromINI(projects_fixture.id,
+                                          tile_server_ini_file_fixture,
+                                          metadata={})
+
+    assert tile_server.name == "Base OSM"
+    assert tile_server.type == "tms"
+    assert tile_server.url == "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+    assert tile_server.attribution == "OpenStreetMap contributorshttps://www.openstreetmap.org/copyright"
+    assert tile_server.opacity == 1
+    assert tile_server.zIndex == 0
+    assert tile_server.minZoom == 0
+    assert tile_server.maxZoom == 19
+    assert tile_server.isActive == True

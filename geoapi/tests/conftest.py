@@ -124,6 +124,7 @@ def flipped_image_fixture():
     with open(os.path.join(home, 'fixtures/flipped_image.jpg'), 'rb') as f:
         yield f
 
+
 @pytest.fixture(scope="function")
 def corrected_image_fixture():
     home = os.path.dirname(__file__)
@@ -383,3 +384,10 @@ def get_system_users_mock(userdata):
     u2 = db_session.query(User).get(2)
     with patch('geoapi.services.projects.get_system_users', return_value=[u1.username, u2.username]) as get_system_users:
         yield get_system_users
+
+
+@pytest.fixture(scope="function")
+def tile_server_ini_file_fixture():
+    home = os.path.dirname(__file__)
+    with open(os.path.join(home, 'fixtures/metadata.ini'), 'rb') as f:
+        yield f
