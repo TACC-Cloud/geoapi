@@ -221,7 +221,10 @@ class ProjectsService:
         current_project = ProjectsService.get(projectId)
 
         current_project.name = data['name']
-        current_project.description = data['description']
+        if 'description' in data:
+            current_project.description = data['description']
+        if 'public' in data:
+            current_project.public = data['public']
         db_session.commit()
 
         return current_project
