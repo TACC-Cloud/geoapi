@@ -1,7 +1,6 @@
 from geoapi.db import db_session
 from geoapi.models.users import User
 from geoapi.models import TileServer
-from unittest.mock import patch
 
 def _get_tile_server_data():
     data = {"id": 1,
@@ -43,8 +42,8 @@ def test_delete_tile_server(test_client, projects_fixture):
                      json=_get_tile_server_data(),
                      headers={'x-jwt-assertion-test': u1.jwt})
 
-    resp = test_client.delete('/projects/1/tile-servers/1/', headers={'x-jwt-assertion-test': u1.jwt,
-                                                                      'content-type': 'application/json'})
+    resp = test_client.delete('/projects/1/tile-servers/1/',
+                              headers={'x-jwt-assertion-test': u1.jwt})
     assert resp.status_code == 200
     proj = db_session.query(TileServer).get(1)
     assert proj is None
