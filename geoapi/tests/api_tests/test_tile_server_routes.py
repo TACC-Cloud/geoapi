@@ -26,9 +26,9 @@ def test_add_tile_server(test_client, projects_fixture):
     resp.status_code
     assert resp.status_code == 200
     assert data["id"] == 1
-    assert data["name"] == "OSM"
+    assert data["name"] == "Test"
     assert data["type"] == "tms"
-    assert data["url"] == "png"
+    assert data["url"] == "www.test.com"
     assert data["attribution"] == "contributors"
     assert data["opacity"] == 1
     assert data["zIndex"] == 0
