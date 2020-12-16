@@ -544,6 +544,7 @@ class FeaturesService:
 
         for key, value in data.items():
             setattr(ts, key, value)
+
         ts.project_id = projectId
 
         db_session.add(ts)
