@@ -232,7 +232,6 @@ class FeaturesService:
         db_session.commit()
         return features
 
-    # # TODO: Refactor
     @staticmethod
     def fromINI(projectId: int, fileObj: IO, metadata: Dict, original_path: str = None) -> TileServer:
         """
@@ -247,6 +246,8 @@ class FeaturesService:
         config.read_string(fileObj.read().decode('utf-8'))
 
         tile_server_data = {}
+        tile_server_data['tileOptions'] = {}
+        tile_server_data['uiOptions'] = {}
 
         general_config = config['general']
 
@@ -254,34 +255,31 @@ class FeaturesService:
         tile_server_data['type'] = general_config.get('type', '').lower()
 
         if (config.has_section('license')):
-            license_config = config['license']
-            tile_server_data['attribution'] = license_config.get('name', '') \
-                + license_config.get('link', '') \
-                + license_config.get('copyright_text', '') \
-                + license_config.get('copyright_link', '') \
-                + license_config.get('terms_of_use', '')
+            attribution = ''
+            for key in config['license']:
+                attribution += config['license'].get(key, '')
+            tile_server_data['attribution'] = attribution
         else:
             tile_server_data['attribution'] = ''
 
         if (tile_server_data['type'] == 'tms'):
             tms_config = config['tms']
             tile_server_data['url'] = tms_config.get('url', fallback='')
-            tile_server_data['maxZoom'] = tms_config.getint('zmax', fallback=19)
-            tile_server_data['minZoom'] = tms_config.getint('zmin', fallback=0)
+            tile_server_data['tileOptions']['maxZoom'] = tms_config.getint('zmax', fallback=19)
+            tile_server_data['tileOptions']['minZoom'] = tms_config.getint('zmin', fallback=0)
         elif (tile_server_data['type'] == 'wms'):
             wms_config = config['wms']
             tile_server_data['url'] = wms_config.get('url', fallback='')
-            tile_server_data['wmsLayers'] = wms_config.get('layers', fallback='')
-            tile_server_data['wmsParams'] = wms_config.get('params', fallback='')
+            tile_server_data['tileOptions']['layers'] = wms_config.get('layers', fallback='')
+            tile_server_data['tileOptions']['params'] = wms_config.get('params', fallback='')
+            tile_server_data['tileOptions']['format'] = wms_config.get('format', fallback='')
 
-        tile_server_data['isActive'] = True
-        tile_server_data['opacity'] = 1
-        tile_server_data['zIndex'] = 0
+        tile_server_data['uiOptions']['isActive'] = True
+        tile_server_data['uiOptions']['opacity'] = 1
 
         fileObj.close()
 
         return FeaturesService.addTileServer(projectId, tile_server_data)
-
 
     @staticmethod
     def fromFileObj(projectId: int, fileObj: IO, metadata: Dict, original_path: str=None, additional_files=None) -> List[Feature]:
@@ -535,31 +533,18 @@ class FeaturesService:
 
 
     @staticmethod
-    def addTileServer(projectId: int, metadata: Dict):
+    def addTileServer(projectId: int, data: Dict):
         """
 
         :param projectId: int
-        :param metadata: Dict
+        :param data: Dict
         :return: ts: TileServer
         """
         ts = TileServer()
 
-        ts.name = metadata['name']
-        ts.type = metadata['type']
-        ts.url = metadata['url']
-        ts.attribution = metadata['attribution']
-        ts.opacity = metadata['opacity']
-        ts.zIndex = metadata['zIndex']
+        for key, value in data.items():
+            setattr(ts, key, value)
         ts.project_id = projectId
-        ts.isActive = metadata['isActive']
-
-        if metadata['type'] == 'tms':
-            ts.maxZoom = metadata['maxZoom']
-            ts.minZoom = metadata['minZoom']
-        elif metadata['type'] == 'wms':
-            ts.wmsLayers = metadata['wmsLayers']
-            ts.wmsFormat = metadata['wmsFormat']
-            ts.wmsParams = metadata['wmsParams']
 
         db_session.add(ts)
         db_session.commit()
@@ -579,11 +564,8 @@ class FeaturesService:
     @staticmethod
     def updateTileServer(projectId: int, tileServerId: int, data: dict):
         ts = db_session.query(TileServer).get(tileServerId)
-        ts.name = data['name']
-        ts.opacity = data['opacity']
-        ts.zIndex = data['zIndex']
-        ts.isActive = data['isActive']
-
+        for key, value in data.items():
+            setattr(ts, key, value)
         db_session.commit()
         return ts
 
@@ -592,10 +574,8 @@ class FeaturesService:
         ret_list = []
         for tsv in dataList:
             ts = db_session.query(TileServer).get(int(tsv['id']))
-            ts.name = tsv['name']
-            ts.opacity = tsv['opacity']
-            ts.zIndex = tsv['zIndex']
-            ts.isActive = tsv['isActive']
+            for key, value in tsv.items():
+                setattr(ts, key, value)
             ret_list.append(ts)
             db_session.commit()
         return ret_list

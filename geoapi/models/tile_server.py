@@ -4,7 +4,7 @@ from sqlalchemy import (
     ForeignKey
 )
 from sqlalchemy.orm import relationship
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.dialects.postgresql import (UUID, JSONB)
 from geoapi.db import Base
 
 
@@ -16,14 +16,8 @@ class TileServer(Base):
     type = Column(String(), nullable=False)
     url = Column(String(), nullable=False)
     attribution = Column(String(), nullable=False)
-    opacity = Column(Numeric(), nullable=False)
-    zIndex = Column(Numeric(), nullable=True)
-    maxZoom = Column(Numeric(), nullable=True)
-    minZoom = Column(Numeric(), nullable=True)
-    isActive = Column(Boolean(), nullable=False)
-    wmsLayers = Column(String())
-    wmsFormat = Column(String())
-    wmsParams = Column(String())
+    tileOptions = Column(JSONB, default={})
+    uiOptions = Column(JSONB, default={})
 
     project = relationship('Project')
 

@@ -1,16 +1,16 @@
 """empty message
 
-Revision ID: c1a4d29d3f50
+Revision ID: 9d043dc43f64
 Revises: 3f9a78c126da
-Create Date: 2020-12-14 16:58:17.563752
+Create Date: 2020-12-16 21:04:16.261270
 
 """
 from alembic import op
 import sqlalchemy as sa
-
+from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
-revision = 'c1a4d29d3f50'
+revision = '9d043dc43f64'
 down_revision = '3f9a78c126da'
 branch_labels = None
 depends_on = None
@@ -25,14 +25,8 @@ def upgrade():
     sa.Column('type', sa.String(), nullable=False),
     sa.Column('url', sa.String(), nullable=False),
     sa.Column('attribution', sa.String(), nullable=False),
-    sa.Column('opacity', sa.Numeric(), nullable=False),
-    sa.Column('zIndex', sa.Numeric(), nullable=True),
-    sa.Column('maxZoom', sa.Numeric(), nullable=True),
-    sa.Column('minZoom', sa.Numeric(), nullable=True),
-    sa.Column('isActive', sa.Boolean(), nullable=False),
-    sa.Column('wmsLayers', sa.String(), nullable=True),
-    sa.Column('wmsFormat', sa.String(), nullable=True),
-    sa.Column('wmsParams', sa.String(), nullable=True),
+    sa.Column('tileOptions', postgresql.JSONB(astext_type=sa.Text()), nullable=True),
+    sa.Column('uiOptions', postgresql.JSONB(astext_type=sa.Text()), nullable=True),
     sa.ForeignKeyConstraint(['project_id'], ['projects.id'], onupdate='CASCADE', ondelete='CASCADE'),
     sa.PrimaryKeyConstraint('id')
     )

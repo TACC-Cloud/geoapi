@@ -101,16 +101,13 @@ overlay = api.model('Overlay', {
 })
 
 tile_server = api.model('TileServer', {
-    'id': fields.Integer(),
+    'id': fields.Integer(required=False),
     'name': fields.String(),
     'type': fields.String(),
     'url': fields.String(),
     'attribution': fields.String(),
-    'opacity': fields.Float(),
-    'zIndex': fields.Integer(),
-    'maxZoom': fields.Integer(),
-    'minZoom': fields.Integer(),
-    'isActive': fields.Boolean()
+    'tileOptions': fields.Raw(allow_null=True),
+    'uiOptions': fields.Raw(allow_null=True)
 })
 
 file_upload_parser = api.parser()
