@@ -3,6 +3,7 @@ import pathlib
 import uuid
 import json
 import tempfile
+import configparser
 from typing import List, IO, Dict
 
 from geoapi.services.videos import VideoService
@@ -13,7 +14,7 @@ import geojson
 
 from geoapi.services.images import ImageService, ImageData
 from geoapi.services.vectors import VectorService
-from geoapi.models import Feature, FeatureAsset, Overlay, User
+from geoapi.models import Feature, FeatureAsset, Overlay, User, TileServer
 from geoapi.db import db_session
 from geoapi.exceptions import InvalidGeoJSON, ApiException
 from geoapi.utils.assets import make_project_asset_dir, delete_assets, get_asset_relative_path
@@ -49,12 +50,17 @@ class FeaturesService:
         'shp',
     )
 
+    INI_FILE_EXTENSIONS = (
+        'ini',
+    )
+
     ALLOWED_GEOSPATIAL_EXTENSIONS = IMAGE_FILE_EXTENSIONS + GPX_FILE_EXTENSIONS + GEOJSON_FILE_EXTENSIONS + \
                                     SHAPEFILE_FILE_EXTENSIONS
 
     ALLOWED_EXTENSIONS = IMAGE_FILE_EXTENSIONS + VIDEO_FILE_EXTENSIONS \
                          + AUDIO_FILE_EXTENSIONS + GPX_FILE_EXTENSIONS \
-                         + GEOJSON_FILE_EXTENSIONS + SHAPEFILE_FILE_EXTENSIONS
+                         + GEOJSON_FILE_EXTENSIONS + SHAPEFILE_FILE_EXTENSIONS \
+                         + INI_FILE_EXTENSIONS
 
     @staticmethod
     def get(featureId: int) -> Feature:
@@ -203,7 +209,6 @@ class FeaturesService:
         fileObj.close()
         return FeaturesService.addGeoJSON(projectId, data)
 
-
     @staticmethod
     def fromShapefile(projectId: int, fileObj: IO, metadata: Dict, additional_files: List[IO], original_path=None) -> Feature:
         """ Create features from shapefile
@@ -228,6 +233,55 @@ class FeaturesService:
         return features
 
     @staticmethod
+    def fromINI(projectId: int, fileObj: IO, metadata: Dict, original_path: str = None) -> TileServer:
+        """
+
+        :param projectId: int
+        :param fileObj: file descriptor
+        :param metadata: Dict of <key, val> pairs
+        :param original_path: str path of original file location
+        :return: Feature
+        """
+        config = configparser.ConfigParser(allow_no_value=True)
+        config.read_string(fileObj.read().decode('utf-8'))
+
+        tile_server_data = {}
+        tile_server_data['tileOptions'] = {}
+        tile_server_data['uiOptions'] = {}
+
+        general_config = config['general']
+
+        tile_server_data['name'] = general_config.get('id', '')
+        tile_server_data['type'] = general_config.get('type', '').lower()
+
+        if (config.has_section('license')):
+            attribution = ''
+            for key in config['license']:
+                attribution += config['license'].get(key, '')
+            tile_server_data['attribution'] = attribution
+        else:
+            tile_server_data['attribution'] = ''
+
+        if (tile_server_data['type'] == 'tms'):
+            tms_config = config['tms']
+            tile_server_data['url'] = tms_config.get('url', fallback='')
+            tile_server_data['tileOptions']['maxZoom'] = tms_config.getint('zmax', fallback=19)
+            tile_server_data['tileOptions']['minZoom'] = tms_config.getint('zmin', fallback=0)
+        elif (tile_server_data['type'] == 'wms'):
+            wms_config = config['wms']
+            tile_server_data['url'] = wms_config.get('url', fallback='')
+            tile_server_data['tileOptions']['layers'] = wms_config.get('layers', fallback='')
+            tile_server_data['tileOptions']['params'] = wms_config.get('params', fallback='')
+            tile_server_data['tileOptions']['format'] = wms_config.get('format', fallback='')
+
+        tile_server_data['uiOptions']['isActive'] = True
+        tile_server_data['uiOptions']['opacity'] = 1
+
+        fileObj.close()
+
+        return FeaturesService.addTileServer(projectId, tile_server_data)
+
+    @staticmethod
     def fromFileObj(projectId: int, fileObj: IO, metadata: Dict, original_path: str=None, additional_files=None) -> List[Feature]:
         ext = pathlib.Path(fileObj.filename).suffix.lstrip(".").lower()
         if ext in FeaturesService.IMAGE_FILE_EXTENSIONS:
@@ -238,6 +292,8 @@ class FeaturesService:
             return FeaturesService.fromGeoJSON(projectId, fileObj, {}, original_path)
         elif ext in FeaturesService.SHAPEFILE_FILE_EXTENSIONS:
             return FeaturesService.fromShapefile(projectId, fileObj, {}, additional_files, original_path)
+        elif ext in FeaturesService.INI_FILE_EXTENSIONS:
+            return FeaturesService.fromINI(projectId, fileObj, {}, original_path)
         else:
             raise ApiException("Filetype not supported for direct upload. Create a feature and attach as an asset?")
 
@@ -475,3 +531,52 @@ class FeaturesService:
         db_session.delete(ov)
         db_session.commit()
 
+
+    @staticmethod
+    def addTileServer(projectId: int, data: Dict):
+        """
+
+        :param projectId: int
+        :param data: Dict
+        :return: ts: TileServer
+        """
+        ts = TileServer()
+
+        for key, value in data.items():
+            setattr(ts, key, value)
+
+        ts.project_id = projectId
+
+        db_session.add(ts)
+        db_session.commit()
+        return ts
+
+    @staticmethod
+    def getTileServers(projectId: int) -> List[TileServer]:
+        tile_servers = db_session.query(TileServer).filter_by(project_id=projectId).all()
+        return tile_servers
+
+    @staticmethod
+    def deleteTileServer(projectId: int, tileServerId: int) -> None:
+        ts = db_session.query(TileServer).get(tileServerId)
+        db_session.delete(ts)
+        db_session.commit()
+
+    @staticmethod
+    def updateTileServer(projectId: int, tileServerId: int, data: dict):
+        ts = db_session.query(TileServer).get(tileServerId)
+        for key, value in data.items():
+            setattr(ts, key, value)
+        db_session.commit()
+        return ts
+
+    @staticmethod
+    def updateTileServers(projectId: int, dataList: List[dict]):
+        ret_list = []
+        for tsv in dataList:
+            ts = db_session.query(TileServer).get(int(tsv['id']))
+            for key, value in tsv.items():
+                setattr(ts, key, value)
+            ret_list.append(ts)
+            db_session.commit()
+        return ret_list
