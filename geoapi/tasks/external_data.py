@@ -9,7 +9,7 @@ import json
 from geoapi.celery_app import app
 from geoapi.exceptions import InvalidCoordinateReferenceSystem
 from geoapi.models import User, ObservableDataProject, Task
-from geoapi.utils.agave import AgaveUtils, get_system_users
+from geoapi.utils.agave import AgaveUtils, get_system_users, get_metadata_using_service_account
 from geoapi.log import logging
 from geoapi.services.features import FeaturesService
 from geoapi.services.imports import ImportsService
@@ -212,7 +212,7 @@ def import_point_clouds_from_agave(userId: int, files, pointCloudId: int):
 
 
 @app.task(rate_limit="5/s")
-def import_from_agave(userId: int, systemId: str, path: str, projectId: int):
+def import_from_agave(tenant_id: str, userId: int, systemId: str, path: str, projectId: int):
     user = db_session.query(User).get(userId)
     client = AgaveUtils(user.jwt)
     listing = client.listing(systemId, path)
@@ -221,7 +221,7 @@ def import_from_agave(userId: int, systemId: str, path: str, projectId: int):
     filenames_in_directory = [str(f.path) for f in files_in_directory]
     for item in files_in_directory:
         if item.type == "dir":
-            import_from_agave(userId, systemId, item.path, projectId)
+            import_from_agave(tenant_id, userId, systemId, item.path, projectId)
         # skip any junk files that are not allowed
         if item.path.suffix.lower().lstrip('.') not in FeaturesService.ALLOWED_EXTENSIONS:
             continue
@@ -240,24 +240,15 @@ def import_from_agave(userId: int, systemId: str, path: str, projectId: int):
                     if item.path.suffix.lower().lstrip('.') not in FeaturesService.ALLOWED_GEOSPATIAL_FEATURE_ASSET_EXTENSIONS:
                         logger.info("{path} is unsupported; skipping.".format(path=item_system_path))
                         continue
-                    listing = client.listing(systemId, item.path)[0]
-                    meta = client.getMetaAssociated(listing.uuid)
+                    meta = get_metadata_using_service_account(tenant_id, systemId, path)
                     if not meta:
                         logger.info("No metadata for {}".format(item.path))
                         continue
                     geolocation = meta.get("geolocation")
-                    if not geolocation:
-                        logger.info("NO geolocation for {}".format(item.path))
+                    if geolocation is None:
+                        logger.info("No geolocation for:{}; skipping".format(item.path))
                         continue
                     lat, lon = _parse_rapid_geolocation(geolocation)
-                    # 1) Get the file from agave, save to /tmp
-                    # 2) Resize and thumbnail images or transcode video to mp4
-                    # 3) create a FeatureAsset and a Feature
-                    # 4) save the image/video to /assets
-                    # 5) delete the original in /tmp
-
-                    # client.getFile will save the asset to tempfile
-
                     tmpFile = client.getFile(systemId, item.path)
                     feat = FeaturesService.fromLatLng(projectId, lat, lon, {})
                     feat.properties = meta
@@ -322,7 +313,7 @@ def refresh_observable_projects():
                 db_session.commit()
 
             # perform the importing
-            import_from_agave(importing_user.id, o.system_id, o.path, o.project.id)
+            import_from_agave(o.project.tenant_id, importing_user.id, o.system_id, o.path, o.project.id)
     except Exception:
         logger.exception("Unhandled exception when importing observable project")
         db_session.rollback()

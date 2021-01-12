@@ -78,7 +78,7 @@ class ProjectsService:
             db_session.rollback()
             logger.exception("User:{} tried to create an observable project that already exists: '{}'".format(user.username, name))
             raise ObservableProjectAlreadyExists("'{}' project already exists".format(name))
-        import_from_agave.apply_async(args=[obs.project.users[0].id, obs.system_id, obs.path, obs.project_id])
+        import_from_agave.apply_async(args=[obs.project.tenant_id, obs.project.users[0].id, obs.system_id, obs.path, obs.project_id])
 
         return proj
 
@@ -242,7 +242,6 @@ class ProjectsService:
         except FileNotFoundError:
             pass
         return {"status": "ok"}
-
 
     @staticmethod
     def addUserToProject(projectId: int, username: str) -> None:

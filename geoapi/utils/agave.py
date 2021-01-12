@@ -14,6 +14,7 @@ from geoapi.exceptions import MissingServiceAccount
 
 logger = logging.getLogger(__name__)
 
+
 class AgaveFileListing:
 
     def __init__(self, data: Dict):
@@ -92,7 +93,7 @@ class AgaveUtils:
         out = [AgaveFileListing(d) for d in listing["result"]]
         return out
 
-    def getMetaAssociated(self, uuid:str)->Dict:
+    def getMetaAssociated(self, uuid: str) -> Dict:
         """
         Get metadata associated with a file object for Rapid
         :param uuid: str
@@ -122,7 +123,7 @@ class AgaveUtils:
                                                                                           path,
                                                                                           r.status_code))
                 tmpFile = NamedTemporaryFile()
-                for chunk in r.iter_content(1024*1024):
+                for chunk in r.iter_content(1024 * 1024):
                     tmpFile.write(chunk)
                 tmpFile.seek(0)
                 return tmpFile
@@ -132,12 +133,17 @@ class AgaveUtils:
 
 
 def service_account_client(tenant_id):
-    tenant_secrets = json.loads(settings.TENANT)
+    try:
+        tenant_secrets = json.loads(settings.TENANT)
+    except TypeError:
+        logger.error("Could not get service account for tenant:{};  Ensure this your environment "
+                     "is properly configured.".format(tenant_id))
+        raise MissingServiceAccount
+
     if tenant_secrets is None or tenant_id.upper() not in tenant_secrets:
         raise MissingServiceAccount
 
     client = AgaveUtils(token=tenant_secrets[tenant_id.upper()]['service_account_token'], tenant=tenant_id)
-
     return client
 
 
@@ -148,8 +154,8 @@ def get_system_users(tenant_id, jwt, system_id: str):
     Tapis provides all roles for owner of system which is why we attempt
     to use the service account super token as well.
 
-    :param: tenant: tenant id
-    :param: jwt: jwt of a user
+    :param tenant_id: tenant id
+    :param jwt: jwt of a user
     :param system_id: str
     :return: list of usernames
     """
@@ -169,8 +175,27 @@ def get_system_users(tenant_id, jwt, system_id: str):
     for u in get_service_accounts(tenant_id):
         try:
             user_names.remove(u)
-        except ValueError:
+        except (ValueError, KeyError):
             pass  # do nothing if no service account
 
     logger.info("System:{} has the following users: {}".format(system_id, user_names))
     return user_names
+
+
+def get_metadata_using_service_account(tenant_id: str, system_id: str, path: str) -> Dict:
+    """
+    Get a file's geolocation metadata using service account
+
+    :param tenant_id: tenant id
+    :param system_id: str
+    :param path: str
+    :return: dict
+    """
+    try:
+        client = service_account_client(tenant_id)
+        listing = client.listing(system_id, path)[0]
+        meta = client.getMetaAssociated(listing.uuid)
+        return meta
+    except MissingServiceAccount:
+        logger.error("No service account. Unable to get metadata for {}:{}".format(system_id, path))
+        return {}
