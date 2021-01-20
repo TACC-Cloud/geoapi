@@ -7,7 +7,7 @@ import concurrent.futures
 import json
 
 from geoapi.celery_app import app
-from geoapi.exceptions import InvalidCoordinateReferenceSystem
+from geoapi.exceptions import InvalidCoordinateReferenceSystem, MissingServiceAccount
 from geoapi.models import User, ObservableDataProject, Task
 from geoapi.utils.agave import AgaveUtils, get_system_users, get_metadata_using_service_account
 from geoapi.log import logging
@@ -240,13 +240,23 @@ def import_from_agave(tenant_id: str, userId: int, systemId: str, path: str, pro
                     if item.path.suffix.lower().lstrip('.') not in FeaturesService.ALLOWED_GEOSPATIAL_FEATURE_ASSET_EXTENSIONS:
                         logger.info("{path} is unsupported; skipping.".format(path=item_system_path))
                         continue
-                    meta = get_metadata_using_service_account(tenant_id, systemId, path)
+
+                    logger.info("{} {} {}".format(item_system_path, item.system, item.path))
+
+                    try:
+                        meta = get_metadata_using_service_account(tenant_id, item.system, item.path)
+                    except MissingServiceAccount:
+                        logger.error("No service account. Unable to get metadata for {}:{}".format(item.system, item.path))
+                        return {}
+
+                    logger.debug("metadata from service account : {}".format(meta))
+
                     if not meta:
-                        logger.info("No metadata for {}".format(item.path))
+                        logger.info("No metadata for {}; skipping file".format(item_system_path))
                         continue
                     geolocation = meta.get("geolocation")
                     if geolocation is None:
-                        logger.info("No geolocation for:{}; skipping".format(item.path))
+                        logger.info("No geolocation for:{}; skipping".format(item_system_path))
                         continue
                     lat, lon = _parse_rapid_geolocation(geolocation)
                     tmpFile = client.getFile(systemId, item.path)
@@ -254,7 +264,7 @@ def import_from_agave(tenant_id: str, userId: int, systemId: str, path: str, pro
                     feat.properties = meta
                     db_session.add(feat)
                     tmpFile.filename = Path(item.path).name
-                    fa = FeaturesService.createFeatureAsset(projectId, feat.id, tmpFile, original_path=path)
+                    fa = FeaturesService.createFeatureAsset(projectId, feat.id, tmpFile, original_path=item_system_path)
                     fa.feature = feat
                     fa.original_path = item_system_path
                     db_session.add(fa)

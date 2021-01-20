@@ -191,11 +191,8 @@ def get_metadata_using_service_account(tenant_id: str, system_id: str, path: str
     :param path: str
     :return: dict
     """
-    try:
-        client = service_account_client(tenant_id)
-        listing = client.listing(system_id, path)[0]
-        meta = client.getMetaAssociated(listing.uuid)
-        return meta
-    except MissingServiceAccount:
-        logger.error("No service account. Unable to get metadata for {}:{}".format(system_id, path))
-        return {}
+    logger.debug("tenant:{}, system_id: {} , path:{}".format(tenant_id, system_id, path))
+    client = service_account_client(tenant_id)
+    uuid = client.listing(system_id, path)[0].uuid
+    meta = client.getMetaAssociated(uuid)
+    return meta
