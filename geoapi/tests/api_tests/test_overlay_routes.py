@@ -12,6 +12,24 @@ def _get_overlay_data(extra):
     return data
 
 
+def test_get_overlay_permissions(test_client, projects_fixture):
+    u2 = db_session.query(User).get(2)
+    resp = test_client.get('/projects/1/overlays/', headers={'x-jwt-assertion-test': u2.jwt})
+    assert resp.status_code == 403
+
+    resp = test_client.get('/projects/1/overlays/')
+    assert resp.status_code == 403
+
+
+def test_get_overlay_public_access(test_client, public_projects_fixture):
+    u2 = db_session.query(User).get(2)
+    resp = test_client.get('/projects/1/overlays/', headers={'x-jwt-assertion-test': u2.jwt})
+    assert resp.status_code == 200
+
+    resp = test_client.get('/projects/1/overlays/')
+    assert resp.status_code == 200
+
+
 def test_post_overlay(test_client, projects_fixture, image_file_fixture):
     u1 = db_session.query(User).get(1)
 

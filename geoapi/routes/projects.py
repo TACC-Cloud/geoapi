@@ -8,7 +8,7 @@ from geoapi.schemas import FeatureSchema
 from geoapi.services.features import FeaturesService
 from geoapi.services.projects import ProjectsService
 from geoapi.services.point_cloud import PointCloudService
-from geoapi.utils.decorators import jwt_decoder, project_permissions, project_feature_exists, \
+from geoapi.utils.decorators import jwt_decoder, project_permissions_allow_public, project_permissions, project_feature_exists, \
     project_point_cloud_exists, project_point_cloud_not_processing
 from geoapi.tasks import external_data
 
@@ -57,7 +57,8 @@ project = api.model('Project', {
     'id': fields.Integer(),
     'name': fields.String(required=True),
     'description': fields.String(required=False),
-    'uuid': fields.String(),
+    'public': fields.Boolean(required=False),
+    'uuid': fields.String()
 })
 
 user = api.model('User', {
@@ -100,6 +101,16 @@ overlay = api.model('Overlay', {
     'label': fields.String()
 })
 
+tile_server = api.model('TileServer', {
+    'id': fields.Integer(required=False),
+    'name': fields.String(),
+    'type': fields.String(),
+    'url': fields.String(),
+    'attribution': fields.String(),
+    'tileOptions': fields.Raw(allow_null=True),
+    'uiOptions': fields.Raw(allow_null=True)
+})
+
 file_upload_parser = api.parser()
 file_upload_parser.add_argument('file', location='files', type=FileStorage, required=True)
 
@@ -130,7 +141,6 @@ overlay_parser_tapis.remove_argument('file')
 overlay_parser_tapis.add_argument('system_id', location='json', type=str, required=True)
 overlay_parser_tapis.add_argument('path', location='json', type=str, required=True)
 
-
 @api.route('/')
 class ProjectsListing(Resource):
 
@@ -149,7 +159,7 @@ class ProjectsListing(Resource):
     def post(self):
         u = request.current_user
         logger.info("Create project for user:{} : {}".format(u.username,
-                                                            api.payload))
+                                                             api.payload))
         return ProjectsService.create(api.payload, u)
 
 
@@ -162,7 +172,7 @@ class RapidProject(Resource):
     def post(self):
         u = request.current_user
         logger.info("Create rapid project for user {}: {}".format(u.username, api.payload))
-        return ProjectsService.createRapidProject(api.payload, u);
+        return ProjectsService.createRapidProject(api.payload, u)
 
 
 @api.route('/<int:projectId>/')
@@ -171,7 +181,7 @@ class ProjectResource(Resource):
     @api.doc(id="getProjectById",
              description="Get the metadata about a project")
     @api.marshal_with(project)
-    @project_permissions
+    @project_permissions_allow_public
     def get(self, projectId: int):
         return ProjectsService.get(projectId)
 
@@ -257,7 +267,7 @@ class ProjectFeaturesResource(Resource):
              parser=parser,
              description="GET all the features of a project as GeoJSON")
     @api.marshal_with(feature_collection_model, as_list=True)
-    @project_permissions
+    @project_permissions_allow_public
     def get(self, projectId: int):
         logger.info("Get features of project:{} for user:{}".format(
             projectId, request.current_user.username))
@@ -280,7 +290,7 @@ class ProjectFeatureResource(Resource):
     @api.doc(id="getFeature",
              description="GET a feature of a project as GeoJSON")
     @api.marshal_with(api_feature)
-    @project_permissions
+    @project_permissions_allow_public
     def get(self, projectId: int, featureId: int):
         return FeaturesService.get(featureId)
 
@@ -419,7 +429,7 @@ class ProjectOverlaysResource(Resource):
     @api.doc(id="getOverlays",
              description='Get a list of all the overlays associated with the current map project.')
     @api.marshal_with(overlay, as_list=True)
-    @project_permissions
+    @project_permissions_allow_public
     def get(self, projectId: int):
         ovs = FeaturesService.getOverlays(projectId)
         return ovs
@@ -574,3 +584,68 @@ class ProjectTasksResource(Resource):
         from geoapi.models import Task
         from geoapi.db import db_session
         return db_session.query(Task).all()
+
+@api.route('/<int:projectId>/tile-servers/')
+class ProjectTileServersResource(Resource):
+    @api.doc(id="addTileServer",
+             description='Add a new tile server to a project.')
+    @api.expect(tile_server)
+    @api.marshal_with(tile_server)
+    @project_permissions
+    def post(self, projectId: int):
+        logger.info("Add tile server to project:{} for user:{}".format(
+            projectId, request.current_user.username))
+
+        ts = FeaturesService.addTileServer(projectId, api.payload)
+        return ts
+
+
+    @api.doc(id="getTileServers",
+             description='Get a list of all the tile servers associated with the current map project.')
+    @api.marshal_with(tile_server, as_list=True)
+    @project_permissions
+    def get(self, projectId: int):
+        tsv = FeaturesService.getTileServers(projectId)
+        return tsv
+
+
+    @api.doc(id="updateTileServers",
+             description="Update metadata about a tile servers")
+    @api.marshal_with(tile_server, as_list=True)
+    @project_permissions
+    def put(self, projectId: int):
+        u = request.current_user
+        logger.info("Update project:{} for user:{}".format(projectId,
+                                                           u.username))
+
+        ts = FeaturesService.updateTileServers(projectId=projectId,
+                                                 dataList=api.payload)
+        return ts
+
+
+@api.route('/<int:projectId>/tile-servers/<int:tileServerId>/')
+class ProjectTileServerResource(Resource):
+
+    @api.doc(id="removeTileServer",
+             description='Remove a tile server from a project')
+    @project_permissions
+    def delete(self, projectId: int, tileServerId: int) -> str:
+        logger.info("Delete tile server:{} in project:{} for user:{}".format(
+            tileServerId, projectId, request.current_user.username))
+        FeaturesService.deleteTileServer(projectId, tileServerId)
+        return "Tile Server {id} deleted".format(id=tileServerId)
+
+
+    @api.doc(id="updateTileServer",
+             description="Update metadata about a tile server")
+    @api.marshal_with(tile_server)
+    @project_permissions
+    def put(self, projectId: int, tileServerId: int):
+        u = request.current_user
+        logger.info("Update project:{} for user:{}".format(projectId,
+                                                           u.username))
+
+
+        return FeaturesService.updateTileServer(projectId=projectId,
+                                                tileServerId=tileServerId,
+                                                data=api.payload)

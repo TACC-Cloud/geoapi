@@ -1,7 +1,7 @@
 """empty message
 
 Revision ID: 27c3fcfc55fe
-Revises: 
+Revises:
 Create Date: 2019-09-27 15:13:07.267482
 
 """
