@@ -255,7 +255,7 @@ def import_from_agave(tenant_id: str, userId: int, systemId: str, path: str, pro
                         logger.info("No metadata for {}; skipping file".format(item_system_path))
                         continue
                     geolocation = meta.get("geolocation")
-                    if geolocation is None:
+                    if not geolocation:
                         logger.info("No geolocation for:{}; skipping".format(item_system_path))
                         continue
                     lat, lon = _parse_rapid_geolocation(geolocation)
