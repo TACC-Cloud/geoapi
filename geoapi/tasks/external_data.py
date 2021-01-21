@@ -264,10 +264,12 @@ def import_from_agave(tenant_id: str, userId: int, systemId: str, path: str, pro
                     feat.properties = meta
                     db_session.add(feat)
                     tmpFile.filename = Path(item.path).name
-                    fa = FeaturesService.createFeatureAsset(projectId, feat.id, tmpFile, original_path=item_system_path)
-                    fa.feature = feat
-                    fa.original_path = item_system_path
-                    db_session.add(fa)
+                    try:
+                        FeaturesService.createFeatureAsset(projectId, feat.id, tmpFile, original_path=item_system_path)
+                    except:
+                        # remove newly-created placeholder feature if we fail to create an asset
+                        FeaturesService.delete(feat.id)
+                        raise RuntimeError("Unable to create feature asset")
                     NotificationsService.create(user, "success", "Imported {f}".format(f=item_system_path))
                     tmpFile.close()
                 elif item.path.suffix.lower().lstrip('.') in FeaturesService.ALLOWED_GEOSPATIAL_EXTENSIONS:
