@@ -249,7 +249,7 @@ def import_from_agave(tenant_id: str, userId: int, systemId: str, path: str, pro
                         logger.error("No service account. Unable to get metadata for {}:{}".format(item.system, item.path))
                         return {}
 
-                    logger.debug("metadata from service account : {}".format(meta))
+                    logger.debug("metadata from service account for file:{} : {}".format(item_system_path, meta))
 
                     if not meta:
                         logger.info("No metadata for {}; skipping file".format(item_system_path))
