@@ -1,6 +1,6 @@
 from geoapi.models import User, Project, ProjectUser
 from geoapi.db import db_session
-from typing import List
+from typing import List, Dict
 # from pytas.http import TASClient
 
 class UserService:
@@ -35,6 +35,12 @@ class UserService:
         return db_session.query(User)\
             .filter(User.username == username)\
             .filter(User.tenant_id == tenant)\
+            .first()
+
+    @staticmethod
+    def getUserByName(username: str) -> User:
+        return db_session.query(User)\
+            .filter(User.username == username)\
             .first()
 
     @staticmethod

@@ -1,4 +1,5 @@
 from sqlalchemy import Column, Integer, String, DateTime
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from geoapi.db import Base
@@ -12,6 +13,8 @@ class User(Base):
     tenant_id = Column(String, nullable=False)
     created = Column(DateTime(timezone=True), server_default=func.now())
     jwt = Column(String())
+    google_jwt = Column(JSONB, default={})
+    mapillary_jwt = Column(JSONB, default={})
     projects = relationship('Project',
                  secondary='projects_users',
                  back_populates='users', lazy="joined")

@@ -10,6 +10,3 @@ from geoapi.services.videos import VideoService
 @app.task()
 def process_upload(projectId: int, fileObj: IO, meta: Dict):
     pass
-
-
-

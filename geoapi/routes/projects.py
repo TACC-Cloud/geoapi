@@ -1,16 +1,22 @@
-from flask import request, abort
-from flask_restplus import Resource, Namespace, fields, inputs
-from werkzeug.datastructures import FileStorage
-from werkzeug.utils import secure_filename
-
+from flask import abort, request, redirect
+import requests
+import json
+import time
+from flask_restplus import Namespace, Resource, fields, inputs
 from geoapi.log import logging
 from geoapi.schemas import FeatureSchema
 from geoapi.services.features import FeaturesService
-from geoapi.services.projects import ProjectsService
 from geoapi.services.point_cloud import PointCloudService
-from geoapi.utils.decorators import jwt_decoder, project_permissions_allow_public, project_permissions, project_feature_exists, \
-    project_point_cloud_exists, project_point_cloud_not_processing
+from geoapi.services.projects import ProjectsService
+from geoapi.services.streetview import StreetviewService
 from geoapi.tasks import external_data
+from geoapi.utils.decorators import (jwt_decoder, project_feature_exists,
+                                     project_permissions,
+                                     project_permissions_allow_public,
+                                     project_point_cloud_exists,
+                                     project_point_cloud_not_processing)
+from werkzeug.datastructures import FileStorage
+from werkzeug.utils import secure_filename
 
 logger = logging.getLogger(__name__)
 
@@ -99,6 +105,11 @@ overlay = api.model('Overlay', {
     'path': fields.String(),
     'project_id': fields.Integer(),
     'label': fields.String()
+})
+
+streetview_token = api.model('StreetviewToken', {
+    'token': fields.String(),
+    'url': fields.String()
 })
 
 file_upload_parser = api.parser()
@@ -196,7 +207,6 @@ class ProjectResource(Resource):
         return ProjectsService.update(projectId=projectId,
                                       data=api.payload)
 
-
 @api.route('/<int:projectId>/users/')
 class ProjectUsersResource(Resource):
 
@@ -234,6 +244,72 @@ class ProjectUserResource(Resource):
             request.current_user.username))
         return ProjectsService.removeUserFromProject(projectId,
                                                      username)
+
+@api.route('/<int:projectId>/users/<username>/streetview/<service>')
+class UserStreetviewResource(Resource):
+    @api.doc(id="deleteUserStreetviewToken",
+             description="Remove the streetview server token for a user")
+    @project_permissions
+    def delete(self, projectId: int, username: str, service: str):
+        proj = ProjectsService.get(projectId)
+        return StreetviewService.deleteStreetviewServiceToken(username,
+                                                              proj.tenant_id,
+                                                              service)
+
+    @api.doc(id="getUserStreetviewToken",
+             description="Get the streetview server token for a user")
+    @api.marshal_with(streetview_token)
+    @project_permissions
+    def get(self, projectId: int, username: str, service: str):
+        return ProjectsService.streetviewRequest(username, projectId, service)
+
+@api.route('/streetview/<service>/callback')
+class UserStreetviewCallback(Resource):
+    @api.doc(id="streetviewTokenCallback",
+             description="Handle callback for streetview.")
+    def get(self, service: str):
+        GOOGLE_CLIENT_ID = '573001329633-1p0k8rko13s6n2p2cugp3timji3ip9f0.apps.googleusercontent.com'
+        GOOGLE_CLIENT_SECRET = 'gpqTuh0SwcIbbnGdKK2p30dO'
+        MAPILLARY_CLIENT_ID = 'VDRaeGFzMEtzRnJrMFZwdVYzckd6cjo0ZWY3ZDEzZGIyMWJkZjNi'
+        MAPILLARY_CLIENT_SECRET = 'Y2I4ZmQyOWExOTFiNTI2MjJmOTQwZDlmMmRiYTBiNTE='
+        GOOGLE_TOKEN_URL = 'https://oauth2.googleapis.com/token'
+        GOOGLE_AUTH_URL = 'https://accounts.google.com/o/oauth2/v2/auth'
+        MAPILLARY_AUTH_URL = 'https://www.mapillary.com/connect'
+        MAPILLARY_TOKEN_URL = 'https://a.mapillary.com/v2/oauth/token'
+        GOOGLE_SCOPE = 'https://www.googleapis.com/auth/streetviewpublish+https://www.googleapis.com/auth/userinfo.email+https://www.googleapis.com/auth/userinfo.profile'
+        MAPILLARY_SCOPE = 'user:email+user:read+user:write+public:write+public:upload+private:read+private:write+private:upload'
+
+        REDIRECT_URL = 'http://localhost:8000/projects/streetview/' + service + '/callback'
+
+        redirect_state = request.args.get('state')
+        json_state = json.loads(str(redirect_state))
+        username = json_state['username']
+        projectId = json_state['projectId']
+
+        proj = ProjectsService.get(projectId)
+        token = {}
+
+        # Google uses authorization flow
+        if service == "google":
+            url = GOOGLE_TOKEN_URL
+
+            service_params = {
+                'code': request.args.get('code'),
+                'client_id': GOOGLE_CLIENT_ID,
+                'client_secret': GOOGLE_CLIENT_SECRET,
+                'redirect_uri': REDIRECT_URL,
+                'grant_type': 'authorization_code'
+            }
+            resp = requests.post(url, params = service_params)
+            token["access_token"] = resp.json()['access_token']
+            token["expiration_date"] = resp.json()['expires_in'] + time.time()
+        else:
+            # Mapillary doesn't have an expiration for access tokens
+            token["access_token"] = request.args.get('access_token')
+        StreetviewService.setStreetviewServiceToken(username, proj.tenant_id, service, token)
+
+        # should redirect to where the thing came from (i.e. project/<project UUID>/streetview)
+        return redirect("http://localhost:4200")
 
 
 @api.route('/<int:projectId>/features/')
@@ -572,6 +648,6 @@ class ProjectTasksResource(Resource):
     @api.marshal_with(task, as_list=True)
     @project_permissions
     def get(self, projectId: int):
-        from geoapi.models import Task
         from geoapi.db import db_session
+        from geoapi.models import Task
         return db_session.query(Task).all()

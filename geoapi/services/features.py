@@ -474,4 +474,3 @@ class FeaturesService:
         delete_assets(projectId=projectId, uuid=ov.uuid)
         db_session.delete(ov)
         db_session.commit()
-

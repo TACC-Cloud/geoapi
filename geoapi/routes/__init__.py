@@ -22,4 +22,3 @@ api = Api(
 
 api.add_namespace(projects)
 api.add_namespace(notifications)
-
