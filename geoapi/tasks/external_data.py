@@ -215,6 +215,10 @@ def import_point_clouds_from_agave(userId: int, files, pointCloudId: int):
 def import_from_agave(tenant_id: str, userId: int, systemId: str, path: str, projectId: int):
     user = db_session.query(User).get(userId)
     client = AgaveUtils(user.jwt)
+    logger.info("Importing for project:{} directory:{}/{} for user:{}".format(projectId,
+                                                                              systemId,
+                                                                              path,
+                                                                              user.username))
     listing = client.listing(systemId, path)
     # First item is always a reference to self
     files_in_directory = listing[1:]
