@@ -28,7 +28,7 @@ jobs:
           - docker push taccaci/geoapi:latest
           - docker push taccaci/geoapi:$GIT_HASH)
         on:
-          branch: master
+          all_branches: true
     - name: "geoapi-workers: unit tests / container"
       before_script:
       - docker pull taccaci/geoapi-workers:latest
@@ -50,4 +50,4 @@ jobs:
           - docker push taccaci/geoapi-workers:latest
           - docker push taccaci/geoapi-workers:$(GIT_HASH)
         on:
-          branch: master
+          all_branches: true
