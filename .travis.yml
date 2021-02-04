@@ -29,7 +29,7 @@ jobs:
           - docker push taccaci/geoapi:latest
           - docker push taccaci/geoapi:${GIT_HASH}
         on:
-          all_branches: true
+          branch: master
     - name: "geoapi-workers: unit tests / container"
       before_script:
       - echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
@@ -51,4 +51,4 @@ jobs:
           - docker push taccaci/geoapi-workers:latest
           - docker push taccaci/geoapi-workers:${GIT_HASH}
         on:
-          all_branches: true
+          branch: master
