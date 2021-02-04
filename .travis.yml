@@ -1,7 +1,8 @@
 language: generic
 sudo: required
 env:
-  - GIT_HASH=$(git log --format=%h -1)
+  global:
+    - GIT_HASH="$(git log --format=%h -1)"
 services:
   - docker
 
@@ -21,12 +22,12 @@ jobs:
       script:
       - docker run --net=test -e APP_ENV=testing taccaci/geoapi:latest pytest --cov=geoapi -m "not worker"
       before_deploy:
-         - docker tag taccaci/geoapi:latest taccaci/geoapi:$(GIT_HASH)
+         - docker tag taccaci/geoapi:latest taccaci/geoapi:${GIT_HASH}
       deploy:
         provider: script
         script:
           - docker push taccaci/geoapi:latest
-          - docker push taccaci/geoapi:$GIT_HASH)
+          - docker push taccaci/geoapi:${GIT_HASH}
         on:
           all_branches: true
     - name: "geoapi-workers: unit tests / container"
@@ -43,11 +44,11 @@ jobs:
       script:
       - docker run --net=test -e APP_ENV=testing taccaci/geoapi-workers:latest pytest --cov=geoapi -m "worker"
       before_deploy:
-         - docker tag taccaci/geoapi-workers:latest taccaci/geoapi-workers:$(GIT_HASH)
+         - docker tag taccaci/geoapi-workers:latest taccaci/geoapi-workers:${GIT_HASH}
       deploy:
         provider: script
         script:
           - docker push taccaci/geoapi-workers:latest
-          - docker push taccaci/geoapi-workers:$(GIT_HASH)
+          - docker push taccaci/geoapi-workers:${GIT_HASH}
         on:
           all_branches: true
