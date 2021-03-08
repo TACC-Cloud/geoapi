@@ -9,7 +9,7 @@ from geoapi.services.features import FeaturesService
 from geoapi.services.point_cloud import PointCloudService
 from geoapi.services.projects import ProjectsService
 from geoapi.services.streetview import StreetviewService
-from geoapi.tasks import external_data
+from geoapi.tasks import external_data, streetview
 from geoapi.utils.decorators import (jwt_decoder, project_feature_exists,
                                      project_permissions,
                                      project_permissions_allow_public,
@@ -108,7 +108,7 @@ overlay = api.model('Overlay', {
 })
 
 streetview_token = api.model('StreetviewToken', {
-    'token': fields.String(),
+    'authorized': fields.Boolean(),
     'url': fields.String()
 })
 
@@ -127,6 +127,12 @@ tapis_file = api.model('TapisFile', {
 
 tapis_files_import = api.model('TapisFileImport', {
     'files': fields.List(fields.Nested(tapis_file), required=True)
+})
+
+streetview_folder_import = api.model('TapisFolderImport', {
+    'folder': fields.Nested(tapis_file),
+    'mapillary': fields.Boolean(),
+    'google': fields.Boolean()
 })
 
 overlay_parser = api.parser()
@@ -261,13 +267,15 @@ class UserStreetviewResource(Resource):
     @api.marshal_with(streetview_token)
     @project_permissions
     def get(self, projectId: int, username: str, service: str):
-        return ProjectsService.streetviewRequest(username, projectId, service)
+        logger.info("streetview request")
+        return StreetviewService.streetviewRequest(username, projectId, service)
 
 @api.route('/streetview/<service>/callback')
 class UserStreetviewCallback(Resource):
     @api.doc(id="streetviewTokenCallback",
              description="Handle callback for streetview.")
     def get(self, service: str):
+        logger.info("callback")
         GOOGLE_CLIENT_ID = '573001329633-1p0k8rko13s6n2p2cugp3timji3ip9f0.apps.googleusercontent.com'
         GOOGLE_CLIENT_SECRET = 'gpqTuh0SwcIbbnGdKK2p30dO'
         MAPILLARY_CLIENT_ID = 'VDRaeGFzMEtzRnJrMFZwdVYzckd6cjo0ZWY3ZDEzZGIyMWJkZjNi'
@@ -306,11 +314,39 @@ class UserStreetviewCallback(Resource):
         else:
             # Mapillary doesn't have an expiration for access tokens
             token["access_token"] = request.args.get('access_token')
+        print(token["access_token"])
         StreetviewService.setStreetviewServiceToken(username, proj.tenant_id, service, token)
+
+        for key in request.args:
+            print(key, '->', request.args[key])
 
         # should redirect to where the thing came from (i.e. project/<project UUID>/streetview)
         return redirect("http://localhost:4200")
 
+@api.route('/<int:projectId>/users/<username>/streetview/upload/')
+class UserStreetviewUploadFilesResource(Resource):
+    @api.doc(id="uploadFilesToStreetview",
+             description='Import a all files in a directory into a project from Tapis. The files should '
+                         'contain GPano metadata for compatibility with streetview services. This'
+                         'is an asynchronous operation, files will be imported in the background'
+             )
+    @api.expect(streetview_folder_import)
+    @api.marshal_with(ok_response)
+    @project_permissions
+    def post(self, projectId: int, username: str):
+        u = request.current_user
+        logger.info("Upload images for user:{}".format(
+            request.current_user.username))
+        # TODO move   to  services
+        StreetviewService.uploadFilesToMapillary(u, projectId, request.json)
+        #     streetview.upload_files_from_tapis_to_streetview.delay(u.id,
+        #                                                            u.tenant_id,
+        #                                                            projectId,
+        #                                                            request.json['folder'],
+        #                                                            request.json['google'],
+        #                                                            request.json['mapillary'])
+
+        return {"message": "accepted"}
 
 @api.route('/<int:projectId>/features/')
 class ProjectFeaturesResource(Resource):

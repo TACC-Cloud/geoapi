@@ -44,6 +44,10 @@ class UserService:
             .first()
 
     @staticmethod
+    def getUserById(userId: int) -> User:
+        return db_session.query(User).get(userId)
+
+    @staticmethod
     def canAccess(user: User, projectId: int) -> bool:
         up = db_session.query(ProjectUser)\
             .join(Project)\

@@ -1,11 +1,13 @@
 import base64
 import re
 import io
+import xml.etree.ElementTree as ET
 import PIL
 from PIL import Image
 from PIL.Image import Image as PILImage
 from PIL.ExifTags import TAGS, GPSTAGS
-from typing import Tuple, IO, AnyStr
+
+from typing import Tuple, IO, AnyStr, Dict
 from dataclasses import dataclass
 from geoapi.exceptions import InvalidEXIFData
 from geoapi.log import logging
@@ -164,3 +166,64 @@ def get_exif_location(image):
         lon = 0 - lon
 
     return lon, lat
+
+def parse(val):
+    """parse literal to actual value"""
+    literal = {
+        'True': True,
+        'False': False
+    }
+    if val in literal:
+        return literal.get(val)
+    elif val.isdigit():
+        return int(val)
+    else:
+        try:
+            return float(val)
+        except ValueError:
+            return val
+
+
+# TODO: Refactor so that it would just get data
+#       and is_gpano should check if it has gpano
+#       and this should be get_xmp_data
+# def get_xmp_data(image):
+def is_gpano(fileObj):
+    image = Image.open(fileObj)
+
+    ns = {
+        'GPano': 'http://ns.google.com/photos/1.0/panorama/',
+        'rdf': 'http://www.w3.org/1999/02/22-rdf-syntax-ns#'
+    }
+
+    metainfo = {
+        TAGS[k]: v
+        for k, v in image._getexif().items()
+        if k in TAGS
+    }
+
+    pano_prefix = '{%s}' % ns['GPano']
+
+    for segment, content in image.applist:
+        # print(type(content))
+        # print(content)
+        marker, body = content.split(b'\x00', 1)
+        # print(body)
+        # print(marker)
+        if segment == 'APP1' and marker == b'http://ns.adobe.com/xap/1.0/':
+            return True
+            # print(body)
+            # root = ET.fromstring(body)
+            # print(root)
+            # node = root.find('rdf:RDF', ns).find('rdf:Description', ns)
+            # metainfo.update({key[len(pano_prefix):]: parse(node.get(key))
+            #                  for key in node.keys() if key.startswith(pano_prefix)})
+            # print("awesome!")
+    return False
+
+    # print('\n'.join(['{0:32} {1}'.format(item, metainfo[item]) for item in metainfo]))
+
+# def has_gpano(image):
+#     xmp = get_xmp_data(image)
+#     xmp['gpano']
+#     return true
