@@ -241,7 +241,7 @@ spec:
         - name: assets
           nfs:
             server: ${NSFSHARE_CLUSTER_IP}
-            path: ${ASSETS_SUBPATH}
+            path: / 
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -309,7 +309,7 @@ spec:
       - name: assets
         nfs:
           server: ${NSFSHARE_CLUSTER_IP}
-          path: ${ASSETS_SUBPATH}
+          path: /
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -494,7 +494,7 @@ spec:
         - name: assets
           nfs:
             server: ${NSFSHARE_CLUSTER_IP}
-            path: ${ASSETS_SUBPATH}
+            path: /
 ---
 apiVersion: batch/v1
 kind: Job

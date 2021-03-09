@@ -19,7 +19,7 @@ checkforcontext:
 .PHONY: create
 create: checkforcontext
 	@echo "Creating geoapi deployment/services/migration-job in '$(KUBE_CONTEXT)' context"
-	source ${ENV_FILE} && cat geoapi.yaml | envsubst '$${GEOAPI_TAG} $${ASSETS_SUBPATH} $${NODEPORT} $${NSFSHARE_CLUSTER_IP}' | kubectl apply -f - 
+	source ${ENV_FILE} && cat geoapi.yaml | envsubst '$${GEOAPI_TAG} $${NODEPORT} $${NSFSHARE_CLUSTER_IP}' | kubectl apply -f - 
 
 .PHONY: delete
 delete: checkforcontext
