@@ -48,12 +48,12 @@ create-staging: create ## Create deployment/services/jobs of geoapi (STAGING)
 	@echo "Finished creating geoapi (deployment/services/jobs) in '$(KUBE_CONTEXT)' context using ${ENV_FILE} file"
 
 .PHONY: delete-production
-delete-staging: KUBE_CONTEXT=wma-geospatial
-delete-staging: delete ## Delete deployment/services/jobs of geoapi (PRODUCTION) !!!  CAREFUL !
+delete-production: KUBE_CONTEXT=wma-geospatial
+delete-production: delete ## Delete deployment/services/jobs of geoapi (PRODUCTION) !!!  CAREFUL !
 	@echo "Finished deleting geoapi (deployment/services/jobs) in '$(KUBE_CONTEXT)' context"
 
 .PHONY: delete-staging
-create-staging: KUBE_CONTEXT=wma-geospatial
-create-staging: ENV_FILE=prod.env
-create-staging: create ## Create deployment/services/jobs of geoapi (PRODUCTION) !!!  CAREFUL !
+create-production: KUBE_CONTEXT=wma-geospatial
+create-production: ENV_FILE=prod.env
+create-production: create ## Create deployment/services/jobs of geoapi (PRODUCTION) !!!  CAREFUL !
 	@echo "Finished creating geoapi (deployment/services/jobs) in '$(KUBE_CONTEXT)' context using ${ENV_FILE} file"
