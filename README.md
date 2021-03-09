@@ -78,6 +78,11 @@ alembic revision --autogenerate
 # - add/commit migrations
 ```
 
+## Kubernetes
+
+Information on Kubernetes configuration can be found in the [kube/README.md](kube/README.md) including information
+on kube commands and Jenkins workflows.
+
 
 ## Python client
 
