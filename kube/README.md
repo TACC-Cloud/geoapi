@@ -29,6 +29,7 @@ environments.
 
 ```
 ssh cic02
+CONTEXT=`geoapi-dev`
 kubectl get --context=$CONTEXT all
 kubectl describe --context=$CONTEXT deployment.apps/geoapi
 kubectl logs --tail 100 --context=$CONTEXT deployment.apps/geoapi
