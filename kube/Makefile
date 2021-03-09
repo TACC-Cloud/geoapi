@@ -16,8 +16,16 @@ checkforcontext:
 	fi
 	@echo "Using '$(KUBE_CONTEXT)' context"
 
+.PHONY: checkfortag
+checkfortag:
+	@if test -z "$(GEOAPI_TAG)"; then\
+		 echo "Missing GEOAPI_TAG needed for images";\
+		 exit 1;\
+	fi
+	@echo "Using '$(GEOAPI_TAG)' images"
+
 .PHONY: create
-create: checkforcontext
+create: checkforcontext checkfortag
 	@echo "Creating geoapi deployment/services/migration-job in '$(KUBE_CONTEXT)' context"
 	source ${ENV_FILE} && cat geoapi.yaml | envsubst '$${GEOAPI_TAG} $${NODEPORT} $${NSFSHARE_CLUSTER_IP}' | kubectl apply -f - 
 
