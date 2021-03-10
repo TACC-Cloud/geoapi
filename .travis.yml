@@ -1,6 +1,8 @@
 language: generic
 sudo: required
-
+env:
+  global:
+    - GIT_HASH="$(git log --format=%h -1)"
 services:
   - docker
 
@@ -8,6 +10,7 @@ jobs:
   include:
     - name: "geoapi: unit tests / container"
       before_script:
+      - echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
       - docker pull taccaci/geoapi:latest
       - docker build --cache-from taccaci/geoapi:latest -t taccaci/geoapi:latest .
       - sudo mkdir /assets
@@ -19,14 +22,17 @@ jobs:
       script:
       - docker run --net=test -e APP_ENV=testing taccaci/geoapi:latest pytest --cov=geoapi -m "not worker"
       before_deploy:
-         - echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
+         - docker tag taccaci/geoapi:latest taccaci/geoapi:${GIT_HASH}
       deploy:
         provider: script
-        script: docker push taccaci/geoapi:latest
+        script:
+          - docker push taccaci/geoapi:latest
+          - docker push taccaci/geoapi:${GIT_HASH}
         on:
           branch: master
     - name: "geoapi-workers: unit tests / container"
       before_script:
+      - echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
       - docker pull taccaci/geoapi-workers:latest
       - docker build --cache-from taccaci/geoapi-workers:latest -t taccaci/geoapi-workers:latest -f Dockerfile.potree .
       - sudo mkdir /assets
@@ -38,9 +44,11 @@ jobs:
       script:
       - docker run --net=test -e APP_ENV=testing taccaci/geoapi-workers:latest pytest --cov=geoapi -m "worker"
       before_deploy:
-         - echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
+         - docker tag taccaci/geoapi-workers:latest taccaci/geoapi-workers:${GIT_HASH}
       deploy:
         provider: script
-        script: docker push taccaci/geoapi-workers:latest
+        script:
+          - docker push taccaci/geoapi-workers:latest
+          - docker push taccaci/geoapi-workers:${GIT_HASH}
         on:
           branch: master
