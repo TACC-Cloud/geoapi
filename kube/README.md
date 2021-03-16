@@ -2,11 +2,11 @@
 
 ## Images building + Jenkins
 
-The deployment of images and updating of the Kubernetes services and applications is performed by a jenkins
-workflow found [here (https://jenkins01.tacc.utexas.edu/view/Hazmapper+Geoapi/.)[(https://jenkins01.tacc.utexas.edu/view/Hazmapper+Geoapi/.]
+The deployment of images and updating of the Kubernetes services and applications is performed by a Jenkins
+workflow found [here](https://jenkins01.tacc.utexas.edu/view/Hazmapper+Geoapi/.)
 
 The images used in deployment are built automatically for the master branch using TravisCI and 
-pushed to Docker Hub (https://hub.docker.com/r/taccaci/geoapi and https://hub.docker.com/r/taccaci/geoapi-workers).
+pushed to Docker Hub (see https://hub.docker.com/r/taccaci/geoapi and https://hub.docker.com/r/taccaci/geoapi-workers).
 
 ### Kube config
 
