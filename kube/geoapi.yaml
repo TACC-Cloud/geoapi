@@ -136,7 +136,7 @@ spec:
   ports:
   - port: 80
     targetPort: 80
-    nodePort: 31474
+    nodePort: ${NODEPORT}
   selector:
     app: geoapi-nginx
 ---
@@ -240,8 +240,8 @@ spec:
             name: geoapi-nginx-conf
         - name: assets
           nfs:
-            server: 10.104.129.89
-            path: /
+            server: ${NSFSHARE_CLUSTER_IP}
+            path: / 
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -293,7 +293,7 @@ spec:
               secretKeyRef:
                 name: tapis
                 key: tenant
-        image: taccaci/geoapi-workers:latest
+        image: taccaci/geoapi-workers:${GEOAPI_TAG}
         name: geoapi-workers
         resources:
           requests:
@@ -308,7 +308,7 @@ spec:
       volumes:
       - name: assets
         nfs:
-          server: 10.104.129.89
+          server: ${NSFSHARE_CLUSTER_IP}
           path: /
 ---
 apiVersion: apps/v1
@@ -360,7 +360,7 @@ spec:
                 name: tapis
                 key: tenant
 
-        image: taccaci/geoapi-workers:latest
+        image: taccaci/geoapi-workers:${GEOAPI_TAG}
         name: geoapi-celerybeat
         resources:
           requests:
@@ -474,7 +474,7 @@ spec:
               secretKeyRef:
                 name: tapis
                 key: tenant
-        image: taccaci/geoapi:latest
+        image: taccaci/geoapi:${GEOAPI_TAG}
         name: geoapi
         ports:
         - containerPort: 5000
@@ -493,7 +493,7 @@ spec:
       volumes:
         - name: assets
           nfs:
-            server: 10.104.129.89
+            server: ${NSFSHARE_CLUSTER_IP}
             path: /
 ---
 apiVersion: batch/v1
@@ -522,6 +522,6 @@ spec:
               secretKeyRef:
                 name: postgres
                 key: password
-        image: taccaci/geoapi:latest
+        image: taccaci/geoapi:${GEOAPI_TAG}
         command: ["alembic", "upgrade", "head"]
       restartPolicy: Never
