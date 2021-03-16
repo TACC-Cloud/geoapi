@@ -21,11 +21,16 @@ under gunicorn on port 8000
 
 `docker-compose up`
 
-- Initialize the database
+###### Run locally with service accounts
+
+For some access to metadata and user information, a service account is required:
+`TENANT="{\"DESIGNSAFE\": {\"service_account_token\": \"ABCDEFG12344\"}}" docker-compose up`
+
+###### Initialize the database
 
 `docker exec -it geoapi python initdb.py`
 
-- Create a JWT
+###### Create a JWT
 
 Copy this string to here: https://jwt.io/ 
 
@@ -35,13 +40,13 @@ eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJ3c28yLm9yZy9wcm9kdWN0cy9hbSIsImV
 
 Edit the `YOUR_USERNAME`s in there for your TACC username and copy the modified string
 
-- Make some requests
+###### Make some requests
 
 You need to add the following header for authentication:
 
 `X-JWT-Assertion` to equal the JWT created above
 
-- Create a new map project
+###### Create a new map project
 
 send a POST request to `localhost:8000/projects` with a body like this: 
 
@@ -53,7 +58,7 @@ send a POST request to `localhost:8000/projects` with a body like this:
 
 ```
 
-- send a GET request to `localhost:8000/projects` and you should get that back.
+send a GET request to `localhost:8000/projects` and you should get that back.
 
 ### Client viewer
 

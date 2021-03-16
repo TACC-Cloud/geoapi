@@ -7,11 +7,20 @@ from geoapi.db import db_session
 from geoapi.tasks.external_data import (import_from_agave,
                                         import_point_clouds_from_agave,
                                         refresh_observable_projects,
-                                        get_additional_files)
+                                        get_additional_files,
+                                        is_member_of_rapp_project_folder)
 from geoapi.utils.agave import AgaveFileListing
 from geoapi.utils.assets import get_project_asset_dir, get_asset_path
 from geoapi.exceptions import InvalidCoordinateReferenceSystem
 from geoapi.services.point_cloud import PointCloudService
+
+
+@pytest.fixture(scope="function")
+def get_system_users_mock(userdata):
+    u1 = db_session.query(User).get(1)
+    u2 = db_session.query(User).get(2)
+    with patch('geoapi.tasks.external_data.get_system_users', return_value=[u1.username, u2.username]) as get_system_users:
+        yield get_system_users
 
 
 @pytest.fixture(scope="function")
@@ -54,17 +63,78 @@ def agave_utils_with_geojson_file(geojson_file_fixture):
         yield MockAgaveUtils()
 
 
+@pytest.fixture(scope="function")
+def agave_utils_with_image_file_from_rapp_folder(image_file_fixture):
+    filesListing = [
+        AgaveFileListing({
+            "system": "testSystem",
+            "path": "/RApp",
+            "type": "dir",
+            "length": 4,
+            "_links": "links",
+            "mimeType": "folder",
+            "lastModified": "2020-08-31T12:00:00Z"
+        }),
+        AgaveFileListing({
+            "system": "testSystem",
+            "type": "file",
+            "length": 4096,
+            "path": "/RApp/file.jpg",
+            "_links": "links",
+            "mimeType": "application/jpg",
+            "lastModified": "2020-08-31T12:00:00Z"
+        })
+    ]
+    with patch('geoapi.utils.agave.AgaveUtils') as MockAgaveUtilsInUtils:
+        MockAgaveUtilsInUtils().listing.return_value = filesListing
+        MockAgaveUtilsInUtils().getFile.return_value = image_file_fixture
+        MockAgaveUtilsInUtils().getMetaAssociated.return_value = {"geolocation": [{"longitude": 20, "latitude": 30}]}
+        with patch('geoapi.tasks.external_data.AgaveUtils') as MockAgaveUtils:
+            MockAgaveUtils().listing.return_value = filesListing
+            MockAgaveUtils().getFile.return_value = image_file_fixture
+            MockAgaveUtils().getMetaAssociated.return_value = {"geolocation": [{"longitude": 20, "latitude": 30}]}
+
+            class MockAgave:
+                client_in_utils = MockAgaveUtilsInUtils()
+                client_in_external_data = MockAgaveUtils()
+            yield MockAgave
+
+
 @pytest.mark.worker
 def test_external_data_good_files(userdata, projects_fixture, agave_utils_with_geojson_file):
     u1 = db_session.query(User).filter(User.username == "test1").first()
 
-    import_from_agave(u1.id, "testSystem", "/testPath", projects_fixture.id)
+    import_from_agave(projects_fixture.tenant_id, u1.id, "testSystem", "/testPath", projects_fixture.id)
     features = db_session.query(Feature).all()
     # the test geojson has 3 features in it
     assert len(features) == 3
     # This should only have been called once, since there is only
     # one FILE in the listing
     agave_utils_with_geojson_file.getFile.assert_called_once()
+
+
+@pytest.mark.worker
+def test_external_data_rapp(userdata, projects_fixture,
+                            agave_utils_with_image_file_from_rapp_folder):
+    u1 = db_session.query(User).filter(User.username == "test1").first()
+
+    import_from_agave(projects_fixture.tenant_id, u1.id, "testSystem", "/Rapp", projects_fixture.id)
+    features = db_session.query(Feature).all()
+    # should be one feature with a single image asset
+    assert len(features) == 1
+    assert len(features[0].assets) == 1
+    assert len(os.listdir(get_project_asset_dir(features[0].project_id))) == 2  # processed image + thumbnail
+    # This should only have been called once, since there is only one FILE in the listing
+    agave_utils_with_image_file_from_rapp_folder.client_in_external_data.getFile.assert_called_once()
+
+
+@pytest.mark.worker
+def test_external_data_rapp_missing_geospatial_metadata(userdata, projects_fixture, agave_utils_with_image_file_from_rapp_folder):
+    agave_utils_with_image_file_from_rapp_folder.client_in_utils.getMetaAssociated.return_value = {}
+    u1 = db_session.query(User).filter(User.username == "test1").first()
+    import_from_agave(projects_fixture.tenant_id, u1.id, "testSystem", "/Rapp", projects_fixture.id)
+    features = db_session.query(Feature).all()
+    assert len(features) == 0
 
 
 @pytest.mark.worker
@@ -177,9 +247,19 @@ def test_import_from_agave_failed_dbsession_rollback(agave_utils_with_geojson_fi
                                                      db_session_commit_throws_exception,
                                                      rollback_side_effect):
     with pytest.raises(Exception):
-        import_from_agave(userdata.id, "testSystem", "/testPath", projects_fixture.id)
+        import_from_agave(projects_fixture.tenant_id, userdata.id, "testSystem", "/testPath", projects_fixture.id)
 
     rollback_side_effect.assert_called()
+
+
+@pytest.mark.worker
+def test_refresh_observable_projects(agave_utils_with_image_file_from_rapp_folder,
+                                     observable_projects_fixture,
+                                     get_system_users_mock,
+                                     rollback_side_effect):
+    refresh_observable_projects()
+    rollback_side_effect.assert_not_called()
+    assert len(os.listdir(get_project_asset_dir(observable_projects_fixture.project_id))) == 2
 
 
 @pytest.mark.worker
@@ -189,6 +269,14 @@ def test_refresh_observable_projects_dbsession_rollback(agave_utils_with_geojson
                                                         rollback_side_effect):
     refresh_observable_projects()
     rollback_side_effect.assert_called()
+
+
+def test_is_member_of_rapp_project_folder():
+    assert is_member_of_rapp_project_folder("/bar/RApp/foo.jpg")
+    assert is_member_of_rapp_project_folder("/bar/RApp/foo.jpg")
+    assert is_member_of_rapp_project_folder("/bar/RApp/bar/foo.jpg")
+    assert is_member_of_rapp_project_folder("/RApp/bar/foo.jpg")
+    assert not is_member_of_rapp_project_folder("/something/test.jpg")
 
 
 def test_get_additional_files_none(agave_utils_with_geojson_file):

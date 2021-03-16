@@ -7,6 +7,12 @@ from geoapi.models import Feature, FeatureAsset, TileServer
 from geoapi.utils.assets import get_project_asset_dir, get_asset_path
 
 
+def test_create_feature_fromLatLng(projects_fixture):
+    feature = FeaturesService.fromLatLng(projects_fixture.id, 10, 20, metadata={})
+    assert len(feature.assets) == 0
+    assert feature.id is not None
+
+
 def test_hazmapperv1_file_with_images(projects_fixture, hazmpperV1_file):
     features = FeaturesService.fromGeoJSON(projects_fixture.id, hazmpperV1_file, metadata={})
     assert len(features) == 2
