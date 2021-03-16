@@ -1,6 +1,7 @@
 from geoapi.services.notifications import NotificationsService
 import os
 import sys
+import select
 import pathlib
 import glob
 import configparser
@@ -11,6 +12,8 @@ from uuid import UUID
 import re
 import subprocess
 from geoapi.settings import settings
+from logging import exception
+from geoapi.log import logging
 
 from mapillary_tools import insert_MAPJson as mapillary_insert_MAPJson
 from mapillary_tools import process_geotag_properties as mapillary_process_geotag_properties
@@ -23,6 +26,8 @@ from mapillary_tools import upload as mapillary_upload
 from mapillary_tools import post_process as mapillary_post_process
 from mapillary_tools import edit_config as mapillary_edit_config
 from geoapi.utils.capture_output import CaptureOutput
+
+logger = logging.getLogger(__file__)
 
 def make_project_streetview_dir(userId: int, path: str) -> str:
     """
@@ -143,13 +148,14 @@ def mapillary_is_authenticated(userId):
 #
 
 def filter_mapillary_upload_progress(sout: str, task_uuid: UUID):
-    p = re.compile(r'\d+(?=%|$)')
-    match = re.findall(p, sout)
-    if len(match) > 0:
-        NotificationsService.updateProgress("in_progress_mapillary", "", task_uuid, int(match[0]))
+    print(sout)
+    # p = re.compile(r'\d+(?=%|$)')
+    # match = re.findall(p, sout)
+    # if len(match) > 0:
+    #     NotificationsService.updateProgress(task_uuid, "in_progress", "", int(match[0]))
 
 
-async def run_mapillary(cmd, uuid=None):
+async def run_mapillary(cmd, uuid=None, callback=None):
     proc = await asyncio.create_subprocess_shell(
         cmd,
         stdout=asyncio.subprocess.PIPE,
@@ -157,17 +163,18 @@ async def run_mapillary(cmd, uuid=None):
 
     stdout, stderr = await proc.communicate()
 
-    print(f'[{cmd!r} exited with {proc.returncode}]')
-    if stdout:
-        print(f'[stdout]\n{stdout.decode()}')
-    if stderr:
-        print(f'[stderr]\n{stderr.decode()}')
+    # print(f'[{cmd!r} exited with {proc.returncode}]')
+    # if stdout:
+    #     print(f'[stdout]\n{stdout.decode()}')
+    # if stderr:
+    #     print(f'[stderr]\n{stderr.decode()}')
 
     if uuid and stdout:
-        p = re.compile(r'\d+(?=%|$)')
+        p = re.compile(r'\d+\.\d+(?=%|$)')
         match = re.findall(p, stdout.decode())
         if len(match) > 0:
-            NotificationsService.updateProgress("in_progress_mapillary", "", uuid, int(match[0]))
+            # print(match[0])
+            NotificationsService.updateProgress(uuid, "in_progress", "", int(match[0]))
 
 # def filter_mapillary_upload_progress(sout: str, task_uuid: UUID):
 #     p = re.compile(r'\d+(?=%|$)')
@@ -186,21 +193,8 @@ def authenticate_mapillary(userId: int, jwt: int):
     # mapillary_edit_config.edit_config(config_file=get_mapillary_auth_file(userId), jwt=jwt)
     # print(os.environ.get("GLOBAL_CONFIG_FILEPATH"))
     # print(os.environ.get("MAPILLARY_WEB_CLIENT_ID"))
-    asyncio.run(run_mapillary("{} {} {} {} {} {} {} {}".format(
-        "MAPILLARY_WEB_CLIENT_ID=VDRaeGFzMEtzRnJrMFZwdVYzckd6cjo0ZWY3ZDEzZGIyMWJkZjNi",
-        "mapillary_tools",
-        "--advanced",
-        "authenticate",
-        "--config_file",
-        get_mapillary_auth_file(userId),
-        "--jwt",
-        jwt
-    )))
-
-
-    # command = [
-    #     # TODO: Get this from settings
-    #     "MAPILLARY_WEB_CLIENT_ID=VDRaeGFzMEtzRnJrMFZwdVYzckd6cjo0ZWY3ZDEzZGIyMWJkZjNi"
+    # asyncio.run(run_mapillary("{} {} {} {} {} {} {} {}".format(
+    #     "MAPILLARY_WEB_CLIENT_ID=VDRaeGFzMEtzRnJrMFZwdVYzckd6cjo0ZWY3ZDEzZGIyMWJkZjNi",
     #     "mapillary_tools",
     #     "--advanced",
     #     "authenticate",
@@ -208,9 +202,22 @@ def authenticate_mapillary(userId: int, jwt: int):
     #     get_mapillary_auth_file(userId),
     #     "--jwt",
     #     jwt
-    # ]
+    # )))
 
-    # subprocess.run(command, capture_output=True)
+
+    command = [
+        '/usr/local/bin/mapillary_tools',
+        '--advanced',
+        'authenticate',
+        '--config_file',
+        get_mapillary_auth_file(userId),
+        '--jwt',
+        jwt
+    ]
+
+    subprocess.run(command,
+                   capture_output=True,
+                   env={'MAPILLARY_WEB_CLIENT_ID': 'VDRaeGFzMEtzRnJrMFZwdVYzckd6cjo0ZWY3ZDEzZGIyMWJkZjNi'})
 
 # def mapillary_process_upload(userId: int,
 #                              path: str,
@@ -224,6 +231,7 @@ def authenticate_mapillary(userId: int, jwt: int):
 #     pass
 
 def upload_to_mapillary(userId: int, path: str, task_uuid: UUID, username: str):
+
     # os.environ["MAPILLARY_WEB_CLIENT_ID"] = "VDRaeGFzMEtzRnJrMFZwdVYzckd6cjo0ZWY3ZDEzZGIyMWJkZjNi"
     # os.environ["GLOBAL_CONFIG_FILEPATH"] = get_mapillary_auth_file(userId)
 
@@ -236,16 +244,56 @@ def upload_to_mapillary(userId: int, path: str, task_uuid: UUID, username: str):
 
     # print("Process done.")
 
-    asyncio.run(run_mapillary("{} {} {} {} {} {} {} {}".format(
-        "MAPILLARY_WEB_CLIENT_ID=VDRaeGFzMEtzRnJrMFZwdVYzckd6cjo0ZWY3ZDEzZGIyMWJkZjNi",
-        "GLOBAL_CONFIG_FILEPATH=" + get_mapillary_auth_file(userId),
-        "mapillary_tools",
-        "process_and_upload",
-        "--import_path",
+    # asyncio.run(run_mapillary("{} {} {} {} {} {} {} {}".format(
+    #     "MAPILLARY_WEB_CLIENT_ID=VDRaeGFzMEtzRnJrMFZwdVYzckd6cjo0ZWY3ZDEzZGIyMWJkZjNi",
+    #     "GLOBAL_CONFIG_FILEPATH=" + get_mapillary_auth_file(userId),
+    #     "mapillary_tools",
+    #     "process_and_upload",
+    #     "--import_path",
+    #     get_project_streetview_dir(userId, path),
+    #     "--user_name",
+    #     username
+    # ), task_uuid))
+
+    command = [
+        '/usr/local/bin/mapillary_tools',
+        'process_and_upload',
+        '--import_path',
         get_project_streetview_dir(userId, path),
-        "--user_name",
+        '--user_name',
         username
-    ), task_uuid))
+    ]
+
+    try:
+        prog = subprocess.Popen(command,
+                                stdout=subprocess.PIPE,
+                                stderr=subprocess.STDOUT,
+                                env={
+                                    'MAPILLARY_WEB_CLIENT_ID': 'VDRaeGFzMEtzRnJrMFZwdVYzckd6cjo0ZWY3ZDEzZGIyMWJkZjNi',
+                                    'GLOBAL_CONFIG_FILEPATH': get_mapillary_auth_file(userId)
+                                },
+                                text=True)
+        NotificationsService.updateProgress(task_uuid, "in_progress", "To Mapillary [2/3]", 50)
+
+        for line in iter(prog.stdout.readline, b''):
+            # if line == '' or line == b'':
+            if line == '':
+                break
+            result = re.compile(r'\d+\.\d+(?=%|$)')
+            match = re.findall(result, str(line.rstrip()))
+            print(line.rstrip())
+            if len(match) > 0:
+                print(match[0])
+                NotificationsService.updateProgress(task_uuid, "in_progress", "To Mapillary [2/3]", int(float(match[0])))
+
+    except (OSError, subprocess.CalledProcessError) as exception:
+        logging.info('Exception occured: ' + str(exception))
+        logging.info('Subprocess failed')
+        return False
+    else:
+        logging.info('Subprocess finished')
+    return True
+
 
     # sys.stdout = CaptureOutput(lambda s: filter_mapillary_upload_progress(s, task_uuid))
     # mapillary_upload(import_path=get_project_streetview_dir(userId, path))
@@ -264,3 +312,93 @@ def upload_to_mapillary(userId: int, path: str, task_uuid: UUID, username: str):
 
     # sys.stdout = sys.__stdout__
     # mapillary_post_process(import_path=get_project_streetview_dir(userId, path))
+
+
+
+def test_to_mapillary(userId: int, path: str, task_uuid: UUID, username: str):
+    # os.environ["MAPILLARY_WEB_CLIENT_ID"] = "VDRaeGFzMEtzRnJrMFZwdVYzckd6cjo0ZWY3ZDEzZGIyMWJkZjNi"
+    # os.environ["GLOBAL_CONFIG_FILEPATH"] = get_mapillary_auth_file(userId)
+
+    # mapillary_process_user_properties(import_path=get_project_streetview_dir(userId, path))
+    # mapillary_process_import_meta_properties(import_path=get_project_streetview_dir(userId, path))
+    # mapillary_process_geotag_properties(import_path=get_project_streetview_dir(userId, path))
+    # mapillary_process_sequence_properties(import_path=get_project_streetview_dir(userId, path))
+    # mapillary_process_upload_params(import_path=get_project_streetview_dir(userId, path))
+    # mapillary_insert_MAPJson(import_path=get_project_streetview_dir(userId, path))
+
+    # print("Process done.")
+    # command = [
+    #     # TODO: Get this from settings
+    #     "MAPILLARY_WEB_CLIENT_ID=VDRaeGFzMEtzRnJrMFZwdVYzckd6cjo0ZWY3ZDEzZGIyMWJkZjNi"
+    #     "GLOBAL_CONFIG_FILEPATH=" + get_mapillary_auth_file(userId),
+    #     "mapillary_tools",
+    #     "upload",
+    #     "--import_path",
+    #     get_project_streetview_dir(userId, path),
+    # ]
+    # subprocess.run(command, capture_output=True)
+
+    # asyncio.run(run_mapillary("for i in {0..100}; do echo \"[===========================-------------------------------------------] ${i}% ... ${i} images left.\"; sleep 1; done",
+    #                           task_uuid))
+    script = """
+    echo -ne '[======------------------------------------------------------] 1.0% ... 9 images left\r'
+    sleep 1
+    echo -ne '[======------------------------------------------------------] 10.0% ... 9 images left\r'
+    sleep 1
+    echo -ne '[======------------------------------------------------------] 20.0% ... 9 images left\r'
+    sleep 1
+    echo -ne '[======------------------------------------------------------] 30.0% ... 9 images left\r'
+    sleep 1
+    echo -ne '[======------------------------------------------------------] 40.0% ... 9 images left\r'
+    sleep 1
+    echo -ne '[======------------------------------------------------------] 50.0% ... 9 images left\r'
+    sleep 1
+    echo -ne '[======------------------------------------------------------] 55.0% ... 9 images left\r'
+    sleep 1
+    echo -ne '[======------------------------------------------------------] 60.0% ... 9 images left\r'
+    sleep 1
+    echo -ne '[======------------------------------------------------------] 65.0% ... 9 images left\r'
+    sleep 1
+    echo -ne '[======------------------------------------------------------] 70.0% ... 9 images left\r'
+    sleep 1
+    echo -ne '[======------------------------------------------------------] 75.0% ... 9 images left\r'
+    sleep 1
+    echo -ne '[======------------------------------------------------------] 80.0% ... 9 images left\r'
+    sleep 1
+    echo -ne '[======------------------------------------------------------] 85.0% ... 9 images left\r'
+    sleep 1
+    echo -ne '[======------------------------------------------------------] 90.0% ... 9 images left\r'
+    sleep 1
+    echo -ne '[======------------------------------------------------------] 95.0% ... 9 images left\r'
+    sleep 1
+    echo -ne '[======------------------------------------------------------] 100.0% ... 9 images left\r'
+    echo -ne '\n'
+    """
+
+    command = [
+        "sh", "-c", script
+    ]
+
+    try:
+        prog = subprocess.Popen(command,
+                                stdout=subprocess.PIPE,
+                                stderr=subprocess.STDOUT,
+                                text=True)
+
+        for line in iter(prog.stdout.readline, b''):
+            if line == '' or line == b'':
+                break
+            result = re.compile(r'\d+\.\d+(?=%|$)')
+            match = re.findall(result, str(line.rstrip()))
+            print(line.rstrip())
+            if len(match) > 0:
+                print(match[0])
+                NotificationsService.updateProgress(task_uuid, "in_progress", "", int(float(match[0])))
+
+    except (OSError, subprocess.CalledProcessError) as exception:
+        logging.info('Exception occured: ' + str(exception))
+        logging.info('Subprocess failed')
+        return False
+    else:
+        logging.info('Subprocess finished')
+    return True

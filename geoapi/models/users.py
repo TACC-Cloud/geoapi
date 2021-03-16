@@ -15,6 +15,7 @@ class User(Base):
     jwt = Column(String())
     google_jwt = Column(JSONB, default={})
     mapillary_jwt = Column(JSONB, default={})
+    streetviews = relationship('Streetview', cascade="all, delete-orphan")
     projects = relationship('Project',
                  secondary='projects_users',
                  back_populates='users', lazy="joined")

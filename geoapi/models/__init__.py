@@ -5,5 +5,6 @@ from .task import Task
 from .users import User
 from .overlay import Overlay
 from .observable_data import ObservableDataProject
-from .notification import Notification
+from .notification import Notification, ProgressNotification
 from .imported_file import ImportedFile
+from .streetview import Streetview

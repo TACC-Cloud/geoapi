@@ -1,3 +1,4 @@
+import shutil
 from tempfile import NamedTemporaryFile
 
 import requests
@@ -128,6 +129,22 @@ class AgaveUtils:
             logger.error(e)
             raise e
 
+    # def getRawFileToPath(self, systemId: str, path: str, toPath: str) -> None:
+    def getRawFileToPath(self, systemId: str, path: str, toPath: str) -> IO:
+        url = quote('/files/media/system/{}/{}'.format(systemId, path))
+        try:
+            with self.client.get(self.base_url + url, stream=True) as r:
+                if r.status_code > 400:
+                    raise ValueError("Could not fetch file: {}".format(r.status_code))
+                with open(toPath, 'wb') as out_file:
+                    r.raw.decode_content = True
+                    shutil.copyfileobj(r.raw, out_file)
+        except Exception as e:
+            logger.error(e)
+            raise e
+
+    # response.raw.decode_content = True
+    # shutil.copyfileobj(response.raw, out_file)
 
 def service_account_client(tenant_id):
     tenant_secrets = json.loads(settings.TENANT)

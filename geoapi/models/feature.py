@@ -14,7 +14,6 @@ from geoapi.db import Base
 from geoapi.utils import geometries
 from typing import TypeVar
 
-
 class Feature(Base):
     __tablename__ = 'features'
     __table_args__ = (

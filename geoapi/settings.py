@@ -16,6 +16,7 @@ class Config(object):
     RABBITMQ_HOSTNAME = 'rabbitmq'
     RESTPLUS_MASK_SWAGGER = False
     TENANT = os.environ.get("TENANT")
+    STREETVIEW_DIR = os.environ.get('STREETVIEW_DIR', '/assets/streetview')
 
 class ProductionConfig(Config):
     DEBUG = False

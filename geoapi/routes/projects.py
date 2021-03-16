@@ -251,6 +251,28 @@ class ProjectUserResource(Resource):
         return ProjectsService.removeUserFromProject(projectId,
                                                      username)
 
+@api.route('/<int:projectId>/users/<username>/streetview/<service>/sequences')
+class UserStreetviewSequenceResource(Resource):
+    @api.doc(id="getUserStreetviewSequences",
+             description="Get a streetview service's sequences")
+    @project_permissions
+    def get(self, projectId: int, username: str, service: str):
+        proj = ProjectsService.get(projectId)
+        return StreetviewService.retrieveStreetviewSequences(username,
+                                                             service,
+                                                             proj.tenant_id)
+
+@api.route('/<int:projectId>/users/<username>/streetview/<service>/sequences/<sequenceKey>')
+class UserStreetviewImageResource(Resource):
+    @api.doc(id="getUserStreetviewImage",
+             description="Get a streetview service's image")
+    @project_permissions
+    def get(self, projectId: int, username: str, service: str, sequenceKey: str):
+        proj = ProjectsService.get(projectId)
+        return StreetviewService.retrieveMapillaryImages(sequenceKey,
+                                                         username,
+                                                         proj.tenant_id)
+
 @api.route('/<int:projectId>/users/<username>/streetview/<service>')
 class UserStreetviewResource(Resource):
     @api.doc(id="deleteUserStreetviewToken",

@@ -1,3 +1,6 @@
+from os.path import isdir
+
+from requests.models import Response
 from geoapi.services.projects import ProjectsService
 import os
 import time
@@ -121,7 +124,6 @@ class StreetviewService:
     @staticmethod
     def uploadFilesToMapillary(user: User, projectId: int, data: Dict):
         try:
-            os.environ["MAPILLARY_WEB_CLIENT_ID"] = "VDRaeGFzMEtzRnJrMFZwdVYzckd6cjo0ZWY3ZDEzZGIyMWJkZjNi"
             streetview.upload_files_from_tapis_to_streetview.delay(user.id,
                                                                    user.tenant_id,
                                                                    projectId,
@@ -199,11 +201,13 @@ class StreetviewService:
         return mapillary_api.fetch_user_organizations(user['key'], token)
 
     @staticmethod
-    def getMapillaryUserSequences(username: str, projectId):
+    def getMapillaryUserSequences(dsUser: User, username: str, tenantId: str, projectId):
         os.environ["MAPILLARY_WEB_CLIENT_ID"] = "VDRaeGFzMEtzRnJrMFZwdVYzckd6cjo0ZWY3ZDEzZGIyMWJkZjNi"
-        proj = ProjectsService.get(projectId)
-        token = StreetviewService.getStreetviewServiceToken(username, proj.tenant_id, 'mapillary')
-        user = StreetviewService.getMapillaryUser(username, projectId)
+        # proj = ProjectsService.get(projectId)
+        # token = StreetviewService.getStreetviewServiceToken(dsUser.username, tenantId, 'mapillary')
+        token = StreetviewService.getStreetviewServiceToken('ipark', tenantId, 'mapillary')
+        # user = StreetviewService.getMapillaryUser(username, projectId)
+        user = StreetviewService.getMapillaryUser('ipark', projectId)
         headers = {"Authorization": f"Bearer {token}"}
         os.environ["MAPILLARY_WEB_CLIENT_ID"] = "VDRaeGFzMEtzRnJrMFZwdVYzckd6cjo0ZWY3ZDEzZGIyMWJkZjNi"
         resp = requests.get(
@@ -218,14 +222,29 @@ class StreetviewService:
     def getMapillaryImageSequence(userId, system_path: str):
         os.environ["MAPILLARY_WEB_CLIENT_ID"] = "VDRaeGFzMEtzRnJrMFZwdVYzckd6cjo0ZWY3ZDEzZGIyMWJkZjNi"
         streetview_path = get_project_streetview_dir(userId, system_path)
+
+        if not os.path.isdir(streetview_path):
+            return None
+
         total_files = mapillary_uploader.get_total_file_list(streetview_path)
-        sequence_data = {}
-        for img in total_files:
-            log_root = mapillary_uploader.log_rootpath(img)
-            sequence_data_path = os.path.join(log_root, "sequence_process.json")
-            if os.path.isfile(sequence_data_path):
-                sequence_data = mapillary_processing.load_json(sequence_data_path)
-        return sequence_data
+
+        if len(total_files) == 0:
+            return None
+
+        log_root = mapillary_uploader.log_rootpath(total_files[0])
+        sequence_data_path = os.path.join(log_root, "sequence_process.json")
+        if not os.path.isfile(sequence_data_path):
+            return None
+
+        sequence_data = mapillary_processing.load_json(sequence_data_path)
+        return sequence_data['MAPSequenceUUID']
+
+        # for img in total_files:
+        #     log_root = mapillary_uploader.log_rootpath(img)
+        #     sequence_data_path = os.path.join(log_root, "sequence_process.json")
+        #     if os.path.isfile(sequence_data_path):
+        #         sequence_data = mapillary_processing.load_json(sequence_data_path)
+        # return sequence_data['MAPSequenceUUID']
 
     @staticmethod
     def getMapillaryUserKey(mapillary_username: str):
@@ -253,3 +272,143 @@ class StreetviewService:
     @staticmethod
     def getGoogleUserData():
         pass
+
+    ####################
+    # Streetview Model #
+    ####################
+
+    @staticmethod
+    def get(streetviewId: int) -> Streetview:
+        """
+        Retreive a single Streetview
+        :param streetviewId: int
+        :return: Streetview
+        """
+        return db_session.query(Streetview).get(streetviewId)
+
+    @staticmethod
+    def getStreetviewBySystemPath(systemId: str, pathId: str) -> List[Streetview]:
+        return db_session.query(Streetview)\
+                         .filter(Streetview.systemId == systemId)\
+                         .filter(Streetview.path == pathId)\
+                         .all()
+
+    @staticmethod
+    def delete(streetviewId: int) -> None:
+        """
+        Delete a Streetview.
+        :param streetviewId: int
+        :return: None
+        """
+        sv = db_session.query(Streetview).get(streetviewId)
+        db_session.delete(sv)
+        db_session.commit()
+
+    @staticmethod
+    def getStreetviews(username: str) -> List[Streetview]:
+        # FIXME: Put this in User
+        user = db_session.query(User)\
+                         .filter(User.username == username)\
+                         .first()
+
+        streetviews = db_session.query(Streetview).filter_by(user_id=user.id).all()
+        return streetviews
+
+    @staticmethod
+    def getStreetviewSequences(username: str) -> List[str]:
+        sv_list = StreetviewService.getStreetviews(username)
+        return list(map(lambda x: x.sequenceKey, sv_list))
+
+    @staticmethod
+    def getStreetviewSystemPaths(username: str) -> List[tuple]:
+        sv_list = StreetviewService.getStreetviews(username)
+        return list(map(lambda x: (x.systemId, x.path), sv_list))
+
+    @staticmethod
+    def retrieveMapillaryStreetviewSequence(sequenceKey: str, username: str, tenantId: str) -> Dict:
+        # NOTE DS username
+        token = StreetviewService.getStreetviewServiceToken(username, tenantId, 'mapillary')
+        headers = {"Authorization": f"Bearer {token}"}
+        resp = requests.get(
+            f"https://a.mapillary.com/v3/sequences/{sequenceKey}",
+            params={"client_id": "VDRaeGFzMEtzRnJrMFZwdVYzckd6cjo0ZWY3ZDEzZGIyMWJkZjNi"},
+            headers=headers,
+        )
+
+        return resp.json()
+
+    @staticmethod
+    def retrieveStreetviewSequences(username: str, service: str, tenantId: str) -> List[Dict]:
+        seq_list = StreetviewService.getStreetviewSequences(username)
+        system_path_list = StreetviewService.getStreetviewSystemPaths(username)
+        my_seqs = []
+
+        for i in range(len(seq_list)):
+            if service == 'mapillary':
+                # geoseq = StreetviewService.retrieveMapillaryStreetviewSequence(seq_list[i], username, tenantId)
+                geoseq = StreetviewService.retrieveMapillaryImages(seq_list[i], username, tenantId)
+            else:
+                geoseq = {"test": "test"}
+
+            seq_obj = {
+                "feature": geoseq,
+                "systemPath": system_path_list[i]
+            }
+
+            my_seqs.append(seq_obj)
+
+        return my_seqs
+
+    # TODO: Make a wrapper to parse service (also in routes)
+    @staticmethod
+    def retrieveMapillaryImage(imageKey: str, username: str, tenantId: str) -> Dict:
+        # NOTE DS username
+        token = StreetviewService.getStreetviewServiceToken(username, tenantId, 'mapillary')
+        headers = {"Authorization": f"Bearer {token}"}
+        resp = requests.get(
+            f"https://a.mapillary.com/v3/images/{imageKey}",
+            params={"client_id": "VDRaeGFzMEtzRnJrMFZwdVYzckd6cjo0ZWY3ZDEzZGIyMWJkZjNi"},
+            headers=headers,
+        )
+
+        return resp.json()
+
+    @staticmethod
+    def retrieveMapillaryImages(sequenceKey: str, username: str, tenantId: str) -> Dict:
+        # NOTE DS username
+        token = StreetviewService.getStreetviewServiceToken(username, tenantId, 'mapillary')
+
+        headers = {"Authorization": f"Bearer {token}"}
+        resp = requests.get(
+            f"https://a.mapillary.com/v3/images",
+            params={
+                "client_id": "VDRaeGFzMEtzRnJrMFZwdVYzckd6cjo0ZWY3ZDEzZGIyMWJkZjNi",
+                "per_page": 1000,
+                "sequence_keys": [sequenceKey]
+            },
+            headers=headers,
+        )
+
+        return resp.json()
+
+    @staticmethod
+    def create(userId: int, systemId: str, pathId: str, sequenceKey: str, mapillary: bool, google: bool) -> None:
+        """
+        Create a Streetview model to link to tapis path and service.
+        :param userId: int
+        :param systemId: str
+        :param pathId: str
+        :param sequenceKey: str
+        :param mapillary: bool
+        :param google: bool
+        :return: None
+        """
+        sv = Streetview()
+        sv.user_id = userId
+        sv.path = pathId
+        sv.systemId = systemId
+        sv.mapillary = google
+        sv.google = mapillary
+        sv.sequenceKey = sequenceKey
+        db_session.add(sv)
+        db_session.commit()
