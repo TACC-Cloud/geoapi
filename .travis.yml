@@ -25,9 +25,7 @@ jobs:
          - docker tag taccaci/geoapi:latest taccaci/geoapi:${GIT_HASH}
       deploy:
         provider: script
-        script:
-          - docker push taccaci/geoapi:latest
-          - docker push taccaci/geoapi:${GIT_HASH}
+        script: docker push taccaci/geoapi:latest && docker push taccaci/geoapi:${GIT_HASH}
         on:
           branch: master
     - name: "geoapi-workers: unit tests / container"
@@ -47,8 +45,6 @@ jobs:
          - docker tag taccaci/geoapi-workers:latest taccaci/geoapi-workers:${GIT_HASH}
       deploy:
         provider: script
-        script:
-          - docker push taccaci/geoapi-workers:latest
-          - docker push taccaci/geoapi-workers:${GIT_HASH}
+        script: docker push taccaci/geoapi-workers:latest && docker push taccaci/geoapi-workers:${GIT_HASH}
         on:
           branch: master
