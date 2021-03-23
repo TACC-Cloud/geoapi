@@ -1,4 +1,4 @@
-from flask import request, abort
+from flask import request
 from flask_restplus import Resource, Namespace, fields, inputs
 from werkzeug.datastructures import FileStorage
 from werkzeug.utils import secure_filename
@@ -141,16 +141,29 @@ overlay_parser_tapis.remove_argument('file')
 overlay_parser_tapis.add_argument('system_id', location='json', type=str, required=True)
 overlay_parser_tapis.add_argument('path', location='json', type=str, required=True)
 
+
 @api.route('/')
 class ProjectsListing(Resource):
 
+    parser = api.parser()
+    parser.add_argument('uuid', location='args', action='split',
+                        help="uuid of specific projects to return instead of complete list")
+
     @api.doc(id="getProjects",
-             description='Get a listing of projects')
+             description='Get a listing of projects',
+             parser=parser)
     @api.marshal_with(project, as_list=True)
     def get(self):
         u = request.current_user
-        logger.info("Get all projects for user:{}".format(u.username))
-        return ProjectsService.list(u)
+        query = self.parser.parse_args()
+        uuid_subset = query.get("uuid")
+
+        if uuid_subset:
+            subset = [ProjectsService.get(uuid=uuid) for uuid in uuid_subset]
+            return subset
+        else:
+            logger.info("Get all projects for user:{}".format(u.username))
+            return ProjectsService.list(u)
 
     @api.doc(id="createProject",
              description='Create a new project')
@@ -183,7 +196,7 @@ class ProjectResource(Resource):
     @api.marshal_with(project)
     @project_permissions_allow_public
     def get(self, projectId: int):
-        return ProjectsService.get(projectId)
+        return ProjectsService.get(project_id=projectId)
 
     @api.doc(id="deleteProject",
              description="Delete a project, all associated features and metadata. THIS CANNOT BE UNDONE")
@@ -585,6 +598,7 @@ class ProjectTasksResource(Resource):
         from geoapi.db import db_session
         return db_session.query(Task).all()
 
+
 @api.route('/<int:projectId>/tile-servers/')
 class ProjectTileServersResource(Resource):
     @api.doc(id="addTileServer",
@@ -599,7 +613,6 @@ class ProjectTileServersResource(Resource):
         ts = FeaturesService.addTileServer(projectId, api.payload)
         return ts
 
-
     @api.doc(id="getTileServers",
              description='Get a list of all the tile servers associated with the current map project.')
     @api.marshal_with(tile_server, as_list=True)
@@ -607,7 +620,6 @@ class ProjectTileServersResource(Resource):
     def get(self, projectId: int):
         tsv = FeaturesService.getTileServers(projectId)
         return tsv
-
 
     @api.doc(id="updateTileServers",
              description="Update metadata about a tile servers")
@@ -619,7 +631,7 @@ class ProjectTileServersResource(Resource):
                                                            u.username))
 
         ts = FeaturesService.updateTileServers(projectId=projectId,
-                                                 dataList=api.payload)
+                                               dataList=api.payload)
         return ts
 
 
@@ -635,7 +647,6 @@ class ProjectTileServerResource(Resource):
         FeaturesService.deleteTileServer(projectId, tileServerId)
         return "Tile Server {id} deleted".format(id=tileServerId)
 
-
     @api.doc(id="updateTileServer",
              description="Update metadata about a tile server")
     @api.marshal_with(tile_server)
@@ -644,7 +655,6 @@ class ProjectTileServerResource(Resource):
         u = request.current_user
         logger.info("Update project:{} for user:{}".format(projectId,
                                                            u.username))
-
 
         return FeaturesService.updateTileServer(projectId=projectId,
                                                 tileServerId=tileServerId,
