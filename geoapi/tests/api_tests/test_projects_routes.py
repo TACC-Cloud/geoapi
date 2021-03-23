@@ -316,7 +316,7 @@ def test_update_project(test_client, projects_fixture):
     proj = db_session.query(Project).get(1)
     assert proj.name == "Renamed Project"
     assert proj.description == "New Description"
-    assert proj.public == True
+    assert proj.public
 
 
 def test_update_project_unauthorized_guest(test_client, public_projects_fixture):
