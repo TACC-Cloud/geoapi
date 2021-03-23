@@ -38,7 +38,7 @@ def test_add_new_user_to_project(userdata):
     }
     proj = ProjectsService.create(data, user)
     ProjectsService.addUserToProject(proj.id, "newUser")
-    proj = ProjectsService.get(proj.id)
+    proj = ProjectsService.get(project_id=proj.id)
     assert len(proj.users) == 2
 
 

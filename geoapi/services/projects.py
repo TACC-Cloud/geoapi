@@ -1,6 +1,6 @@
 import shutil
 from pathlib import Path
-from typing import List
+from typing import List, Optional
 
 from sqlalchemy import desc
 from geoapi.models import Project, User, ObservableDataProject
@@ -99,13 +99,19 @@ class ProjectsService:
         return projects
 
     @staticmethod
-    def get(projectId: int) -> Project:
+    def get(project_id: Optional[int] = None, uuid: Optional[str] = None) -> Project:
         """
         Get the metadata associated with a project
-        :param projectId: int
+        :param project_id: int
+        :param uid: str
         :return: Project
         """
-        return db_session.query(Project).get(projectId)
+        if project_id is not None:
+            return db_session.query(Project).get(project_id)
+        elif uuid is not None:
+            return db_session.query(Project).filter(Project.uuid == uuid).first()
+        raise ValueError("project_id or uid is required")
+
 
     @staticmethod
     def getFeatures(projectId: int, query: dict = None) -> object:
@@ -218,7 +224,7 @@ class ProjectsService:
         :param data: dict
         :return: Project
         """
-        current_project = ProjectsService.get(projectId)
+        current_project = ProjectsService.get(project_id=projectId)
 
         current_project.name = data['name']
         if 'description' in data:

@@ -63,6 +63,19 @@ def projects_fixture():
 
 
 @pytest.fixture(scope="function")
+def projects_fixture2():
+    proj = Project(name="test2", description="description2")
+    u1 = db_session.query(User).filter(User.username == "test1").first()
+    proj.users.append(u1)
+    proj.tenant_id = u1.tenant_id
+    db_session.add(proj)
+    db_session.commit()
+    yield proj
+
+    shutil.rmtree(get_project_asset_dir(proj.id), ignore_errors=True)
+
+
+@pytest.fixture(scope="function")
 def public_projects_fixture(projects_fixture):
     projects_fixture.public = True
     db_session.add(projects_fixture)

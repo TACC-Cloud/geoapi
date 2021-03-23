@@ -144,13 +144,25 @@ overlay_parser_tapis.add_argument('path', location='json', type=str, required=Tr
 @api.route('/')
 class ProjectsListing(Resource):
 
+    parser = api.parser()
+    parser.add_argument('uuid', location='args', action='split',
+                        help="uuid of specific projects to return instead of complete list")
+
     @api.doc(id="getProjects",
-             description='Get a listing of projects')
+             description='Get a listing of projects',
+             parser=parser)
     @api.marshal_with(project, as_list=True)
     def get(self):
         u = request.current_user
-        logger.info("Get all projects for user:{}".format(u.username))
-        return ProjectsService.list(u)
+        query = self.parser.parse_args()
+        uuid_subset = query.get("uuid")
+
+        if uuid_subset:
+            subset = [ProjectsService.get(uuid=uuid) for uuid in uuid_subset]
+            return subset
+        else:
+            logger.info("Get all projects for user:{}".format(u.username))
+            return ProjectsService.list(u)
 
     @api.doc(id="createProject",
              description='Create a new project')
@@ -183,7 +195,7 @@ class ProjectResource(Resource):
     @api.marshal_with(project)
     @project_permissions_allow_public
     def get(self, projectId: int):
-        return ProjectsService.get(projectId)
+        return ProjectsService.get(project_id=projectId)
 
     @api.doc(id="deleteProject",
              description="Delete a project, all associated features and metadata. THIS CANNOT BE UNDONE")

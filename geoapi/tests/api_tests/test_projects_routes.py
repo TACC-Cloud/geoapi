@@ -13,6 +13,30 @@ def test_get_projects(test_client, projects_fixture):
     assert len(data) == 1
 
 
+def test_get_projects_using_uuids(test_client, projects_fixture, projects_fixture2):
+    requested_uuids = [str(projects_fixture2.uuid), str(projects_fixture.uuid)]
+    u1 = db_session.query(User).get(1)
+    resp = test_client.get('/projects/',
+                           query_string='uuid={}'.format(','.join(requested_uuids)),
+                           headers={'x-jwt-assertion-test': u1.jwt})
+    data = resp.get_json()
+    assert resp.status_code == 200
+    assert len(data) == 2
+    assert data[0]["uuid"] == requested_uuids[0]
+    assert data[1]["uuid"] == requested_uuids[1]
+
+
+def test_get_projects_using_single_uuid(test_client, projects_fixture, projects_fixture2):
+    u1 = db_session.query(User).get(1)
+    resp = test_client.get('/projects/',
+                           query_string='uuid={}'.format(projects_fixture2.uuid),
+                           headers={'x-jwt-assertion-test': u1.jwt})
+    data = resp.get_json()
+    assert resp.status_code == 200
+    assert len(data) == 1
+    assert data[0]["uuid"] == str(projects_fixture2.uuid)
+
+
 def test_project_permissions(test_client, projects_fixture):
     u2 = db_session.query(User).get(2)
     resp = test_client.get('/projects/', headers={'x-jwt-assertion-test': u2.jwt})
