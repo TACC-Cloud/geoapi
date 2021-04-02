@@ -129,8 +129,8 @@ class AgaveUtils:
             logger.error(e)
             raise e
 
-    # def getRawFileToPath(self, systemId: str, path: str, toPath: str) -> None:
-    def getRawFileToPath(self, systemId: str, path: str, toPath: str) -> IO:
+
+    def getRawFileToPath(self, systemId: str, path: str, toPath: str):
         url = quote('/files/media/system/{}/{}'.format(systemId, path))
         try:
             with self.client.get(self.base_url + url, stream=True) as r:
@@ -143,8 +143,6 @@ class AgaveUtils:
             logger.error(e)
             raise e
 
-    # response.raw.decode_content = True
-    # shutil.copyfileobj(response.raw, out_file)
 
 def service_account_client(tenant_id):
     tenant_secrets = json.loads(settings.TENANT)

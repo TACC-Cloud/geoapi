@@ -26,7 +26,7 @@ progress_notification_response = api.model('ProgressNotificationResponse', {
     "created": fields.DateTime(),
     "viewed": fields.Boolean(),
     "id": fields.Integer(),
-    "extraData": fields.Raw()
+    "logs": fields.Raw()
 })
 
 ok_response = api.model('OkResponse', {

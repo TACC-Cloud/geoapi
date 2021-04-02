@@ -55,6 +55,7 @@ services:
       - .:/app
       - assets:/assets
     environment:
+      - MAPILLARY_WEB_CLIENT_ID=VDRaeGFzMEtzRnJrMFZwdVYzckd6cjo0ZWY3ZDEzZGIyMWJkZjNi
       - FLASK_APP=/app/geoapi/app.py
       - APP_ENV=development
       - ASSETS_BASE_DIR=/assets
@@ -75,6 +76,7 @@ services:
       - .:/app
       - assets:/assets
     environment:
+      - MAPILLARY_WEB_CLIENT_ID=VDRaeGFzMEtzRnJrMFZwdVYzckd6cjo0ZWY3ZDEzZGIyMWJkZjNi
       - FLASK_APP=/app/geoapi/app.py
       - APP_ENV=development
       - ASSETS_BASE_DIR=/assets
@@ -99,6 +101,7 @@ services:
       - 8.8.8.8
       - 8.8.4.4
     environment:
+      - MAPILLARY_WEB_CLIENT_ID=VDRaeGFzMEtzRnJrMFZwdVYzckd6cjo0ZWY3ZDEzZGIyMWJkZjNi
       - FLASK_APP=/app/geoapi/app.py
       - APP_ENV=development
       - ASSETS_BASE_DIR=/assets

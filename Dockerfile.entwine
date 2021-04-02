@@ -23,6 +23,7 @@ COPY requirements.txt /requirements.txt
 WORKDIR /
 RUN mkdir api
 
+RUN pip3 install git+https://github.com/mapillary/mapillary_tools
 RUN pip3 install -r requirements.txt
 
 COPY geoapi /api

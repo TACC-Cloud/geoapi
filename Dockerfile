@@ -4,6 +4,7 @@ RUN apt-get update -q && apt-get install -q -y \
   libgdal-dev \
   ffmpeg
 COPY requirements.txt /
+RUN pip install git+https://github.com/mapillary/mapillary_tools
 RUN pip install -q -r /requirements.txt
 RUN pip install -q gunicorn
 RUN mkdir /app

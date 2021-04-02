@@ -1,3 +1,6 @@
+from flask_restplus.marshalling import marshal_with
+from geoapi.exceptions import ApiException
+# from geoapi.utils.mapillary import MapillaryApiUtils
 from flask import abort, request, redirect
 import requests
 import json
@@ -17,6 +20,8 @@ from geoapi.utils.decorators import (jwt_decoder, project_feature_exists,
                                      project_point_cloud_not_processing)
 from werkzeug.datastructures import FileStorage
 from werkzeug.utils import secure_filename
+
+from sqlalchemy.sql.functions import current_user
 
 logger = logging.getLogger(__name__)
 
@@ -110,6 +115,27 @@ overlay = api.model('Overlay', {
 streetview_token = api.model('StreetviewToken', {
     'authorized': fields.Boolean(),
     'url': fields.String()
+})
+
+streetview_sequence = api.model('StreetviewSequence', {
+    'id': fields.Integer(),
+    'streetview_id': fields.Integer(),
+    'service': fields.String(),
+    # 'start_date': fields.String(required=False),
+    # 'end_date': fields.String(required=False),
+    'start_date': fields.DateTime(dt_format='rfc822', required=False),
+    'end_date': fields.DateTime(dt_format='rfc822', required=False),
+
+    'bbox': fields.String(required=False),
+    'sequence_key': fields.String(required=False),
+})
+
+streetview_object = api.model('Streetview', {
+    'id': fields.Integer(),
+    'user_id': fields.Integer(),
+    'path': fields.String(),
+    'system_id': fields.String(),
+    'sequences': fields.List(fields.Nested(streetview_sequence), allow_null=True),
 })
 
 file_upload_parser = api.parser()
@@ -256,22 +282,25 @@ class UserStreetviewSequenceResource(Resource):
     @api.doc(id="getUserStreetviewSequences",
              description="Get a streetview service's sequences")
     @project_permissions
+    @api.marshal_with(streetview_object, as_list=True)
     def get(self, projectId: int, username: str, service: str):
-        proj = ProjectsService.get(projectId)
-        return StreetviewService.retrieveStreetviewSequences(username,
-                                                             service,
-                                                             proj.tenant_id)
+        u = request.current_user
+        return StreetviewService.getAll(u)
 
-@api.route('/<int:projectId>/users/<username>/streetview/<service>/sequences/<sequenceKey>')
-class UserStreetviewImageResource(Resource):
-    @api.doc(id="getUserStreetviewImage",
-             description="Get a streetview service's image")
+    def put(self, projectId: int, username: str, service: str):
+        u = request.current_user
+        payload = request.json
+        return StreetviewService.addSequenceToPath(u, payload, service)
+
+
+@api.route('/<int:projectId>/users/<username>/streetview/<service>/sequences/<sequence_id>')
+class UserStreetviewSequence(Resource):
+    @api.doc(id="getUserStreetviewSequences",
+             description="Get a streetview service's sequences")
     @project_permissions
-    def get(self, projectId: int, username: str, service: str, sequenceKey: str):
-        proj = ProjectsService.get(projectId)
-        return StreetviewService.retrieveMapillaryImages(sequenceKey,
-                                                         username,
-                                                         proj.tenant_id)
+    def delete(self, projectId: int, username: str, service: str, sequence_id: int):
+        StreetviewService.deleteSequence(sequence_id)
+
 
 @api.route('/<int:projectId>/users/<username>/streetview/<service>')
 class UserStreetviewResource(Resource):
@@ -279,71 +308,18 @@ class UserStreetviewResource(Resource):
              description="Remove the streetview server token for a user")
     @project_permissions
     def delete(self, projectId: int, username: str, service: str):
-        proj = ProjectsService.get(projectId)
-        return StreetviewService.deleteStreetviewServiceToken(username,
-                                                              proj.tenant_id,
-                                                              service)
+        u = request.current_user
+        return StreetviewService.deleteToken(u,
+                                             service)
 
-    @api.doc(id="getUserStreetviewToken",
-             description="Get the streetview server token for a user")
-    @api.marshal_with(streetview_token)
-    @project_permissions
-    def get(self, projectId: int, username: str, service: str):
-        logger.info("streetview request")
-        return StreetviewService.streetviewRequest(username, projectId, service)
 
-@api.route('/streetview/<service>/callback')
-class UserStreetviewCallback(Resource):
-    @api.doc(id="streetviewTokenCallback",
-             description="Handle callback for streetview.")
-    def get(self, service: str):
-        logger.info("callback")
-        GOOGLE_CLIENT_ID = '573001329633-1p0k8rko13s6n2p2cugp3timji3ip9f0.apps.googleusercontent.com'
-        GOOGLE_CLIENT_SECRET = 'gpqTuh0SwcIbbnGdKK2p30dO'
-        MAPILLARY_CLIENT_ID = 'VDRaeGFzMEtzRnJrMFZwdVYzckd6cjo0ZWY3ZDEzZGIyMWJkZjNi'
-        MAPILLARY_CLIENT_SECRET = 'Y2I4ZmQyOWExOTFiNTI2MjJmOTQwZDlmMmRiYTBiNTE='
-        GOOGLE_TOKEN_URL = 'https://oauth2.googleapis.com/token'
-        GOOGLE_AUTH_URL = 'https://accounts.google.com/o/oauth2/v2/auth'
-        MAPILLARY_AUTH_URL = 'https://www.mapillary.com/connect'
-        MAPILLARY_TOKEN_URL = 'https://a.mapillary.com/v2/oauth/token'
-        GOOGLE_SCOPE = 'https://www.googleapis.com/auth/streetviewpublish+https://www.googleapis.com/auth/userinfo.email+https://www.googleapis.com/auth/userinfo.profile'
-        MAPILLARY_SCOPE = 'user:email+user:read+user:write+public:write+public:upload+private:read+private:write+private:upload'
+    def post(self, projectId: int, username: str, service: str):
+        u = request.current_user
+        payload = request.json
+        return StreetviewService.setToken(u,
+                                          service,
+                                          payload['token'])
 
-        REDIRECT_URL = 'http://localhost:8000/projects/streetview/' + service + '/callback'
-
-        redirect_state = request.args.get('state')
-        json_state = json.loads(str(redirect_state))
-        username = json_state['username']
-        projectId = json_state['projectId']
-
-        proj = ProjectsService.get(projectId)
-        token = {}
-
-        # Google uses authorization flow
-        if service == "google":
-            url = GOOGLE_TOKEN_URL
-
-            service_params = {
-                'code': request.args.get('code'),
-                'client_id': GOOGLE_CLIENT_ID,
-                'client_secret': GOOGLE_CLIENT_SECRET,
-                'redirect_uri': REDIRECT_URL,
-                'grant_type': 'authorization_code'
-            }
-            resp = requests.post(url, params = service_params)
-            token["access_token"] = resp.json()['access_token']
-            token["expiration_date"] = resp.json()['expires_in'] + time.time()
-        else:
-            # Mapillary doesn't have an expiration for access tokens
-            token["access_token"] = request.args.get('access_token')
-        print(token["access_token"])
-        StreetviewService.setStreetviewServiceToken(username, proj.tenant_id, service, token)
-
-        for key in request.args:
-            print(key, '->', request.args[key])
-
-        # should redirect to where the thing came from (i.e. project/<project UUID>/streetview)
-        return redirect("http://localhost:4200")
 
 @api.route('/<int:projectId>/users/<username>/streetview/upload/')
 class UserStreetviewUploadFilesResource(Resource):
@@ -357,18 +333,13 @@ class UserStreetviewUploadFilesResource(Resource):
     @project_permissions
     def post(self, projectId: int, username: str):
         u = request.current_user
-        logger.info("Upload images for user:{}".format(
-            request.current_user.username))
-        # TODO move   to  services
-        StreetviewService.uploadFilesToMapillary(u, projectId, request.json)
-        #     streetview.upload_files_from_tapis_to_streetview.delay(u.id,
-        #                                                            u.tenant_id,
-        #                                                            projectId,
-        #                                                            request.json['folder'],
-        #                                                            request.json['google'],
-        #                                                            request.json['mapillary'])
-
+        logger.info("Upload images for user:{}".format(u.username))
+        try:
+            streetview.upload(u, request)
+        except ApiException:
+            abort(403, "Access denied")
         return {"message": "accepted"}
+
 
 @api.route('/<int:projectId>/features/')
 class ProjectFeaturesResource(Resource):
@@ -443,7 +414,7 @@ class ProjectFeaturePropertiesResource(Resource):
 
 
 @api.route('/<int:projectId>/features/<int:featureId>/styles/')
-class ProjectFeaturePropertiesResource(Resource):
+class ProjectFeatureStylesResource(Resource):
 
     @api.doc(id="updateFeatureStyles",
              description="Update the styles of a feature. This will replace any styles"
@@ -696,6 +667,7 @@ class ProjectPointCloudsFileImportResource(Resource):
 
         external_data.import_point_clouds_from_agave.delay(u.id, files, pointCloudId)
         return {"message": "accepted"}
+
 
 
 @api.route('/<int:projectId>/tasks/')

@@ -7,4 +7,4 @@ from .overlay import Overlay
 from .observable_data import ObservableDataProject
 from .notification import Notification, ProgressNotification
 from .imported_file import ImportedFile
-from .streetview import Streetview
+from .streetview import Streetview, StreetviewSequence

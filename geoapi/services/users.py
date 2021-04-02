@@ -38,13 +38,7 @@ class UserService:
             .first()
 
     @staticmethod
-    def getUserByName(username: str) -> User:
-        return db_session.query(User)\
-            .filter(User.username == username)\
-            .first()
-
-    @staticmethod
-    def getUserById(userId: int) -> User:
+    def get(userId: int) -> User:
         return db_session.query(User).get(userId)
 
     @staticmethod
@@ -61,4 +55,14 @@ class UserService:
     @staticmethod
     def setJWT(user: User, token: str) -> None:
         user.jwt = token
+        db_session.commit()
+
+    @staticmethod
+    def setMapillaryToken(user: User, token: str) -> None:
+        user.google_jwt = token
+        db_session.commit()
+
+    @staticmethod
+    def setGoogleToken(user: User, token: str) -> None:
+        user.mapillary_jwt = token
         db_session.commit()
