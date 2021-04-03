@@ -138,3 +138,12 @@ def project_point_cloud_not_processing(fn):
             abort(404, "Point cloud is currently being updated")
         return fn(*args, **kwargs)
     return wrapper
+
+
+def not_anonymous(fn):
+    @wraps(fn)
+    def wrapper(*args, **kwargs):
+        if is_anonymous(request.current_user):
+            abort(403, "Access denied")
+        return fn(*args, **kwargs)
+    return wrapper
