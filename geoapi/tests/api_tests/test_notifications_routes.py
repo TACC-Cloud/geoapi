@@ -11,6 +11,11 @@ def notifications(userdata):
     NotificationsService.create(u1, "success", "test success")
 
 
+def test_get_notifications_unauthorized_guest(test_client, projects_fixture):
+    resp = test_client.get('/notifications/')
+    assert resp.status_code == 403
+
+
 def test_get_notifications(test_client, notifications):
     u1 = db_session.query(User).get(1)
 

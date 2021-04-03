@@ -17,6 +17,11 @@ def test_get_point_cloud(test_client, projects_fixture, point_cloud_fixture):
     assert resp.status_code == 200
 
 
+def test_get_point_cloud_public_access(test_client, projects_fixture, point_cloud_fixture):
+    resp = test_client.get('/projects/1/point-cloud/1/', headers={'x-jwt-assertion-test': u1.jwt})
+    assert resp.status_code == 200
+
+
 def test_create_point_cloud(test_client, projects_fixture):
     u1 = db_session.query(User).get(1)
     data = {'description': "new description", 'conversion_parameters': "--scale 5.0"}
