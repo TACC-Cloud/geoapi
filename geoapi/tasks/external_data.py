@@ -7,11 +7,11 @@ import concurrent.futures
 import json
 
 from geoapi.celery_app import app
-from geoapi.exceptions import InvalidCoordinateReferenceSystem
+from geoapi.exceptions import InvalidCoordinateReferenceSystem, MissingServiceAccount
 from geoapi.models import User, ObservableDataProject, Task
-from geoapi.utils.agave import AgaveUtils, get_system_users
+from geoapi.utils.agave import AgaveUtils, get_system_users, get_metadata_using_service_account
 from geoapi.log import logging
-import geoapi.services.features as features
+from geoapi.services.features import FeaturesService
 from geoapi.services.imports import ImportsService
 from geoapi.services.vectors import SHAPEFILE_FILE_ADDITIONAL_FILES
 import geoapi.services.point_cloud as pointcloud
@@ -29,6 +29,14 @@ def _parse_rapid_geolocation(loc):
     lat = coords["latitude"]
     lon = coords["longitude"]
     return lat, lon
+
+
+def is_member_of_rapp_project_folder(path):
+    """
+    Check to see if path is contained within RApp project folder
+    :param path: str
+    """
+    return "/RApp/" in path
 
 
 def get_file(client, system_id, path, required):
@@ -95,17 +103,14 @@ def import_file_from_agave(userId: int, systemId: str, path: str, projectId: int
         tmpFile = client.getFile(systemId, path)
         tmpFile.filename = Path(path).name
         additional_files = get_additional_files(systemId, path, client)
-        features.FeaturesService.fromFileObj(projectId,
-                                             tmpFile,
-                                             {},
-                                             original_path=path,
-                                             additional_files=additional_files)
+        FeaturesService.fromFileObj(projectId, tmpFile, {}, original_path=path, additional_files=additional_files)
         NotificationsService.create(user, "success", "Imported {f}".format(f=path))
         tmpFile.close()
     except Exception as e:
         db_session.rollback()
         logger.exception("Could not import file from agave: {} :: {}".format(systemId, path))
         NotificationsService.create(user, "error", "Error importing {f}".format(f=path))
+        raise e
 
 
 def _update_point_cloud_task(pointCloudId: int, description: str = None, status: str = None):
@@ -167,7 +172,9 @@ def import_point_clouds_from_agave(userId: int, files, pointCloudId: int):
                          " coordinate reference system: {}:{}".format(system_id, path))
             failed_message = 'Error importing {}: missing coordinate reference system'.format(path)
         except Exception as e:
-            logger.error("Could not import point cloud file from tapis: {}:{} : {}".format(system_id, path, e))
+            logger.error("Could not import point cloud file for user:{} from tapis: {}/{} : {}".format(user.username,
+                                                                                                       system_id,
+                                                                                                       path, e))
             failed_message = 'Unknown error importing {}:{}'.format(system_id, path)
 
         if failed_message:
@@ -204,20 +211,23 @@ def import_point_clouds_from_agave(userId: int, files, pointCloudId: int):
         return
 
 
-#TODO: This is an abomination
 @app.task(rate_limit="5/s")
-def import_from_agave(userId: int, systemId: str, path: str, projectId: int):
+def import_from_agave(tenant_id: str, userId: int, systemId: str, path: str, projectId: int):
     user = db_session.query(User).get(userId)
     client = AgaveUtils(user.jwt)
+    logger.info("Importing for project:{} directory:{}/{} for user:{}".format(projectId,
+                                                                              systemId,
+                                                                              path,
+                                                                              user.username))
     listing = client.listing(systemId, path)
     # First item is always a reference to self
     files_in_directory = listing[1:]
     filenames_in_directory = [str(f.path) for f in files_in_directory]
     for item in files_in_directory:
         if item.type == "dir":
-            import_from_agave(userId, systemId, item.path, projectId)
+            import_from_agave(tenant_id, userId, systemId, item.path, projectId)
         # skip any junk files that are not allowed
-        if item.path.suffix.lower().lstrip('.') not in features.FeaturesService.ALLOWED_EXTENSIONS:
+        if item.path.suffix.lower().lstrip('.') not in FeaturesService.ALLOWED_EXTENSIONS:
             continue
         else:
             try:
@@ -229,47 +239,50 @@ def import_from_agave(userId: int, systemId: str, path: str, projectId: int):
                     continue
 
                 # If its a RApp project folder, grab the metadata from tapis meta service
-                if Path(item_system_path).match("*/RApp/*"):
-                    logger.info("RApp import {path}".format(path=item_system_path))
-                    listing = client.listing(systemId, item.path)[0]
-                    # f = client.getFile(systemId, item.path)
-                    meta = client.getMetaAssociated(listing.uuid)
+                if is_member_of_rapp_project_folder(item_system_path):
+                    logger.info("RApp: importing:{} for user:{}".format(item_system_path, user.username))
+                    if item.path.suffix.lower().lstrip('.') not in FeaturesService.ALLOWED_GEOSPATIAL_FEATURE_ASSET_EXTENSIONS:
+                        logger.info("{path} is unsupported; skipping.".format(path=item_system_path))
+                        continue
+
+                    logger.info("{} {} {}".format(item_system_path, item.system, item.path))
+
+                    try:
+                        meta = get_metadata_using_service_account(tenant_id, item.system, item.path)
+                    except MissingServiceAccount:
+                        logger.error("No service account. Unable to get metadata for {}:{}".format(item.system, item.path))
+                        return {}
+
+                    logger.debug("metadata from service account for file:{} : {}".format(item_system_path, meta))
+
                     if not meta:
-                        logger.info("No metadata for {}".format(item.path))
+                        logger.info("No metadata for {}; skipping file".format(item_system_path))
                         continue
                     geolocation = meta.get("geolocation")
                     if not geolocation:
-                        logger.info("NO geolocation for {}".format(item.path))
+                        logger.info("No geolocation for:{}; skipping".format(item_system_path))
                         continue
                     lat, lon = _parse_rapid_geolocation(geolocation)
-                    # 1) Get the file from agave, save to /tmp
-                    # 2) Resize and thumbnail images or transcode video to mp4
-                    # 3) create a FeatureAsset and a Feature
-                    # 4) save the image/video to /assets
-                    # 5) delete the original in /tmp
-
-                    # client.getFile will save the asset to tempfile
-
                     tmpFile = client.getFile(systemId, item.path)
-                    feat = features.FeaturesService.fromLatLng(projectId, lat, lon, {})
+                    feat = FeaturesService.fromLatLng(projectId, lat, lon, {})
                     feat.properties = meta
                     db_session.add(feat)
                     tmpFile.filename = Path(item.path).name
-                    fa = features.FeaturesService.createFeatureAsset(projectId, feat.id, tmpFile, original_path=path)
-                    fa.feature = feat
-                    fa.original_path = item_system_path
-                    db_session.add(fa)
+                    try:
+                        FeaturesService.createFeatureAsset(projectId, feat.id, tmpFile, original_path=item_system_path)
+                    except:
+                        # remove newly-created placeholder feature if we fail to create an asset
+                        FeaturesService.delete(feat.id)
+                        raise RuntimeError("Unable to create feature asset")
                     NotificationsService.create(user, "success", "Imported {f}".format(f=item_system_path))
                     tmpFile.close()
-                elif item.path.suffix.lower().lstrip('.') in features.FeaturesService.ALLOWED_GEOSPATIAL_EXTENSIONS:
+                elif item.path.suffix.lower().lstrip('.') in FeaturesService.ALLOWED_GEOSPATIAL_EXTENSIONS:
+                    logger.info("importing:{} for user:{}".format(item_system_path, user.username))
                     tmpFile = client.getFile(systemId, item.path)
                     tmpFile.filename = Path(item.path).name
                     additional_files = get_additional_files(systemId, item.path, client, filenames_in_directory)
-                    features.FeaturesService.fromFileObj(projectId,
-                                                         tmpFile,
-                                                         {},
-                                                         original_path=item_system_path,
-                                                         additional_files=additional_files)
+                    FeaturesService.fromFileObj(projectId, tmpFile, {},
+                                                original_path=item_system_path, additional_files=additional_files)
                     NotificationsService.create(user, "success", "Imported {f}".format(f=item_system_path))
                     tmpFile.close()
                 else:
@@ -281,6 +294,8 @@ def import_from_agave(userId: int, systemId: str, path: str, projectId: int):
 
             except Exception as e:
                 db_session.rollback()
+                logger.error(
+                    "Could not import for user:{} from agave:{}/{}".format(user.username, systemId, path))
                 NotificationsService.create(user, "error", "Error importing {f}".format(f=item_system_path))
                 logger.exception(e)
                 continue
@@ -305,7 +320,7 @@ def refresh_observable_projects():
             system_users = set(get_system_users(o.project.tenant_id, importing_user.jwt, o.system_id))
             updated_user_names = system_users.union(current_user_names)
             if updated_user_names != current_user_names:
-                logger.info("Updating to add the following users: {}   "
+                logger.info("Updating to add the following users:{}   "
                             "Updated user list is now: {}".format(updated_user_names - current_user_names,
                                                                   updated_user_names))
                 o.project.users = [UserService.getOrCreateUser(u, tenant=o.project.tenant_id)
@@ -314,7 +329,7 @@ def refresh_observable_projects():
                 db_session.commit()
 
             # perform the importing
-            import_from_agave(importing_user.id, o.system_id, o.path, o.project.id)
+            import_from_agave(o.project.tenant_id, importing_user.id, o.system_id, o.path, o.project.id)
     except Exception:
         logger.exception("Unhandled exception when importing observable project")
         db_session.rollback()

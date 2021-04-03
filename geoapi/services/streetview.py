@@ -120,7 +120,9 @@ class StreetviewService:
 
 
     @staticmethod
-    def addSequenceToPath(user: User, data: Dict, service: str) -> Streetview:
+    def addSequenceToPath(user: User, data: Dict, service: str) -> None:
+    # def addSequenceToPath(user: User, data: Dict, service: str) -> Streetview:
+
         """
         Add Streetview Sequences with keys to an existing Streetview object with the given system and path.
         :param user: User
@@ -136,6 +138,8 @@ class StreetviewService:
         else:
             svp = svp[0]
 
+        print(svp)
+
         for seq in data['sequences']:
             if seq in list(map(lambda x: x.sequence_key, svp.sequences)):
                 NotificationsService.create(user, "warning", "Seqence already exists for that folder!")
@@ -145,7 +149,7 @@ class StreetviewService:
                 svp.sequences.append(sequence)
                 db_session.commit()
 
-        return svp
+        # return svp
 
 
     @staticmethod

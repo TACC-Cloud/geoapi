@@ -42,7 +42,8 @@ class TestingConfig(Config):
     DB_HOST = os.environ.get('DB_HOST', 'postgres')
     TESTING = True
     ASSETS_BASE_DIR = '/tmp'
-    TENANT = "{\"DESIGNSAFE\": {\"service_account_token\": \"ABCDEFG12344\"} }"
+    TENANT = "{\"DESIGNSAFE\": {\"service_account_token\": \"ABCDEFG12344\"}," \
+             " \"TEST\": {\"service_account_token\": \"ABCDEFG12344\"}  }"
 
 
 APP_ENV = os.environ.get('APP_ENV', '').lower()

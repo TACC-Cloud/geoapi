@@ -63,6 +63,19 @@ def projects_fixture():
 
 
 @pytest.fixture(scope="function")
+def projects_fixture2():
+    proj = Project(name="test2", description="description2")
+    u1 = db_session.query(User).filter(User.username == "test1").first()
+    proj.users.append(u1)
+    proj.tenant_id = u1.tenant_id
+    db_session.add(proj)
+    db_session.commit()
+    yield proj
+
+    shutil.rmtree(get_project_asset_dir(proj.id), ignore_errors=True)
+
+
+@pytest.fixture(scope="function")
 def public_projects_fixture(projects_fixture):
     projects_fixture.public = True
     db_session.add(projects_fixture)
@@ -393,3 +406,10 @@ def get_system_users_mock(userdata):
     u2 = db_session.query(User).get(2)
     with patch('geoapi.services.projects.get_system_users', return_value=[u1.username, u2.username]) as get_system_users:
         yield get_system_users
+
+
+@pytest.fixture(scope="function")
+def tile_server_ini_file_fixture():
+    home = os.path.dirname(__file__)
+    with open(os.path.join(home, 'fixtures/metadata.ini'), 'rb') as f:
+        yield f
