@@ -491,7 +491,7 @@ class ProjectPointCloudsResource(Resource):
     @api.doc(id="getAllPointClouds",
              description="Get a listing of all the points clouds of a project")
     @api.marshal_with(point_cloud, as_list=True)
-    @project_permissions
+    @project_permissions_allow_public
     def get(self, projectId: int):
         return PointCloudService.list(projectId)
 
@@ -616,7 +616,7 @@ class ProjectTileServersResource(Resource):
     @api.doc(id="getTileServers",
              description='Get a list of all the tile servers associated with the current map project.')
     @api.marshal_with(tile_server, as_list=True)
-    @project_permissions
+    @project_permissions_allow_public
     def get(self, projectId: int):
         tsv = FeaturesService.getTileServers(projectId)
         return tsv
