@@ -514,7 +514,7 @@ class ProjectPointCloudResource(Resource):
     @api.doc(id="getPointCloud",
              description="Get point cloud of a project")
     @api.marshal_with(point_cloud)
-    @project_permissions
+    @project_permissions_allow_public
     def get(self, projectId: int, pointCloudId: int):
         return PointCloudService.get(pointCloudId)
 

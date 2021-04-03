@@ -17,8 +17,8 @@ def test_get_point_cloud(test_client, projects_fixture, point_cloud_fixture):
     assert resp.status_code == 200
 
 
-def test_get_point_cloud_public_access(test_client, projects_fixture, point_cloud_fixture):
-    resp = test_client.get('/projects/1/point-cloud/1/', headers={'x-jwt-assertion-test': u1.jwt})
+def test_get_point_cloud_public_access(test_client, public_projects_fixture, point_cloud_fixture):
+    resp = test_client.get('/projects/1/point-cloud/1/')
     assert resp.status_code == 200
 
 
