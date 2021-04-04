@@ -153,7 +153,7 @@ class StreetviewService:
 
 
     @staticmethod
-    def createSequence(streetview_id: int=None,
+    def createSequence(streetview_id: int,
                        service: str=None,
                        sequence_key: str=None,
                        start_date: datetime=None,
@@ -169,21 +169,21 @@ class StreetviewService:
         :param bbox: bool
         :return: StreetviewSequence
         """
-        ms = StreetviewSequence()
-        ms.streetview_id = streetview_id
+        seq = StreetviewSequence()
+        seq.streetview_id = streetview_id
         if service:
-            ms.service = service
+            seq.service = service
         if sequence_key:
-            ms.sequence_key = sequence_key
+            seq.sequence_key = sequence_key
         if start_date:
-            ms.start_date = start_date
+            seq.start_date = start_date
         if end_date:
-            ms.end_date = end_date
+            seq.end_date = end_date
         if bbox:
-            ms.bbox = bbox
-            db_session.add(ms)
-            db_session.commit()
-        return ms
+            seq.bbox = bbox
+        db_session.add(seq)
+        db_session.commit()
+        return seq
 
 
     @staticmethod
@@ -239,6 +239,6 @@ class StreetviewService:
 
         for key, value in data.items():
             setattr(sequence, key, value)
-            db_session.commit()
+        db_session.commit()
 
         return sequence

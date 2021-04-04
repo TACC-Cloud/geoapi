@@ -113,9 +113,13 @@ overlay = api.model('Overlay', {
     'label': fields.String()
 })
 
+# streetview_token = api.model('StreetviewToken', {
+#     'authorized': fields.Boolean(),
+#     'url': fields.String()
+# })
+
 streetview_token = api.model('StreetviewToken', {
-    'authorized': fields.Boolean(),
-    'url': fields.String()
+    'token': fields.String()
 })
 
 streetview_sequence = api.model('StreetviewSequence', {
@@ -330,12 +334,16 @@ class UserStreetviewResource(Resource):
     @api.doc(id="deleteUserStreetviewToken",
              description="Remove the streetview server token for a user")
     @project_permissions
+    @api.marshal_with(streetview_token)
     def delete(self, projectId: int, username: str, service: str):
         u = request.current_user
         return StreetviewService.deleteToken(u,
                                              service)
 
-
+    @api.doc(id="setUserStreetviewToken",
+             description="Set the streetview server token for a user")
+    @project_permissions
+    @api.marshal_with(streetview_token)
     def post(self, projectId: int, username: str, service: str):
         u = request.current_user
         payload = request.json
