@@ -144,11 +144,11 @@ class NotificationsService:
     @staticmethod
     def deleteAllDoneProgress():
         note = db_session.query(ProgressNotification) \
-                         .filter(ProgressNotification.status == 'done')
+                         .filter(ProgressNotification.status == 'success')
         try:
             for pn in note:
                 db_session.delete(pn)
-                db_session.commit()
+            db_session.commit()
         except Exception:
             db_session.rollback()
             raise
