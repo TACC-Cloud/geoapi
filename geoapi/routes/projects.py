@@ -126,11 +126,8 @@ streetview_sequence = api.model('StreetviewSequence', {
     'id': fields.Integer(),
     'streetview_id': fields.Integer(),
     'service': fields.String(),
-    # 'start_date': fields.String(required=False),
-    # 'end_date': fields.String(required=False),
     'start_date': fields.DateTime(dt_format='rfc822', required=False),
     'end_date': fields.DateTime(dt_format='rfc822', required=False),
-
     'bbox': fields.String(required=False),
     'sequence_key': fields.String(required=False),
 })
@@ -322,11 +319,18 @@ class UserStreetviewSequenceResource(Resource):
 
 @api.route('/<int:projectId>/users/<username>/streetview/<service>/sequences/<sequence_id>')
 class UserStreetviewSequence(Resource):
-    @api.doc(id="getUserStreetviewSequences",
+    @api.doc(id="deleteUserStreetviewSequence",
              description="Get a streetview service's sequences")
     @project_permissions
     def delete(self, projectId: int, username: str, service: str, sequence_id: int):
         StreetviewService.deleteSequence(sequence_id)
+
+    @api.doc(id="updateUserStreetviewSequence",
+             description="Get a streetview service's sequences")
+    @marshal_with(streetview_sequence)
+    @project_permissions
+    def put(self, projectId: int, username: str, service: str, sequence_id: int):
+        StreetviewService.updateSequence(sequence_id, api.payload)
 
 
 @api.route('/<int:projectId>/users/<username>/streetview/<service>')
