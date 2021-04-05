@@ -70,7 +70,7 @@ def _from_tapis(user: User, task_uuid: UUID, systemId: str, path: str, retry):
             asset_uuid = uuid.uuid4()
 
             img_name = os.path.join(str(base_filepath), str(asset_uuid) + '.jpg')
-            # img_list.append(img_name)
+            img_list.append(img_name)
 
             client.getRawFileToPath(systemId, item.path, img_name)
 
@@ -80,7 +80,8 @@ def _from_tapis(user: User, task_uuid: UUID, systemId: str, path: str, retry):
                                                 status="in_progress",
                                                 message="From Tapis [1/3]",
                                                 progress=int(done_files / files_length * 100),
-                                                logItem={"uploadFiles": img_name})
+                                                # logItem={"uploadFiles": img_name}
+                                                )
                                                 # logItem={"uploadFiles": img_list})
         except:
             logger.exception("Could not import file from agave: {} :: {}".format(systemId, path))
@@ -115,7 +116,7 @@ def _mapillary_finalize(user: User, streetview: Streetview, task_uuid: UUID, pat
     if len(combined_list_sequence_mappings) == 0:
         raise Exception("No parameters")
     else:
-        mapillary_user = MapillaryUtils.get_user(user.mapillay_jwt)
+        mapillary_user = MapillaryUtils.get_user(user.mapillary_jwt)
         for seq in combined_list_sequence_mappings:
             seq_obj = StreetviewService.createSequence(streetview_id=streetview.id,
                                                        service='mapillary',
@@ -199,6 +200,7 @@ def from_tapis_to_streetview(userId: int, dir: Dict, google: bool, mapillary: bo
                                                 "error",
                                                 str(e))
             NotificationsService.create(user, "error", "Nothing has been uploaded from {f}".format(f=dir['path']))
+            return
 
     # Upload to mapillary
     if mapillary:
