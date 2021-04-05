@@ -80,16 +80,19 @@ def _from_tapis(user: User, task_uuid: UUID, systemId: str, path: str, retry):
                                                 status="in_progress",
                                                 message="From Tapis [1/3]",
                                                 progress=int(done_files / files_length * 100),
-                                                # logItem={"uploadFiles": img_name}
-                                                )
-                                                # logItem={"uploadFiles": img_list})
+                                                logItem={"uploadFiles": img_list})
         except:
             logger.exception("Could not import file from agave: {} :: {}".format(systemId, path))
             done_files -= 1
             error_message = "Error importing {f}".format(f=path)
             error_list.append(error_message)
+            NotificationsService.updateProgress(task_uuid=task_uuid,
+                                                logItem={"errorMessages": error_list})
             NotificationsService.create(user, "error", error_message)
     if len(img_list) == 0:
+        error_list.append("No images have been uploaded to geoapi!")
+        NotificationsService.updateProgress(task_uuid=task_uuid,
+                                            logItem={"errorMessages": error_list})
         raise ValueError("No images have been uploaded to geoapi!")
 
 
@@ -97,12 +100,16 @@ def _to_mapillary(user: User, task_uuid: UUID, path: str):
     token = user.mapillary_jwt
 
     mapillary_user = MapillaryUtils.get_user(user.mapillary_jwt)
+    error_list = []
 
     try:
         NotificationsService.updateProgress(task_uuid, "in_progress", "To Mapillary [2/3]", 0)
         MapillaryUtils.authenticate(user.id, token)
         MapillaryUtils.upload(user.id, path, task_uuid, mapillary_user['username'])
     except Exception as e:
+        error_list.append(e)
+        NotificationsService.updateProgress(task_uuid=task_uuid,
+                                            logItem={"errorMessages": error_list})
         raise ApiException(str(e))
 
 

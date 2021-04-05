@@ -34,5 +34,5 @@ class ProgressNotification(Base):
     progress = Column(Integer)
     status = Column(String(256))
     message = Column(String(512))
-    logs = Column(JSONB, default=[])
+    logs = Column(JSONB, default={})
     viewed = Column(Boolean, default=False)

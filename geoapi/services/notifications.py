@@ -108,20 +108,19 @@ class NotificationsService:
     @staticmethod
     def updateProgress(task_uuid: UUID, status: AnyStr=None, message: AnyStr=None, progress: int=None, logItem: Dict=None):
         note = db_session.query(ProgressNotification) \
-                         .filter(ProgressNotification.uuid == task_uuid)
+                         .filter(ProgressNotification.uuid == task_uuid) \
+                         .first()
         try:
             if status is not None:
-                note[0].status = status
+                note.status = status
             if message is not None:
-                note[0].message = message
+                note.message = message
             if progress is not None:
-                note[0].progress = progress
+                note.progress = progress
             if logItem is not None:
-                note[0].logs.append(logItem)
-                # my_data = note[0].extraData
-                # my_data.update(extraDataItem)
-                # note[0].extraData = my_data
-            # print(note[0].extraData)
+                new_log = note.logs
+                new_log.update(logItem)
+                note.extraData = new_log
             db_session.commit()
         except Exception:
             db_session.rollback()
