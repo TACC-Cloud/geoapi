@@ -1,5 +1,5 @@
 import datetime
-
+import uuid
 from geoapi.db import db_session
 from geoapi.models.users import User
 from geoapi.models.project import Project
@@ -35,6 +35,34 @@ def test_get_projects_using_single_uuid(test_client, projects_fixture, projects_
     assert resp.status_code == 200
     assert len(data) == 1
     assert data[0]["uuid"] == str(projects_fixture2.uuid)
+
+
+def test_get_projects_using_single_uuid_that_is_wrong(test_client):
+    u1 = db_session.query(User).get(1)
+    resp = test_client.get('/projects/',
+                           query_string='uuid={}'.format(uuid.uuid4()),
+                           headers={'x-jwt-assertion-test': u1.jwt})
+    assert resp.status_code == 404
+
+
+def test_get_public_project_using_single_uuid(test_client, public_projects_fixture):
+    resp = test_client.get('/projects/',
+                           query_string='uuid={}'.format(public_projects_fixture.uuid))
+    assert resp.status_code == 200
+
+
+def test_get_project_using_single_uuid_unauthorized_guest(test_client, projects_fixture):
+    resp = test_client.get('/projects/',
+                           query_string='uuid={}'.format(projects_fixture.uuid))
+    assert resp.status_code == 403
+
+
+def test_get_project_using_single_uuid_not_member_of_project(test_client, projects_fixture):
+    u2 = db_session.query(User).get(2)
+    resp = test_client.get('/projects/',
+                           query_string='uuid={}'.format(projects_fixture.uuid),
+                           headers={'x-jwt-assertion-test': u2.jwt})
+    assert resp.status_code == 403
 
 
 def test_project_permissions(test_client, projects_fixture):

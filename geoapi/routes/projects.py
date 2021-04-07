@@ -14,11 +14,8 @@ from geoapi.services.point_cloud import PointCloudService
 from geoapi.services.projects import ProjectsService
 from geoapi.services.streetview import StreetviewService
 from geoapi.tasks import external_data, streetview
-from geoapi.utils.decorators import (jwt_decoder, project_feature_exists,
-                                     project_permissions,
-                                     project_permissions_allow_public,
-                                     project_point_cloud_exists,
-                                     project_point_cloud_not_processing)
+from geoapi.utils.decorators import jwt_decoder, project_permissions_allow_public, project_permissions, project_feature_exists, \
+    project_point_cloud_exists, project_point_cloud_not_processing, check_access_and_get_project
 from werkzeug.datastructures import FileStorage
 from werkzeug.utils import secure_filename
 
@@ -206,7 +203,9 @@ class ProjectsListing(Resource):
         uuid_subset = query.get("uuid")
 
         if uuid_subset:
-            subset = [ProjectsService.get(uuid=uuid) for uuid in uuid_subset]
+            logger.info("Get a subset of projects for user:{} projects:{}".format(u.username, uuid_subset))
+            # Check each project and abort if user (authenticated or anonymous) can't access the project
+            subset = [check_access_and_get_project(request.current_user, uuid=uuid, allow_public_use=True) for uuid in uuid_subset]
             return subset
         else:
             logger.info("Get all projects for user:{}".format(u.username))
@@ -611,7 +610,7 @@ class ProjectPointCloudsResource(Resource):
     @api.doc(id="getAllPointClouds",
              description="Get a listing of all the points clouds of a project")
     @api.marshal_with(point_cloud, as_list=True)
-    @project_permissions
+    @project_permissions_allow_public
     def get(self, projectId: int):
         return PointCloudService.list(projectId)
 
@@ -634,7 +633,7 @@ class ProjectPointCloudResource(Resource):
     @api.doc(id="getPointCloud",
              description="Get point cloud of a project")
     @api.marshal_with(point_cloud)
-    @project_permissions
+    @project_permissions_allow_public
     def get(self, projectId: int, pointCloudId: int):
         return PointCloudService.get(pointCloudId)
 
@@ -737,7 +736,7 @@ class ProjectTileServersResource(Resource):
     @api.doc(id="getTileServers",
              description='Get a list of all the tile servers associated with the current map project.')
     @api.marshal_with(tile_server, as_list=True)
-    @project_permissions
+    @project_permissions_allow_public
     def get(self, projectId: int):
         tsv = FeaturesService.getTileServers(projectId)
         return tsv

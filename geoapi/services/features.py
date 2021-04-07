@@ -57,12 +57,10 @@ class FeaturesService:
     )
 
     ALLOWED_GEOSPATIAL_EXTENSIONS = IMAGE_FILE_EXTENSIONS + GPX_FILE_EXTENSIONS + GEOJSON_FILE_EXTENSIONS + \
-                                    SHAPEFILE_FILE_EXTENSIONS
+        SHAPEFILE_FILE_EXTENSIONS
 
-    ALLOWED_EXTENSIONS = IMAGE_FILE_EXTENSIONS + VIDEO_FILE_EXTENSIONS \
-                         + AUDIO_FILE_EXTENSIONS + GPX_FILE_EXTENSIONS \
-                         + GEOJSON_FILE_EXTENSIONS + SHAPEFILE_FILE_EXTENSIONS \
-                         + INI_FILE_EXTENSIONS
+    ALLOWED_EXTENSIONS = IMAGE_FILE_EXTENSIONS + VIDEO_FILE_EXTENSIONS + AUDIO_FILE_EXTENSIONS + GPX_FILE_EXTENSIONS + \
+        GEOJSON_FILE_EXTENSIONS + SHAPEFILE_FILE_EXTENSIONS + INI_FILE_EXTENSIONS
 
     @staticmethod
     def get(featureId: int) -> Feature:
@@ -359,7 +357,6 @@ class FeaturesService:
         db_session.commit()
         return feat
 
-
     @staticmethod
     def createFeatureAssetFromTapis(user: User, projectId: int, featureId: int, systemId: str, path: str) -> Feature:
         """
@@ -407,7 +404,7 @@ class FeaturesService:
         return fa
 
     @staticmethod
-    def createVideoFeatureAsset(projectId: int, fileObj: IO, original_path:str =None) -> FeatureAsset:
+    def createVideoFeatureAsset(projectId: int, fileObj: IO, original_path: str =None) -> FeatureAsset:
         """
 
         :param projectId:
@@ -501,7 +498,6 @@ class FeaturesService:
         db_session.commit()
         return ov
 
-
     @staticmethod
     def addOverlayFromTapis(user: User, project_id: int, system_id: str,
                             path: str, bounds: List[float], label: str) -> Overlay:
@@ -509,7 +505,6 @@ class FeaturesService:
         file_obj = client.getFile(system_id, path)
         ov = FeaturesService.addOverlay(project_id, file_obj, bounds, label)
         return ov
-
 
     @staticmethod
     def getOverlays(projectId: int) -> List[Overlay]:
