@@ -54,7 +54,6 @@ def test_filter_notifications_positive(test_client, notifications):
     data = resp.get_json()
     assert resp.status_code == 200
     assert len(data) == 2
-<<<<<<< HEAD
 
 def test_get_progress_notifications(test_client, notifications):
     u1 = db_session.query(User).get(1)
@@ -101,5 +100,3 @@ def test_delete_progress_notification(test_client, progress_notifications):
     data = resp.get_json()
     assert resp.status_code == 200
     assert len(data) == 1
-=======
->>>>>>> master
