@@ -147,14 +147,16 @@ class MapillaryUtils:
 
 
     @staticmethod
-    def upload(userId: int, path: str, task_uuid: UUID, mapillary_username: str):
+    def upload(userId: int, path: str, task_uuid: UUID, mapillary_username: str, organization: str):
         command = [
             '/usr/local/bin/mapillary_tools',
             'process_and_upload',
             '--import_path',
             get_project_streetview_dir(userId, path),
             '--user_name',
-            mapillary_username
+            mapillary_username,
+            '--organization_key' if organization != '' else '',
+            organization
         ]
 
         try:

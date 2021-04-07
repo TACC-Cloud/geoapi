@@ -158,6 +158,7 @@ class StreetviewService:
                        sequence_key: str=None,
                        start_date: datetime=None,
                        end_date: datetime=None,
+                       organization_key: str=None,
                        bbox: str=None) -> StreetviewSequence:
         """
         Create a Streetview Sequence to link to a streetview service sequence.

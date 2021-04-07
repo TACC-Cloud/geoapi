@@ -170,7 +170,9 @@ tapis_files_import = api.model('TapisFileImport', {
 streetview_folder_import = api.model('TapisFolderImport', {
     'folder': fields.Nested(tapis_file),
     'mapillary': fields.Boolean(),
-    'google': fields.Boolean()
+    'google': fields.Boolean(),
+    'organization': fields.String(),
+    'retry': fields.Boolean()
 })
 
 overlay_parser = api.parser()
@@ -370,7 +372,7 @@ class UserStreetviewUploadFilesResource(Resource):
         u = request.current_user
         logger.info("Upload images for user:{}".format(u.username))
         try:
-            streetview.upload(u, request)
+            streetview.upload(u, api.payload)
         except ApiException:
             abort(403, "Access denied")
         return {"message": "accepted"}

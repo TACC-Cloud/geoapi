@@ -23,20 +23,21 @@ from geoapi.services.images import ImageService
 logger = logging.getLogger(__file__)
 
 
-def upload(user: User, request):
-    if (request.json['mapillary']):
+def upload(user: User, params: Dict):
+    if (params['mapillary']):
         if not user.mapillary_jwt:
             raise ApiException("Not authenticated to mapillary!")
 
-    if (request.json['google']):
+    if (params['google']):
         if not user.google_jwt:
             raise ApiException("Not authenticated to google!")
 
     from_tapis_to_streetview.delay(user.id,
-                                   request.json['folder'],
-                                   request.json['google'],
-                                   request.json['mapillary'],
-                                   request.json['retry'])
+                                   params['folder'],
+                                   params['google'],
+                                   params['mapillary'],
+                                   params['organization'],
+                                   params['retry'])
 
 
 def _from_tapis(user: User, task_uuid: UUID, systemId: str, path: str, retry):
@@ -96,7 +97,7 @@ def _from_tapis(user: User, task_uuid: UUID, systemId: str, path: str, retry):
         raise ValueError("No images have been uploaded to geoapi!")
 
 
-def _to_mapillary(user: User, task_uuid: UUID, path: str):
+def _to_mapillary(user: User, task_uuid: UUID, path: str, organization: str):
     token = user.mapillary_jwt
 
     mapillary_user = MapillaryUtils.get_user(user.mapillary_jwt)
@@ -105,7 +106,7 @@ def _to_mapillary(user: User, task_uuid: UUID, path: str):
     try:
         NotificationsService.updateProgress(task_uuid, "in_progress", "To Mapillary [2/3]", 0)
         MapillaryUtils.authenticate(user.id, token)
-        MapillaryUtils.upload(user.id, path, task_uuid, mapillary_user['username'])
+        MapillaryUtils.upload(user.id, path, task_uuid, mapillary_user['username'], organization)
     except Exception as e:
         error_list.append(e)
         NotificationsService.updateProgress(task_uuid=task_uuid,
@@ -117,7 +118,7 @@ def _to_google():
     pass
 
 
-def _mapillary_finalize(user: User, streetview: Streetview, task_uuid: UUID, path: str):
+def _mapillary_finalize(user: User, streetview: Streetview, task_uuid: UUID, path: str, organization: str):
     list_per_sequence_mapping = MapillaryUtils.get_sequence_mappings(user, path)
     combined_list_sequence_mappings = MapillaryUtils.get_filtered_sequence_mappings(list_per_sequence_mapping)
     if len(combined_list_sequence_mappings) == 0:
@@ -129,6 +130,7 @@ def _mapillary_finalize(user: User, streetview: Streetview, task_uuid: UUID, pat
                                                        service='mapillary',
                                                        start_date=seq['start_date'],
                                                        end_date=seq['end_date'],
+                                                       organization_key=organization,
                                                        bbox='{}, {}, {}, {}'.format(seq['lon_min'], seq['lat_min'], seq['lon_max'], seq['lat_max'])
                                                        )
 
@@ -157,7 +159,7 @@ def _google_finalize():
 
 
 @app.task(rate_limit="5/s")
-def from_tapis_to_streetview(userId: int, dir: Dict, google: bool, mapillary: bool, retry: bool):
+def from_tapis_to_streetview(userId: int, dir: Dict, google: bool, mapillary: bool, organization: str, retry: bool):
     user = UserService.get(userId)
     task_uuid = uuid.uuid3(uuid.NAMESPACE_URL, dir['system'] + dir['path'])
     existing_progress = NotificationsService.getProgressUUID(task_uuid)
@@ -212,7 +214,7 @@ def from_tapis_to_streetview(userId: int, dir: Dict, google: bool, mapillary: bo
     # Upload to mapillary
     if mapillary:
         try:
-            _to_mapillary(user, task_uuid, dir['path'])
+            _to_mapillary(user, task_uuid, dir['path'], organization)
         except Exception as e:
             logger.error(e)
             StreetviewService.delete(streetview.id)
@@ -223,7 +225,7 @@ def from_tapis_to_streetview(userId: int, dir: Dict, google: bool, mapillary: bo
             return
 
         try:
-            _mapillary_finalize(user, streetview, task_uuid, dir['path'])
+            _mapillary_finalize(user, streetview, task_uuid, dir['path'], organization)
         except Exception as e:
             logger.error(e)
             StreetviewService.delete(streetview.id)
