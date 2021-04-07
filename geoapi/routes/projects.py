@@ -9,7 +9,7 @@ from geoapi.services.features import FeaturesService
 from geoapi.services.projects import ProjectsService
 from geoapi.services.point_cloud import PointCloudService
 from geoapi.utils.decorators import jwt_decoder, project_permissions_allow_public, project_permissions, project_feature_exists, \
-    project_point_cloud_exists, project_point_cloud_not_processing
+    project_point_cloud_exists, project_point_cloud_not_processing, check_access_and_get_project
 from geoapi.tasks import external_data
 
 logger = logging.getLogger(__name__)
@@ -159,7 +159,9 @@ class ProjectsListing(Resource):
         uuid_subset = query.get("uuid")
 
         if uuid_subset:
-            subset = [ProjectsService.get(uuid=uuid) for uuid in uuid_subset]
+            logger.info("Get a subset of projects for user:{} projects:{}".format(u.username, uuid_subset))
+            # Check each project and abort if user (authenticated or anonymous) can't access the project
+            subset = [check_access_and_get_project(request.current_user, uuid=uuid, allow_public_use=True) for uuid in uuid_subset]
             return subset
         else:
             logger.info("Get all projects for user:{}".format(u.username))
