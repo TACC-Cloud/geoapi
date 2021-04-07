@@ -2,7 +2,7 @@ from flask import request, abort
 from flask_restplus import Resource, Namespace, fields, inputs
 
 from geoapi.log import logging
-from geoapi.utils.decorators import jwt_decoder
+from geoapi.utils.decorators import jwt_decoder, not_anonymous
 from geoapi.services.notifications import NotificationsService
 from dateutil import parser, tz
 
@@ -32,6 +32,7 @@ class Notifcations(Resource):
     @api.doc(id="get",
              description='Get a list of notifications')
     @api.marshal_with(notification_response, as_list=True)
+    @not_anonymous
     def get(self):
         query = self.parser.parse_args()
         u = request.current_user
