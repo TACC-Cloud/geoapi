@@ -83,6 +83,19 @@ class ProjectsService:
         return proj
 
     @staticmethod
+    def saveProject(user: User,
+                    data: dict) -> None:
+        """
+        Save a project UUID file to tapis
+        :param user: User
+        :param data: dict
+        :return: None
+        """
+        AgaveUtils(user.jwt).postFile(data['system_id'],
+                                      data['path'],
+                                      data['project_uuid'] + '.hazmapper')
+
+    @staticmethod
     def list(user: User) -> List[Project]:
         """
         List a users projects

@@ -124,6 +124,12 @@ tapis_file = api.model('TapisFile', {
     'path': fields.String(required=True)
 })
 
+tapis_save_file = api.model('TapisSaveFile', {
+    'system_id': fields.String(required=True),
+    'path': fields.String(required=True),
+    'project_uuid': fields.String(required=True)
+})
+
 tapis_files_import = api.model('TapisFileImport', {
     'files': fields.List(fields.Nested(tapis_file), required=True)
 })
@@ -176,6 +182,18 @@ class ProjectsListing(Resource):
         logger.info("Create project for user:{} : {}".format(u.username,
                                                              api.payload))
         return ProjectsService.create(api.payload, u)
+
+
+@api.route('/save/')
+class SaveProject(Resource):
+    @api.doc(id="saveProject",
+             description='Save a project file to tapis')
+    @api.expect(tapis_save_file)
+    # @api.marshal_with(tapis_save_file)
+    def post(self):
+        u = request.current_user
+        logger.info("Saving project to tapis for user {}: {}".format(u.username, api.payload))
+        ProjectsService.saveProject(u, api.payload)
 
 
 @api.route('/rapid/')

@@ -131,6 +131,38 @@ class AgaveUtils:
             logger.error("Could not fetch file ({}/{}): {}".format(systemId, path, e))
             raise e
 
+    def postFile(self, systemId: str, path: str, fileName: str) -> None:
+        """
+        Upload a file to agave
+        :param systemId: str
+        :param path (directory): str
+        :param fileName: str
+        :return: None
+        """
+        url = quote('/files/media/system/{}/{}'.format(systemId, path))
+        try:
+            tmpFile = NamedTemporaryFile(delete=True)
+            tmpFile.name = fileName
+            files = {
+                'fileToUpload': tmpFile,
+            }
+            with self.client.post(self.base_url + url,
+                                  verify=False,
+                                  files=files) as r:
+                if r.status_code > 400:
+                    tmpFile.close()
+                    raise ValueError("Could not post file ({}/{}/{}) status_code:{}".format(systemId,
+                                                                                            path,
+                                                                                            fileName,
+                                                                                            r.status_code))
+
+                tmpFile.close()
+        except Exception as e:
+            tmpFile.close()
+            logger.error("Could not post file ({}/{}/{}): {}".format(systemId, path, fileName, e))
+            raise e
+
+
 
 def service_account_client(tenant_id):
     try:
