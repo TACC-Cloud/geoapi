@@ -29,38 +29,38 @@ from geoapi.log import logging
 logger = logging.getLogger(__file__)
 
 
-def make_project_streetview_dir(userId: int, path: str) -> str:
+def make_project_streetview_dir(userId: int, task_uuid: UUID) -> str:
     """
     Creates a directory for a temporary streetview paths in the STREETVIEW_DIR location
     :param projectId: int
     :return:
     """
-    base_filepath =  get_project_streetview_dir(userId, path)
+    base_filepath =  get_project_streetview_dir(userId, task_uuid)
     pathlib.Path(base_filepath).mkdir(parents=True, exist_ok=True)
     return base_filepath
 
 
-def get_project_streetview_dir(userId: int, path: str) -> str:
+def get_project_streetview_dir(userId: int, task_uuid: UUID) -> str:
+    """
+    Get streetview temporary directory
+    :param userId: int
+    :param task_uuid: UUID
+    :return: string: streetview temporary directory
+    """
+    return os.path.join(settings.STREETVIEW_DIR, str(userId), str(task_uuid))
+
+
+def is_project_streetview_dir(userId: int, task_uuid: UUID) -> bool:
+    return os.path.isdir(get_project_streetview_dir(userId, task_uuid))
+
+
+def remove_project_streetview_dir(userId: int, task_uuid: UUID):
     """
     Get streetview temporary directory
     :param projectId: int
     :return: string: streetview temporary directory
     """
-    pathId = uuid.uuid3(uuid.NAMESPACE_URL, path)
-    return os.path.join(settings.STREETVIEW_DIR, str(userId), str(pathId))
-
-
-def is_project_streetview_dir(userId: int, path: str) -> bool:
-    return os.path.isdir(get_project_streetview_dir(userId, path))
-
-
-def remove_project_streetview_dir(userId: int, path: str):
-    """
-    Get streetview temporary directory
-    :param projectId: int
-    :return: string: streetview temporary directory
-    """
-    shutil.rmtree(get_project_streetview_dir(userId, path))
+    shutil.rmtree(get_project_streetview_dir(userId, task_uuid))
 
 
 def get_streetview_path(*relative_paths) -> str:
@@ -72,7 +72,7 @@ def get_streetview_path(*relative_paths) -> str:
     return os.path.join(settings.STREETVIEW_DIR, *relative_paths)
 
 
-def get_streetview_relative_path(path: str) -> str:
+def get_streetview_relative_path(task_uuid: UUID) -> str:
     """
     Get path which is relative to streetview temporary directory
 
@@ -82,10 +82,10 @@ def get_streetview_relative_path(path: str) -> str:
     :param path: str
     :return: string: relative path
     """
-    return os.path.relpath(path, start=settings.STREETVIEW_DIR)
+    return os.path.relpath(str(task_uuid), start=settings.STREETVIEW_DIR)
 
 
-def delete_streetview(userId: int, path: str, uuid: str):
+def delete_streetview(userId: int, task_uuid: UUID, uuid: str):
     """
     Delete streetview related to a single feature
 
@@ -93,14 +93,14 @@ def delete_streetview(userId: int, path: str, uuid: str):
     :param uuid: str
     :return:
     """
-    for streetview_file in glob.glob('{}/*{}*'.format(get_project_streetview_dir(userId, path), uuid)):
+    for streetview_file in glob.glob('{}/*{}*'.format(get_project_streetview_dir(userId, task_uuid), uuid)):
         if os.path.isfile(streetview_file):
             os.remove(streetview_file)
         else:
             shutil.rmtree(streetview_file)
 
 
-def delete_streetview_dir(userId: int, path: str, uuid: str):
+def delete_streetview_dir(userId: int, task_uuid: UUID, uuid: str):
     """
     Delete streetview related to a single feature
 
@@ -108,7 +108,7 @@ def delete_streetview_dir(userId: int, path: str, uuid: str):
     :param uuid: str
     :return:
     """
-    for streetview_file in glob.glob('{}/*{}*'.format(get_project_streetview_dir(userId, path), uuid)):
+    for streetview_file in glob.glob('{}/*{}*'.format(get_project_streetview_dir(userId, task_uuid), uuid)):
         if os.path.isfile(streetview_file):
             os.remove(streetview_file)
         else:
@@ -147,12 +147,12 @@ class MapillaryUtils:
 
 
     @staticmethod
-    def upload(userId: int, path: str, task_uuid: UUID, mapillary_username: str, organization: str):
+    def upload(userId: int, task_uuid: UUID, mapillary_username: str, organization: str):
         command = [
             '/usr/local/bin/mapillary_tools',
             'process_and_upload',
             '--import_path',
-            get_project_streetview_dir(userId, path),
+            get_project_streetview_dir(userId, task_uuid),
             '--user_name',
             mapillary_username,
             '--organization_key' if organization != '' else '',
@@ -211,8 +211,8 @@ class MapillaryUtils:
 
 
     @staticmethod
-    def get_image_sequence(userId, system_path: str):
-        streetview_path = get_project_streetview_dir(userId, system_path)
+    def get_image_sequence(userId, task_uuid: UUID):
+        streetview_path = get_project_streetview_dir(userId, task_uuid)
 
         if not os.path.isdir(streetview_path):
             return None
@@ -232,8 +232,8 @@ class MapillaryUtils:
 
 
     @staticmethod
-    def get_image_capture_time(userId, system_path: str):
-        streetview_path = get_project_streetview_dir(userId, system_path)
+    def get_image_capture_time(userId, task_uuid: UUID):
+        streetview_path = get_project_streetview_dir(userId, task_uuid)
 
         if not os.path.isdir(streetview_path):
             return None
@@ -264,14 +264,14 @@ class MapillaryUtils:
 
 
     @staticmethod
-    def upload_error(user: User, path: str):
+    def upload_error(user: User, task_uuid: UUID):
         return len(mapillary_uploader.
-                   get_failed_upload_file_list(get_project_streetview_dir(user.id, path)))
+                   get_failed_upload_file_list(get_project_streetview_dir(user.id, task_uuid)))
 
 
     @staticmethod
-    def get_sequence_mappings(user: User, path: str):
-        upload_file_list = mapillary_uploader.get_success_upload_file_list(get_project_streetview_dir(user.id, path),
+    def get_sequence_mappings(user: User, task_uuid: UUID):
+        upload_file_list = mapillary_uploader.get_success_upload_file_list(get_project_streetview_dir(user.id, task_uuid),
                                                                    False)
         params = {}
         list_per_sequence_mapping = {}

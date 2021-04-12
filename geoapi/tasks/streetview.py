@@ -9,7 +9,7 @@ from geoapi.celery_app import app
 from geoapi.exceptions import ApiException
 from geoapi.models import User, Streetview
 from geoapi.utils.agave import AgaveUtils
-from geoapi.utils.streetview import (get_project_streetview_dir,
+from geoapi.utils.streetview import (delete_streetview_dir, get_project_streetview_dir,
                                      make_project_streetview_dir,
                                      remove_project_streetview_dir,
                                      get_project_streetview_dir,
@@ -31,6 +31,10 @@ def upload(user: User, params: Dict):
     if (params['google']):
         if not user.google_jwt:
             raise ApiException("Not authenticated to google!")
+    if len(NotificationsService.getProgressStatus('in_progress')) > 5:
+        # TODO: Find better solution for limiting uploads.
+        NotificationsService.create(user, "warning", "Maximum number of uploads in progress!")
+        return
 
     from_tapis_to_streetview.delay(user.id,
                                    params['folder'],
@@ -40,19 +44,27 @@ def upload(user: User, params: Dict):
                                    params['retry'])
 
 
+def delete_upload_session(user: User, service: str, task_uuid: UUID):
+    NotificationsService.deleteProgress(task_uuid)
+    remove_project_streetview_dir(user.id, task_uuid)
+
+def create_upload_session(user: User, task_uuid: UUID):
+    NotificationsService.createProgress(user, "error", "test", task_uuid=task_uuid)
+    make_project_streetview_dir(user.id, task_uuid)
+
 def _from_tapis(user: User, task_uuid: UUID, systemId: str, path: str, retry):
     client = AgaveUtils(user.jwt)
     listing = client.listing(systemId, path)
     files_in_directory = listing[1:]
 
-    base_filepath = get_project_streetview_dir(user.id, path)
+    base_filepath = get_project_streetview_dir(user.id, task_uuid)
 
     # TODO Should handle retry
     if not os.path.isdir(base_filepath):
-        make_project_streetview_dir(user.id, path)
+        make_project_streetview_dir(user.id, task_uuid)
     else:
-        remove_project_streetview_dir(user.id, path)
-        make_project_streetview_dir(user.id, path)
+        remove_project_streetview_dir(user.id, task_uuid)
+        make_project_streetview_dir(user.id, task_uuid)
         NotificationsService.create(user, "success", "Cleaning up previous session before upload.")
 
     img_list = []
@@ -63,7 +75,7 @@ def _from_tapis(user: User, task_uuid: UUID, systemId: str, path: str, retry):
 
     for item in files_in_directory:
         if item.type == "dir":
-            NotificationsService.create(user, "warning", "This upload contains non-gpano images. Disregarding...")
+            NotificationsService.create(user, "warning", "Invalid upload type. Disregarding...")
             continue
         if item.path.suffix.lower().lstrip('.') not in features.FeaturesService.IMAGE_FILE_EXTENSIONS:
             continue
@@ -97,7 +109,7 @@ def _from_tapis(user: User, task_uuid: UUID, systemId: str, path: str, retry):
         raise ValueError("No images have been uploaded to geoapi!")
 
 
-def _to_mapillary(user: User, task_uuid: UUID, path: str, organization: str):
+def _to_mapillary(user: User, task_uuid: UUID, organization: str):
     token = user.mapillary_jwt
 
     mapillary_user = MapillaryUtils.get_user(user.mapillary_jwt)
@@ -106,7 +118,7 @@ def _to_mapillary(user: User, task_uuid: UUID, path: str, organization: str):
     try:
         NotificationsService.updateProgress(task_uuid, "in_progress", "To Mapillary [2/3]", 0)
         MapillaryUtils.authenticate(user.id, token)
-        MapillaryUtils.upload(user.id, path, task_uuid, mapillary_user['username'], organization)
+        MapillaryUtils.upload(user.id, task_uuid, mapillary_user['username'], organization)
     except Exception as e:
         error_list.append(e)
         NotificationsService.updateProgress(task_uuid=task_uuid,
@@ -118,8 +130,8 @@ def _to_google():
     pass
 
 
-def _mapillary_finalize(user: User, streetview: Streetview, task_uuid: UUID, path: str, organization: str):
-    list_per_sequence_mapping = MapillaryUtils.get_sequence_mappings(user, path)
+def _mapillary_finalize(user: User, streetview: Streetview, task_uuid: UUID, organization: str):
+    list_per_sequence_mapping = MapillaryUtils.get_sequence_mappings(user, task_uuid)
     combined_list_sequence_mappings = MapillaryUtils.get_filtered_sequence_mappings(list_per_sequence_mapping)
     if len(combined_list_sequence_mappings) == 0:
         raise Exception("No parameters")
@@ -146,7 +158,7 @@ def _mapillary_finalize(user: User, streetview: Streetview, task_uuid: UUID, pat
                     StreetviewService.deleteBySequenceKey(res_seq['properties']['key'], streetview.id)
 
     # Final error parsing and delete temporary directory
-    if MapillaryUtils.upload_error(user, path) > 0:
+    if MapillaryUtils.upload_error(user, task_uuid) > 0:
         StreetviewService.delete(streetview.id)
         NotificationsService.updateProgress(task_uuid,
                                             "error",
@@ -214,7 +226,7 @@ def from_tapis_to_streetview(userId: int, dir: Dict, google: bool, mapillary: bo
     # Upload to mapillary
     if mapillary:
         try:
-            _to_mapillary(user, task_uuid, dir['path'], organization)
+            _to_mapillary(user, task_uuid, organization)
         except Exception as e:
             logger.error(e)
             StreetviewService.delete(streetview.id)
@@ -225,7 +237,7 @@ def from_tapis_to_streetview(userId: int, dir: Dict, google: bool, mapillary: bo
             return
 
         try:
-            _mapillary_finalize(user, streetview, task_uuid, dir['path'], organization)
+            _mapillary_finalize(user, streetview, task_uuid, organization)
         except Exception as e:
             logger.error(e)
             StreetviewService.delete(streetview.id)
@@ -240,4 +252,4 @@ def from_tapis_to_streetview(userId: int, dir: Dict, google: bool, mapillary: bo
                                         "success",
                                         "Finished Upload")
 
-    remove_project_streetview_dir(user.id, dir['path'])
+    remove_project_streetview_dir(user.id, task_uuid)

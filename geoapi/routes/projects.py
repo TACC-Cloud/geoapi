@@ -1,9 +1,11 @@
+from geoapi.services.notifications import NotificationsService
 from flask_restplus.marshalling import marshal_with
 from geoapi.exceptions import ApiException
 from flask import abort, request, redirect
 import requests
 import json
 import time
+import uuid
 from flask_restplus import Namespace, Resource, fields, inputs
 from werkzeug.datastructures import FileStorage
 from werkzeug.utils import secure_filename
@@ -332,6 +334,25 @@ class UserStreetviewSequence(Resource):
     @project_permissions
     def put(self, projectId: int, username: str, service: str, sequence_id: int):
         StreetviewService.updateSequence(sequence_id, api.payload)
+
+
+@api.route('/<int:projectId>/users/<username>/streetview/<service>/sequences/notifications/<task_uuid>')
+class UserStreetviewSession(Resource):
+    @api.doc(id="deleteUserStreetviewSession",
+             description="Delete a streetview upload session")
+    @project_permissions
+    def delete(self, projectId: int, username: str, service: str, task_uuid: str):
+        u = request.current_user
+        param_uuid = uuid.UUID(task_uuid)
+        streetview.delete_upload_session(u, service, param_uuid)
+
+    @api.doc(id="createUserStreetviewSession",
+             description="Delete a streetview upload session")
+    @project_permissions
+    def post(self, projectId: int, username: str, service: str, task_uuid: str):
+        u = request.current_user
+        param_uuid = uuid.UUID(task_uuid)
+        streetview.create_upload_session(u, param_uuid)
 
 
 @api.route('/<int:projectId>/users/<username>/streetview/<service>')

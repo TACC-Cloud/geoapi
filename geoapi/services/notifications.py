@@ -84,6 +84,11 @@ class NotificationsService:
                          .filter(ProgressNotification.uuid == task_uuid) \
                          .all()
 
+    @staticmethod
+    def getProgressStatus(status: str) -> List[ProgressNotification]:
+        return db_session.query(ProgressNotification) \
+                         .filter(ProgressNotification.status == status) \
+                         .all()
 
     @staticmethod
     def createProgress(user: User, status: AnyStr, message: AnyStr, task_uuid: UUID, logs: List=None) -> ProgressNotification:
