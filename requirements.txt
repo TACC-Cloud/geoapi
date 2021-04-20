@@ -53,7 +53,7 @@ pluggy==0.13.1
 prompt-toolkit==3.0.4
 psycopg2==2.8.4
 ptyprocess==0.6.0
-py==1.8.1
+py==1.10.0
 pycparser==2.20
 Pygments==2.6.1
 PyJWT==1.7.1
