@@ -154,9 +154,7 @@ class MapillaryUtils:
             '--import_path',
             get_project_streetview_dir(userId, path),
             '--user_name',
-            mapillary_username,
-            '--organization_key' if organization != '' else '',
-            organization
+            mapillary_username
         ]
 
         try:
