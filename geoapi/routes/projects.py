@@ -58,7 +58,9 @@ project = api.model('Project', {
     'name': fields.String(required=True),
     'description': fields.String(required=False),
     'public': fields.Boolean(required=False),
-    'uuid': fields.String()
+    'uuid': fields.String(),
+    'system_name': fields.String(),
+    'system_id': fields.String()
 })
 
 user = api.model('User', {
@@ -184,16 +186,16 @@ class ProjectsListing(Resource):
         return ProjectsService.create(api.payload, u)
 
 
-@api.route('/save/')
-class SaveProject(Resource):
-    @api.doc(id="saveProject",
+@api.route('/export/')
+class ExportProject(Resource):
+    @api.doc(id="ExportProject",
              description='Save a project file to tapis')
     @api.expect(tapis_save_file)
     # @api.marshal_with(tapis_save_file)
     def post(self):
         u = request.current_user
         logger.info("Saving project to tapis for user {}: {}".format(u.username, api.payload))
-        ProjectsService.saveProject(u, api.payload)
+        ProjectsService.exportProject(u, api.payload)
 
 
 @api.route('/rapid/')
@@ -237,6 +239,22 @@ class ProjectResource(Resource):
                                                            u.username))
         return ProjectsService.update(projectId=projectId,
                                       data=api.payload)
+
+
+@api.route('/<int:projectId>/link')
+class ProjectResource(Resource):
+    @api.doc(id="updateProjectLink",
+             description="Update associated system of project")
+    @api.marshal_with(project)
+    @project_permissions
+    def put(self, projectId: int):
+        u = request.current_user
+        logger.info("Update project:{} for user:{}".format(projectId,
+                                                           u.username))
+        data = api.payload
+        systemId = data['systemId']
+        path = data['path']
+        return ProjectsService.linkProjectToSystem(u, projectId=projectId, systemId=systemId, path=path)
 
 
 @api.route('/<int:projectId>/users/')

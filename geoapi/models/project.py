@@ -22,6 +22,8 @@ class Project(Base):
     id = Column(Integer, primary_key=True)
     uuid = Column(UUID(as_uuid=True), default=uuid.uuid4, nullable=False)
     tenant_id = Column(String, nullable=False)
+    system_name = Column(String, nullable=True)
+    system_id = Column(String, nullable=True)
     name = Column(String, nullable=False)
     description = Column(String)
     public = Column(Boolean, default=False)

@@ -56,8 +56,13 @@ class ProjectsService:
         proj = Project(
             name=name,
             description=system["description"],
-            tenant_id=user.tenant_id
+            tenant_id=user.tenant_id,
+            system_name=system["description"],
+            system_id=system["name"]
         )
+
+        ProjectsService.exportProject(user, {'system_id': systemId, 'path': '/', 'project_uuid': str(proj.uuid)})
+
         obs = ObservableDataProject(
             system_id=systemId,
             path=path
@@ -83,7 +88,29 @@ class ProjectsService:
         return proj
 
     @staticmethod
-    def saveProject(user: User,
+    def linkProjectToSystem(user: User, projectId: int, systemId: str, path: str) -> Project:
+        """
+        Link the project to an associated system
+        :param user: User
+        :param projectId: int
+        :param systemId: str
+        :param path: str
+        :return: Project
+        """
+        current_project = ProjectsService.get(project_id=projectId)
+
+        system = AgaveUtils(user.jwt).systemsGet(systemId)
+
+        current_project.system_name = system["description"]
+        current_project.system_id = system["name"]
+        db_session.commit()
+
+        ProjectsService.exportProject(user, {'system_id': systemId, 'path': '/', 'project_uuid': str(current_project.uuid)})
+
+        return current_project
+
+    @staticmethod
+    def exportProject(user: User,
                     data: dict) -> None:
         """
         Save a project UUID file to tapis
