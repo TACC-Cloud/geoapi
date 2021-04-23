@@ -58,10 +58,14 @@ class ProjectsService:
             description=system["description"],
             tenant_id=user.tenant_id,
             system_name=system["description"],
-            system_id=system["name"]
+            system_id=systemId
         )
 
-        ProjectsService.exportProject(user, {'system_id': systemId, 'path': '/', 'project_uuid': str(proj.uuid)})
+        ProjectsService.export(user,
+                               {'system_id': systemId,
+                                'path': name,
+                                'project_uuid': str(proj.uuid)
+                                })
 
         obs = ObservableDataProject(
             system_id=systemId,
@@ -88,30 +92,36 @@ class ProjectsService:
         return proj
 
     @staticmethod
-    def linkProjectToSystem(user: User, projectId: int, systemId: str, path: str) -> Project:
+    def linkToSystem(user: User, projectId: int, data: dict) -> Project:
         """
         Link the project to an associated system
         :param user: User
         :param projectId: int
-        :param systemId: str
-        :param path: str
+        :param data: dict
         :return: Project
         """
+        system_id = data['system_id']
+        path = data['path']
+
         current_project = ProjectsService.get(project_id=projectId)
 
-        system = AgaveUtils(user.jwt).systemsGet(systemId)
+        system = AgaveUtils(user.jwt).systemsGet(system_id)
 
         current_project.system_name = system["description"]
-        current_project.system_id = system["name"]
+        current_project.system_id = system_id
         db_session.commit()
 
-        ProjectsService.exportProject(user, {'system_id': systemId, 'path': '/', 'project_uuid': str(current_project.uuid)})
+        ProjectsService.export(user,
+                               {'system_id': system_id,
+                                'path': path,
+                                'project_uuid': str(current_project.uuid)
+                                })
 
         return current_project
 
     @staticmethod
-    def exportProject(user: User,
-                    data: dict) -> None:
+    def export(user: User,
+               data: dict) -> None:
         """
         Save a project UUID file to tapis
         :param user: User

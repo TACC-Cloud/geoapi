@@ -79,6 +79,7 @@ def test_get_features_filter_type(projects_fixture,
     project_features = ProjectsService.getFeatures(projects_fixture.id, query)
     assert len(project_features['features']) == 0
 
+
 def test_update_project(projects_fixture):
     data = {
         "name": "new name",
@@ -87,3 +88,18 @@ def test_update_project(projects_fixture):
     proj = ProjectsService.update(projects_fixture.id, data)
     assert proj.name == "new name"
     assert proj.description == "new description"
+
+
+def test_link_project(projects_fixture,
+                      agave_utils_with_geojson_file_mock,
+                      get_system_users_mock):
+    user = db_session.query(User).get(1)
+    data = {
+        "system_id": "testSystem",
+        "path": "testPath"
+    }
+
+    proj = ProjectsService.linkToSystem(user, projects_fixture.id, data)
+
+    assert proj.system_name == "System Description"
+    assert proj.system_id == "testSystem"

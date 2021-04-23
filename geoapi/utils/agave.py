@@ -155,10 +155,8 @@ class AgaveUtils:
                                                                                             path,
                                                                                             fileName,
                                                                                             r.status_code))
-
                 tmpFile.close()
         except Exception as e:
-            tmpFile.close()
             logger.error("Could not post file ({}/{}/{}): {}".format(systemId, path, fileName, e))
             raise e
 
