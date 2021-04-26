@@ -64,8 +64,9 @@ class ProjectsService:
         ProjectsService.export(user,
                                {'system_id': systemId,
                                 'path': name,
-                                'project_uuid': str(proj.uuid)
-                                })
+                                'project_uuid': str(proj.uuid),
+                                },
+                               True)
 
         obs = ObservableDataProject(
             system_id=systemId,
