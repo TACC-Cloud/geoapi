@@ -55,9 +55,9 @@ class ProjectsService:
         system = AgaveUtils(user.jwt).systemsGet(systemId)
         proj = Project(
             name=name,
-            description=system["description"],
+            description=system['description'],
             tenant_id=user.tenant_id,
-            system_name=system["description"],
+            system_name=system['description'],
             system_id=systemId
         )
 
@@ -107,30 +107,51 @@ class ProjectsService:
 
         system = AgaveUtils(user.jwt).systemsGet(system_id)
 
-        current_project.system_name = system["description"]
-        current_project.system_id = system_id
+        current_project.system_name = system['description']
         db_session.commit()
 
         ProjectsService.export(user,
                                {'system_id': system_id,
                                 'path': path,
                                 'project_uuid': str(current_project.uuid)
-                                })
+                                },
+                               True)
 
         return current_project
 
     @staticmethod
     def export(user: User,
-               data: dict) -> None:
+               data: dict,
+               link: bool) -> None:
         """
         Save a project UUID file to tapis
         :param user: User
         :param data: dict
         :return: None
         """
+
+        current_project = ProjectsService.get(uuid=data['project_uuid'])
+
         AgaveUtils(user.jwt).postFile(data['system_id'],
                                       data['path'],
                                       data['project_uuid'] + '.hazmapper')
+
+        if current_project.system_path:
+            tmp_system_path = str(current_project.system_path)
+            tmp_system_id = str(current_project.system_id)
+            current_project.system_path = data['path']
+            current_project.system_id = data['system_id']
+            if not link:
+                current_project.system_name = None
+            db_session.commit()
+
+            AgaveUtils(user.jwt).deleteFile(tmp_system_id,
+                                            tmp_system_path + '/' + data['project_uuid'] + '.hazmapper')
+        else:
+            current_project.system_path = data['path']
+            current_project.system_id = data['system_id']
+            db_session.commit()
+
 
     @staticmethod
     def list(user: User) -> List[Project]:
@@ -286,13 +307,18 @@ class ProjectsService:
         return current_project
 
     @staticmethod
-    def delete(projectId: int) -> dict:
+    def delete(user: User, projectId: int) -> dict:
         """
         Delete a project and all its Features and assets
         :param projectId: int
         :return:
         """
         proj = db_session.query(Project).get(projectId)
+
+        if proj.system_path:
+            AgaveUtils(user.jwt).deleteFile(proj.system_id,
+                                            proj.system_path + '/' + str(proj.uuid) + '.hazmapper')
+
         db_session.delete(proj)
         db_session.commit()
         assets_folder = get_project_asset_dir(projectId)

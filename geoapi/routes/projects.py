@@ -60,7 +60,8 @@ project = api.model('Project', {
     'public': fields.Boolean(required=False),
     'uuid': fields.String(),
     'system_name': fields.String(),
-    'system_id': fields.String()
+    'system_id': fields.String(),
+    'system_path': fields.String()
 })
 
 user = api.model('User', {
@@ -191,10 +192,10 @@ class ExportProject(Resource):
     @api.doc(id="ExportProject",
              description='Save a project file to tapis')
     @api.expect(tapis_save_file)
-    def post(self):
+    def put(self):
         u = request.current_user
         logger.info("Saving project to tapis for user {}: {}".format(u.username, api.payload))
-        ProjectsService.export(u, api.payload)
+        ProjectsService.export(u, api.payload, False)
 
 
 @api.route('/rapid/')
@@ -226,7 +227,7 @@ class ProjectResource(Resource):
         u = request.current_user
         logger.info("Delete project:{} for user:{}".format(projectId,
                                                            u.username))
-        return ProjectsService.delete(projectId)
+        return ProjectsService.delete(u, projectId)
 
     @api.doc(id="updateProject",
              description="Update metadata about a project")
@@ -246,7 +247,7 @@ class ProjectLinkResource(Resource):
     @api.doc(id="addProjectLink",
              description="Add associated system of project")
     @api.marshal_with(project)
-    def post(self, projectId: int):
+    def put(self, projectId: int):
         u = request.current_user
         logger.info("Update project:{} for user:{}".format(projectId,
                                                            u.username))

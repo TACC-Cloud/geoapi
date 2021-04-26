@@ -160,6 +160,23 @@ class AgaveUtils:
             logger.error("Could not post file ({}/{}/{}): {}".format(systemId, path, fileName, e))
             raise e
 
+    def deleteFile(self, systemId: str, path: str) -> None:
+        """
+        Delete an agave file
+        :param systemId: str
+        :param path (directory): str
+        :return: None
+        """
+        url = quote('/files/media/system/{}/{}'.format(systemId, path))
+        try:
+            with self.client.delete(self.base_url + url) as r:
+                if r.status_code > 400:
+                    raise ValueError("Could not delete file ({}/{}) status_code:{}".format(systemId,
+                                                                                           path,
+                                                                                           r.status_code))
+        except Exception as e:
+            logger.error("Could not delete file ({}/{}): {}".format(systemId, path, e))
+            raise e
 
 
 def service_account_client(tenant_id):
