@@ -130,11 +130,11 @@ tapis_files_import = api.model('TapisFileImport', {
 
 overlay_parser = api.parser()
 overlay_parser.add_argument('file', location='files', type=FileStorage, required=True)
-overlay_parser.add_argument('label', location=['form', 'json'], type=str, required=True)
-overlay_parser.add_argument('minLon', location=['form', 'json'], type=float, required=True)
-overlay_parser.add_argument('minLat', location=['form', 'json'], type=float, required=True)
-overlay_parser.add_argument('maxLon', location=['form', 'json'], type=float, required=True)
-overlay_parser.add_argument('maxLat', location=['form', 'json'], type=float, required=True)
+overlay_parser.add_argument('label', location=('form', 'json'), type=str, required=True)
+overlay_parser.add_argument('minLon', location=('form', 'json'), type=float, required=True)
+overlay_parser.add_argument('minLat', location=('form', 'json'), type=float, required=True)
+overlay_parser.add_argument('maxLon', location=('form', 'json'), type=float, required=True)
+overlay_parser.add_argument('maxLat', location=('form', 'json'), type=float, required=True)
 
 overlay_parser_tapis = overlay_parser.copy()
 overlay_parser_tapis.remove_argument('file')
