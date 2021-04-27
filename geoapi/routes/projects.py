@@ -133,6 +133,11 @@ tapis_save_file = api.model('TapisSaveFile', {
     'project_uuid': fields.String(required=True)
 })
 
+tapis_link_file = api.model("TapisLinkFile", {
+    "system_id": fields.String(required=True),
+    "path": fields.String(default="/")
+})
+
 tapis_files_import = api.model('TapisFileImport', {
     'files': fields.List(fields.Nested(tapis_file), required=True)
 })
@@ -187,17 +192,6 @@ class ProjectsListing(Resource):
         return ProjectsService.create(api.payload, u)
 
 
-@api.route('/export/')
-class ExportProject(Resource):
-    @api.doc(id="ExportProject",
-             description='Save a project file to tapis')
-    @api.expect(tapis_save_file)
-    def put(self):
-        u = request.current_user
-        logger.info("Saving project to tapis for user {}: {}".format(u.username, api.payload))
-        ProjectsService.export(u, api.payload, False)
-
-
 @api.route('/rapid/')
 class RapidProject(Resource):
     @api.doc(id="createRapidProject",
@@ -241,18 +235,32 @@ class ProjectResource(Resource):
                                       data=api.payload)
 
 
+@api.route('/<int:projectId>/export/')
+class ExportProject(Resource):
+    @project_permissions
+    @api.expect(tapis_save_file)
+    @api.doc(id="exportProject",
+             description='Save a project file to tapis')
+    @api.marshal_with(project)
+    def put(self, projectId):
+        u = request.current_user
+        logger.info("Saving project to tapis for user {}: {}".format(u.username, api.payload))
+        return ProjectsService.export(u, api.payload, projectId, False)
+
+
 @api.route('/<int:projectId>/link/')
 class ProjectLinkResource(Resource):
     @project_permissions
-    @api.doc(id="addProjectLink",
-             description="Add associated system of project")
+    @api.expect(tapis_link_file)
+    @api.doc(id="linkProjectToSystem",
+             description="Link system with project")
     @api.marshal_with(project)
     def put(self, projectId: int):
         u = request.current_user
         logger.info("Update project:{} for user:{}".format(projectId,
                                                            u.username))
         return ProjectsService.linkToSystem(u,
-                                            projectId=projectId,
+                                            project_id=projectId,
                                             data=api.payload)
 
 

@@ -304,6 +304,7 @@ def test_observable_project(test_client,
                             userdata,
                             get_system_users_mock,
                             agave_utils_with_geojson_file_mock,
+                            projects_fixture,
                             import_from_agave_mock):
     u1 = db_session.query(User).get(1)
     resp = test_client.post(
@@ -357,14 +358,14 @@ def test_update_project_unauthorized_guest(test_client, public_projects_fixture)
 
 
 def test_export_project(test_client,
+                        projects_fixture,
                         get_system_users_mock,
                         agave_utils_with_geojson_file_mock):
     u1 = db_session.query(User).get(1)
-    resp = test_client.post(
-        '/projects/export/',
+    resp = test_client.put(
+        '/projects/1/export/',
         json={"system_id": "testSystem",
-              "path": "testPath",
-              "project_uuid": "123456"},
+              "path": "testPath"},
         headers={'x-jwt-assertion-test': u1.jwt}
     )
     assert resp.status_code == 200
@@ -374,7 +375,7 @@ def test_link_project(test_client,
                       agave_utils_with_geojson_file_mock,
                       projects_fixture):
     u1 = db_session.query(User).get(1)
-    resp = test_client.post(
+    resp = test_client.put(
         '/projects/1/link/',
         json={"system_id": "testSystem", "path": "testPath"},
         headers={'x-jwt-assertion-test': u1.jwt}
