@@ -211,6 +211,14 @@ def test_import_image_tapis(test_client, projects_fixture, import_file_from_agav
     assert resp.status_code == 200
 
 
+def test_get_point_clouds_listing(test_client, projects_fixture, point_cloud_fixture):
+    u1 = db_session.query(User).get(1)
+    resp = test_client.get('/projects/1/point-cloud/', headers={'x-jwt-assertion-test': u1.jwt})
+    assert resp.status_code == 200
+    data = resp.get_json()
+    assert len(data) == 1
+
+
 def test_get_point_cloud(test_client, projects_fixture, point_cloud_fixture):
     u1 = db_session.query(User).get(1)
     resp = test_client.get('/projects/1/point-cloud/1/', headers={'x-jwt-assertion-test': u1.jwt})

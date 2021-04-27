@@ -26,7 +26,7 @@ def test_put_project_not_found(test_client, projects_fixture):
 
 def test_delete_project_not_found(test_client, projects_fixture):
     resp = test_client.delete('/public-projects/21/')
-    assert resp.status_code == 404
+    assert resp.status_code == 405
 
 
 def test_get_project_features_empty_public_access(test_client, public_projects_fixture):
@@ -48,13 +48,15 @@ def test_get_overlay_public_access(test_client, public_projects_fixture):
     assert resp.status_code == 200
 
 
+def test_get_point_clouds_listing(test_client, public_projects_fixture, point_cloud_fixture):
+    resp = test_client.get('/projects/1/point-cloud/')
+    assert resp.status_code == 200
+    data = resp.get_json()
+    assert len(data) == 1
+
+
 def test_get_point_cloud_public_access(test_client, public_projects_fixture, point_cloud_fixture):
     resp = test_client.get('/public-projects/1/point-cloud/1/')
-    assert resp.status_code == 200
-
-
-def test_get_point_cloud_public_access(test_client, public_projects_fixture, point_cloud_fixture):
-    resp = test_client.get('/projects/1/point-cloud/1/')
     assert resp.status_code == 200
 
 
