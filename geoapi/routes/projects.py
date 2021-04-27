@@ -264,7 +264,6 @@ class ProjectUserResource(Resource):
 
 @api.route('/<int:projectId>/features/')
 class ProjectFeaturesResource(Resource):
-
     parser = api.parser()
     parser.add_argument("assetType", location="args")
     parser.add_argument('bbox',
