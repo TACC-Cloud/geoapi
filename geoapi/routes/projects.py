@@ -1,4 +1,4 @@
-from flask import request
+from flask import request, abort
 from flask_restplus import Resource, Namespace, fields, inputs
 from werkzeug.datastructures import FileStorage
 from werkzeug.utils import secure_filename
@@ -9,7 +9,7 @@ from geoapi.services.features import FeaturesService
 from geoapi.services.projects import ProjectsService
 from geoapi.services.point_cloud import PointCloudService
 from geoapi.utils.decorators import jwt_decoder, project_permissions_allow_public, project_permissions, project_feature_exists, \
-    project_point_cloud_exists, project_point_cloud_not_processing, check_access_and_get_project
+    project_point_cloud_exists, project_point_cloud_not_processing, check_access_and_get_project, is_anonymous
 from geoapi.tasks import external_data
 
 logger = logging.getLogger(__name__)
@@ -164,6 +164,8 @@ class ProjectsListing(Resource):
             subset = [check_access_and_get_project(request.current_user, uuid=uuid, allow_public_use=True) for uuid in uuid_subset]
             return subset
         else:
+            if is_anonymous(u):
+                abort(403, "Access denied")
             logger.info("Get all projects for user:{}".format(u.username))
             return ProjectsService.list(u)
 

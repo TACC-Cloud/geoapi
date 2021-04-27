@@ -13,6 +13,11 @@ def test_get_projects(test_client, projects_fixture):
     assert len(data) == 1
 
 
+def test_get_projects_not_allowed(test_client):
+    resp = test_client.get('/projects/')
+    assert resp.status_code == 403
+
+
 def test_get_projects_using_uuids(test_client, projects_fixture, projects_fixture2):
     requested_uuids = [str(projects_fixture2.uuid), str(projects_fixture.uuid)]
     u1 = db_session.query(User).get(1)
