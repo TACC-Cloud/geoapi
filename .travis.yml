@@ -21,13 +21,6 @@ jobs:
       - sleep 5
       script:
       - docker run --net=test -e APP_ENV=testing taccaci/geoapi:latest pytest --cov=geoapi -m "not worker"
-      before_deploy:
-         - docker tag taccaci/geoapi:latest taccaci/geoapi:${GIT_HASH}
-      deploy:
-        provider: script
-        script: docker push taccaci/geoapi:latest && docker push taccaci/geoapi:${GIT_HASH}
-        on:
-          branch: master
     - name: "geoapi-workers: unit tests / container"
       before_script:
       - echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
@@ -41,10 +34,3 @@ jobs:
       - sleep 5
       script:
       - docker run --net=test -e APP_ENV=testing taccaci/geoapi-workers:latest pytest --cov=geoapi -m "worker"
-      before_deploy:
-         - docker tag taccaci/geoapi-workers:latest taccaci/geoapi-workers:${GIT_HASH}
-      deploy:
-        provider: script
-        script: docker push taccaci/geoapi-workers:latest && docker push taccaci/geoapi-workers:${GIT_HASH}
-        on:
-          branch: master
