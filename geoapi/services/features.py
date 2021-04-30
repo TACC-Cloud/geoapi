@@ -543,13 +543,13 @@ class FeaturesService:
         return tile_servers
 
     @staticmethod
-    def deleteTileServer(projectId: int, tileServerId: int) -> None:
+    def deleteTileServer(tileServerId: int) -> None:
         ts = db_session.query(TileServer).get(tileServerId)
         db_session.delete(ts)
         db_session.commit()
 
     @staticmethod
-    def updateTileServer(projectId: int, tileServerId: int, data: dict):
+    def updateTileServer(tileServerId: int, data: dict):
         ts = db_session.query(TileServer).get(tileServerId)
         for key, value in data.items():
             setattr(ts, key, value)
@@ -557,12 +557,15 @@ class FeaturesService:
         return ts
 
     @staticmethod
-    def updateTileServers(projectId: int, dataList: List[dict]):
+    def updateTileServers(dataList: List[dict]):
         ret_list = []
         for tsv in dataList:
-            ts = db_session.query(TileServer).get(int(tsv['id']))
-            for key, value in tsv.items():
-                setattr(ts, key, value)
-            ret_list.append(ts)
-            db_session.commit()
+           try:
+               ts = db_session.query(TileServer).get(int(tsv['id']))
+               for key, value in tsv.items():
+                   setattr(ts, key, value)
+                   ret_list.append(ts)
+                   db_session.commit()
+           except Exception as e:
+               print(e)
         return ret_list

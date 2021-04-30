@@ -131,33 +131,36 @@ class AgaveUtils:
             logger.error("Could not fetch file ({}/{}): {}".format(systemId, path, e))
             raise e
 
-    def postFile(self, systemId: str, path: str, fileName: str) -> None:
+    def postFile(self, systemId: str, path: str, file_name: str, file_content: dict) -> None:
         """
         Upload a file to agave
         :param systemId: str
         :param path (directory): str
-        :param fileName: str
+        :param file_name: str
+        :param file_content: dict
         :return: None
         """
         url = quote('/files/media/system/{}/{}'.format(systemId, path))
         try:
-            tmpFile = NamedTemporaryFile(delete=True)
-            tmpFile.name = fileName
-            files = {
-                'fileToUpload': tmpFile,
-            }
+            logger.info("Uploading to " + self.base_url + url)
+            tmp = NamedTemporaryFile(delete=True, mode="r+")
+            tmp.name = file_name
+            json.dump(file_content, tmp)
+            tmp.flush()
+            tmp.seek(0)
+            files = { 'fileToUpload': tmp }
             with self.client.post(self.base_url + url,
                                   verify=False,
                                   files=files) as r:
                 if r.status_code > 400:
-                    tmpFile.close()
+                    tmp.close()
                     raise ValueError("Could not post file ({}/{}/{}) status_code:{}".format(systemId,
                                                                                             path,
-                                                                                            fileName,
+                                                                                            file_name,
                                                                                             r.status_code))
-                tmpFile.close()
+                tmp.close()
         except Exception as e:
-            logger.error("Could not post file ({}/{}/{}): {}".format(systemId, path, fileName, e))
+            logger.error("Could not post file ({}/{}/{}): {}".format(systemId, path, file_name, e))
             raise e
 
     def deleteFile(self, systemId: str, path: str) -> None:

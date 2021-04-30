@@ -60,6 +60,7 @@ project = api.model('Project', {
     'public': fields.Boolean(required=False),
     'uuid': fields.String(),
     'system_name': fields.String(),
+    'system_file': fields.String(),
     'system_id': fields.String(),
     'system_path': fields.String()
 })
@@ -130,12 +131,7 @@ tapis_file = api.model('TapisFile', {
 tapis_save_file = api.model('TapisSaveFile', {
     'system_id': fields.String(required=True),
     'path': fields.String(required=True),
-    'project_uuid': fields.String(required=True)
-})
-
-tapis_link_file = api.model("TapisLinkFile", {
-    "system_id": fields.String(required=True),
-    "path": fields.String(default="/")
+    'file_suffix': fields.String(required=True)
 })
 
 tapis_files_import = api.model('TapisFileImport', {
@@ -251,7 +247,7 @@ class ExportProject(Resource):
 @api.route('/<int:projectId>/link/')
 class ProjectLinkResource(Resource):
     @project_permissions
-    @api.expect(tapis_link_file)
+    @api.expect(tapis_save_file)
     @api.doc(id="linkProjectToSystem",
              description="Link system with project")
     @api.marshal_with(project)
@@ -376,7 +372,7 @@ class ProjectFeaturePropertiesResource(Resource):
 
 
 @api.route('/<int:projectId>/features/<int:featureId>/styles/')
-class ProjectFeaturePropertiesResource(Resource):
+class ProjectFeatureStylesResource(Resource):
 
     @api.doc(id="updateFeatureStyles",
              description="Update the styles of a feature. This will replace any styles"
@@ -675,8 +671,7 @@ class ProjectTileServersResource(Resource):
         logger.info("Update project:{} for user:{}".format(projectId,
                                                            u.username))
 
-        ts = FeaturesService.updateTileServers(projectId=projectId,
-                                               dataList=api.payload)
+        ts = FeaturesService.updateTileServers(dataList=api.payload)
         return ts
 
 

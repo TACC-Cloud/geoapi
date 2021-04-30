@@ -25,6 +25,7 @@ class Project(Base):
     system_name = Column(String, nullable=True)
     system_id = Column(String, nullable=True)
     system_path = Column(String, nullable=True)
+    system_file = Column(String, nullable=True)
     name = Column(String, nullable=False)
     description = Column(String)
     public = Column(Boolean, default=False)

@@ -127,29 +127,40 @@ class ProjectsService:
         if (project_id):
             current_project = ProjectsService.get(project_id=project_id)
             path = data['path']
+            file_name = '{}.{}'.format(str(data['file_suffix']), 'hazmapper')
+            if data['file_suffix'] == '':
+                file_name = '{}.{}'.format(str(current_project.uuid), 'hazmapper')
+
             tmp_system_path = str(current_project.system_path)
+            tmp_system_file = str(current_project.system_file)
             tmp_system_id = str(current_project.system_id)
-
-            if not link and path == '/':
-                path = '/' + user.username + '/'
-
-            AgaveUtils(user.jwt).postFile(data['system_id'],
-                                          path,
-                                          str(current_project.uuid) + '.hazmapper')
-
-
-            # If already has a saved file remove it
-            if current_project.system_path:
-                AgaveUtils(user.jwt).deleteFile(tmp_system_id,
-                                                tmp_system_path + '/' + str(current_project.uuid) + '.hazmapper')
 
             if not link:
                 current_project.system_name = None
 
-            current_project.system_path = data['path']
+            if 'project' not in data['system_id'] and path == '/':
+                path = '/' + user.username + '/'
+
+            current_project.system_path = path
+            current_project.system_file = file_name
             current_project.system_id = data['system_id']
 
             db_session.commit()
+
+            file_content = {
+                'uuid': str(current_project.uuid)
+            }
+
+            AgaveUtils(user.jwt).postFile(data['system_id'],
+                                          path,
+                                          file_name,
+                                          file_content
+                                          )
+
+            # If already has a saved file remove it
+            if tmp_system_path != 'None':
+                AgaveUtils(user.jwt).deleteFile(tmp_system_id,
+                                                tmp_system_path + '/' + tmp_system_file)
 
             return current_project
 
@@ -322,7 +333,8 @@ class ProjectsService:
 
         if deleteFile:
             AgaveUtils(user.jwt).deleteFile(proj.system_id,
-                                            proj.system_path + '/' + str(proj.uuid) + '.hazmapper')
+                                            proj.system_path + '/' + proj.system_file)
+                                            # proj.system_path + '/' + str(proj.uuid) + '.hazmapper')
         assets_folder = get_project_asset_dir(projectId)
         try:
             shutil.rmtree(assets_folder)
