@@ -96,7 +96,8 @@ def test_link_project(projects_fixture,
     user = db_session.query(User).get(1)
     data = {
         "system_id": "testSystem",
-        "path": "testPath"
+        "path": "testPath",
+        "file_suffix": "testFilename"
     }
 
     proj = ProjectsService.linkToSystem(user, projects_fixture.id, data)
