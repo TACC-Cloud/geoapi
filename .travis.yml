@@ -10,9 +10,7 @@ jobs:
   include:
     - name: "geoapi: unit tests / container"
       before_script:
-      - echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
-      - docker pull taccaci/geoapi:latest
-      - docker build --cache-from taccaci/geoapi:latest -t taccaci/geoapi:latest .
+      - docker build -t taccaci/geoapi:latest .
       - sudo mkdir /assets
       - sudo service mysql stop
       - sudo service postgresql stop
@@ -23,9 +21,7 @@ jobs:
       - docker run --net=test -e APP_ENV=testing taccaci/geoapi:latest pytest --cov=geoapi -m "not worker"
     - name: "geoapi-workers: unit tests / container"
       before_script:
-      - echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
-      - docker pull taccaci/geoapi-workers:latest
-      - docker build --cache-from taccaci/geoapi-workers:latest -t taccaci/geoapi-workers:latest -f Dockerfile.potree .
+      - docker build -t taccaci/geoapi-workers:latest -f Dockerfile.potree .
       - sudo mkdir /assets
       - sudo service mysql stop
       - sudo service postgresql stop
