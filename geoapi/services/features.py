@@ -564,8 +564,8 @@ class FeaturesService:
                ts = db_session.query(TileServer).get(int(tsv['id']))
                for key, value in tsv.items():
                    setattr(ts, key, value)
-                   ret_list.append(ts)
-                   db_session.commit()
+               ret_list.append(ts)
+               db_session.commit()
            except Exception as e:
                print(e)
         return ret_list
