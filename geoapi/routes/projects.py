@@ -685,7 +685,7 @@ class ProjectTileServerResource(Resource):
     def delete(self, projectId: int, tileServerId: int) -> str:
         logger.info("Delete tile server:{} in project:{} for user:{}".format(
             tileServerId, projectId, request.current_user.username))
-        FeaturesService.deleteTileServer(projectId, tileServerId)
+        FeaturesService.deleteTileServer(tileServerId)
         return "Tile Server {id} deleted".format(id=tileServerId)
 
     @api.doc(id="updateTileServer",
@@ -697,6 +697,5 @@ class ProjectTileServerResource(Resource):
         logger.info("Update project:{} for user:{}".format(projectId,
                                                            u.username))
 
-        return FeaturesService.updateTileServer(projectId=projectId,
-                                                tileServerId=tileServerId,
+        return FeaturesService.updateTileServer(tileServerId=tileServerId,
                                                 data=api.payload)
