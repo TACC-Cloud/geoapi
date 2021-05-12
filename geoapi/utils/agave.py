@@ -133,12 +133,13 @@ class AgaveUtils:
             raise e
 
 
-    def getRawFileToPath(self, systemId: str, path: str, toPath: str):
-        url = quote('/files/media/system/{}/{}'.format(systemId, path))
+    def getRawFileToPath(self, systemId: str, fromPath: str, toPath: str):
+        url = quote('/files/media/system/{}/{}'.format(systemId, fromPath))
         try:
             with self.client.get(self.base_url + url, stream=True) as r:
                 if r.status_code > 400:
                     raise ValueError("Could not fetch file: {}".format(r.status_code))
+                write_path = toPath + r.name
                 with open(toPath, 'wb') as out_file:
                     r.raw.decode_content = True
                     shutil.copyfileobj(r.raw, out_file)

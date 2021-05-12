@@ -1,13 +1,10 @@
-from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Boolean
-from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy import Column, Integer, String, DateTime, ForeignKey
 from sqlalchemy.orm import relationship
-from sqlalchemy.dialects.postgresql import UUID
-from sqlalchemy.sql import func
 from geoapi.db import Base
-import uuid
+
 
 class Streetview(Base):
-    __tablename__ = 'streetview'
+    __tablename__ = 'streetviews'
 
     id = Column(Integer, primary_key=True)
     user_id = Column(ForeignKey('users.id', ondelete="CASCADE", onupdate="CASCADE"), index=True)
@@ -25,7 +22,7 @@ class StreetviewSequence(Base):
     __tablename__ = 'streetview_sequence'
 
     id = Column(Integer, primary_key=True)
-    streetview_id = Column(ForeignKey('streetview.id', ondelete="CASCADE", onupdate="CASCADE"), index=True)
+    streetview_id = Column(ForeignKey('streetviews.id', ondelete="CASCADE", onupdate="CASCADE"), index=True)
     service = Column(String(), index=True)
     start_date = Column(DateTime(timezone=True))
     end_date = Column(DateTime(timezone=True))

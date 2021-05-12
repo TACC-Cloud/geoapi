@@ -1,10 +1,7 @@
 import os
 import pathlib
-import glob
 import shutil
-import uuid
 import re
-import sys
 import json
 import requests
 import subprocess
@@ -16,12 +13,10 @@ from mapillary_tools import api_v3 as mapillary_api
 from mapillary_tools import uploader as mapillary_uploader
 from mapillary_tools import processing as mapillary_processing
 
-from geoapi.services.streetview import StreetviewService
 from geoapi.services.notifications import NotificationsService
 
 from geoapi.models import User
-from geoapi.settings import settings
-
+from geoapi.exceptions import ApiException
 from geoapi.settings import settings
 from geoapi.log import logging
 
@@ -35,7 +30,7 @@ def make_project_streetview_dir(userId: int, task_uuid: UUID) -> str:
     :param projectId: int
     :return:
     """
-    base_filepath =  get_project_streetview_dir(userId, task_uuid)
+    base_filepath = get_project_streetview_dir(userId, task_uuid)
     pathlib.Path(base_filepath).mkdir(parents=True, exist_ok=True)
     return base_filepath
 
@@ -85,46 +80,14 @@ def get_streetview_relative_path(task_uuid: UUID) -> str:
     return os.path.relpath(str(task_uuid), start=settings.STREETVIEW_DIR)
 
 
-def delete_streetview(userId: int, task_uuid: UUID, uuid: str):
-    """
-    Delete streetview related to a single feature
-
-    :param projectId: int
-    :param uuid: str
-    :return:
-    """
-    for streetview_file in glob.glob('{}/*{}*'.format(get_project_streetview_dir(userId, task_uuid), uuid)):
-        if os.path.isfile(streetview_file):
-            os.remove(streetview_file)
-        else:
-            shutil.rmtree(streetview_file)
-
-
-def delete_streetview_dir(userId: int, task_uuid: UUID, uuid: str):
-    """
-    Delete streetview related to a single feature
-
-    :param projectId: int
-    :param uuid: str
-    :return:
-    """
-    for streetview_file in glob.glob('{}/*{}*'.format(get_project_streetview_dir(userId, task_uuid), uuid)):
-        if os.path.isfile(streetview_file):
-            os.remove(streetview_file)
-        else:
-            shutil.rmtree(streetview_file)
-
-
 class MapillaryUtils:
     @staticmethod
     def get_auth_file(userId: int):
         return os.path.join(settings.STREETVIEW_DIR, str(userId), "mapillary_auth")
 
-
     @staticmethod
     def is_authenticated(userId):
         return os.path.isfile(MapillaryUtils.get_auth_file(userId))
-
 
     @staticmethod
     def authenticate(userId: int, jwt: str):
@@ -141,22 +104,27 @@ class MapillaryUtils:
             jwt
         ]
 
-        subprocess.run(command,
-                       capture_output=True,
-                       env={'MAPILLARY_WEB_CLIENT_ID': settings.MAPILLARY_CLIENT_ID})
-
+        try:
+            subprocess.run(command,
+                           check=True,
+                           env={'MAPILLARY_WEB_CLIENT_ID': settings.MAPILLARY_CLIENT_ID})
+        except subprocess.CalledProcessError as e:
+            logger.error("Errors occured during Mapillary authentication for user with userId: {}. {}".format(userId, e))
+            raise ApiException
 
     @staticmethod
-    def upload(userId: int, task_uuid: UUID, mapillary_username: str, organization: str):
+    def parse_upload_output():
+        pass
+
+    @staticmethod
+    def upload(userId: int, task_uuid: UUID, mapillary_username: str):
         command = [
             '/usr/local/bin/mapillary_tools',
             'process_and_upload',
             '--import_path',
             get_project_streetview_dir(userId, task_uuid),
             '--user_name',
-            mapillary_username,
-            '--organization_key' if organization != '' else '',
-            organization
+            mapillary_username
         ]
 
         try:
@@ -194,9 +162,8 @@ class MapillaryUtils:
                 if len(error_match) > 0:
                     raise Exception
 
-        except (OSError, subprocess.CalledProcessError) as exception:
-            logging.info('Exception occured: ' + str(exception))
-            logging.info('Subprocess failed')
+        except (OSError, subprocess.CalledProcessError) as e:
+            logging.error("Error occured during Mapillary upload for user with user: {} \n {}".format(userId, str(e)))
             return False
         except Exception:
             raise Exception
@@ -204,11 +171,9 @@ class MapillaryUtils:
             logging.info('Subprocess finished')
             return True
 
-
     @staticmethod
     def get_user(jwt: str):
         return mapillary_api.get_user(jwt)
-
 
     @staticmethod
     def get_image_sequence(userId, task_uuid: UUID):
@@ -230,7 +195,6 @@ class MapillaryUtils:
         sequence_data = mapillary_processing.load_json(sequence_data_path)
         return sequence_data['MAPSequenceUUID']
 
-
     @staticmethod
     def get_image_capture_time(userId, task_uuid: UUID):
         streetview_path = get_project_streetview_dir(userId, task_uuid)
@@ -251,28 +215,24 @@ class MapillaryUtils:
         sequence_data = mapillary_processing.load_json(sequence_data_path)
         return sequence_data['MAPCaptureTime']
 
-
     @staticmethod
     def get_user_key(mapillary_username: str):
         return mapillary_api.get_user_key(mapillary_username)
-
 
     # TODO Later for optimization
     @staticmethod
     def get_session_data():
         pass
 
-
     @staticmethod
     def upload_error(user: User, task_uuid: UUID):
-        return len(mapillary_uploader.
-                   get_failed_upload_file_list(get_project_streetview_dir(user.id, task_uuid)))
-
+        return len(mapillary_uploader.get_failed_upload_file_list(get_project_streetview_dir(user.id, task_uuid)))
 
     @staticmethod
     def get_sequence_mappings(user: User, task_uuid: UUID):
-        upload_file_list = mapillary_uploader.get_success_upload_file_list(get_project_streetview_dir(user.id, task_uuid),
-                                                                   False)
+        upload_file_list = mapillary_uploader.get_success_upload_file_list(
+            get_project_streetview_dir(user.id, task_uuid),
+            False)
         params = {}
         list_per_sequence_mapping = {}
         for image in upload_file_list:
@@ -289,7 +249,6 @@ class MapillaryUtils:
                     else:
                         list_per_sequence_mapping[sequence] = [image]
         return list_per_sequence_mapping
-
 
     @staticmethod
     def get_filtered_sequence_mappings(mappings: Dict) -> List:
@@ -327,7 +286,7 @@ class MapillaryUtils:
         headers = {"Authorization": f"Bearer {user.mapillary_jwt}"}
 
         resp = requests.get(
-            f"https://a.mapillary.com/v3/sequences",
+            "https://a.mapillary.com/v3/sequences",
             params=req_params,
             headers=headers,
         )

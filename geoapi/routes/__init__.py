@@ -1,5 +1,6 @@
 from flask_restplus import Api
 from .projects import api as projects
+from .streetview import api as streetview
 from .notifications import api  as notifications
 api = Api(
     title='GeoAPI',
@@ -22,3 +23,4 @@ api = Api(
 
 api.add_namespace(projects)
 api.add_namespace(notifications)
+api.add_namespace(streetview)

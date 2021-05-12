@@ -2,14 +2,9 @@ from geoapi.services.notifications import NotificationsService
 from typing import List, Dict
 from datetime import datetime
 
-import json
-import requests
-
 from geoapi.models import User, Streetview, StreetviewSequence
 from geoapi.db import db_session
 from geoapi.log import logging
-
-from geoapi.settings import settings
 
 logger = logging.getLogger(__name__)
 
@@ -22,7 +17,6 @@ class StreetviewService:
         else:
             return user.mapillary_jwt
 
-
     @staticmethod
     def setToken(user: User, service: str, token: str) -> None:
         if service == 'google':
@@ -30,7 +24,6 @@ class StreetviewService:
         else:
             user.mapillary_jwt = token
         db_session.commit()
-
 
     @staticmethod
     def deleteToken(user: User, service: str) -> None:
@@ -40,7 +33,6 @@ class StreetviewService:
             user.mapillary_jwt = None
             db_session.commit()
 
-
     @staticmethod
     def get(streetviewId: int) -> Streetview:
         """
@@ -49,7 +41,6 @@ class StreetviewService:
         :return: Streetview
         """
         return db_session.query(Streetview).get(streetviewId)
-
 
     @staticmethod
     def create(user_id: int, system_id: str, path: str) -> Streetview:
@@ -69,7 +60,6 @@ class StreetviewService:
 
         return sv
 
-
     @staticmethod
     def delete(streetview_id: int) -> None:
         """
@@ -80,7 +70,6 @@ class StreetviewService:
         sv = db_session.query(Streetview).get(streetview_id)
         db_session.delete(sv)
         db_session.commit()
-
 
     @staticmethod
     def getFromSystemPath(user: User, system_id: str, path: str) -> List[Streetview]:
@@ -96,7 +85,6 @@ class StreetviewService:
                          .filter(Streetview.path == path)\
                          .all()
 
-
     @staticmethod
     def getAll(user: User) -> List[Streetview]:
         """
@@ -104,9 +92,8 @@ class StreetviewService:
         :param user: User
         :return: List[Streetview]
         """
-        currentUser = db_session.query(User).get(user.id)
-        return currentUser.streetviews
-
+        current_user = db_session.query(User).get(user.id)
+        return current_user.streetviews
 
     @staticmethod
     def getSystemPaths(user: User) -> List[tuple]:
@@ -118,11 +105,8 @@ class StreetviewService:
         sv_list = StreetviewService.getAll(user)
         return list(map(lambda x: (x.system_id, x.path), sv_list))
 
-
     @staticmethod
-    def addSequenceToPath(user: User, data: Dict, service: str) -> None:
-    # def addSequenceToPath(user: User, data: Dict, service: str) -> Streetview:
-
+    def addSequenceToStreetview(user: User, data: Dict) -> None:
         """
         Add Streetview Sequences with keys to an existing Streetview object with the given system and path.
         :param user: User
@@ -138,19 +122,14 @@ class StreetviewService:
         else:
             svp = svp[0]
 
-        print(svp)
-
         for seq in data['sequences']:
             if seq in list(map(lambda x: x.sequence_key, svp.sequences)):
                 NotificationsService.create(user, "warning", "Seqence already exists for that folder!")
                 continue
             else:
-                sequence = StreetviewService.createSequence(streetview_id=svp.id, sequence_key=seq, service=service)
+                sequence = StreetviewService.createSequence(streetview_id=svp.id, sequence_key=seq, service=data['service'])
                 svp.sequences.append(sequence)
                 db_session.commit()
-
-        # return svp
-
 
     @staticmethod
     def createSequence(streetview_id: int,
@@ -158,7 +137,6 @@ class StreetviewService:
                        sequence_key: str=None,
                        start_date: datetime=None,
                        end_date: datetime=None,
-                       organization_key: str=None,
                        bbox: str=None) -> StreetviewSequence:
         """
         Create a Streetview Sequence to link to a streetview service sequence.
@@ -186,7 +164,6 @@ class StreetviewService:
         db_session.commit()
         return seq
 
-
     @staticmethod
     def getSequence(sequence_id: int) -> StreetviewSequence:
         """
@@ -196,7 +173,6 @@ class StreetviewService:
         """
         sequence = db_session.query(StreetviewSequence).get(sequence_id)
         return sequence
-
 
     @staticmethod
     def deleteSequence(sequence_id: int) -> None:
@@ -208,7 +184,6 @@ class StreetviewService:
         seq = db_session.query(StreetviewSequence).get(sequence_id)
         db_session.delete(seq)
         db_session.commit()
-
 
     @staticmethod
     def deleteBySequenceKey(sequence_key: str, streetview_id: int) -> None:
@@ -227,7 +202,6 @@ class StreetviewService:
             db_session.delete(seq)
             db_session.commit()
 
-
     @staticmethod
     def updateSequence(sequence_id: int, data: Dict) -> StreetviewSequence:
         """
@@ -236,7 +210,7 @@ class StreetviewService:
         :param data: Dict
         :return: StreetviewSequence
         """
-        sequence = StreetviewService.getSequence(sequence_id);
+        sequence = StreetviewService.getSequence(sequence_id)
 
         for key, value in data.items():
             setattr(sequence, key, value)

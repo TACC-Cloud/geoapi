@@ -1,11 +1,6 @@
 from geoapi.services.notifications import NotificationsService
 from flask_restplus.marshalling import marshal_with
-from geoapi.exceptions import ApiException
-from flask import abort, request, redirect
-import requests
-import json
-import time
-import uuid
+from flask import request
 from flask_restplus import Namespace, Resource, fields, inputs
 from werkzeug.datastructures import FileStorage
 from werkzeug.utils import secure_filename
@@ -14,8 +9,7 @@ from geoapi.schemas import FeatureSchema
 from geoapi.services.features import FeaturesService
 from geoapi.services.point_cloud import PointCloudService
 from geoapi.services.projects import ProjectsService
-from geoapi.services.streetview import StreetviewService
-from geoapi.tasks import external_data, streetview
+from geoapi.tasks import external_data
 from geoapi.utils.decorators import jwt_decoder, project_permissions_allow_public, project_permissions, project_feature_exists, \
     project_point_cloud_exists, project_point_cloud_not_processing, check_access_and_get_project
 from werkzeug.datastructures import FileStorage
@@ -112,33 +106,6 @@ overlay = api.model('Overlay', {
     'label': fields.String()
 })
 
-# streetview_token = api.model('StreetviewToken', {
-#     'authorized': fields.Boolean(),
-#     'url': fields.String()
-# })
-
-streetview_token = api.model('StreetviewToken', {
-    'token': fields.String()
-})
-
-streetview_sequence = api.model('StreetviewSequence', {
-    'id': fields.Integer(),
-    'streetview_id': fields.Integer(),
-    'service': fields.String(),
-    'start_date': fields.DateTime(dt_format='rfc822', required=False),
-    'end_date': fields.DateTime(dt_format='rfc822', required=False),
-    'bbox': fields.String(required=False),
-    'sequence_key': fields.String(required=False),
-})
-
-streetview_object = api.model('Streetview', {
-    'id': fields.Integer(),
-    'user_id': fields.Integer(),
-    'path': fields.String(),
-    'system_id': fields.String(),
-    'sequences': fields.List(fields.Nested(streetview_sequence), allow_null=True),
-})
-
 tile_server = api.model('TileServer', {
     'id': fields.Integer(required=False),
     'name': fields.String(),
@@ -164,14 +131,6 @@ tapis_file = api.model('TapisFile', {
 
 tapis_files_import = api.model('TapisFileImport', {
     'files': fields.List(fields.Nested(tapis_file), required=True)
-})
-
-streetview_folder_import = api.model('TapisFolderImport', {
-    'folder': fields.Nested(tapis_file),
-    'mapillary': fields.Boolean(),
-    'google': fields.Boolean(),
-    'organization': fields.String(),
-    'retry': fields.Boolean()
 })
 
 overlay_parser = api.parser()
@@ -303,99 +262,6 @@ class ProjectUserResource(Resource):
             request.current_user.username))
         return ProjectsService.removeUserFromProject(projectId,
                                                      username)
-
-@api.route('/<int:projectId>/users/<username>/streetview/<service>/sequences')
-class UserStreetviewSequenceResource(Resource):
-    @api.doc(id="getUserStreetviewSequences",
-             description="Get a streetview service's sequences")
-    @project_permissions
-    @api.marshal_with(streetview_object, as_list=True)
-    def get(self, projectId: int, username: str, service: str):
-        u = request.current_user
-        return StreetviewService.getAll(u)
-
-    def put(self, projectId: int, username: str, service: str):
-        u = request.current_user
-        payload = request.json
-        return StreetviewService.addSequenceToPath(u, payload, service)
-
-
-@api.route('/<int:projectId>/users/<username>/streetview/<service>/sequences/<sequence_id>')
-class UserStreetviewSequence(Resource):
-    @api.doc(id="deleteUserStreetviewSequence",
-             description="Get a streetview service's sequences")
-    @project_permissions
-    def delete(self, projectId: int, username: str, service: str, sequence_id: int):
-        StreetviewService.deleteSequence(sequence_id)
-
-    @api.doc(id="updateUserStreetviewSequence",
-             description="Get a streetview service's sequences")
-    @marshal_with(streetview_sequence)
-    @project_permissions
-    def put(self, projectId: int, username: str, service: str, sequence_id: int):
-        StreetviewService.updateSequence(sequence_id, api.payload)
-
-
-@api.route('/<int:projectId>/users/<username>/streetview/<service>/sequences/notifications/<task_uuid>')
-class UserStreetviewSession(Resource):
-    @api.doc(id="deleteUserStreetviewSession",
-             description="Delete a streetview upload session")
-    @project_permissions
-    def delete(self, projectId: int, username: str, service: str, task_uuid: str):
-        u = request.current_user
-        param_uuid = uuid.UUID(task_uuid)
-        streetview.delete_upload_session(u, service, param_uuid)
-
-    @api.doc(id="createUserStreetviewSession",
-             description="Delete a streetview upload session")
-    @project_permissions
-    def post(self, projectId: int, username: str, service: str, task_uuid: str):
-        u = request.current_user
-        param_uuid = uuid.UUID(task_uuid)
-        streetview.create_upload_session(u, param_uuid)
-
-
-@api.route('/<int:projectId>/users/<username>/streetview/<service>')
-class UserStreetviewResource(Resource):
-    @api.doc(id="deleteUserStreetviewToken",
-             description="Remove the streetview server token for a user")
-    @project_permissions
-    @api.marshal_with(streetview_token)
-    def delete(self, projectId: int, username: str, service: str):
-        u = request.current_user
-        return StreetviewService.deleteToken(u,
-                                             service)
-
-    @api.doc(id="setUserStreetviewToken",
-             description="Set the streetview server token for a user")
-    @project_permissions
-    @api.marshal_with(streetview_token)
-    def post(self, projectId: int, username: str, service: str):
-        u = request.current_user
-        payload = request.json
-        return StreetviewService.setToken(u,
-                                          service,
-                                          payload['token'])
-
-
-@api.route('/<int:projectId>/users/<username>/streetview/upload/')
-class UserStreetviewUploadFilesResource(Resource):
-    @api.doc(id="uploadFilesToStreetview",
-             description='Import a all files in a directory into a project from Tapis. The files should '
-                         'contain GPano metadata for compatibility with streetview services. This'
-                         'is an asynchronous operation, files will be imported in the background'
-             )
-    @api.expect(streetview_folder_import)
-    @api.marshal_with(ok_response)
-    @project_permissions
-    def post(self, projectId: int, username: str):
-        u = request.current_user
-        logger.info("Upload images for user:{}".format(u.username))
-        try:
-            streetview.upload(u, api.payload)
-        except ApiException:
-            abort(403, "Access denied")
-        return {"message": "accepted"}
 
 
 @api.route('/<int:projectId>/features/')
@@ -724,7 +590,6 @@ class ProjectPointCloudsFileImportResource(Resource):
 
         external_data.import_point_clouds_from_agave.delay(u.id, files, pointCloudId)
         return {"message": "accepted"}
-
 
 
 @api.route('/<int:projectId>/tasks/')
