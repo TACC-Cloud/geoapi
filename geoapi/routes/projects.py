@@ -1,7 +1,9 @@
-from geoapi.services.notifications import NotificationsService
-from flask_restplus.marshalling import marshal_with
-from flask import request
-from flask_restplus import Namespace, Resource, fields, inputs
+# from geoapi.services.notifications import NotificationsService
+# from flask_restplus.marshalling import marshal_with
+# from flask import request
+# from flask_restplus import Namespace, Resource, fields, inputs
+from flask import request, abort
+from flask_restplus import Resource, Namespace, fields, inputs
 from werkzeug.datastructures import FileStorage
 from werkzeug.utils import secure_filename
 from geoapi.log import logging
@@ -11,11 +13,15 @@ from geoapi.services.point_cloud import PointCloudService
 from geoapi.services.projects import ProjectsService
 from geoapi.tasks import external_data
 from geoapi.utils.decorators import jwt_decoder, project_permissions_allow_public, project_permissions, project_feature_exists, \
-    project_point_cloud_exists, project_point_cloud_not_processing, check_access_and_get_project
-from werkzeug.datastructures import FileStorage
-from werkzeug.utils import secure_filename
+# <<<<<<< HEAD
+#     project_point_cloud_exists, project_point_cloud_not_processing, check_access_and_get_project
+# from werkzeug.datastructures import FileStorage
+# from werkzeug.utils import secure_filename
 
-from sqlalchemy.sql.functions import current_user
+# from sqlalchemy.sql.functions import current_user
+# =======
+    project_point_cloud_exists, project_point_cloud_not_processing, check_access_and_get_project, is_anonymous
+from geoapi.tasks import external_data
 
 logger = logging.getLogger(__name__)
 
@@ -135,11 +141,11 @@ tapis_files_import = api.model('TapisFileImport', {
 
 overlay_parser = api.parser()
 overlay_parser.add_argument('file', location='files', type=FileStorage, required=True)
-overlay_parser.add_argument('label', location=['form', 'json'], type=str, required=True)
-overlay_parser.add_argument('minLon', location=['form', 'json'], type=float, required=True)
-overlay_parser.add_argument('minLat', location=['form', 'json'], type=float, required=True)
-overlay_parser.add_argument('maxLon', location=['form', 'json'], type=float, required=True)
-overlay_parser.add_argument('maxLat', location=['form', 'json'], type=float, required=True)
+overlay_parser.add_argument('label', location=('form', 'json'), type=str, required=True)
+overlay_parser.add_argument('minLon', location=('form', 'json'), type=float, required=True)
+overlay_parser.add_argument('minLat', location=('form', 'json'), type=float, required=True)
+overlay_parser.add_argument('maxLon', location=('form', 'json'), type=float, required=True)
+overlay_parser.add_argument('maxLat', location=('form', 'json'), type=float, required=True)
 
 overlay_parser_tapis = overlay_parser.copy()
 overlay_parser_tapis.remove_argument('file')
@@ -169,6 +175,8 @@ class ProjectsListing(Resource):
             subset = [check_access_and_get_project(request.current_user, uuid=uuid, allow_public_use=True) for uuid in uuid_subset]
             return subset
         else:
+            if is_anonymous(u):
+                abort(403, "Access denied")
             logger.info("Get all projects for user:{}".format(u.username))
             return ProjectsService.list(u)
 
@@ -266,7 +274,6 @@ class ProjectUserResource(Resource):
 
 @api.route('/<int:projectId>/features/')
 class ProjectFeaturesResource(Resource):
-
     parser = api.parser()
     parser.add_argument("assetType", location="args")
     parser.add_argument('bbox',
