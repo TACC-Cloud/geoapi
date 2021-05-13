@@ -105,4 +105,4 @@ def test_delete_progress_notification(test_client, progress_notifications):
 
     data = resp.get_json()
     assert resp.status_code == 200
-    assert len(data) == 1
+    assert len(data) == 0
