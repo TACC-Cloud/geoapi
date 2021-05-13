@@ -24,11 +24,15 @@ logger = logging.getLogger(__file__)
 def upload(user: User, params: Dict):
     if (params['mapillary']):
         if not user.mapillary_jwt:
+            logger.error("Not authenticated to mapillary for user: {} system:{} path:{}") \
+                  .format(user.username, params['folder']['system'], params['folder']['system'])
             raise ApiException("Not authenticated to mapillary!")
 
     if (params['google']):
         if not user.google_jwt:
             raise ApiException("Not authenticated to google!")
+            logger.error("Not authenticated to google for user: {} system:{} path:{}") \
+                  .format(user.username, params['folder']['system'], params['folder']['system'])
     if len(NotificationsService.getProgressStatus('in_progress')) > 5:
         # TODO: Find better solution for limiting uploads.
         NotificationsService.create(user, "warning", "Maximum number of uploads in progress!")
@@ -100,7 +104,7 @@ def _from_tapis(user: User, task_uuid: UUID, systemId: str, path: str):
             NotificationsService.updateProgress(task_uuid=task_uuid,
                                                 logItem={"errorMessage": error_message})
             NotificationsService.create(user, "error", error_message)
-            raise Exception
+            raise e
     if len(img_list) == 0:
         error_message = "No images have been uploaded to geoapi!"
         NotificationsService.updateProgress(task_uuid=task_uuid,
@@ -120,6 +124,8 @@ def _to_mapillary(user: User, task_uuid: UUID):
         MapillaryUtils.authenticate(user.id, token)
         MapillaryUtils.upload(user.id, task_uuid, mapillary_user['username'])
     except Exception as e:
+        logger.error("Errors during mapillary upload task {} for user {}") \
+              .format(task_uuid, user.username)
         NotificationsService.updateProgress(task_uuid=task_uuid,
                                             logItem={"errorMessage": e})
         raise e
@@ -156,11 +162,16 @@ def _mapillary_finalize(user: User, streetview: Streetview, task_uuid: UUID):
                                              )
 
 
-def _mapillary_check_error(user: User, streetview: Streetview, task_uuid: UUID):
+def _mapillary_check_error(user: User,
+                           streetview:
+                           Streetview,
+                           task_uuid: UUID):
     # Final error parsing and delete temporary directory
     if MapillaryUtils.upload_error(user, task_uuid) > 0:
         StreetviewService.delete(streetview.id)
-        error_message = "Error during Mapillary upload."
+        error_message = "Error during Mapillary upload task {} for user {}." \
+            .format(task_uuid, user.username)
+        logger.error(error_message)
         NotificationsService.updateProgress(task_uuid,
                                             "error",
                                             error_message)
@@ -223,7 +234,9 @@ def from_tapis_to_streetview(userId: int,
     try:
         _from_tapis(user, task_uuid, dir['system'], dir['path'])
     except Exception as e:
-        logger.error(e)
+        logger.error("Error during getting files from tapis system:{} path:{} \
+        for streetview upload task: {} for user: {}. Error Message: {}") \
+              .format(dir['system'], dir['path'], task_uuid, user.username, e)
         StreetviewService.delete(streetview.id)
         NotificationsService.updateProgress(task_uuid,
                                             "error",
@@ -238,14 +251,16 @@ def from_tapis_to_streetview(userId: int,
         try:
             _to_mapillary(user, task_uuid)
         except Exception as e:
-            logger.error(e)
+            logger.error("Error during uploading to mapillary for streetview task: {} \
+            for user: {}. Error message: {}") \
+                  .format(task_uuid, user.username, e)
             StreetviewService.delete(streetview.id)
             NotificationsService.updateProgress(task_uuid,
                                                 "error",
                                                 "Mapillary tools failed!")
             NotificationsService.create(user, "error",
-                                        "Nothing has been uploaded to Mapillary"
-                                        .format(f=dir['path']))
+                                        "Nothing has been uploaded to Mapillary \
+                                        {f}".format(f=dir['path']))
             remove_project_streetview_dir(user.id, task_uuid)
             return
 
@@ -253,12 +268,16 @@ def from_tapis_to_streetview(userId: int,
             _mapillary_finalize(user, streetview, task_uuid)
             _mapillary_check_error(user, streetview, task_uuid)
         except Exception as e:
-            logger.error(e)
+            logger.error("Error during finalization of mapillary upload for streetview task: {} \
+            for user: {}. Error message: {}") \
+                  .format(task_uuid, user.username, e)
             StreetviewService.delete(streetview.id)
             NotificationsService.updateProgress(task_uuid,
                                                 "error",
                                                 "Mapillary had errors during upload!")
-            NotificationsService.create(user, "error", "Mapillary had errors during upload!".format(f=dir['path']))
+            NotificationsService.create(user,
+                                        "error",
+                                        "Mapillary had errors during upload!".format(f=dir['path']))
             remove_project_streetview_dir(user.id, task_uuid)
             return
 

@@ -147,25 +147,37 @@ class MapillaryUtils:
                 upload_percent_match = re.findall(catch_upload_percent, str(line.rstrip()))
                 upload_logs_match = re.findall(catch_upload_logs, str(line.rstrip()))
                 if len(upload_percent_match) > 0 and len(upload_logs_match) > 0:
-                    NotificationsService.updateProgress(task_uuid, "in_progress", "To Mapillary [2/2]", int(float(upload_percent_match[0])))
+                    NotificationsService.updateProgress(task_uuid,
+                                                        "in_progress",
+                                                        "To Mapillary [2/2]",
+                                                        int(float(upload_percent_match[0])))
                 else:
-                    NotificationsService.updateProgress(task_uuid, "created", "Processing images...")
+                    NotificationsService.updateProgress(task_uuid,
+                                                        "created",
+                                                        "Processing images...")
 
                 catch_retry = re.compile(r'Retry uploading previously failed image uploads')
                 retry_match = re.findall(catch_retry, str(line.rstrip()))
                 if len(retry_match) > 0:
                     prog.communicate(input='n\n')[0]
+                    logging.error("Failed to upload with mapillary_tools for user with id: {}"
+                                  .format(userId))
                     raise Exception
 
                 catch_error = re.compile(r'Error')
                 error_match = re.findall(catch_error, str(line.rstrip()))
                 if len(error_match) > 0:
+                    logger.error("Errors occured during mapillary_tools for user with userId: {}"
+                                 .format(userId))
                     raise Exception
 
         except (OSError, subprocess.CalledProcessError) as e:
-            logging.error("Error occured during Mapillary upload for user with user: {} \n {}".format(userId, str(e)))
+            logging.error("Error occured during calling mapillary_tools for user with id: {} \n {}"
+                          .format(userId, str(e)))
             return False
         except Exception:
+            logging.error("Error occured mapillary_tools upload task for user with id: {} \n {}"
+                          .format(userId, str(e)))
             raise Exception
         else:
             logging.info('Subprocess finished')
