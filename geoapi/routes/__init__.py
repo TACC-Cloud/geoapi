@@ -3,7 +3,7 @@ from .projects import api as projects
 from .streetview import api as streetview
 from .notifications import api  as notifications
 from .public_projects import api as public_projects
->>>>>>> master
+
 api = Api(
     title='GeoAPI',
     version='0.1',

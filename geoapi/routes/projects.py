@@ -13,13 +13,6 @@ from geoapi.services.point_cloud import PointCloudService
 from geoapi.services.projects import ProjectsService
 from geoapi.tasks import external_data
 from geoapi.utils.decorators import jwt_decoder, project_permissions_allow_public, project_permissions, project_feature_exists, \
-# <<<<<<< HEAD
-#     project_point_cloud_exists, project_point_cloud_not_processing, check_access_and_get_project
-# from werkzeug.datastructures import FileStorage
-# from werkzeug.utils import secure_filename
-
-# from sqlalchemy.sql.functions import current_user
-# =======
     project_point_cloud_exists, project_point_cloud_not_processing, check_access_and_get_project, is_anonymous
 from geoapi.tasks import external_data
 
