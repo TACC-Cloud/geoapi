@@ -131,7 +131,7 @@ tapis_file = api.model('TapisFile', {
 tapis_save_file = api.model('TapisSaveFile', {
     'system_id': fields.String(required=True),
     'path': fields.String(required=True),
-    'file_suffix': fields.String(required=True)
+    'file_name': fields.String(required=True)
 })
 
 tapis_files_import = api.model('TapisFileImport', {

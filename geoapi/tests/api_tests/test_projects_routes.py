@@ -379,7 +379,7 @@ def test_export_project(test_client,
         '/projects/1/export/',
         json={"system_id": "testSystem",
               "path": "testPath",
-              "file_suffix": "testFilename"},
+              "file_name": "testFilename"},
         headers={'x-jwt-assertion-test': u1.jwt}
     )
     assert resp.status_code == 200
@@ -393,7 +393,7 @@ def test_link_project(test_client,
         '/projects/1/link/',
         json={"system_id": "testSystem",
               "path": "testPath",
-              "file_suffix": "testFilename"},
+              "file_name": "testFilename"},
         headers={'x-jwt-assertion-test': u1.jwt}
     )
     assert resp.status_code == 200

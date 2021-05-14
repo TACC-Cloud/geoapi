@@ -97,7 +97,7 @@ def test_link_project(projects_fixture,
     data = {
         "system_id": "testSystem",
         "path": "testPath",
-        "file_suffix": "testFilename"
+        "file_name": "testFilename"
     }
 
     proj = ProjectsService.linkToSystem(user, projects_fixture.id, data)

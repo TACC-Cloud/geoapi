@@ -127,8 +127,8 @@ class ProjectsService:
         if (project_id):
             current_project = ProjectsService.get(project_id=project_id)
             path = data['path']
-            file_name = '{}.{}'.format(str(data['file_suffix']), 'hazmapper')
-            if data['file_suffix'] == '':
+            file_name = '{}.{}'.format(str(data['file_name']), 'hazmapper')
+            if data['file_name'] == '':
                 file_name = '{}.{}'.format(str(current_project.uuid), 'hazmapper')
 
             tmp_system_path = str(current_project.system_path)
