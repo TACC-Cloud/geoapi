@@ -133,7 +133,6 @@ class ProjectsService:
         current_project.system_path = path
         current_project.system_file = file_name
         current_project.system_id = data['system_id']
-
         db_session.commit()
 
         file_content = {
