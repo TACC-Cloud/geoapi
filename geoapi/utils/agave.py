@@ -172,6 +172,7 @@ class AgaveUtils:
         """
         url = quote('/files/media/system/{}/{}'.format(systemId, path))
         try:
+            logger.info("Deleting " + self.base_url + url)
             with self.client.delete(self.base_url + url) as r:
                 if r.status_code > 400:
                     raise ValueError("Could not delete file ({}/{}) status_code:{}".format(systemId,

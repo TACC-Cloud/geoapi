@@ -10,7 +10,7 @@ from sqlalchemy.exc import IntegrityError
 from geoapi.services.users import UserService
 from geoapi.utils.agave import AgaveUtils, get_system_users
 from geoapi.utils.assets import get_project_asset_dir
-from geoapi.tasks.external_data import import_from_agave
+from geoapi.tasks.external_data import import_from_agave, delete_agave_file
 from geoapi.log import logging
 from geoapi.exceptions import ApiException, ObservableProjectAlreadyExists
 
@@ -93,76 +93,63 @@ class ProjectsService:
         return proj
 
     @staticmethod
-    def linkToSystem(user: User, project_id: int, data: dict) -> Project:
-        """
-        Link the project to an associated system
-        :param user: User
-        :param project_id: int
-        :param data: dict
-        :return: Project
-        """
-        current_project = ProjectsService.get(project_id=project_id)
-
-        system = AgaveUtils(user.jwt).systemsGet(data['system_id'])
-
-        current_project.system_name = system['description']
-        db_session.commit()
-
-        ProjectsService.export(user, data, current_project.id, True)
-
-        return current_project
-
-    @staticmethod
     def export(user: User,
                data: dict,
-               project_id: int,
-               link: bool) -> Project:
+               project_id: int) -> Project:
         """
         Save a project UUID file to tapis
         :param user: User
         :param data: dict
         :return: None
         """
+        link = data['link']
 
-        if (project_id):
-            current_project = ProjectsService.get(project_id=project_id)
-            path = data['path']
-            file_name = '{}.{}'.format(str(data['file_name']), 'hazmapper')
-            if data['file_name'] == '':
-                file_name = '{}.{}'.format(str(current_project.uuid), 'hazmapper')
+        current_project = ProjectsService.get(project_id=project_id)
 
-            tmp_system_path = str(current_project.system_path)
-            tmp_system_file = str(current_project.system_file)
-            tmp_system_id = str(current_project.system_id)
+        if link:
+            system = AgaveUtils(user.jwt).systemsGet(data['system_id'])
 
-            if not link:
-                current_project.system_name = None
-
-            if 'project' not in data['system_id'] and path == '/':
-                path = '/' + user.username + '/'
-
-            current_project.system_path = path
-            current_project.system_file = file_name
-            current_project.system_id = data['system_id']
-
+            current_project.system_name = system['description']
             db_session.commit()
 
-            file_content = {
-                'uuid': str(current_project.uuid)
-            }
+        path = data['path']
+        file_name = '{}.{}'.format(str(data['file_name']), 'hazmapper')
+        if data['file_name'] == '':
+            file_name = '{}.{}'.format(str(current_project.uuid), 'hazmapper')
 
-            AgaveUtils(user.jwt).postFile(data['system_id'],
-                                          path,
-                                          file_name,
-                                          file_content
-                                          )
+        tmp_system_path = str(current_project.system_path)
+        tmp_system_file = str(current_project.system_file)
+        tmp_system_id = str(current_project.system_id)
 
-            # If already has a saved file remove it
-            if tmp_system_path != 'None':
-                AgaveUtils(user.jwt).deleteFile(tmp_system_id,
-                                                tmp_system_path + '/' + tmp_system_file)
+        if not link:
+            current_project.system_name = None
 
-            return current_project
+        if 'project' not in data['system_id'] and path == '/':
+            path = '/' + user.username + '/'
+
+        current_project.system_path = path
+        current_project.system_file = file_name
+        current_project.system_id = data['system_id']
+
+        db_session.commit()
+
+        file_content = {
+            'uuid': str(current_project.uuid)
+        }
+
+        AgaveUtils(user.jwt).postFile(data['system_id'],
+                                      path,
+                                      file_name,
+                                      file_content
+                                      )
+
+        # If already has a saved file remove it
+        if tmp_system_path != 'None':
+            delete_agave_file.apply_async(args=[tmp_system_id,
+                                                tmp_system_path + '/' + tmp_system_file,
+                                                user.id])
+
+        return current_project
 
     @staticmethod
     def list(user: User) -> List[Project]:
@@ -332,9 +319,9 @@ class ProjectsService:
         db_session.commit()
 
         if deleteFile:
-            AgaveUtils(user.jwt).deleteFile(proj.system_id,
-                                            proj.system_path + '/' + proj.system_file)
-                                            # proj.system_path + '/' + str(proj.uuid) + '.hazmapper')
+            delete_agave_file.apply_async(args=[proj.system_id,
+                                                proj.system_path + '/' + proj.system_file,
+                                                user.id])
         assets_folder = get_project_asset_dir(projectId)
         try:
             shutil.rmtree(assets_folder)

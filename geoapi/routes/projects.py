@@ -243,23 +243,7 @@ class ExportProject(Resource):
     def put(self, projectId):
         u = request.current_user
         logger.info("Saving project to tapis for user {}: {}".format(u.username, api.payload))
-        return ProjectsService.export(u, api.payload, projectId, False)
-
-
-@api.route('/<int:projectId>/link/')
-class ProjectLinkResource(Resource):
-    @project_permissions
-    @api.expect(tapis_save_file)
-    @api.doc(id="linkProjectToSystem",
-             description="Link system with project")
-    @api.marshal_with(project)
-    def put(self, projectId: int):
-        u = request.current_user
-        logger.info("Update project:{} for user:{}".format(projectId,
-                                                           u.username))
-        return ProjectsService.linkToSystem(u,
-                                            project_id=projectId,
-                                            data=api.payload)
+        return ProjectsService.export(u, api.payload, projectId)
 
 
 @api.route('/<int:projectId>/users/')
