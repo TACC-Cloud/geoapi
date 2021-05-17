@@ -61,13 +61,6 @@ class ProjectsService:
             system_id=systemId
         )
 
-        ProjectsService.export(user,
-                               {'system_id': systemId,
-                                'path': name,
-                                },
-                               proj.id,
-                               True)
-
         obs = ObservableDataProject(
             system_id=systemId,
             path=path
@@ -89,6 +82,14 @@ class ProjectsService:
             logger.exception("User:{} tried to create an observable project that already exists: '{}'".format(user.username, name))
             raise ObservableProjectAlreadyExists("'{}' project already exists".format(name))
         import_from_agave.apply_async(args=[obs.project.tenant_id, user.id, obs.system_id, obs.path, obs.project_id])
+
+        ProjectsService.export(user,
+                               {'system_id': systemId,
+                                'path': name,
+                                'link': True,
+                                'file_name': ''
+                                },
+                               proj.id)
 
         return proj
 
@@ -118,7 +119,13 @@ class ProjectsService:
             current_project.system_name = None
 
         path = data['path']
-        file_name = '{}.{}'.format(str(data['file_name']), 'hazmapper')
+
+        if data['file_name'] == '':
+            file_prefix = str(current_project.uuid)
+        else:
+            file_prefix = str(data['file_name'])
+
+        file_name = '{}.{}'.format(file_prefix, 'hazmapper')
 
         if 'project' not in data['system_id'] and path == '/':
             path = "/{}/".format(user.username)
