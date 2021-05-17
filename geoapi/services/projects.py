@@ -103,25 +103,25 @@ class ProjectsService:
         :param data: dict
         :return: None
         """
-        current_project = ProjectsService.get(project_id=project_id)
+        proj = ProjectsService.get(project_id=project_id)
 
         # If already has a saved file remove it
-        if current_project.system_path != 'None':
-            delete_agave_file.apply_async(args=[current_project.system_id,
-                                                '{}/{}'.format(current_project.system_path,
-                                                               current_project.system_file),
+        if proj.system_path is not None:
+            delete_agave_file.apply_async(args=[proj.system_id,
+                                                '{}/{}'.format(proj.system_path,
+                                                               proj.system_file),
                                                 user.id])
 
         if data['link']:
             system = AgaveUtils(user.jwt).systemsGet(data['system_id'])
-            current_project.system_name = system['description']
+            proj.system_name = system['description']
         else:
-            current_project.system_name = None
+            proj.system_name = None
 
         path = data['path']
 
         if data['file_name'] == '':
-            file_prefix = str(current_project.uuid)
+            file_prefix = str(proj.uuid)
         else:
             file_prefix = str(data['file_name'])
 
@@ -130,13 +130,13 @@ class ProjectsService:
         if 'project' not in data['system_id'] and path == '/':
             path = "/{}/".format(user.username)
 
-        current_project.system_path = path
-        current_project.system_file = file_name
-        current_project.system_id = data['system_id']
+        proj.system_path = path
+        proj.system_file = file_name
+        proj.system_id = data['system_id']
         db_session.commit()
 
         file_content = {
-            'uuid': str(current_project.uuid)
+            'uuid': str(proj.uuid)
         }
 
         AgaveUtils(user.jwt).postFile(data['system_id'],
@@ -145,7 +145,7 @@ class ProjectsService:
                                       file_content
                                       )
 
-        return current_project
+        return proj
 
     @staticmethod
     def list(user: User) -> List[Project]:
@@ -309,12 +309,10 @@ class ProjectsService:
         """
         proj = db_session.query(Project).get(projectId)
 
-        deleteFile = True if proj.system_path else False
-
         db_session.delete(proj)
         db_session.commit()
 
-        if deleteFile:
+        if proj.system_path is not None:
             delete_agave_file.apply_async(args=[proj.system_id,
                                                 proj.system_path + '/' + proj.system_file,
                                                 user.id])

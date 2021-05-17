@@ -44,8 +44,6 @@ def test_create_observable_project_already_exists(observable_projects_fixture,
     with pytest.raises(ObservableProjectAlreadyExists):
         ProjectsService.createRapidProject(data, user)
 
-    # assert 1 == 2
-
 
 def test_get_with_project_id(projects_fixture):
     project = ProjectsService.get(project_id=projects_fixture.id)
