@@ -102,30 +102,26 @@ class ProjectsService:
         :param data: dict
         :return: None
         """
-        link = data['link']
-
         current_project = ProjectsService.get(project_id=project_id)
 
-        if link:
-            system = AgaveUtils(user.jwt).systemsGet(data['system_id'])
+        # If already has a saved file remove it
+        if current_project.system_path != 'None':
+            delete_agave_file.apply_async(args=[current_project.system_id,
+                                                '{}/{}'.format(current_project.system_path,
+                                                               current_project.system_file),
+                                                user.id])
 
+        if data['link']:
+            system = AgaveUtils(user.jwt).systemsGet(data['system_id'])
             current_project.system_name = system['description']
-            db_session.commit()
+        else:
+            current_project.system_name = None
 
         path = data['path']
         file_name = '{}.{}'.format(str(data['file_name']), 'hazmapper')
-        if data['file_name'] == '':
-            file_name = '{}.{}'.format(str(current_project.uuid), 'hazmapper')
-
-        tmp_system_path = str(current_project.system_path)
-        tmp_system_file = str(current_project.system_file)
-        tmp_system_id = str(current_project.system_id)
-
-        if not link:
-            current_project.system_name = None
 
         if 'project' not in data['system_id'] and path == '/':
-            path = '/' + user.username + '/'
+            path = "/{}/".format(user.username)
 
         current_project.system_path = path
         current_project.system_file = file_name
@@ -142,12 +138,6 @@ class ProjectsService:
                                       file_name,
                                       file_content
                                       )
-
-        # If already has a saved file remove it
-        if tmp_system_path != 'None':
-            delete_agave_file.apply_async(args=[tmp_system_id,
-                                                tmp_system_path + '/' + tmp_system_file,
-                                                user.id])
 
         return current_project
 
