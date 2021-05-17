@@ -379,21 +379,8 @@ def test_export_project(test_client,
         '/projects/1/export/',
         json={"system_id": "testSystem",
               "path": "testPath",
-              "file_name": "testFilename"},
-        headers={'x-jwt-assertion-test': u1.jwt}
-    )
-    assert resp.status_code == 200
-
-
-def test_link_project(test_client,
-                      agave_utils_with_geojson_file_mock,
-                      projects_fixture):
-    u1 = db_session.query(User).get(1)
-    resp = test_client.put(
-        '/projects/1/link/',
-        json={"system_id": "testSystem",
-              "path": "testPath",
-              "file_name": "testFilename"},
+              "file_name": "testFilename",
+              "link": False},
         headers={'x-jwt-assertion-test': u1.jwt}
     )
     assert resp.status_code == 200
