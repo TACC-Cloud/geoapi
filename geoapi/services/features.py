@@ -560,12 +560,9 @@ class FeaturesService:
     def updateTileServers(dataList: List[dict]):
         ret_list = []
         for tsv in dataList:
-           try:
-               ts = db_session.query(TileServer).get(int(tsv['id']))
-               for key, value in tsv.items():
-                   setattr(ts, key, value)
-               ret_list.append(ts)
-               db_session.commit()
-           except Exception as e:
-               print(e)
+            ts = db_session.query(TileServer).get(int(tsv['id']))
+            for key, value in tsv.items():
+                setattr(ts, key, value)
+            ret_list.append(ts)
+            db_session.commit()
         return ret_list
