@@ -83,13 +83,13 @@ class ProjectsService:
             raise ObservableProjectAlreadyExists("'{}' project already exists".format(name))
         import_from_agave.apply_async(args=[obs.project.tenant_id, user.id, obs.system_id, obs.path, obs.project_id])
 
-        ProjectsService.export(user,
-                               {'system_id': systemId,
-                                'path': name,
-                                'link': True,
-                                'file_name': ''
-                                },
-                               proj.id)
+        # ProjectsService.export(user,
+        #                        {'system_id': systemId,
+        #                         'path': name,
+        #                         'link': True,
+        #                         'file_name': ''
+        #                         },
+        #                        proj.id)
 
         return proj
 
