@@ -59,7 +59,6 @@ project = api.model('Project', {
     'description': fields.String(required=False),
     'public': fields.Boolean(required=False),
     'uuid': fields.String(),
-    'system_name': fields.String(),
     'system_file': fields.String(),
     'system_id': fields.String(),
     'system_path': fields.String()
@@ -243,7 +242,7 @@ class ExportProject(Resource):
     def put(self, projectId):
         u = request.current_user
         logger.info("Saving project to tapis for user {}: {}".format(u.username, api.payload))
-        return ProjectsService.export(u, api.payload, projectId)
+        return ProjectsService.export(u, api.payload, False, projectId)
 
 
 @api.route('/<int:projectId>/users/')

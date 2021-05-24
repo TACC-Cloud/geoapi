@@ -30,7 +30,6 @@ class ProjectsService:
         :param user: User
         :return: Project
         """
-
         project = Project(**data)
         project.tenant_id = user.tenant_id
         project.users.append(user)
@@ -57,7 +56,6 @@ class ProjectsService:
             name=name,
             description=system['description'],
             tenant_id=user.tenant_id,
-            system_name=system['description'],
             system_id=systemId
         )
 
@@ -89,6 +87,7 @@ class ProjectsService:
                                 'link': True,
                                 'file_name': ''
                                 },
+                               True,
                                proj.id)
 
         return proj
@@ -96,6 +95,7 @@ class ProjectsService:
     @staticmethod
     def export(user: User,
                data: dict,
+               observable: bool,
                project_id: int) -> Project:
         """
         Save a project UUID file to tapis
@@ -112,12 +112,6 @@ class ProjectsService:
                                                                proj.system_file),
                                                 user.id])
 
-        if data['link']:
-            system = AgaveUtils(user.jwt).systemsGet(data['system_id'])
-            proj.system_name = system['description']
-        else:
-            proj.system_name = None
-
         path = data['path']
 
         if data['file_name'] == '':
@@ -128,7 +122,7 @@ class ProjectsService:
         file_name = '{}.{}'.format(file_prefix, 'hazmapper')
 
         # if 'project' not in data['system_id'] and path == '/':
-        if 'project' not in data['system_id']:
+        if ('project' not in data['system_id'] and path == '/') or observable:
             path = "/{}/{}".format(user.username, path)
 
         proj.system_path = path

@@ -13,7 +13,8 @@ from geoapi.log import logging
 from geoapi.routes.projects import (ProjectsListing, ProjectResource,
                                     ProjectFeaturesResource, ProjectFeatureResource,
                                     ProjectOverlaysResource, ProjectPointCloudResource,
-                                    ProjectPointCloudsResource, ProjectTileServersResource)
+                                    ProjectPointCloudsResource, ProjectTileServersResource,
+                                    ExportProject)
 
 logger = logging.getLogger(__name__)
 
@@ -56,6 +57,11 @@ class PublicProjectOverlaysResource(ProjectOverlaysResource, metaclass=HideNonPu
 
 @api.route('/<int:projectId>/point-cloud/')
 class PublicProjectPointCloudsResource(ProjectPointCloudsResource, metaclass=HideNonPublicMeta):
+    pass
+
+
+@api.route('/<int:projectId>/export/')
+class PublicExportProject(ExportProject, metaclass=HideNonPublicMeta):
     pass
 
 
