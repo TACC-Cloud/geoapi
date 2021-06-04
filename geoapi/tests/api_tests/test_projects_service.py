@@ -79,6 +79,7 @@ def test_get_features_filter_type(projects_fixture,
     project_features = ProjectsService.getFeatures(projects_fixture.id, query)
     assert len(project_features['features']) == 0
 
+
 def test_update_project(projects_fixture):
     data = {
         "name": "new name",

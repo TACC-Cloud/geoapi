@@ -139,8 +139,7 @@ def test_remove_tile_server(projects_fixture):
     }
 
     tile_server = FeaturesService.addTileServer(projectId=projects_fixture.id, data=data)
-    FeaturesService.deleteTileServer(projects_fixture.id,
-                                     tile_server.id)
+    FeaturesService.deleteTileServer(tile_server.id)
 
     assert db_session.query(TileServer).count() == 0
 
@@ -158,8 +157,7 @@ def test_update_tile_server(projects_fixture):
         "name": "NewTestName",
     }
 
-    updated_tile_server = FeaturesService.updateTileServer(projectId=projects_fixture.id,
-                                                           tileServerId=1,
+    updated_tile_server = FeaturesService.updateTileServer(tileServerId=1,
                                                            data=updated_data)
     assert updated_tile_server.name == "NewTestName"
 
@@ -177,7 +175,8 @@ def test_update_tile_servers(projects_fixture):
     updated_data = [{"id": resp1.id, "name": "NewTestName1"},
                     {"id": resp2.id, "name": "NewTestName2"}]
 
-    updated_tile_server_list = FeaturesService.updateTileServers(projectId=projects_fixture.id, dataList=updated_data)
+    updated_tile_server_list = FeaturesService.updateTileServers(dataList=updated_data)
+
 
     assert updated_tile_server_list[0].name == "NewTestName1"
     assert updated_tile_server_list[1].name == "NewTestName2"
