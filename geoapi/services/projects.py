@@ -10,7 +10,7 @@ from sqlalchemy.exc import IntegrityError
 from geoapi.services.users import UserService
 from geoapi.utils.agave import AgaveUtils, get_system_users
 from geoapi.utils.assets import get_project_asset_dir
-from geoapi.tasks.external_data import import_from_agave
+from geoapi.tasks.external_data import import_from_agave, delete_agave_file
 from geoapi.log import logging
 from geoapi.exceptions import ApiException, ObservableProjectAlreadyExists
 
@@ -30,7 +30,6 @@ class ProjectsService:
         :param user: User
         :return: Project
         """
-
         project = Project(**data)
         project.tenant_id = user.tenant_id
         project.users.append(user)
@@ -55,9 +54,11 @@ class ProjectsService:
         system = AgaveUtils(user.jwt).systemsGet(systemId)
         proj = Project(
             name=name,
-            description=system["description"],
-            tenant_id=user.tenant_id
+            description=system['description'],
+            tenant_id=user.tenant_id,
+            system_id=systemId
         )
+
         obs = ObservableDataProject(
             system_id=systemId,
             path=path
@@ -79,6 +80,65 @@ class ProjectsService:
             logger.exception("User:{} tried to create an observable project that already exists: '{}'".format(user.username, name))
             raise ObservableProjectAlreadyExists("'{}' project already exists".format(name))
         import_from_agave.apply_async(args=[obs.project.tenant_id, user.id, obs.system_id, obs.path, obs.project_id])
+
+        ProjectsService.export(user,
+                               {'system_id': systemId,
+                                'path': folder_name,
+                                'link': True,
+                                'file_name': ''
+                                },
+                               True,
+                               proj.id)
+
+        return proj
+
+    @staticmethod
+    def export(user: User,
+               data: dict,
+               observable: bool,
+               project_id: int) -> Project:
+        """
+        Save a project UUID file to tapis
+        :param user: User
+        :param data: dict
+        :return: None
+        """
+        proj = ProjectsService.get(project_id=project_id)
+
+        # If already has a saved file remove it
+        if proj.system_path is not None:
+            delete_agave_file.apply_async(args=[proj.system_id,
+                                                '{}/{}'.format(proj.system_path,
+                                                               proj.system_file),
+                                                user.id])
+
+        path = data['path']
+
+        if data['file_name'] == '':
+            file_prefix = str(proj.uuid)
+        else:
+            file_prefix = str(data['file_name'])
+
+        file_name = '{}.{}'.format(file_prefix, 'hazmapper')
+
+        # if 'project' not in data['system_id'] and path == '/':
+        if ('project' not in data['system_id'] and path == '/') or observable:
+            path = "/{}/{}".format(user.username, path)
+
+        proj.system_path = path
+        proj.system_file = file_name
+        proj.system_id = data['system_id']
+        db_session.commit()
+
+        file_content = {
+            'uuid': str(proj.uuid)
+        }
+
+        AgaveUtils(user.jwt).postFile(data['system_id'],
+                                      path,
+                                      file_name,
+                                      file_content
+                                      )
 
         return proj
 
@@ -236,15 +296,21 @@ class ProjectsService:
         return current_project
 
     @staticmethod
-    def delete(projectId: int) -> dict:
+    def delete(user: User, projectId: int) -> dict:
         """
         Delete a project and all its Features and assets
         :param projectId: int
         :return:
         """
         proj = db_session.query(Project).get(projectId)
+
         db_session.delete(proj)
         db_session.commit()
+
+        if proj.system_path is not None:
+            delete_agave_file.apply_async(args=[proj.system_id,
+                                                proj.system_path + '/' + proj.system_file,
+                                                user.id])
         assets_folder = get_project_asset_dir(projectId)
         try:
             shutil.rmtree(assets_folder)

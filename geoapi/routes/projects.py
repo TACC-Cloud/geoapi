@@ -62,7 +62,10 @@ project = api.model('Project', {
     'name': fields.String(required=True),
     'description': fields.String(required=False),
     'public': fields.Boolean(required=False),
-    'uuid': fields.String()
+    'uuid': fields.String(),
+    'system_file': fields.String(),
+    'system_id': fields.String(),
+    'system_path': fields.String()
 })
 
 user = api.model('User', {
@@ -126,6 +129,12 @@ tapis_file_upload_body = api.model('TapisFileUpload', {
 tapis_file = api.model('TapisFile', {
     'system': fields.String(required=True),
     'path': fields.String(required=True)
+})
+
+tapis_save_file = api.model('TapisSaveFile', {
+    'system_id': fields.String(required=True),
+    'path': fields.String(required=True),
+    'file_name': fields.String(required=True)
 })
 
 tapis_files_import = api.model('TapisFileImport', {
@@ -213,7 +222,7 @@ class ProjectResource(Resource):
         u = request.current_user
         logger.info("Delete project:{} for user:{}".format(projectId,
                                                            u.username))
-        return ProjectsService.delete(projectId)
+        return ProjectsService.delete(u, projectId)
 
     @api.doc(id="updateProject",
              description="Update metadata about a project")
@@ -225,6 +234,20 @@ class ProjectResource(Resource):
                                                            u.username))
         return ProjectsService.update(projectId=projectId,
                                       data=api.payload)
+
+
+@api.route('/<int:projectId>/export/')
+class ExportProject(Resource):
+    @project_permissions
+    @api.expect(tapis_save_file)
+    @api.doc(id="exportProject",
+             description='Save a project file to tapis')
+    @api.marshal_with(project)
+    def put(self, projectId):
+        u = request.current_user
+        logger.info("Saving project to tapis for user {}: {}".format(u.username, api.payload))
+        return ProjectsService.export(u, api.payload, False, projectId)
+
 
 @api.route('/<int:projectId>/users/')
 class ProjectUsersResource(Resource):
@@ -636,8 +659,7 @@ class ProjectTileServersResource(Resource):
         logger.info("Update project:{} for user:{}".format(projectId,
                                                            u.username))
 
-        ts = FeaturesService.updateTileServers(projectId=projectId,
-                                               dataList=api.payload)
+        ts = FeaturesService.updateTileServers(dataList=api.payload)
         return ts
 
 
@@ -650,7 +672,7 @@ class ProjectTileServerResource(Resource):
     def delete(self, projectId: int, tileServerId: int) -> str:
         logger.info("Delete tile server:{} in project:{} for user:{}".format(
             tileServerId, projectId, request.current_user.username))
-        FeaturesService.deleteTileServer(projectId, tileServerId)
+        FeaturesService.deleteTileServer(tileServerId)
         return "Tile Server {id} deleted".format(id=tileServerId)
 
     @api.doc(id="updateTileServer",
@@ -662,6 +684,5 @@ class ProjectTileServerResource(Resource):
         logger.info("Update project:{} for user:{}".format(projectId,
                                                            u.username))
 
-        return FeaturesService.updateTileServer(projectId=projectId,
-                                                tileServerId=tileServerId,
+        return FeaturesService.updateTileServer(tileServerId=tileServerId,
                                                 data=api.payload)
