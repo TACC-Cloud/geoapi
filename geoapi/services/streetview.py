@@ -2,7 +2,7 @@ from geoapi.services.notifications import NotificationsService
 from typing import List, Dict
 from datetime import datetime
 
-from geoapi.models import User, Streetview, StreetviewSequence
+from geoapi.models import User, Streetview, StreetviewSequence, Project
 from geoapi.db import db_session
 from geoapi.log import logging
 
@@ -95,6 +95,30 @@ class StreetviewService:
         current_user = db_session.query(User).get(user.id)
         return current_user.streetviews
 
+
+    @staticmethod
+    def addToProject(streetview_id: int, project_id: int):
+        streetview = db_session.query(Streetview).get(streetview_id)
+        current_project = db_session.query(Project).get(project_id)
+
+        current_project.streetviews.append(streetview)
+        db_session.commit()
+
+
+    @staticmethod
+    def getProjectStreetviews(project_id: int) -> List[Streetview]:
+        current_project = db_session.query(Project).get(project_id)
+        return current_project.streetviews
+
+
+    @staticmethod
+    def deleteProjectStreetview(streetview_id: int, project_id: int):
+        current_project = db_session.query(Project).get(project_id)
+        removed_streetviews = filter(lambda sv: sv.id != streetview_id, current_project.streetviews)
+        current_project.streetviews = removed_streetviews
+        db_session.commit()
+
+
     @staticmethod
     def getSystemPaths(user: User) -> List[tuple]:
         """
@@ -133,11 +157,12 @@ class StreetviewService:
 
     @staticmethod
     def createSequence(streetview_id: int,
-                       service: str=None,
-                       sequence_key: str=None,
-                       start_date: datetime=None,
-                       end_date: datetime=None,
-                       bbox: str=None) -> StreetviewSequence:
+                       service: str = None,
+                       sequence_key: str = None,
+                       start_date: datetime = None,
+                       end_date: datetime = None,
+                       organization_key: str = None,
+                       bbox: str = None) -> StreetviewSequence:
         """
         Create a Streetview Sequence to link to a streetview service sequence.
         :param streetview_id: int
@@ -145,6 +170,7 @@ class StreetviewService:
         :param sequence_key: str
         :param start_date: datetime
         :param end_date: datetime
+        :param organization_key: str
         :param bbox: bool
         :return: StreetviewSequence
         """
@@ -158,6 +184,8 @@ class StreetviewService:
             seq.start_date = start_date
         if end_date:
             seq.end_date = end_date
+        if organization_key:
+            seq.organization_key = organization_key
         if bbox:
             seq.bbox = bbox
         db_session.add(seq)

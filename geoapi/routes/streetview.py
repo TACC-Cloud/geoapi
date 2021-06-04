@@ -14,6 +14,14 @@ logger = logging.getLogger(__name__)
 
 api = Namespace('streetview', decorators=[jwt_decoder])
 
+project = api.model('Project', {
+    'id': fields.Integer(),
+    'name': fields.String(required=True),
+    'description': fields.String(required=False),
+    'public': fields.Boolean(required=False),
+    'uuid': fields.String()
+})
+
 streetview_token = api.model('StreetviewToken', {
     'token': fields.String()
 })
@@ -37,6 +45,7 @@ streetview_folder_import = api.model('TapisFolderImport', {
     'folder': fields.Nested(tapis_file),
     'mapillary': fields.Boolean(),
     'google': fields.Boolean(),
+    'organization': fields.String(),
     'retry': fields.Boolean()
 })
 
@@ -48,6 +57,7 @@ streetview_sequence = api.model('StreetviewSequence', {
     'end_date': fields.DateTime(dt_format='rfc822', required=False),
     'bbox': fields.String(required=False),
     'sequence_key': fields.String(required=False),
+    'organization_key': fields.String(required=False),
 })
 
 streetview_object = api.model('Streetview', {
@@ -56,6 +66,7 @@ streetview_object = api.model('Streetview', {
     'path': fields.String(),
     'system_id': fields.String(),
     'sequences': fields.List(fields.Nested(streetview_sequence), allow_null=True),
+    'projects':  fields.List(fields.Nested(project), allow_null=True)
 })
 
 

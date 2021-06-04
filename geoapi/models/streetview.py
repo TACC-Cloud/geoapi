@@ -11,6 +11,9 @@ class Streetview(Base):
     path = Column(String(), nullable=True, index=True)
     system_id = Column(String(), nullable=True, index=True)
     sequences = relationship('StreetviewSequence', cascade="all, delete-orphan")
+    projects = relationship('Project',
+                 secondary='projects_streetviews',
+                 back_populates='streetviews', lazy="joined")
 
     user = relationship('User')
 
@@ -28,6 +31,7 @@ class StreetviewSequence(Base):
     end_date = Column(DateTime(timezone=True))
     bbox = Column(String(), index=True)
     sequence_key = Column(String(), index=True)
+    organization_key = Column(String(), index=True)
     streetview = relationship('Streetview')
 
     def __repr__(self):

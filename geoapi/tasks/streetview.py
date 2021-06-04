@@ -42,6 +42,7 @@ def upload(user: User, params: Dict):
                                    params['folder'],
                                    params['google'],
                                    params['mapillary'],
+                                   params['organization'],
                                    params['retry'])
 
 
@@ -112,7 +113,7 @@ def _from_tapis(user: User, task_uuid: UUID, systemId: str, path: str):
         raise ValueError("No images have been uploaded to geoapi!")
 
 
-def _to_mapillary(user: User, task_uuid: UUID):
+def _to_mapillary(user: User, task_uuid: UUID, organization: str):
     token = user.mapillary_jwt
 
     mapillary_user = MapillaryUtils.get_user(user.mapillary_jwt)
@@ -122,7 +123,7 @@ def _to_mapillary(user: User, task_uuid: UUID):
                                             "in_progress",
                                             "To Mapillary [2/3]", 0)
         MapillaryUtils.authenticate(user.id, token)
-        MapillaryUtils.upload(user.id, task_uuid, mapillary_user['username'])
+        MapillaryUtils.upload(user.id, task_uuid, mapillary_user['username'], organization)
     except Exception as e:
         logger.error("Errors during mapillary upload task {} for user {}") \
               .format(task_uuid, user.username)
@@ -144,7 +145,7 @@ def _to_google():
 #       start/end dates using some utility functions that mapillary_tools provides.
 #
 #       Relative documentation here: https://www.mapillary.com/developer/api-documentation
-def _mapillary_finalize(user: User, streetview: Streetview, task_uuid: UUID):
+def _mapillary_finalize(user: User, streetview: Streetview, task_uuid: UUID, organization: str):
     list_per_sequence_mapping = MapillaryUtils.get_sequence_mappings(user, task_uuid)
     combined_list_sequence_mappings = MapillaryUtils.get_filtered_sequence_mappings(list_per_sequence_mapping)
 
@@ -158,6 +159,7 @@ def _mapillary_finalize(user: User, streetview: Streetview, task_uuid: UUID):
                                              service='mapillary',
                                              start_date=seq['start_date'],
                                              end_date=seq['end_date'],
+                                             organization_key=organization,
                                              bbox='{}, {}, {}, {}'.format(seq['lon_min'], seq['lat_min'], seq['lon_max'], seq['lat_max'])
                                              )
 
@@ -187,6 +189,7 @@ def from_tapis_to_streetview(userId: int,
                              dir: Dict,
                              google: bool,
                              mapillary: bool,
+                             organization: str,
                              retry: bool):
     user = UserService.get(userId)
     task_uuid = uuid.uuid3(uuid.NAMESPACE_URL, dir['system'] + dir['path'])
@@ -249,7 +252,7 @@ def from_tapis_to_streetview(userId: int,
     # Upload to mapillary
     if mapillary:
         try:
-            _to_mapillary(user, task_uuid)
+            _to_mapillary(user, task_uuid, organization)
         except Exception as e:
             logger.error("Error during uploading to mapillary for streetview task: {} \
             for user: {}. Error message: {}") \
@@ -265,7 +268,7 @@ def from_tapis_to_streetview(userId: int,
             return
 
         try:
-            _mapillary_finalize(user, streetview, task_uuid)
+            _mapillary_finalize(user, streetview, task_uuid, organization)
             _mapillary_check_error(user, streetview, task_uuid)
         except Exception as e:
             logger.error("Error during finalization of mapillary upload for streetview task: {} \

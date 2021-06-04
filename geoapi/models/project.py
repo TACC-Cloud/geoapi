@@ -16,6 +16,13 @@ class ProjectUser(Base):
     project_id = Column(Integer, ForeignKey('projects.id', ondelete="CASCADE"), primary_key=True)
 
 
+class ProjectStreetview(Base):
+    __tablename__ = 'projects_streetviews'
+
+    streetview_id = Column(Integer, ForeignKey('streetviews.id', ondelete="CASCADE"), primary_key=True, )
+    project_id = Column(Integer, ForeignKey('projects.id', ondelete="CASCADE"), primary_key=True)
+
+
 class Project(Base):
     __tablename__ = 'projects'
 
@@ -31,6 +38,9 @@ class Project(Base):
     users = relationship('User',
                          secondary='projects_users',
                          back_populates='projects')
+    streetviews = relationship('Streetview',
+                               secondary='projects_streetviews',
+                               back_populates='projects')
     point_clouds = relationship('PointCloud', cascade="all, delete-orphan")
 
     def __repr__(self):

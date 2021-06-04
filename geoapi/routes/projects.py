@@ -11,7 +11,8 @@ from geoapi.schemas import FeatureSchema
 from geoapi.services.features import FeaturesService
 from geoapi.services.point_cloud import PointCloudService
 from geoapi.services.projects import ProjectsService
-from geoapi.tasks import external_data
+from geoapi.services.streetview import StreetviewService
+from geoapi.tasks import external_data, streetview
 from geoapi.utils.decorators import jwt_decoder, project_permissions_allow_public, project_permissions, project_feature_exists, \
     project_point_cloud_exists, project_point_cloud_not_processing, check_access_and_get_project, is_anonymous
 from geoapi.tasks import external_data
@@ -112,7 +113,26 @@ tile_server = api.model('TileServer', {
     'url': fields.String(),
     'attribution': fields.String(),
     'tileOptions': fields.Raw(allow_null=True),
-    'uiOptions': fields.Raw(allow_null=True)
+    'uiOptions': fields.Raw(allow_null=True),
+})
+
+streetview_sequence = api.model('StreetviewSequence', {
+    'id': fields.Integer(),
+    'streetview_id': fields.Integer(),
+    'service': fields.String(),
+    'start_date': fields.DateTime(dt_format='rfc822', required=False),
+    'end_date': fields.DateTime(dt_format='rfc822', required=False),
+    'bbox': fields.String(required=False),
+    'sequence_key': fields.String(required=False)
+})
+
+streetview_object = api.model('Streetview', {
+    'id': fields.Integer(),
+    'user_id': fields.Integer(),
+    'path': fields.String(),
+    'system_id': fields.String(),
+    'sequences': fields.List(fields.Nested(streetview_sequence), allow_null=True),
+    'projects':  fields.List(fields.Nested(project), allow_null=True)
 })
 
 file_upload_parser = api.parser()
@@ -489,6 +509,39 @@ class ProjectOverlayResource(Resource):
             overlayId, projectId, request.current_user.username))
         FeaturesService.deleteOverlay(projectId, overlayId)
         return "Overlay {id} deleted".format(id=overlayId)
+
+
+@api.route('/<int:projectId>/streetviews/')
+class ProjectStreetviewsResource(Resource):
+    @api.doc(id="getProjectStreetviews",
+             description="Get a streetviews for a project")
+    @project_permissions
+    @api.marshal_with(streetview_object, as_list=True)
+    def get(self, projectId: int):
+        u = request.current_user
+        logger.info("Get streetviews in project:{} for user:{}".format(
+            projectId, request.current_user.username))
+        return StreetviewService.getProjectStreetviews(projectId)
+
+    @api.doc(id="addProjectStreetview",
+             description="Add a streetview to a project")
+    def post(self, projectId: int):
+        u = request.current_user
+        streetviewId = api.payload['streetviewId']
+        logger.info("Add streetview:{} to project:{} for user:{}".format(
+            streetviewId, projectId, request.current_user.username))
+        StreetviewService.addToProject(streetviewId, projectId)
+
+
+@api.route('/<int:projectId>/streetviews/<int:streetviewId>/')
+class ProjectStreetviewResource(Resource):
+    @api.doc(id="deleteProjectStreetview",
+             description="Delete a streetview object linked to a project")
+    def delete(self, projectId: int, streetviewId: int):
+        u = request.current_user
+        logger.info("Add streetview:{} to project:{} for user:{}".format(
+            streetviewId, projectId, u.username))
+        StreetviewService.deleteProjectStreetview(streetviewId, projectId)
 
 
 @api.route('/<int:projectId>/point-cloud/')

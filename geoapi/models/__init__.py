@@ -1,4 +1,4 @@
-from .project import Project, ProjectUser
+from .project import Project, ProjectUser, ProjectStreetview
 from .feature import Feature, FeatureAsset
 from .point_cloud import PointCloud
 from .task import Task

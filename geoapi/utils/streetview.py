@@ -117,7 +117,7 @@ class MapillaryUtils:
         pass
 
     @staticmethod
-    def upload(userId: int, task_uuid: UUID, mapillary_username: str):
+    def upload(userId: int, task_uuid: UUID, mapillary_username: str, organization: str):
         command = [
             '/usr/local/bin/mapillary_tools',
             'process_and_upload',
@@ -126,6 +126,12 @@ class MapillaryUtils:
             '--user_name',
             mapillary_username
         ]
+
+        if organization != '':
+            command.extend([
+                '--organization_username',
+                organization
+            ])
 
         try:
             prog = subprocess.Popen(command,
