@@ -396,7 +396,8 @@ def agave_utils_with_geojson_file_mock(agave_file_listings_mock, geojson_file_fi
         MockAgaveUtils().listing.return_value = agave_file_listings_mock
         MockAgaveUtils().getFile.return_value = geojson_file_fixture
         MockAgaveUtils().systemsGet.return_value = {"id": "testSystem",
-                                                    "description": "System Description"}
+                                                    "description": "System Description",
+                                                    "name": "System Name"}
         yield MockAgaveUtils()
 
 

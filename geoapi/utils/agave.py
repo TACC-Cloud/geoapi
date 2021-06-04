@@ -132,6 +132,57 @@ class AgaveUtils:
             logger.error("Could not fetch file ({}/{}): {}".format(systemId, path, e))
             raise e
 
+    def postFile(self, systemId: str, path: str, file_name: str, file_content: dict) -> None:
+        """
+        Upload a file to agave
+        :param systemId: str
+        :param path (directory): str
+        :param file_name: str
+        :param file_content: dict
+        :return: None
+        """
+        url = quote('/files/media/system/{}/{}'.format(systemId, path))
+        try:
+            logger.info("Uploading to " + self.base_url + url)
+            tmp = NamedTemporaryFile(delete=True, mode="r+")
+            tmp.name = file_name
+            json.dump(file_content, tmp)
+            tmp.flush()
+            tmp.seek(0)
+            files = { 'fileToUpload': tmp }
+            with self.client.post(self.base_url + url,
+                                  verify=False,
+                                  files=files) as r:
+                if r.status_code > 400:
+                    tmp.close()
+                    raise ValueError("Could not post file ({}/{}/{}) status_code:{}".format(systemId,
+                                                                                            path,
+                                                                                            file_name,
+                                                                                            r.status_code))
+                tmp.close()
+        except Exception as e:
+            logger.error("Could not post file ({}/{}/{}): {}".format(systemId, path, file_name, e))
+            raise e
+
+    def deleteFile(self, systemId: str, path: str) -> None:
+        """
+        Delete an agave file
+        :param systemId: str
+        :param path (directory): str
+        :return: None
+        """
+        url = quote('/files/media/system/{}/{}'.format(systemId, path))
+        try:
+            logger.info("Deleting " + self.base_url + url)
+            with self.client.delete(self.base_url + url) as r:
+                if r.status_code > 400:
+                    raise ValueError("Could not delete file ({}/{}) status_code:{}".format(systemId,
+                                                                                           path,
+                                                                                           r.status_code))
+        except Exception as e:
+            logger.error("Could not delete file ({}/{}): {}".format(systemId, path, e))
+            raise e
+
 
     def getRawFileToPath(self, systemId: str, fromPath: str, toPath: str):
         url = quote('/files/media/system/{}/{}'.format(systemId, fromPath))

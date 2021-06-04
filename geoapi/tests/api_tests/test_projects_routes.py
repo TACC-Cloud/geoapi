@@ -317,6 +317,7 @@ def test_observable_project(test_client,
                             userdata,
                             get_system_users_mock,
                             agave_utils_with_geojson_file_mock,
+                            projects_fixture,
                             import_from_agave_mock):
     u1 = db_session.query(User).get(1)
     resp = test_client.post(
@@ -367,3 +368,19 @@ def test_update_project_unauthorized_guest(test_client, public_projects_fixture)
         json=data
     )
     assert resp.status_code == 403
+
+
+def test_export_project(test_client,
+                        projects_fixture,
+                        get_system_users_mock,
+                        agave_utils_with_geojson_file_mock):
+    u1 = db_session.query(User).get(1)
+    resp = test_client.put(
+        '/projects/1/export/',
+        json={"system_id": "testSystem",
+              "path": "testPath",
+              "file_name": "testFilename",
+              "link": False},
+        headers={'x-jwt-assertion-test': u1.jwt}
+    )
+    assert resp.status_code == 200
