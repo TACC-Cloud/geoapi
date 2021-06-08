@@ -8,6 +8,7 @@ from geoapi.db import db_session
 from sqlalchemy.sql import select, text
 from sqlalchemy.exc import IntegrityError
 from geoapi.services.users import UserService
+from geoapi.services.notifications import NotificationsService
 from geoapi.utils.agave import AgaveUtils, get_system_users
 from geoapi.utils.assets import get_project_asset_dir
 from geoapi.tasks.external_data import import_from_agave, delete_agave_file
@@ -81,14 +82,17 @@ class ProjectsService:
             raise ObservableProjectAlreadyExists("'{}' project already exists".format(name))
         import_from_agave.apply_async(args=[obs.project.tenant_id, user.id, obs.system_id, obs.path, obs.project_id])
 
-        ProjectsService.export(user,
-                               {'system_id': systemId,
-                                'path': folder_name,
-                                'link': True,
-                                'file_name': ''
-                                },
-                               True,
-                               proj.id)
+        try:
+            ProjectsService.export(user,
+                                   {'system_id': systemId,
+                                    'path': path,
+                                    'link': True,
+                                    'file_name': ''
+                                    },
+                                   True,
+                                   proj.id)
+        except:
+            NotificationsService.create(user, "error", "Failed to export file to {}{}.".format(systemId, path))
 
         return proj
 
@@ -120,10 +124,6 @@ class ProjectsService:
             file_prefix = str(data['file_name'])
 
         file_name = '{}.{}'.format(file_prefix, 'hazmapper')
-
-        # if 'project' not in data['system_id'] and path == '/':
-        if ('project' not in data['system_id'] and path == '/') or observable:
-            path = "/{}/{}".format(user.username, path)
 
         proj.system_path = path
         proj.system_file = file_name
