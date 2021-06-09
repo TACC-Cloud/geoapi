@@ -80,15 +80,15 @@ apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
   labels:
-    app: pgdata
-  name: pgdata
+    app: ${PGDATA_PVC}
+  name: ${PGDATA_PVC}
 spec:
   accessModes:
   - ReadWriteOnce
   storageClassName: rbd
   resources:
     requests:
-      storage: 10G
+      storage: ${PGDATA_PVC_SIZE}
 ---
 apiVersion: v1
 kind: Service
