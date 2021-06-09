@@ -419,7 +419,7 @@ spec:
       volumes:
       - name: pgdata
         persistentVolumeClaim:
-          claimName: pgdata
+          claimName: ${PGDATA_PVC}
 
 ---
 apiVersion: apps/v1
