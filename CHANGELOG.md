@@ -2,22 +2,32 @@
 
 ## [2.3] - 2021-06-09
 
-- DES-1950: Update deployment (#57)
+### Added
 - DES-1929: Implement saving project to hazmapper (#54)
+
+### Changed
+- DES-1950: Update deployment (#57)
+
+### Fixed
 - Fix observable project import. (#60)
 
 ## [2.2] - 2021-04-28
 
+### Added
 - DES-1676: Add update functionality to individual projects. (#39)
+- DES-1946: Provide public routes (#56)
 - DES-1788: Support public maps (#40)
+- DES-1788: Support public maps for new and missing routes (#53)
 - DES-1760: Tile Servers Backend (#42)
+- DES-1899: Support querying projects by UUID (#50)
+
+### Changed
 - DES-1713: Deploy images to Docker Hub tagged by git hash(#44)
 - DES-1728: Improve tapis file access related logging (#32)
-- DES-1853: Fix imporing of RAPP folders (#32)
 - DES-1713: Update kube for staging (#45)
-- DES-1899: Support querying projects by UUID (#50)
-- DES-1788: Support public maps for new and missing routes (#53)
-- DES-1946: Provide public routes (#56)
+
+### Fixed
+- DES-1853: Fix imporing of RAPP folders (#32)
 
 ## [2.1] - 2020-10-05
 
