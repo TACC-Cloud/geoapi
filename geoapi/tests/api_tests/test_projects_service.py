@@ -26,7 +26,8 @@ def test_create_observable_project(userdata,
     user = db_session.query(User).get(1)
     data = {
         "system_id": "system",
-        "path": "/path"
+        "path": "/path",
+        "watch_content": True
     }
     proj = ProjectsService.createRapidProject(data, user)
     assert len(proj.users) == 2
@@ -39,7 +40,8 @@ def test_create_observable_project_already_exists(observable_projects_fixture,
     user = db_session.query(User).get(1)
     data = {
         "system_id": observable_projects_fixture.system_id,
-        "path": observable_projects_fixture.path
+        "path": observable_projects_fixture.path,
+        "watch_content": True
     }
     with pytest.raises(ObservableProjectAlreadyExists):
         ProjectsService.createRapidProject(data, user)

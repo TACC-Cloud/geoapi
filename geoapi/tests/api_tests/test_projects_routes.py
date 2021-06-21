@@ -322,7 +322,7 @@ def test_observable_project(test_client,
     u1 = db_session.query(User).get(1)
     resp = test_client.post(
         '/projects/rapid/',
-        json={"system_id": 'my_system', 'path': '/some_path'},
+        json={"system_id": 'my_system', "path": '/some_path', "watch_content": True},
         headers={'x-jwt-assertion-test': u1.jwt}
     )
     assert resp.status_code == 200
@@ -335,7 +335,8 @@ def test_observable_project_already_exists(test_client,
     u1 = db_session.query(User).get(1)
     data = {
         "system_id": observable_projects_fixture.system_id,
-        "path": observable_projects_fixture.path
+        "path": observable_projects_fixture.path,
+        "watch_content": observable_projects_fixture.watch_content
     }
     resp = test_client.post(
         '/projects/rapid/',

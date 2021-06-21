@@ -89,7 +89,9 @@ point_cloud = api.model('PointCloud', {
 
 rapid_project_body = api.model("RapidProject", {
     "system_id": fields.String(),
-    "path": fields.String(default="RApp")
+    "path": fields.String(default="RApp"),
+    "watch_content": fields.Boolean(default=True),
+    "project_id": fields.Integer(default=None)
 })
 
 overlay = api.model('Overlay', {

@@ -46,23 +46,30 @@ class ProjectsService:
         :param user: User
         :return: Project
         """
+        watch_content = data["watch_content"]
         systemId = data["system_id"]
+        project_id = data.get("project_id")
         path = data["path"]
         folder_name = Path(path).name
         name = systemId + '/' + folder_name
 
         # TODO: Handle no storage system found
         system = AgaveUtils(user.jwt).systemsGet(systemId)
-        proj = Project(
-            name=name,
-            description=system['description'],
-            tenant_id=user.tenant_id,
-            system_id=systemId
-        )
+
+        if project_id:
+            proj = ProjectsService.get(project_id=project_id)
+        else:
+            proj = Project(
+                name=name,
+                description=system['description'],
+                tenant_id=user.tenant_id,
+                system_id=systemId
+            )
 
         obs = ObservableDataProject(
             system_id=systemId,
-            path=path
+            path=path,
+            watch_content=watch_content
         )
 
         users = get_system_users(proj.tenant_id, user.jwt, systemId)
@@ -80,7 +87,8 @@ class ProjectsService:
             db_session.rollback()
             logger.exception("User:{} tried to create an observable project that already exists: '{}'".format(user.username, name))
             raise ObservableProjectAlreadyExists("'{}' project already exists".format(name))
-        import_from_agave.apply_async(args=[obs.project.tenant_id, user.id, obs.system_id, obs.path, obs.project_id])
+        if watch_content:
+            import_from_agave.apply_async(args=[obs.project.tenant_id, user.id, obs.system_id, obs.path, obs.project_id])
 
         try:
             ProjectsService.export(user,
