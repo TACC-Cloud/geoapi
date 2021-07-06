@@ -91,7 +91,8 @@ rapid_project_body = api.model("RapidProject", {
     "system_id": fields.String(),
     "path": fields.String(default="RApp"),
     "watch_content": fields.Boolean(default=True),
-    "project_id": fields.Integer(default=None)
+    "project_id": fields.Integer(default=None),
+    "file_name": fields.String(default="")
 })
 
 overlay = api.model('Overlay', {

@@ -49,6 +49,7 @@ class ProjectsService:
         watch_content = data["watch_content"]
         systemId = data["system_id"]
         project_id = data.get("project_id")
+        file_name = data.get("file_name", "")
         path = data["path"]
         folder_name = Path(path).name
         name = systemId + '/' + folder_name
@@ -95,7 +96,7 @@ class ProjectsService:
                                    {'system_id': systemId,
                                     'path': path,
                                     'link': True,
-                                    'file_name': ''
+                                    'file_name': file_name
                                     },
                                    True,
                                    proj.id)
