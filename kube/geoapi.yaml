@@ -398,6 +398,8 @@ spec:
             secretKeyRef:
               name: postgres
               key: password
+        - name: PGDATA
+          value: /var/lib/postgresql/data/
         envFrom:
           - configMapRef:
               name: geoapi-environment-vars
