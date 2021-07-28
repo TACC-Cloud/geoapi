@@ -85,7 +85,7 @@ metadata:
 spec:
   accessModes:
   - ReadWriteOnce
-  storageClassName: rbd
+  storageClassName: rbd-new
   resources:
     requests:
       storage: ${PGDATA_PVC_SIZE}
