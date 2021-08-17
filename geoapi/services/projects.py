@@ -39,41 +39,34 @@ class ProjectsService:
         return project
 
     @staticmethod
-    def createRapidProject(data: dict, user: User) -> Project:
+    def makeProjectObservable(proj: Project,
+                              user: User,
+                              system_id: str,
+                              path: str,
+                              watch_content: bool):
         """
-        Creates a project from a storage system for the RAPID recon projects in Designsafe
+        Makes a project an observable project
         :param data: dict
         :param user: User
-        :return: Project
+        :return: None
         """
-        watch_content = data["watch_content"]
-        systemId = data["system_id"]
-        project_id = data.get("project_id")
-        file_name = data.get("file_name", "")
-        path = data["path"]
         folder_name = Path(path).name
-        name = systemId + '/' + folder_name
+        name = system_id + '/' + folder_name
 
         # TODO: Handle no storage system found
-        system = AgaveUtils(user.jwt).systemsGet(systemId)
+        system = AgaveUtils(user.jwt).systemsGet(system_id)
 
-        if project_id:
-            proj = ProjectsService.get(project_id=project_id)
-        else:
-            proj = Project(
-                name=name,
-                description=system['description'],
-                tenant_id=user.tenant_id,
-                system_id=systemId
-            )
 
         obs = ObservableDataProject(
-            system_id=systemId,
+            system_id=system_id,
             path=path,
             watch_content=watch_content
         )
 
-        users = get_system_users(proj.tenant_id, user.jwt, systemId)
+        proj.description = system.get('description'),
+        proj.system_id = system_id
+
+        users = get_system_users(proj.tenant_id, user.jwt, system_id)
         logger.info("Updating project:{} to have the following users: {}".format(name, users))
         project_users = [UserService.getOrCreateUser(u, tenant=proj.tenant_id) for u in users]
         proj.users = project_users
@@ -82,42 +75,60 @@ class ProjectsService:
 
         try:
             db_session.add(obs)
-            db_session.add(proj)
             db_session.commit()
         except IntegrityError as e:
             db_session.rollback()
             logger.exception("User:{} tried to create an observable project that already exists: '{}'".format(user.username, name))
             raise ObservableProjectAlreadyExists("'{}' project already exists".format(name))
+
         if watch_content:
             import_from_agave.apply_async(args=[obs.project.tenant_id, user.id, obs.system_id, obs.path, obs.project_id])
 
-        try:
-            ProjectsService.export(user,
-                                   {'system_id': systemId,
-                                    'path': path,
-                                    'link': True,
-                                    'file_name': file_name
-                                    },
-                                   True,
-                                   proj.id)
-        except:
-            NotificationsService.create(user, "error", "Failed to export file to {}{}.".format(systemId, path))
+    @staticmethod
+    def exportProject(data: dict, user: User, project_id: int) -> Project:
+        """
+        Creates a project from a storage system for the RAPID recon projects in Designsafe
+        :param data: dict
+        :param user: User
+        :return: Project
+        """
+        proj = ProjectsService.get(project_id=project_id)
+
+        system_id = data.get('system_id', '')
+        file_name = data.get('file_name', '')
+        observable = data.get('observable', False)
+        path = data.get('path', '')
+        watch_content = data.get('watch_content', True)
+
+        if observable:
+            print("Cool")
+            ProjectsService.makeProjectObservable(proj,
+                                                  user,
+                                                  system_id,
+                                                  path,
+                                                  watch_content)
+
+        ProjectsService.saveProjectFile(proj,
+                                        user,
+                                        system_id,
+                                        path,
+                                        file_name)
 
         return proj
 
     @staticmethod
-    def export(user: User,
-               data: dict,
-               observable: bool,
-               project_id: int) -> Project:
+    def saveProjectFile(proj: Project,
+                        user: User,
+                        system_id: str,
+                        path: str,
+                        file_name: str) -> None:
         """
         Save a project UUID file to tapis
         :param user: User
         :param data: dict
+        :param project_id: int
         :return: None
         """
-        proj = ProjectsService.get(project_id=project_id)
-
         # If already has a saved file remove it
         if proj.system_path is not None:
             delete_agave_file.apply_async(args=[proj.system_id,
@@ -125,31 +136,27 @@ class ProjectsService:
                                                                proj.system_file),
                                                 user.id])
 
-        path = data['path']
-
-        if data['file_name'] == '':
+        if file_name == '':
             file_prefix = str(proj.uuid)
         else:
-            file_prefix = str(data['file_name'])
+            file_prefix = str(file_name)
 
-        file_name = '{}.{}'.format(file_prefix, 'hazmapper')
+        prefixed_file_name = '{}.{}'.format(file_prefix, 'hazmapper')
 
         proj.system_path = path
-        proj.system_file = file_name
-        proj.system_id = data['system_id']
+        proj.system_file = prefixed_file_name
+        proj.system_id = system_id
         db_session.commit()
 
         file_content = {
             'uuid': str(proj.uuid)
         }
 
-        AgaveUtils(user.jwt).postFile(data['system_id'],
+        AgaveUtils(user.jwt).postFile(system_id,
                                       path,
-                                      file_name,
+                                      prefixed_file_name,
                                       file_content
                                       )
-
-        return proj
 
     @staticmethod
     def list(user: User) -> List[Project]:
