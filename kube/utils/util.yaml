@@ -1,0 +1,23 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: busybox1
+  labels:
+    app: busybox1
+spec:
+  containers:
+  - image: busybox
+    command:
+      - sleep
+      - "3600"
+    imagePullPolicy: IfNotPresent
+    name: busybox
+    volumeMounts:
+    - mountPath: /var/lib/postgresql/data
+      name: pgdata
+      subPath: postgres
+  volumes:
+  - name: pgdata
+    persistentVolumeClaim:
+      claimName: pgdata2
+  restartPolicy: Always
