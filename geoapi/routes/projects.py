@@ -125,7 +125,9 @@ tapis_file = api.model('TapisFile', {
 tapis_save_file = api.model('TapisSaveFile', {
     'system_id': fields.String(required=True),
     'path': fields.String(required=True),
-    'file_name': fields.String(required=True)
+    'file_name': fields.String(required=True),
+    'observable': fields.Boolean(required=False),
+    'watch_content': fields.Boolean(required=False)
 })
 
 tapis_files_import = api.model('TapisFileImport', {
@@ -220,7 +222,8 @@ class ExportProject(Resource):
     @project_permissions
     @api.expect(tapis_save_file)
     @api.doc(id="exportProject",
-             description='Save a project file to tapis')
+             description="Save a project file to tapis and/or link a map to a project as "
+                         "an observable project.")
     @api.marshal_with(project)
     def post(self, projectId):
         u = request.current_user

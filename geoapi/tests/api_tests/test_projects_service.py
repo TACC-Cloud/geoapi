@@ -3,7 +3,7 @@ import pytest
 from geoapi.db import db_session
 
 from geoapi.services.projects import ProjectsService
-from geoapi.models import User
+from geoapi.models import User, observable_data
 from geoapi.exceptions import ObservableProjectAlreadyExists
 
 
@@ -19,32 +19,82 @@ def test_create_project():
     assert proj.name == "test name"
 
 
-def test_create_observable_project(userdata,
-                                   get_system_users_mock,
-                                   agave_utils_with_geojson_file_mock,
-                                   import_from_agave_mock):
+def test_export_project(userdata,
+                        get_system_users_mock,
+                        agave_utils_with_geojson_file_mock,
+                        delete_agave_file_mock,
+                        import_from_agave_mock):
     user = db_session.query(User).get(1)
-    data = {
+    project_data = {
+        "name": "test name",
+        "description": "test description"
+    }
+    export_data = {
         "system_id": "system",
         "path": "/path",
+        "file_name": "file_name",
+        "observable": False,
+        "watch_content": False
+    }
+    proj = ProjectsService.create(project_data, user)
+
+    ProjectsService.exportProject(export_data,
+                                  user,
+                                  proj.id)
+
+    assert proj.system_path == "/path"
+    assert proj.system_id == "system"
+    assert proj.system_file == "file_name.hazmapper"
+
+
+def test_export_observable_project(userdata,
+                                   get_system_users_mock,
+                                   agave_utils_with_geojson_file_mock,
+                                   delete_agave_file_mock,
+                                   import_from_agave_mock):
+    user = db_session.query(User).get(1)
+    project_data = {
+        "name": "test name",
+        "description": "test description"
+    }
+    export_data = {
+        "system_id": "system",
+        "path": "/path",
+        "file_name": "file_name",
+        "observable": True,
         "watch_content": True
     }
-    proj = ProjectsService.createRapidProject(data, user)
+    proj = ProjectsService.create(project_data, user)
+
+    ProjectsService.exportProject(export_data,
+                                  user,
+                                  proj.id)
+
     assert len(proj.users) == 2
-    assert proj.name == "system/path"
 
 
-def test_create_observable_project_already_exists(observable_projects_fixture,
+def test_export_observable_project_already_exists(observable_projects_fixture,
                                                   agave_utils_with_geojson_file_mock,
+                                                  delete_agave_file_mock,
+                                                  import_from_agave_mock,
                                                   get_system_users_mock):
     user = db_session.query(User).get(1)
-    data = {
+    project_data = {
+        "name": "test name",
+        "description": "test description"
+    }
+    export_data = {
         "system_id": observable_projects_fixture.system_id,
         "path": observable_projects_fixture.path,
+        "file_name": "file_name",
+        "observable": True,
         "watch_content": True
     }
+    proj = ProjectsService.create(project_data, user)
     with pytest.raises(ObservableProjectAlreadyExists):
-        ProjectsService.createRapidProject(data, user)
+        ProjectsService.exportProject(export_data,
+                                      user,
+                                      proj.id)
 
 
 def test_get_with_project_id(projects_fixture):

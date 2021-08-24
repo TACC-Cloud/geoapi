@@ -326,6 +326,11 @@ def import_from_agave_mock():
     with patch('geoapi.services.projects.import_from_agave') as mock_import:
         yield mock_import
 
+@pytest.fixture(scope="function")
+def delete_agave_file_mock():
+    with patch('geoapi.services.projects.delete_agave_file') as mock_delete:
+        yield mock_delete
+
 
 @pytest.fixture(scope="function")
 def convert_to_potree_mock():
@@ -396,6 +401,7 @@ def agave_utils_with_geojson_file_mock(agave_file_listings_mock, geojson_file_fi
     with patch('geoapi.services.projects.AgaveUtils') as MockAgaveUtils:
         MockAgaveUtils().listing.return_value = agave_file_listings_mock
         MockAgaveUtils().getFile.return_value = geojson_file_fixture
+        MockAgaveUtils().postFile.return_value = geojson_file_fixture
         MockAgaveUtils().systemsGet.return_value = {"id": "testSystem",
                                                     "description": "System Description",
                                                     "name": "System Name"}

@@ -56,15 +56,13 @@ class ProjectsService:
         # TODO: Handle no storage system found
         system = AgaveUtils(user.jwt).systemsGet(system_id)
 
-
         obs = ObservableDataProject(
             system_id=system_id,
             path=path,
             watch_content=watch_content
         )
 
-        proj.description = system.get('description'),
-        proj.system_id = system_id
+        proj.description = system.get('description')
 
         users = get_system_users(proj.tenant_id, user.jwt, system_id)
         logger.info("Updating project:{} to have the following users: {}".format(name, users))
@@ -101,12 +99,14 @@ class ProjectsService:
         watch_content = data.get('watch_content', True)
 
         if observable:
-            print("Cool")
-            ProjectsService.makeProjectObservable(proj,
-                                                  user,
-                                                  system_id,
-                                                  path,
-                                                  watch_content)
+            try:
+                ProjectsService.makeProjectObservable(proj,
+                                                      user,
+                                                      system_id,
+                                                      path,
+                                                      watch_content)
+            except Exception as e:
+                raise e
 
         ProjectsService.saveProjectFile(proj,
                                         user,
@@ -124,9 +124,11 @@ class ProjectsService:
                         file_name: str) -> None:
         """
         Save a project UUID file to tapis
+        :param proj: Project
         :param user: User
-        :param data: dict
-        :param project_id: int
+        :param system_id: str
+        :param path: str
+        :param file_name: str
         :return: None
         """
         # If already has a saved file remove it
