@@ -103,23 +103,17 @@ class ProjectsService:
         watch_content = data.get('watch_content', True)
 
         if observable:
-            try:
-                ProjectsService.makeProjectObservable(proj,
-                                                      user,
-                                                      system_id,
-                                                      path,
-                                                      watch_content)
-            except Exception as e:
-                raise e
+            ProjectsService.makeProjectObservable(proj,
+                                                  user,
+                                                  system_id,
+                                                  path,
+                                                  watch_content)
 
-        try:
-          ProjectsService.saveProjectFile(proj,
-                                          user,
-                                          system_id,
-                                          path,
-                                          file_name)
-        except Exception as e:
-            raise e
+        ProjectsService.saveProjectFile(proj,
+                                        user,
+                                        system_id,
+                                        path,
+                                        file_name)
 
         return proj
 
