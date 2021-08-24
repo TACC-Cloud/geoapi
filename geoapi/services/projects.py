@@ -108,11 +108,14 @@ class ProjectsService:
             except Exception as e:
                 raise e
 
-        ProjectsService.saveProjectFile(proj,
-                                        user,
-                                        system_id,
-                                        path,
-                                        file_name)
+        try:
+          ProjectsService.saveProjectFile(proj,
+                                          user,
+                                          system_id,
+                                          path,
+                                          file_name)
+        except Exception as e:
+            raise e
 
         return proj
 
@@ -154,11 +157,14 @@ class ProjectsService:
             'uuid': str(proj.uuid)
         }
 
-        AgaveUtils(user.jwt).postFile(system_id,
-                                      path,
-                                      prefixed_file_name,
-                                      file_content
-                                      )
+        try:
+          AgaveUtils(user.jwt).postFile(system_id,
+                                        path,
+                                        prefixed_file_name,
+                                        file_content
+                                       )
+        except Exception as e:
+          raise e
 
     @staticmethod
     def list(user: User) -> List[Project]:
