@@ -46,8 +46,11 @@ class ProjectsService:
                               watch_content: bool):
         """
         Makes a project an observable project
-        :param data: dict
+        :param proj: Project
         :param user: User
+        :param system_id: str
+        :param path: str
+        :param watch_content: bool
         :return: None
         """
         folder_name = Path(path).name
@@ -85,9 +88,10 @@ class ProjectsService:
     @staticmethod
     def exportProject(data: dict, user: User, project_id: int) -> Project:
         """
-        Creates a project from a storage system for the RAPID recon projects in Designsafe
+        Links a project to a tapis system.
         :param data: dict
         :param user: User
+        :param project_id: int
         :return: Project
         """
         proj = ProjectsService.get(project_id=project_id)
@@ -126,7 +130,7 @@ class ProjectsService:
                         path: str,
                         file_name: str) -> None:
         """
-        Save a project UUID file to tapis
+        Save a project file to tapis
         :param proj: Project
         :param user: User
         :param system_id: str
