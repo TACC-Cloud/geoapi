@@ -24,36 +24,50 @@ checkfortag:
 	fi
 	@echo "Using '$(GEOAPI_TAG)' images"
 
-.PHONY: create
-create: checkforcontext checkfortag
-	@echo "Creating geoapi deployment/services/migration-job in '$(KUBE_CONTEXT)' context"
-	source ${ENV_FILE} && cat geoapi.yaml | envsubst '$${GEOAPI_TAG} $${NODEPORT} $${NSFSHARE_CLUSTER_IP}' | kubectl apply --context $(KUBE_CONTEXT) -f -
 
-.PHONY: delete
-delete: checkforcontext
-	@echo "Deleting geoapi deployment/services/migration-job in '$(KUBE_CONTEXT)' context"
-	kubectl delete --context $(KUBE_CONTEXT) --ignore-not-found=true  deployment geoapi geoapi-workers geoapi-celerybeat geoapi-nginx geoapi-postgres geoapi-rabbitmq
-	kubectl delete --context $(KUBE_CONTEXT) --ignore-not-found=true service geoapi geoapi-nginx geoapi-postgres geoapi-rabbitmq
-	kubectl delete --context $(KUBE_CONTEXT) --ignore-not-found=true job/geoapi-migrations
+.PHONY: deploy
+deploy: checkforcontext checkfortag
+deploy: ## Create deployment/services/jobs of geoapi (PRODUCTION) !!!  CAREFUL !
+	kubectl delete --context $(KUBE_CONTEXT) --ignore-not-found=true  deployment geoapi geoapi-workers geoapi-celerybeat
+	kubectl delete --context $(KUBE_CONTEXT) --ignore-not-found=true  job/geoapi-migrations
+	source ${ENV_FILE} && cat geoapi.deployment.yaml | envsubst '$${GEOAPI_TAG} $${NODEPORT} $${NSFSHARE_CLUSTER_IP}' | kubectl apply --context $(KUBE_CONTEXT) -f -
+	source ${ENV_FILE} && cat workers.deployment.yaml | envsubst '$${GEOAPI_TAG} $${NODEPORT} $${NSFSHARE_CLUSTER_IP}' | kubectl apply --context $(KUBE_CONTEXT) -f -
+	source ${ENV_FILE} && cat celerybeat.deployment.yaml | envsubst '$${GEOAPI_TAG} $${NODEPORT} $${NSFSHARE_CLUSTER_IP}' | kubectl apply --context $(KUBE_CONTEXT) -f -
+	source ${ENV_FILE} && cat migrations.yaml | envsubst '$${GEOAPI_TAG} $${NODEPORT} $${NSFSHARE_CLUSTER_IP}' | kubectl apply --context $(KUBE_CONTEXT) -f -
 
-.PHONY: delete-staging
-delete-staging: KUBE_CONTEXT=geoapi-dev
-delete-staging: delete ## Delete deployment/services/jobs of geoapi (STAGING)
-	@echo "Finished deleting geoapi (deployment/services/jobs) in '$(KUBE_CONTEXT)' context"
-
-.PHONY: create-staging
-create-staging: KUBE_CONTEXT=geoapi-dev
-create-staging: ENV_FILE=staging.env
-create-staging: create ## Create deployment/services/jobs of geoapi (STAGING)
+.PHONY: deploy-prod
+deploy-prod: KUBE_CONTEXT=wma-geospatial
+deploy-prod: ENV_FILE=prod.env
+deploy-prod: deploy
 	@echo "Finished creating geoapi (deployment/services/jobs) in '$(KUBE_CONTEXT)' context using ${ENV_FILE} file"
 
-.PHONY: delete-production
-delete-production: KUBE_CONTEXT=wma-geospatial
-delete-production: delete ## Delete deployment/services/jobs of geoapi (PRODUCTION) !!!  CAREFUL !
-	@echo "Finished deleting geoapi (deployment/services/jobs) in '$(KUBE_CONTEXT)' context"
 
-.PHONY: delete-staging
-create-production: KUBE_CONTEXT=wma-geospatial
-create-production: ENV_FILE=prod.env
-create-production: create ## Create deployment/services/jobs of geoapi (PRODUCTION) !!!  CAREFUL !
+.PHONY: deploy-staging
+deploy-prod: KUBE_CONTEXT=geoapi
+deploy-prod: ENV_FILE=staging.env
+deploy-prod: deploy
 	@echo "Finished creating geoapi (deployment/services/jobs) in '$(KUBE_CONTEXT)' context using ${ENV_FILE} file"
+
+.PHONY: burnup-prod
+burnup-prod: KUBE_CONTEXT=wma-geospatial
+burnup-prod: ENV_FILE=prod.env
+	source ${ENV_FILE} && cat configMaps.yaml | envsubst '$${GEOAPI_TAG} $${NODEPORT} $${NSFSHARE_CLUSTER_IP}' | kubectl apply --context $(KUBE_CONTEXT) -f -
+	source ${ENV_FILE} && cat nfsshare.pvc.yaml | envsubst '$${GEOAPI_TAG} $${NODEPORT} $${NSFSHARE_CLUSTER_IP}' | kubectl apply --context $(KUBE_CONTEXT) -f -
+	source ${ENV_FILE} && cat nfsshare.service.yaml | envsubst '$${GEOAPI_TAG} $${NODEPORT} $${NSFSHARE_CLUSTER_IP}' | kubectl apply --context $(KUBE_CONTEXT) -f -
+	source ${ENV_FILE} && cat nfsshare.deployment.yaml | envsubst '$${GEOAPI_TAG} $${NODEPORT} $${NSFSHARE_CLUSTER_IP}' | kubectl apply --context $(KUBE_CONTEXT) -f -
+	source ${ENV_FILE} && cat nginx.service.yaml | envsubst '$${GEOAPI_TAG} $${NODEPORT} $${NSFSHARE_CLUSTER_IP}' | kubectl apply --context $(KUBE_CONTEXT) -f -
+	source ${ENV_FILE} && cat nginx.deployment.yaml | envsubst '$${GEOAPI_TAG} $${NODEPORT} $${NSFSHARE_CLUSTER_IP}' | kubectl apply --context $(KUBE_CONTEXT) -f -
+	source ${ENV_FILE} && cat postgres.pvc.yaml | envsubst '$${GEOAPI_TAG} $${NODEPORT} $${NSFSHARE_CLUSTER_IP}' | kubectl apply --context $(KUBE_CONTEXT) -f -
+	source ${ENV_FILE} && cat postgres.service.yaml | envsubst '$${GEOAPI_TAG} $${NODEPORT} $${NSFSHARE_CLUSTER_IP}' | kubectl apply --context $(KUBE_CONTEXT) -f -
+	source ${ENV_FILE} && cat postgres.deployment.yaml | envsubst '$${GEOAPI_TAG} $${NODEPORT} $${NSFSHARE_CLUSTER_IP}' | kubectl apply --context $(KUBE_CONTEXT) -f -
+	source ${ENV_FILE} && cat rabbitmq.service.yaml | envsubst '$${GEOAPI_TAG} $${NODEPORT} $${NSFSHARE_CLUSTER_IP}' | kubectl apply --context $(KUBE_CONTEXT) -f -
+	source ${ENV_FILE} && cat rabbitmq.deployment.yaml | envsubst '$${GEOAPI_TAG} $${NODEPORT} $${NSFSHARE_CLUSTER_IP}' | kubectl apply --context $(KUBE_CONTEXT) -f -
+	source ${ENV_FILE} && cat geoapi.service.yaml | envsubst '$${GEOAPI_TAG} $${NODEPORT} $${NSFSHARE_CLUSTER_IP}' | kubectl apply --context $(KUBE_CONTEXT) -f -
+	source ${ENV_FILE} && cat geoapi.deployment.yaml | envsubst '$${GEOAPI_TAG} $${NODEPORT} $${NSFSHARE_CLUSTER_IP}' | kubectl apply --context $(KUBE_CONTEXT) -f -
+	source ${ENV_FILE} && cat workers.deployment.yaml | envsubst '$${GEOAPI_TAG} $${NODEPORT} $${NSFSHARE_CLUSTER_IP}' | kubectl apply --context $(KUBE_CONTEXT) -f -
+	source ${ENV_FILE} && cat celerybeat.deployment.yaml | envsubst '$${GEOAPI_TAG} $${NODEPORT} $${NSFSHARE_CLUSTER_IP}' | kubectl apply --context $(KUBE_CONTEXT) -f -
+	source ${ENV_FILE} && cat migrations.yaml | envsubst '$${GEOAPI_TAG} $${NODEPORT} $${NSFSHARE_CLUSTER_IP}' | kubectl apply --context $(KUBE_CONTEXT) -f -
+
+
+
+
