@@ -1,0 +1,30 @@
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: geoapi-migrations
+spec:
+  parallelism: 1
+  backoffLimit: 5
+  activeDeadlineSeconds: 100
+  template:
+    spec:
+      containers:
+      - name: geoapi
+        envFrom:
+          - configMapRef:
+              name: geoapi-environment-vars
+        env:
+          - name: RABBITMQ_PASSWD
+            valueFrom:
+              secretKeyRef:
+                name: rabbitmq
+                key: password
+          - name: DB_PASSWD
+            valueFrom:
+              secretKeyRef:
+                name: postgres
+                key: password
+        image: taccaci/geoapi:${GEOAPI_TAG}
+        command: ["alembic", "upgrade", "head"]
+      restartPolicy: Never

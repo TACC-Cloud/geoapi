@@ -1,0 +1,74 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    kompose.cmd: kompose convert
+    kompose.version: 1.16.0 (0c01309)
+  labels:
+    app: geoapi
+  name: geoapi
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: geoapi
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: geoapi
+    spec:
+      containers:
+      - args:
+        - gunicorn
+        - -w
+        - "4"
+        - -b
+        - 0.0.0.0:5000
+        - -k
+        - gevent
+        - --timeout
+        - "1800"
+        - app:app
+        envFrom:
+          - configMapRef:
+              name: geoapi-environment-vars
+        env:
+          - name: RABBITMQ_PASSWD
+            valueFrom:
+              secretKeyRef:
+                name: rabbitmq
+                key: password
+          - name: DB_PASSWD
+            valueFrom:
+              secretKeyRef:
+                name: postgres
+                key: password
+          - name: TENANT
+            valueFrom:
+              secretKeyRef:
+                name: tapis
+                key: tenant
+        image: taccaci/geoapi:${GEOAPI_TAG}
+        name: geoapi
+        ports:
+        - containerPort: 5000
+        resources:
+          requests:
+            memory: '2G'
+          limits:
+            memory: '4G'
+        stdin: true
+        tty: true
+        volumeMounts:
+        - mountPath: /assets
+          name: assets
+      hostname: geoapi
+      restartPolicy: Always
+      volumes:
+        - name: assets
+          nfs:
+            server: ${NSFSHARE_CLUSTER_IP}
+            path: /

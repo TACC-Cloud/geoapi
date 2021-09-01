@@ -1,0 +1,53 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    kompose.cmd: kompose convert
+    kompose.version: 1.16.0 (0c01309)
+  labels:
+    app: geoapi-postgres
+  name: geoapi-postgres
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: geoapi-postgres
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: geoapi-postgres
+    spec:
+      containers:
+      - env:
+        - name: POSTGRES_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: postgres
+              key: password
+        - name: PGDATA
+          value: /var/lib/postgresql/data/
+        envFrom:
+          - configMapRef:
+              name: geoapi-environment-vars
+        image: mdillon/postgis:11
+        name: geoapi-postgres
+        ports:
+        - containerPort: 5432
+        resources:
+          requests:
+            memory: '4G'
+          limits:
+            memory: '8G'
+        volumeMounts:
+        - mountPath: /var/lib/postgresql/data
+          name: pgdata
+          subPath: postgres
+      hostname: geoapi-postgres
+      restartPolicy: Always
+      volumes:
+      - name: pgdata
+        persistentVolumeClaim:
+          claimName: ${PGDATA_PVC}

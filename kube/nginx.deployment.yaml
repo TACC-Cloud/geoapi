@@ -1,0 +1,46 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    kompose.cmd: kompose convert
+    kompose.version: 1.16.0 (0c01309)
+  labels:
+    app: geoapi-nginx
+  name: geoapi-nginx
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: geoapi-nginx
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: geoapi-nginx
+    spec:
+      containers:
+      - image: nginx
+        name: geoapi-nginx
+        resources:
+          requests:
+            memory: '512M'
+          limits:
+            memory: '2G'
+        ports:
+          - containerPort: 80
+        volumeMounts:
+          - mountPath: /assets
+            name: assets
+          - mountPath: /etc/nginx/conf.d
+            name: config-volume
+      restartPolicy: Always
+      volumes:
+        - name: config-volume
+          configMap:
+            name: geoapi-nginx-conf
+        - name: assets
+          nfs:
+            server: ${NSFSHARE_CLUSTER_IP}
+            path: /

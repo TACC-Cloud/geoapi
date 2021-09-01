@@ -1,0 +1,68 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    kompose.cmd: kompose convert
+    kompose.version: 1.16.0 (0c01309)
+  labels:
+    app: geoapi-workers
+  name: geoapi-workers
+spec:
+  replicas: 2
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: geoapi-workers
+  template:
+    metadata:
+      labels:
+        app: geoapi-workers
+    spec:
+      containers:
+      - args:
+        - celery
+        - -A
+        - geoapi.celery_app
+        - worker
+        - -n
+        - worker@%h
+        - -l
+        - INFO
+        envFrom:
+          - configMapRef:
+              name: geoapi-environment-vars
+        env:
+          - name: RABBITMQ_PASSWD
+            valueFrom:
+              secretKeyRef:
+                name: rabbitmq
+                key: password
+          - name: DB_PASSWD
+            valueFrom:
+              secretKeyRef:
+                name: postgres
+                key: password
+          - name: TENANT
+            valueFrom:
+              secretKeyRef:
+                name: tapis
+                key: tenant
+        image: taccaci/geoapi-workers:${GEOAPI_TAG}
+        name: geoapi-workers
+        resources:
+          requests:
+            memory: '3G'
+          limits:
+            memory: '8G'
+        volumeMounts:
+        - mountPath: /assets
+          name: assets
+      hostname: geoapi-workers
+      restartPolicy: Always
+      volumes:
+      - name: assets
+        nfs:
+          server: ${NSFSHARE_CLUSTER_IP}
+          path: /

@@ -1,0 +1,59 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    kompose.cmd: kompose convert
+    kompose.version: 1.16.0 (0c01309)
+  labels:
+    app: geoapi-celerybeat
+  name: geoapi-celerybeat
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: geoapi-celerybeat
+  template:
+    metadata:
+      labels:
+        app: geoapi-celerybeat
+    spec:
+      containers:
+      - args:
+        - celery
+        - -A
+        - geoapi.celery_app
+        - beat
+        - -l
+        - INFO
+        envFrom:
+          - configMapRef:
+              name: geoapi-environment-vars
+        env:
+          - name: RABBITMQ_PASSWD
+            valueFrom:
+              secretKeyRef:
+                name: rabbitmq
+                key: password
+          - name: DB_PASSWD
+            valueFrom:
+              secretKeyRef:
+                name: postgres
+                key: password
+          - name: TENANT
+            valueFrom:
+              secretKeyRef:
+                name: tapis
+                key: tenant
+
+        image: taccaci/geoapi-workers:${GEOAPI_TAG}
+        name: geoapi-celerybeat
+        resources:
+          requests:
+            memory: '512M'
+          limits:
+            memory: '1G'
+      hostname: geoapi-celerybeat
+      restartPolicy: Always

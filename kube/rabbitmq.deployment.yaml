@@ -1,0 +1,41 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    kompose.cmd: kompose convert
+    kompose.version: 1.16.0 (0c01309)
+  labels:
+    app: geoapi-rabbitmq
+  name: geoapi-rabbitmq
+spec:
+  replicas: 1
+  strategy: {}
+  selector:
+    matchLabels:
+      app: geoapi-rabbitmq
+  template:
+    metadata:
+      labels:
+        app: geoapi-rabbitmq
+    spec:
+      containers:
+      - env:
+        - name: RABBITMQ_DEFAULT_PASS
+          valueFrom:
+            secretKeyRef:
+              name: rabbitmq
+              key: password
+        envFrom:
+          - configMapRef:
+              name: geoapi-environment-vars
+        image: rabbitmq
+        ports:
+          - containerPort: 5672
+        name: geoapi-rabbitmq
+        resources:
+          requests:
+            memory: '1G'
+          limits:
+            memory: '2G'
+      restartPolicy: Always
