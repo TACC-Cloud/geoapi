@@ -12,9 +12,3 @@ spec:
       storage: 100Gi
   storageClassName: rbd
   volumeMode: Filesystem
-status:
-  accessModes:
-  - ReadOnlyMany
-  capacity:
-    storage: 100Gi
-  phase: Bound

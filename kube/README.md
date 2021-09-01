@@ -13,7 +13,7 @@ pushed to Docker Hub (see https://hub.docker.com/r/taccaci/geoapi and https://hu
 [`geoapi.yaml`](geoapi.yaml) describes the configuration of the cluster. The file is adjusted using `envsubstr` to provide
 custom values for the image tags, node port and nfs service for the production or staging environments.
 
-The [`nfsshare.yaml`](nfsshare.yaml) and the [`nfsshare_pvc.yaml`](nfsshare_pvc.yaml) in the repo are used for configuring the nfs share. Note that the
+The [`nfsshare.yaml`](nfsshare.service.yaml) and the [`nfsshare_pvc.yaml`](nfsshare.pvc.yaml) in the repo are used for configuring the nfs share. Note that the
 configuration (i.e. `persistentVolumeClaim`) is the same for production and staging except that the clusterIP differs:
 
 * clusterIP: 10.104.129.89  (prod)

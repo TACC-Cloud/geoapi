@@ -1,0 +1,14 @@
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  labels:
+    app: pgdata3
+  name: pgdata3
+spec:
+  accessModes:
+  - ReadWriteOnce
+  storageClassName: rbd-new
+  resources:
+    requests:
+      storage: 750G
