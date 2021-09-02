@@ -11,7 +11,7 @@ from geoapi.services.users import UserService
 from geoapi.services.notifications import NotificationsService
 from geoapi.utils.agave import AgaveUtils, get_system_users
 from geoapi.utils.assets import get_project_asset_dir
-from geoapi.tasks.external_data import import_from_agave, delete_agave_file
+from geoapi.tasks.external_data import import_from_agave
 from geoapi.log import logging
 from geoapi.exceptions import ApiException, ObservableProjectAlreadyExists
 
@@ -31,43 +31,48 @@ class ProjectsService:
         :param user: User
         :return: Project
         """
-        project = Project(**data)
+        project = Project(**data['project'])
+
         project.tenant_id = user.tenant_id
         project.users.append(user)
         db_session.add(project)
         db_session.commit()
+
+        if data.get('observable', False):
+            ProjectsService.makeObservable(project,
+                                           user,
+                                           data.get('watch_content', False));
+
         return project
 
+
     @staticmethod
-    def makeProjectObservable(proj: Project,
-                              user: User,
-                              system_id: str,
-                              path: str,
-                              watch_content: bool):
+    def makeObservable(proj: Project,
+                       user: User,
+                       watch_content: bool):
         """
         Makes a project an observable project
+        Requires project's system_path, system_id, tenant_id to exist
         :param proj: Project
         :param user: User
-        :param system_id: str
-        :param path: str
         :param watch_content: bool
         :return: None
         """
-        folder_name = Path(path).name
-        name = system_id + '/' + folder_name
+        folder_name = Path(proj.system_path).name
+        name = proj.system_id + '/' + folder_name
 
         # TODO: Handle no storage system found
-        system = AgaveUtils(user.jwt).systemsGet(system_id)
+        system = AgaveUtils(user.jwt).systemsGet(proj.system_id)
 
         obs = ObservableDataProject(
-            system_id=system_id,
-            path=path,
+            system_id=proj.system_id,
+            path=proj.system_path,
             watch_content=watch_content
         )
 
         proj.description = system.get('description')
 
-        users = get_system_users(proj.tenant_id, user.jwt, system_id)
+        users = get_system_users(proj.tenant_id, user.jwt, proj.system_id)
         logger.info("Updating project:{} to have the following users: {}".format(name, users))
         project_users = [UserService.getOrCreateUser(u, tenant=proj.tenant_id) for u in users]
         proj.users = project_users
@@ -85,84 +90,6 @@ class ProjectsService:
         if watch_content:
             import_from_agave.apply_async(args=[obs.project.tenant_id, user.id, obs.system_id, obs.path, obs.project_id])
 
-    @staticmethod
-    def exportProject(data: dict, user: User, project_id: int) -> Project:
-        """
-        Links a project to a tapis system.
-        :param data: dict
-        :param user: User
-        :param project_id: int
-        :return: Project
-        """
-        proj = ProjectsService.get(project_id=project_id)
-
-        system_id = data.get('system_id', '')
-        file_name = data.get('file_name', '')
-        observable = data.get('observable', False)
-        path = data.get('path', '')
-        watch_content = data.get('watch_content', True)
-
-        if observable:
-            ProjectsService.makeProjectObservable(proj,
-                                                  user,
-                                                  system_id,
-                                                  path,
-                                                  watch_content)
-
-        ProjectsService.saveProjectFile(proj,
-                                        user,
-                                        system_id,
-                                        path,
-                                        file_name)
-
-        return proj
-
-    @staticmethod
-    def saveProjectFile(proj: Project,
-                        user: User,
-                        system_id: str,
-                        path: str,
-                        file_name: str) -> None:
-        """
-        Save a project file to tapis
-        :param proj: Project
-        :param user: User
-        :param system_id: str
-        :param path: str
-        :param file_name: str
-        :return: None
-        """
-        # If already has a saved file remove it
-        if proj.system_path is not None:
-            delete_agave_file.apply_async(args=[proj.system_id,
-                                                '{}/{}'.format(proj.system_path,
-                                                               proj.system_file),
-                                                user.id])
-
-        if file_name == '':
-            file_prefix = str(proj.uuid)
-        else:
-            file_prefix = str(file_name)
-
-        prefixed_file_name = '{}.{}'.format(file_prefix, 'hazmapper')
-
-        proj.system_path = path
-        proj.system_file = prefixed_file_name
-        proj.system_id = system_id
-        db_session.commit()
-
-        file_content = {
-            'uuid': str(proj.uuid)
-        }
-
-        try:
-          AgaveUtils(user.jwt).postFile(system_id,
-                                        path,
-                                        prefixed_file_name,
-                                        file_content
-                                       )
-        except Exception as e:
-          raise e
 
     @staticmethod
     def list(user: User) -> List[Project]:
@@ -299,23 +226,25 @@ class ProjectsService:
         return out.geojson
 
     @staticmethod
-    def update(projectId: int, data: dict) -> Project:
+    def update(user: User, projectId: int, data: dict) -> Project:
         """
         Update the metadata associated with a project
         :param projectId: int
         :param data: dict
         :return: Project
         """
-        current_project = ProjectsService.get(project_id=projectId)
+        proj = ProjectsService.get(project_id=projectId)
 
-        current_project.name = data['name']
-        if 'description' in data:
-            current_project.description = data['description']
-        if 'public' in data:
-            current_project.public = data['public']
+        for key, value in data['project'].items():
+            setattr(proj, key, value)
+
         db_session.commit()
 
-        return current_project
+        if data.get('observable', False):
+            ProjectsService.makeObservable(proj,
+                                           user,
+                                           data.get('watch_content', False));
+        return proj
 
     @staticmethod
     def delete(user: User, projectId: int) -> dict:
@@ -329,10 +258,6 @@ class ProjectsService:
         db_session.delete(proj)
         db_session.commit()
 
-        if proj.system_path is not None:
-            delete_agave_file.apply_async(args=[proj.system_id,
-                                                proj.system_path + '/' + proj.system_file,
-                                                user.id])
         assets_folder = get_project_asset_dir(projectId)
         try:
             shutil.rmtree(assets_folder)

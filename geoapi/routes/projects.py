@@ -213,22 +213,10 @@ class ProjectResource(Resource):
         u = request.current_user
         logger.info("Update project:{} for user:{}".format(projectId,
                                                            u.username))
-        return ProjectsService.update(projectId=projectId,
+        return ProjectsService.update(user=u,
+                                      projectId=projectId,
                                       data=api.payload)
 
-
-@api.route('/<int:projectId>/export/')
-class ExportProject(Resource):
-    @project_permissions
-    @api.expect(tapis_save_file)
-    @api.doc(id="exportProject",
-             description="Save a project file to tapis and/or link a map to a project as "
-                         "an observable project.")
-    @api.marshal_with(project)
-    def post(self, projectId):
-        u = request.current_user
-        logger.info("Saving project to tapis for user {}: {}".format(u.username, api.payload))
-        return ProjectsService.exportProject(api.payload, u, projectId)
 
 
 @api.route('/<int:projectId>/users/')
