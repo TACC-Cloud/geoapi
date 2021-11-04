@@ -13,8 +13,6 @@ class User(Base):
     tenant_id = Column(String, nullable=False)
     created = Column(DateTime(timezone=True), server_default=func.now())
     jwt = Column(String())
-    google_jwt = Column(String())
-    mapillary_jwt = Column(String())
     streetviews = relationship('Streetview', cascade="all, delete-orphan")
     projects = relationship('Project',
                  secondary='projects_users',

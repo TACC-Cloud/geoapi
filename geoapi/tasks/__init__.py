@@ -1,3 +1,3 @@
 from geoapi.tasks.lidar import convert_to_potree
 from geoapi.tasks.external_data import import_file_from_agave, import_from_agave, refresh_observable_projects
-from geoapi.tasks.streetview import upload
+from geoapi.tasks.streetview import upload, from_tapis_to_streetview

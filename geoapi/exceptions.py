@@ -22,3 +22,15 @@ class MissingServiceAccount(Exception):
 class ApiException(Exception):
     """ A generic exception from the api"""
     pass
+
+class StreetviewAuthException(Exception):
+    """ A generic exception from the api"""
+    pass
+
+class StreetviewLimitException(Exception):
+    """ A generic exception from the api"""
+    pass
+
+class StreetviewExistsException(Exception):
+    """ A generic exception from the api"""
+    pass

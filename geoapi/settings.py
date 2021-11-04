@@ -17,7 +17,7 @@ class Config(object):
     RESTPLUS_MASK_SWAGGER = False
     TENANT = os.environ.get("TENANT")
     STREETVIEW_DIR = os.environ.get('STREETVIEW_DIR', '/assets/streetview')
-    MAPILLARY_CLIENT_ID = os.environ.get('MAPILLARY_CLIENT_ID', 'SHpCUGVyZ0R5eTdwZmhzajB1dzA4MDpkZWQxMjY4N2E1NDljMTFk')
+    MAPILLARY_CLIENT_ID = os.environ.get('MAPILLARY_CLIENT_ID', 'MLY|4045602648858965|5b906cb2dfd6d0f7c5ed7cb7d50620d8')
 
 class ProductionConfig(Config):
     DEBUG = False

@@ -2,6 +2,7 @@
 # from flask_restplus.marshalling import marshal_with
 # from flask import request
 # from flask_restplus import Namespace, Resource, fields, inputs
+from geoapi.services.users import UserService
 from flask import request, abort
 from flask_restplus import Resource, Namespace, fields, inputs
 from werkzeug.datastructures import FileStorage
@@ -275,6 +276,12 @@ class ProjectUsersResource(Resource):
 
 @api.route('/<int:projectId>/users/<username>/')
 class ProjectUserResource(Resource):
+    @api.doc(id="getUser",
+             description="Get a user from a project")
+    @api.marshal_with(user)
+    @project_permissions
+    def get(self, projectId: int, username: str):
+        return ProjectsService.getUser(projectId, username)
 
     @api.doc(id="removeUser",
              description="Remove a user from a project")

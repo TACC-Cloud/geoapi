@@ -100,13 +100,15 @@ class ProjectsService:
     def export(user: User,
                data: dict,
                observable: bool,
-               project_id: int) -> Project:
+               project_id: int):
         """
         Save a project UUID file to tapis
         :param user: User
         :param data: dict
         :return: None
         """
+        logger.info("exporting projects")
+
         proj = ProjectsService.get(project_id=project_id)
 
         # If already has a saved file remove it
@@ -337,6 +339,12 @@ class ProjectsService:
     def getUsers(projectId: int) -> List[User]:
         proj = db_session.query(Project).get(projectId)
         return proj.users
+
+    @staticmethod
+    def getUser(projectId: int, username: str) -> User:
+        proj = ProjectsService.get(projectId)
+        user = UserService.getUser(username, proj.tenant_id)
+        return user
 
     @staticmethod
     def removeUserFromProject(projectId: int, username: str, ) -> None:

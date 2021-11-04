@@ -77,12 +77,11 @@ class NotificationsService:
         return q.order_by(ProgressNotification.created.desc()) \
                 .limit(100).all()
 
-
     @staticmethod
-    def getProgressUUID(task_uuid: UUID) -> List[ProgressNotification]:
+    def getProgressUUID(task_uuid: UUID) -> ProgressNotification:
         return db_session.query(ProgressNotification) \
                          .filter(ProgressNotification.uuid == task_uuid) \
-                         .all()
+                         .first()
 
     @staticmethod
     def getProgressStatus(status: str) -> List[ProgressNotification]:

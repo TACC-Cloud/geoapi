@@ -3,13 +3,13 @@ import pathlib
 import shutil
 import re
 import json
-import requests
+# import requests
 import subprocess
 import datetime
 from typing import Dict, List
 from uuid import UUID
 
-from mapillary_tools import api_v3 as mapillary_api
+from mapillary_tools import api_v4 as mapillary_api
 from mapillary_tools import uploader as mapillary_uploader
 from mapillary_tools import processing as mapillary_processing
 
@@ -90,7 +90,7 @@ class MapillaryUtils:
         return os.path.isfile(MapillaryUtils.get_auth_file(userId))
 
     @staticmethod
-    def authenticate(userId: int, jwt: str):
+    def authenticate(userId: int, jwt: str, service_user: str):
         if MapillaryUtils.is_authenticated(userId):
             return
 
@@ -100,8 +100,14 @@ class MapillaryUtils:
             'authenticate',
             '--config_file',
             MapillaryUtils.get_auth_file(userId),
+            '--user_name',
+            service_user,
             '--jwt',
-            jwt
+            jwt,
+             # TODO: Currently arbitrary because mapillary hasn't specified
+             # api but required in mapillary_tools
+            '--user_key',
+            '1234567890'
         ]
 
         try:
@@ -109,22 +115,25 @@ class MapillaryUtils:
                            check=True,
                            env={'MAPILLARY_WEB_CLIENT_ID': settings.MAPILLARY_CLIENT_ID})
         except subprocess.CalledProcessError as e:
-            logger.error("Errors occured during Mapillary authentication for user with userId: {}. {}".format(userId, e))
-            raise ApiException
+            error_message = "Errors occured during Mapillary authentication for user with userId: {}. {}"\
+                .format(userId, e)
+            raise ApiException(error_message)
 
     @staticmethod
     def parse_upload_output():
         pass
 
     @staticmethod
-    def upload(userId: int, task_uuid: UUID, mapillary_username: str):
+    def upload(userId: int, task_uuid: UUID, service_user: str, organization_id: str):
         command = [
             '/usr/local/bin/mapillary_tools',
             'process_and_upload',
             '--import_path',
             get_project_streetview_dir(userId, task_uuid),
             '--user_name',
-            mapillary_username
+            service_user,
+            '--organization_username',
+            organization_id
         ]
 
         try:
@@ -160,32 +169,27 @@ class MapillaryUtils:
                 retry_match = re.findall(catch_retry, str(line.rstrip()))
                 if len(retry_match) > 0:
                     prog.communicate(input='n\n')[0]
-                    logging.error("Failed to upload with mapillary_tools for user with id: {}"
-                                  .format(userId))
-                    raise Exception
+                    error_message = "Failed to upload with mapillary_tools for user with id: {}"\
+                                        .format(userId)
+                    logging.error(error_message)
+                    raise Exception(error_message)
 
                 catch_error = re.compile(r'Error')
                 error_match = re.findall(catch_error, str(line.rstrip()))
                 if len(error_match) > 0:
-                    logger.error("Errors occured during mapillary_tools for user with userId: {}"
-                                 .format(userId))
-                    raise Exception
+                    error_message = "Errors occured during mapillary_tools for user with userId: {}" \
+                                        .format(userId)
+                    logger.error(error_message)
+                    raise Exception(error_message)
 
-        except (OSError, subprocess.CalledProcessError) as e:
-            logging.error("Error occured during calling mapillary_tools for user with id: {} \n {}"
-                          .format(userId, str(e)))
-            return False
-        except Exception:
-            logging.error("Error occured mapillary_tools upload task for user with id: {} \n {}"
-                          .format(userId, str(e)))
-            raise Exception
+        except Exception as e:
+            error_message = "Error occured mapillary_tools upload task for user with id: {} \n {}"\
+                          .format(userId, str(e))
+            logging.error(error_message)
+            raise Exception(error_message)
         else:
             logging.info('Subprocess finished')
-            return True
-
-    @staticmethod
-    def get_user(jwt: str):
-        return mapillary_api.get_user(jwt)
+            return
 
     @staticmethod
     def get_image_sequence(userId, task_uuid: UUID):
@@ -226,15 +230,6 @@ class MapillaryUtils:
 
         sequence_data = mapillary_processing.load_json(sequence_data_path)
         return sequence_data['MAPCaptureTime']
-
-    @staticmethod
-    def get_user_key(mapillary_username: str):
-        return mapillary_api.get_user_key(mapillary_username)
-
-    # TODO Later for optimization
-    @staticmethod
-    def get_session_data():
-        pass
 
     @staticmethod
     def upload_error(user: User, task_uuid: UUID):
@@ -290,17 +285,3 @@ class MapillaryUtils:
             }
             combined_list_sequence_mappings.append(seq_obj)
         return combined_list_sequence_mappings
-
-    @staticmethod
-    def search_sequence(user: User, params: Dict) -> Dict:
-        req_params = {"client_id": settings.MAPILLARY_CLIENT_ID}
-        req_params.update(params)
-        headers = {"Authorization": f"Bearer {user.mapillary_jwt}"}
-
-        resp = requests.get(
-            "https://a.mapillary.com/v3/sequences",
-            params=req_params,
-            headers=headers,
-        )
-
-        return resp.json()

@@ -5,7 +5,7 @@ RUN apt-get update -q && apt-get install -q -y \
   ffmpeg \
   git
 COPY requirements.txt /
-RUN pip install git+https://github.com/mapillary/mapillary_tools.git@v0.6.0
+RUN pip install git+https://github.com/mapillary/mapillary_tools.git@v0.7.4
 RUN pip install -q -r /requirements.txt
 RUN pip install -q gunicorn
 RUN mkdir /app
