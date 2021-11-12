@@ -1,0 +1,104 @@
+---
+version: "3"
+
+volumes:
+  assets:
+  pgdata:
+  rabbitdata:
+
+networks:
+  geoapi:
+
+services:
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    networks:
+      - geoapi
+    environment:
+      - RABBITMQ_DEFAULT_USER=dev
+      - RABBITMQ_DEFAULT_PASS=dev
+      - RABBITMQ_DEFAULT_VHOST=dev
+    volumes:
+      - rabbitdata:/var/lib/rabbitmq/
+
+  postgres:
+    image: mdillon/postgis:11-alpine
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      - 5432:5432
+    networks:
+      - geoapi
+    container_name: geoapi-postgres
+    hostname: geoapi-postgres
+    environment:
+      - POSTGRES_PASSWORD=dev
+      - POSTGRES_USER=dev
+      - POSTGRES_DB=dev
+
+  nginx:
+    image: nginx:1-alpine
+    ports:
+      - 8888:80
+    volumes:
+      - assets:/assets
+      - nginx.api.conf:/etc/nginx/nginx.conf
+    networks:
+      - geoapi
+
+
+  workers:
+    image: taccaci/geoapi-workers:${GEOAPI_TAG}
+    networks:
+      - geoapi
+    volumes:
+      - assets:/assets
+    environment:
+      - FLASK_APP=/app/geoapi/app.py
+      - APP_ENV=prod
+      - ASSETS_BASE_DIR=/assets
+    stdin_open: true
+    tty: true
+    container_name: geoapiworkers
+    hostname: geoapiworkers
+    command: "celery -A geoapi.celery_app worker -l info"
+
+  celerybeat:
+    image: taccaci/geoapi-workers:${GEOAPI_TAG}
+    networks:
+      - geoapi
+    volumes:
+      - .:/app
+      - assets:/assets
+    environment:
+      - FLASK_APP=/app/geoapi/app.py
+      - APP_ENV=prod
+      - ASSETS_BASE_DIR=/assets
+    stdin_open: true
+    tty: true
+    container_name: geoapicelerybeat
+    hostname: geoapicelerybeat
+    command: "celery -A geoapi.celery_app beat -l info"
+
+  api:
+    image: taccaci/geoapi:${GEOAPI_TAG}
+    networks:
+      - geoapi
+    volumes:
+      - assets:/assets
+    ports:
+      - 8000:8000
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
+    environment:
+      - FLASK_APP=/app/geoapi/app.py
+      - APP_ENV=prod
+      - ASSETS_BASE_DIR=/assets
+      - TENANT
+    stdin_open: true
+    tty: true
+    container_name: geoapi
+    hostname: geoapi
+    command: "gunicorn -w 4 -b 0.0.0.0:8000 geoapi.app:app -k gevent --timeout 300"
