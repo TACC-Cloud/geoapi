@@ -126,13 +126,6 @@ def _update_point_cloud_task(pointCloudId: int, description: str = None, status:
         db_session.rollback()
         raise
 
-
-@app.task(rate_limit="1/s")
-def delete_agave_file(system_id: str, system_path: str, userId: int):
-    user = db_session.query(User).get(userId)
-    AgaveUtils(user.jwt).deleteFile(system_id, system_path)
-
-
 @app.task(rate_limit="1/s")
 def import_point_clouds_from_agave(userId: int, files, pointCloudId: int):
     user = db_session.query(User).get(userId)
