@@ -102,7 +102,7 @@ class ProjectsService:
                observable: bool,
                project_id: int) -> Project:
         """
-        Save a project UUID file to tapis
+        Create a project
         :param user: User
         :param data: dict
         :param observable: bool
