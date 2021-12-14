@@ -11,7 +11,7 @@ from geoapi.services.users import UserService
 from geoapi.services.notifications import NotificationsService
 from geoapi.utils.agave import AgaveUtils, get_system_users
 from geoapi.utils.assets import get_project_asset_dir
-from geoapi.tasks.external_data import import_from_agave, delete_agave_file
+from geoapi.tasks.external_data import import_from_agave
 from geoapi.log import logging
 from geoapi.exceptions import ApiException, ObservableProjectAlreadyExists
 
@@ -102,19 +102,14 @@ class ProjectsService:
                observable: bool,
                project_id: int) -> Project:
         """
-        Save a project UUID file to tapis
+        Create a project
         :param user: User
         :param data: dict
-        :return: None
+        :param observable: bool
+        :project_id: int
+        :return: Project
         """
         proj = ProjectsService.get(project_id=project_id)
-
-        # If already has a saved file remove it
-        if proj.system_path is not None:
-            delete_agave_file.apply_async(args=[proj.system_id,
-                                                '{}/{}'.format(proj.system_path,
-                                                               proj.system_file),
-                                                user.id])
 
         path = data['path']
 
@@ -129,16 +124,6 @@ class ProjectsService:
         proj.system_file = file_name
         proj.system_id = data['system_id']
         db_session.commit()
-
-        file_content = {
-            'uuid': str(proj.uuid)
-        }
-
-        AgaveUtils(user.jwt).postFile(data['system_id'],
-                                      path,
-                                      file_name,
-                                      file_content
-                                      )
 
         return proj
 
@@ -307,10 +292,6 @@ class ProjectsService:
         db_session.delete(proj)
         db_session.commit()
 
-        if proj.system_path is not None:
-            delete_agave_file.apply_async(args=[proj.system_id,
-                                                proj.system_path + '/' + proj.system_file,
-                                                user.id])
         assets_folder = get_project_asset_dir(projectId)
         try:
             shutil.rmtree(assets_folder)
