@@ -90,7 +90,6 @@ class ProjectsService:
         if watch_content:
             import_from_agave.apply_async(args=[obs.project.tenant_id, user.id, obs.system_id, obs.path, obs.project_id])
 
-
     @staticmethod
     def list(user: User) -> List[Project]:
         """
