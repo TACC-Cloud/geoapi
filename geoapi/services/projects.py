@@ -35,16 +35,20 @@ class ProjectsService:
 
         project.tenant_id = user.tenant_id
         project.users.append(user)
+
+        if data.get('observable', False):
+            try:
+                ProjectsService.makeObservable(project,
+                                               user,
+                                               data.get('watch_content', False));
+            except Exception as e:
+                logger.exception("{}".format(e))
+                raise e
+
         db_session.add(project)
         db_session.commit()
 
-        if data.get('observable', False):
-            ProjectsService.makeObservable(project,
-                                           user,
-                                           data.get('watch_content', False));
-
         return project
-
 
     @staticmethod
     def makeObservable(proj: Project,
