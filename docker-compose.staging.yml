@@ -16,9 +16,9 @@ services:
     networks:
       - geoapi
     environment:
-      - RABBITMQ_DEFAULT_USER=dev
-      - RABBITMQ_DEFAULT_PASS=dev
-      - RABBITMQ_DEFAULT_VHOST=dev
+      - RABBITMQ_DEFAULT_USER=${RABBIT_USER}
+      - RABBITMQ_DEFAULT_PASS=${RABBIT_PASSWORD}
+      - RABBITMQ_DEFAULT_VHOST=${RABBIT_VHOST}
     volumes:
       - rabbitdata:/var/lib/rabbitmq/
 
@@ -33,9 +33,9 @@ services:
     container_name: geoapi-postgres
     hostname: geoapi-postgres
     environment:
-      - POSTGRES_PASSWORD=dev
-      - POSTGRES_USER=dev
-      - POSTGRES_DB=dev
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_DB=${POSTGRES_DB}
 
   nginx:
     image: nginx:1-alpine
