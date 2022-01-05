@@ -504,7 +504,7 @@ metadata:
   name: geoapi-migrations
 spec:
   parallelism: 1
-  backoffLimit: 5
+  backoffLimit: 10
   activeDeadlineSeconds: 100
   template:
     spec:
