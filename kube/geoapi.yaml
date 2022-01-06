@@ -505,7 +505,7 @@ metadata:
 spec:
   parallelism: 1
   backoffLimit: 10
-  activeDeadlineSeconds: 100
+  activeDeadlineSeconds: 200
   template:
     spec:
       containers:
