@@ -128,7 +128,10 @@ class AgaveUtils:
                     if systemInfo["public"]:
                         logger.warn("As system is a public storage system for projects. we will use service "
                                     "account to get file".format(systemId, path))
-                        return self._get_file_using_service_account(systemId, path);
+                        return self._get_file_using_service_account(systemId, path)
+                    else:
+                        logger.warn("{}/{}.  System is not public so not trying "
+                                    "work-around for CS-169/DES-2084.".format(systemId, path))
                 if r.status_code > 400:
                     raise ValueError("Could not fetch file ({}/{}) status_code:{}".format(systemId,
                                                                                           path,
