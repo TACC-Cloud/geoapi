@@ -118,6 +118,17 @@ class AgaveUtils:
         url = quote('/files/media/system/{}/{}'.format(systemId, path))
         try:
             with self.client.get(self.base_url + url, stream=True) as r:
+                if r.status_code == 403:
+                    # This is a workaround for bug documented in https://jira.tacc.utexas.edu/browse/CS-169
+                    # and in https://jira.tacc.utexas.edu/browse/DES-2084 where sometimes a 403 is returned by tapis
+                    # for some files.
+                    logger.warn("Could not fetch file ({}/{}) due to unexpected 403. "
+                                "Possibly CS-169/DES-2084.".format(systemId, path))
+                    systemInfo = self.systemsGet(systemId)
+                    if systemInfo["public"]:
+                        logger.warn("As system is a public storage system for projects. we will use service "
+                                    "account to get file".format(systemId, path))
+                        return self._get_file_using_service_account(systemId, path);
                 if r.status_code > 400:
                     raise ValueError("Could not fetch file ({}/{}) status_code:{}".format(systemId,
                                                                                           path,
@@ -130,6 +141,29 @@ class AgaveUtils:
         except Exception as e:
             logger.error("Could not fetch file ({}/{}): {}".format(systemId, path, e))
             raise e
+
+
+    def _get_file_using_service_account(self, systemId: str, path: str) -> IO:
+        """
+        Download a file from agave using service account
+
+        :param systemId: str
+        :param path: str
+        :return: temporary file
+        """
+        service_client = service_account_client("designsafe")
+        url = quote('/files/media/system/{}/{}'.format(systemId, path))
+        with service_client.client.get(service_client.base_url + url, stream=True) as r:
+            if r.status_code > 400:
+                raise ValueError("Could not fetch file ({}/{}) with "
+                                 "service account status_code:{}".format(systemId,
+                                                                         path,
+                                                                         r.status_code))
+            tmpFile = NamedTemporaryFile()
+            for chunk in r.iter_content(1024 * 1024):
+                tmpFile.write(chunk)
+            tmpFile.seek(0)
+            return tmpFile
 
 
 def service_account_client(tenant_id):
