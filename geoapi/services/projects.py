@@ -74,8 +74,6 @@ class ProjectsService:
             watch_content=watch_content
         )
 
-        proj.description = system.get('description')
-
         users = get_system_users(proj.tenant_id, user.jwt, proj.system_id)
         logger.info("Updating project:{} to have the following users: {}".format(name, users))
         project_users = [UserService.getOrCreateUser(u, tenant=proj.tenant_id) for u in users]
