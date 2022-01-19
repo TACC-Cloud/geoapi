@@ -239,7 +239,7 @@ class ProjectsService:
 
         proj.name = proj_data.get('name', proj.name)
         proj.description = proj_data.get('description', proj.description)
-        proj.name = proj_data.get('public', proj.public)
+        proj.public = proj_data.get('public', proj.public)
 
         db_session.commit()
 
