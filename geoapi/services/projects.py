@@ -237,16 +237,14 @@ class ProjectsService:
         :return: Project
         """
         proj = ProjectsService.get(project_id=projectId)
+        proj_data = data.get('project', {})
 
-        for key, value in data['project'].items():
-            setattr(proj, key, value)
+        proj.name = proj_data.get('name', proj.name)
+        proj.description = proj_data.get('description', proj.description)
+        proj.name = proj_data.get('public', proj.public)
 
         db_session.commit()
 
-        if data.get('observable', False):
-            ProjectsService.makeObservable(proj,
-                                           user,
-                                           data.get('watch_content', False));
         return proj
 
     @staticmethod
