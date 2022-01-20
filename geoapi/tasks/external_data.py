@@ -329,7 +329,8 @@ def refresh_observable_projects():
                 db_session.commit()
 
             # perform the importing
-            import_from_agave(o.project.tenant_id, importing_user.id, o.system_id, o.path, o.project.id)
+            if o.watch_content:
+                import_from_agave(o.project.tenant_id, importing_user.id, o.system_id, o.path, o.project.id)
     except Exception:
         logger.exception("Unhandled exception when importing observable project")
         db_session.rollback()

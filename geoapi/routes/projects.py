@@ -87,11 +87,6 @@ point_cloud = api.model('PointCloud', {
     'files_info': fields.Raw(required=True)
 })
 
-rapid_project_body = api.model("RapidProject", {
-    "system_id": fields.String(),
-    "path": fields.String(default="RApp")
-})
-
 overlay = api.model('Overlay', {
     'id': fields.Integer(),
     'uuid': fields.String(),
@@ -130,7 +125,9 @@ tapis_file = api.model('TapisFile', {
 tapis_save_file = api.model('TapisSaveFile', {
     'system_id': fields.String(required=True),
     'path': fields.String(required=True),
-    'file_name': fields.String(required=True)
+    'file_name': fields.String(required=True),
+    'observable': fields.Boolean(required=False),
+    'watch_content': fields.Boolean(required=False)
 })
 
 tapis_files_import = api.model('TapisFileImport', {
@@ -189,18 +186,6 @@ class ProjectsListing(Resource):
         return ProjectsService.create(api.payload, u)
 
 
-@api.route('/rapid/')
-class RapidProject(Resource):
-    @api.doc(id="createRapidProject",
-             description='Create a new project from a Rapid recon project storage system')
-    @api.expect(rapid_project_body)
-    @api.marshal_with(project)
-    def post(self):
-        u = request.current_user
-        logger.info("Create rapid project for user {}: {}".format(u.username, api.payload))
-        return ProjectsService.createRapidProject(api.payload, u)
-
-
 @api.route('/<int:projectId>/')
 class ProjectResource(Resource):
 
@@ -228,21 +213,10 @@ class ProjectResource(Resource):
         u = request.current_user
         logger.info("Update project:{} for user:{}".format(projectId,
                                                            u.username))
-        return ProjectsService.update(projectId=projectId,
+        return ProjectsService.update(user=u,
+                                      projectId=projectId,
                                       data=api.payload)
 
-
-@api.route('/<int:projectId>/export/')
-class ExportProject(Resource):
-    @project_permissions
-    @api.expect(tapis_save_file)
-    @api.doc(id="exportProject",
-             description='Save a project file to tapis')
-    @api.marshal_with(project)
-    def put(self, projectId):
-        u = request.current_user
-        logger.info("Saving project to tapis for user {}: {}".format(u.username, api.payload))
-        return ProjectsService.export(u, api.payload, False, projectId)
 
 
 @api.route('/<int:projectId>/users/')

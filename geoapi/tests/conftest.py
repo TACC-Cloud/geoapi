@@ -91,7 +91,8 @@ def observable_projects_fixture():
                    tenant_id=u1.tenant_id)
     obs = ObservableDataProject(
         system_id="testSystem",
-        path="/testPath"
+        path="/testPath",
+        watch_content=True
     )
     obs.project = proj
     proj.users.append(u1)

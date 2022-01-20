@@ -1,6 +1,6 @@
 import uuid
 from sqlalchemy import (
-    Column, Integer, String,
+    Column, Integer, String, Boolean,
     ForeignKey, DateTime, UniqueConstraint
 )
 from sqlalchemy.orm import relationship
@@ -18,4 +18,5 @@ class ObservableDataProject(Base):
     created_date = Column(DateTime(timezone=True), server_default=func.now())
     system_id = Column(String, nullable=False)
     path = Column(String, nullable=False, default="RApp")
+    watch_content = Column(Boolean, default=True)
     project = relationship("Project")
