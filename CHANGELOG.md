@@ -1,5 +1,16 @@
 # Changelog
 
+## [2.4] - 2022-01-21
+
+### Changed
+- DES-2003: Update prod deployment to use new PG data claim. (#63)
+- DES-2001: Project links as observables (subscribe to project-user data). (#65)
+- DES-1988: Delete saving file on export. (#68)
+
+### Fixed
+- DES-2000: Fix travis-ci builds. (#62)
+- DES-2084: Use service account to download file. (#72)
+
 ## [2.3] - 2021-06-09
 
 ### Added
@@ -43,6 +54,7 @@
 - DES-1663: Fix image rotations (#36)
 
 [unreleased]: https://github.com/TACC-Cloud/geoapi/compare/v2.3...HEAD
+[2.4]: https://github.com/TACC-Cloud/geoapi/releases/tag/v2.4
 [2.3]: https://github.com/TACC-Cloud/geoapi/releases/tag/v2.3
 [2.2]: https://github.com/TACC-Cloud/geoapi/releases/tag/v2.2
 [2.1]: https://github.com/TACC-Cloud/geoapi/releases/tag/v2.1
