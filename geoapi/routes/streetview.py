@@ -79,7 +79,7 @@ streetview_service = api.model('Streetview', {
 @api.route('/')
 class StreetviewListing(Resource):
     @api.doc(id="getStreetviews",
-             description="Get all streetview for a user")
+             description="Get all streetviews for a user")
     @api.marshal_with(streetview_service, as_list=True)
     def get(self):
         u = request.current_user
@@ -127,7 +127,7 @@ class StreetviewResource(Resource):
 @api.route('/<service>/')
 class StreetviewServiceResource(Resource):
     @api.doc(id="getStreetviewByService",
-             description="Get a streetview object")
+             description="Get a streetview object by service name")
     @api.marshal_with(streetview_service)
     def get(self, service: str):
         u = request.current_user
@@ -135,14 +135,14 @@ class StreetviewServiceResource(Resource):
         return StreetviewService.getByService(u, service)
 
     @api.doc(id="deleteStreetviewByService",
-             description="Delete a streetview object")
+             description="Delete a streetview object by service name")
     def delete(self, service: str):
         u = request.current_user
         logger.info("Delete streetview object for service:{} for user:{}".format(service, u.username))
         return StreetviewService.deleteByService(u, service)
 
     @api.doc(id="updateStreetviewByService",
-             description="Update streetview for a user")
+             description="Update streetview for a user by service name")
     @api.expect(streetview_params)
     @api.marshal_with(streetview_service)
     def put(self, service: str):
@@ -220,14 +220,14 @@ class StreetviewSequencesResource(Resource):
 @api.route('/sequences/<sequence_id>/')
 class StreetviewSequenceResource(Resource):
     @api.doc(id="deleteStreetviewSequence",
-             description="Get a streetview service's sequences")
+             description="Delete a streetview service's sequence")
     def delete(self, sequence_id: int):
         u = request.current_user
         logger.info("Delete streetview sequence of id:{} for user:{}".format(sequence_id, u.username))
         StreetviewService.deleteSequence(sequence_id)
 
     @api.doc(id="updateStreetviewSequence",
-             description="Update a streetview service's sequences")
+             description="Update a streetview service's sequence")
     @api.expect(streetview_organization)
     @marshal_with(streetview_sequence)
     def put(self, sequence_id: int):
