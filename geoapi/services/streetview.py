@@ -52,10 +52,8 @@ class StreetviewService:
         :param data: Dict
         :return: Streetview
         """
-        # TODO: Find better way to handle this
-        svs = StreetviewService.list(user)
-        if any(sv.service == data['service'] for sv in svs):
-            return StreetviewService.updateByService(user, data['service'], data)
+        if StreetviewService.getByService(user, data['service']):
+            StreetviewService.deleteByService(user, data['service'])
 
         sv = Streetview()
         sv.user_id = user.id
