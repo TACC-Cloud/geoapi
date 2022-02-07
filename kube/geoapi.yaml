@@ -81,15 +81,15 @@ apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
   labels:
-    app: pgdata
-  name: pgdata
+    app: ${PGDATA_PVC}
+  name: ${PGDATA_PVC}
 spec:
   accessModes:
   - ReadWriteOnce
-  storageClassName: rbd
+  storageClassName: rbd-new
   resources:
     requests:
-      storage: 10G
+      storage: ${PGDATA_PVC_SIZE}
 ---
 apiVersion: v1
 kind: Service
@@ -187,7 +187,7 @@ spec:
         envFrom:
           - configMapRef:
               name: geoapi-environment-vars
-        image: rabbitmq
+        image: rabbitmq:3.8.18
         ports:
           - containerPort: 5672
         name: geoapi-rabbitmq
@@ -399,6 +399,8 @@ spec:
             secretKeyRef:
               name: postgres
               key: password
+        - name: PGDATA
+          value: /var/lib/postgresql/data/
         envFrom:
           - configMapRef:
               name: geoapi-environment-vars
@@ -420,7 +422,7 @@ spec:
       volumes:
       - name: pgdata
         persistentVolumeClaim:
-          claimName: pgdata
+          claimName: ${PGDATA_PVC}
 
 ---
 apiVersion: apps/v1
@@ -503,8 +505,8 @@ metadata:
   name: geoapi-migrations
 spec:
   parallelism: 1
-  backoffLimit: 5
-  activeDeadlineSeconds: 100
+  backoffLimit: 10
+  activeDeadlineSeconds: 200
   template:
     spec:
       containers:

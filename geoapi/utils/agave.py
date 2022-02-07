@@ -119,6 +119,20 @@ class AgaveUtils:
         url = quote('/files/media/system/{}/{}'.format(systemId, path))
         try:
             with self.client.get(self.base_url + url, stream=True) as r:
+                if r.status_code == 403:
+                    # This is a workaround for bug documented in https://jira.tacc.utexas.edu/browse/CS-169
+                    # and in https://jira.tacc.utexas.edu/browse/DES-2084 where sometimes a 403 is returned by tapis
+                    # for some files.
+                    logger.warn("Could not fetch file ({}/{}) due to unexpected 403. "
+                                "Possibly CS-169/DES-2084.".format(systemId, path))
+                    systemInfo = self.systemsGet(systemId)
+                    if systemInfo["public"]:
+                        logger.warn("As system is a public storage system for projects. we will use service "
+                                    "account to get file".format(systemId, path))
+                        return self._get_file_using_service_account(systemId, path)
+                    else:
+                        logger.warn("{}/{}.  System is not public so not trying "
+                                    "work-around for CS-169/DES-2084.".format(systemId, path))
                 if r.status_code > 400:
                     raise ValueError("Could not fetch file ({}/{}) status_code:{}".format(systemId,
                                                                                           path,
@@ -132,56 +146,28 @@ class AgaveUtils:
             logger.error("Could not fetch file ({}/{}): {}".format(systemId, path, e))
             raise e
 
-    def postFile(self, systemId: str, path: str, file_name: str, file_content: dict) -> None:
-        """
-        Upload a file to agave
-        :param systemId: str
-        :param path (directory): str
-        :param file_name: str
-        :param file_content: dict
-        :return: None
-        """
-        url = quote('/files/media/system/{}/{}'.format(systemId, path))
-        try:
-            logger.info("Uploading to " + self.base_url + url)
-            tmp = NamedTemporaryFile(delete=True, mode="r+")
-            tmp.name = file_name
-            json.dump(file_content, tmp)
-            tmp.flush()
-            tmp.seek(0)
-            files = { 'fileToUpload': tmp }
-            with self.client.post(self.base_url + url,
-                                  verify=False,
-                                  files=files) as r:
-                if r.status_code > 400:
-                    tmp.close()
-                    raise ValueError("Could not post file ({}/{}/{}) status_code:{}".format(systemId,
-                                                                                            path,
-                                                                                            file_name,
-                                                                                            r.status_code))
-                tmp.close()
-        except Exception as e:
-            logger.error("Could not post file ({}/{}/{}): {}".format(systemId, path, file_name, e))
-            raise e
 
-    def deleteFile(self, systemId: str, path: str) -> None:
+    def _get_file_using_service_account(self, systemId: str, path: str) -> IO:
         """
-        Delete an agave file
+        Download a file from agave using service account
+
         :param systemId: str
-        :param path (directory): str
-        :return: None
+        :param path: str
+        :return: temporary file
         """
+        service_client = service_account_client("designsafe")
         url = quote('/files/media/system/{}/{}'.format(systemId, path))
-        try:
-            logger.info("Deleting " + self.base_url + url)
-            with self.client.delete(self.base_url + url) as r:
-                if r.status_code > 400:
-                    raise ValueError("Could not delete file ({}/{}) status_code:{}".format(systemId,
-                                                                                           path,
-                                                                                           r.status_code))
-        except Exception as e:
-            logger.error("Could not delete file ({}/{}): {}".format(systemId, path, e))
-            raise e
+        with service_client.client.get(service_client.base_url + url, stream=True) as r:
+            if r.status_code > 400:
+                raise ValueError("Could not fetch file ({}/{}) with "
+                                 "service account status_code:{}".format(systemId,
+                                                                         path,
+                                                                         r.status_code))
+            tmpFile = NamedTemporaryFile()
+            for chunk in r.iter_content(1024 * 1024):
+                tmpFile.write(chunk)
+            tmpFile.seek(0)
+            return tmpFile
 
 
     def getRawFileToPath(self, systemId: str, fromPath: str, toPath: str):

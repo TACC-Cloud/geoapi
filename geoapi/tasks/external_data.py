@@ -128,12 +128,6 @@ def _update_point_cloud_task(pointCloudId: int, description: str = None, status:
 
 
 @app.task(rate_limit="1/s")
-def delete_agave_file(system_id: str, system_path: str, userId: int):
-    user = db_session.query(User).get(userId)
-    AgaveUtils(user.jwt).deleteFile(system_id, system_path)
-
-
-@app.task(rate_limit="1/s")
 def import_point_clouds_from_agave(userId: int, files, pointCloudId: int):
     user = db_session.query(User).get(userId)
     client = AgaveUtils(user.jwt)
@@ -335,7 +329,8 @@ def refresh_observable_projects():
                 db_session.commit()
 
             # perform the importing
-            import_from_agave(o.project.tenant_id, importing_user.id, o.system_id, o.path, o.project.id)
+            if o.watch_content:
+                import_from_agave(o.project.tenant_id, importing_user.id, o.system_id, o.path, o.project.id)
     except Exception:
         logger.exception("Unhandled exception when importing observable project")
         db_session.rollback()

@@ -21,8 +21,10 @@ def test_user_create(userdata):
 def test_projects_for_user(userdata):
     user = UserService.getUser("test1", "test")
     data = {
-        "name": 'new project',
-        'description': 'test'
+        'project': {
+            'name': 'new project',
+            'description': 'test'
+        },
     }
     ProjectsService.create(data, user)
     myProjects = ProjectsService.list(user)
@@ -33,8 +35,10 @@ def test_projects_for_user(userdata):
 def test_add_new_user_to_project(userdata):
     user = UserService.getUser("test1", "test")
     data = {
-        "name": 'new project',
-        'description': 'test'
+        'project': {
+            'name': 'new project',
+            'description': 'test'
+        },
     }
     proj = ProjectsService.create(data, user)
     ProjectsService.addUserToProject(proj.id, "newUser")

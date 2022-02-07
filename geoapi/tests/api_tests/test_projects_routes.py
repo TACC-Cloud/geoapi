@@ -313,42 +313,15 @@ def test_import_shapefile_tapis(test_client, projects_fixture, import_file_from_
     assert resp.status_code == 200
 
 
-def test_observable_project(test_client,
-                            userdata,
-                            get_system_users_mock,
-                            agave_utils_with_geojson_file_mock,
-                            projects_fixture,
-                            import_from_agave_mock):
-    u1 = db_session.query(User).get(1)
-    resp = test_client.post(
-        '/projects/rapid/',
-        json={"system_id": 'my_system', 'path': '/some_path'},
-        headers={'x-jwt-assertion-test': u1.jwt}
-    )
-    assert resp.status_code == 200
-
-
-def test_observable_project_already_exists(test_client,
-                                           observable_projects_fixture,
-                                           agave_utils_with_geojson_file_mock,
-                                           get_system_users_mock):
-    u1 = db_session.query(User).get(1)
-    data = {
-        "system_id": observable_projects_fixture.system_id,
-        "path": observable_projects_fixture.path
-    }
-    resp = test_client.post(
-        '/projects/rapid/',
-        json=data,
-        headers={'x-jwt-assertion-test': u1.jwt}
-    )
-    assert resp.status_code == 409
-    assert "Conflict, a project for this storage system/path already exists" in resp.json['message']
-
-
 def test_update_project(test_client, projects_fixture):
     u1 = db_session.query(User).get(1)
-    data = {'name': "Renamed Project", 'description': "New Description", 'public': True}
+    data = {
+        'project': {
+            'name': "Renamed Project",
+            'description': "New Description",
+            'public': True
+        },
+    }
     resp = test_client.put(
         '/projects/1/',
         json=data,
@@ -362,7 +335,12 @@ def test_update_project(test_client, projects_fixture):
 
 
 def test_update_project_unauthorized_guest(test_client, public_projects_fixture):
-    data = {'name': "Renamed Project", 'description': "New Description"}
+    data = {
+        'project': {
+            'name': "Renamed Project",
+            'description': "New Description",
+        },
+    }
     resp = test_client.put(
         '/projects/1/',
         json=data
@@ -370,17 +348,117 @@ def test_update_project_unauthorized_guest(test_client, public_projects_fixture)
     assert resp.status_code == 403
 
 
-def test_export_project(test_client,
-                        projects_fixture,
-                        get_system_users_mock,
-                        agave_utils_with_geojson_file_mock):
+def test_create_observable_project_already_exists(test_client,
+                                                  projects_fixture,
+                                                  get_system_users_mock,
+                                                  observable_projects_fixture,
+                                                  import_from_agave_mock,
+                                                  agave_utils_with_geojson_file_mock):
+
     u1 = db_session.query(User).get(1)
-    resp = test_client.put(
-        '/projects/1/export/',
-        json={"system_id": "testSystem",
-              "path": "testPath",
-              "file_name": "testFilename",
-              "link": False},
+    data = {
+        'project': {
+            'name': "Renamed Project",
+            'description': "New Description",
+            'system_id': observable_projects_fixture.system_id,
+            'system_path': observable_projects_fixture.path,
+            'system_file': 'testFilename',
+        },
+        'observable': True,
+        'watch_content': False
+    }
+
+    resp = test_client.post(
+        '/projects/',
+        json=data,
         headers={'x-jwt-assertion-test': u1.jwt}
     )
+
+    assert resp.status_code == 409
+    assert "Conflict, a project for this storage system/path already exists" in resp.json['message']
+
+
+def test_create_observable_project(test_client,
+                                   projects_fixture,
+                                   get_system_users_mock,
+                                   import_from_agave_mock,
+                                   agave_utils_with_geojson_file_mock):
+    u1 = db_session.query(User).get(1)
+    data = {
+        'project': {
+            'name': 'Observable name',
+            'description': 'Observable description',
+            'system_id': 'testSystem',
+            'system_path': 'testPath',
+            'system_file': 'testFilename',
+        },
+        'observable': True,
+        'watch_content': False
+    }
+
+    resp = test_client.post(
+        '/projects/',
+        json=data,
+        headers={'x-jwt-assertion-test': u1.jwt}
+    )
+
     assert resp.status_code == 200
+    proj = db_session.query(Project).get(2)
+    assert proj.name == "Observable name"
+
+
+def test_make_project_observable(test_client,
+                                 projects_fixture,
+                                 get_system_users_mock,
+                                 observable_projects_fixture,
+                                 import_from_agave_mock,
+                                 agave_utils_with_geojson_file_mock):
+    u1 = db_session.query(User).get(1)
+    data = {
+        'project': {
+            'name': "Renamed Project",
+            'description': "New Description",
+            'system_id': 'testSystem',
+            'system_path': 'testPath',
+            'system_file': 'testFilename',
+        },
+        'observable': True,
+        'watch_content': False
+    }
+
+    resp = test_client.put(
+        '/projects/1/',
+        json=data,
+        headers={'x-jwt-assertion-test': u1.jwt}
+    )
+
+    assert resp.status_code == 200
+
+
+def test_make_project_observable_already_exists(test_client,
+                                                projects_fixture,
+                                                get_system_users_mock,
+                                                observable_projects_fixture,
+                                                import_from_agave_mock,
+                                                agave_utils_with_geojson_file_mock):
+    u1 = db_session.query(User).get(1)
+    data = {
+        'project': {
+            'name': "Renamed Project",
+            'description': "New Description",
+            'system_id': observable_projects_fixture.system_id,
+            'system_path': observable_projects_fixture.path,
+            'system_file': 'testFilename',
+        },
+        'observable': True,
+        'watch_content': False
+    }
+
+    resp = test_client.put(
+        '/projects/1/',
+        json=data,
+        headers={'x-jwt-assertion-test': u1.jwt}
+    )
+
+    assert resp.status_code == 409
+    assert "Conflict, a project for this storage system/path already exists" in resp.json['message']
