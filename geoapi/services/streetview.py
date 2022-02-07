@@ -138,16 +138,16 @@ class StreetviewService:
     def createOrganization(streetview_id: int, data: Dict) -> StreetviewOrganization:
         """
         Create a Streetview Instance object to link to tapis path and service.
-        :param streetview: Streetview
-        :param key: str
-        :param name: str
-        :return: None
+        :param streetview_id: int
+        :param data: Dict
+        :return: StreetviewOrganization
         """
         sv = StreetviewService.get(streetview_id)
         svo = StreetviewOrganization()
         svo.streetview_id = sv.id
         svo.key = data.get('key')
         svo.name = data.get('name')
+        svo.slug = data.get('slug')
         db_session.add(svo)
         db_session.commit()
 
@@ -157,9 +157,8 @@ class StreetviewService:
     def updateOrganization(id: int, data: Dict) -> StreetviewOrganization:
         """
         Update a Streetview Instance object to link to tapis path and service.
-        :param streetview: Streetview
-        :param system_id: str
-        :param path: str
+        :param id: int
+        :param data: Dict
         :return: None
         """
         svo = StreetviewService.getOrganization(id)

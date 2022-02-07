@@ -54,6 +54,7 @@ streetview_organization = api.model('StreetviewOrganization', {
     'id': fields.Integer(required=False),
     'streetview_id': fields.Integer(required=False),
     'name': fields.String(),
+    'slug': fields.String(),
     'key': fields.String()
 })
 
@@ -172,24 +173,24 @@ class StreetviewOrganizationsResource(Resource):
         return StreetviewService.createOrganization(streetview_id, api.payload)
 
 
-@api.route('/organization/<organization_id>/')
+@api.route('/organization/<organization_key>/')
 class StreetviewOrganizationResource(Resource):
     @api.doc(id="deleteStreetviewOrganization",
              description="Delete organization from streetview object")
-    def delete(self, organization_id: int):
+    def delete(self, organization_key: int):
         u = request.current_user
         logger.info("Delete streetview organization from streetview object for user:{}"
                     .format(u.username))
-        StreetviewService.deleteOrganization(organization_id)
+        StreetviewService.deleteOrganization(organization_key)
 
     @api.doc(id="updateStreetviewOrganization",
              description="Update organization from streetview object")
     @api.expect(streetview_organization)
-    def put(self, organization_id: int):
+    def put(self, organization_key: int):
         u = request.current_user
         logger.info("Update streetview organization in streetview object for user:{}"
                     .format(u.username))
-        return StreetviewService.updateOrganization(organization_id, api.payload)
+        return StreetviewService.updateOrganization(organization_key, api.payload)
 
 
 @api.route('/instances/<instance_id>/')

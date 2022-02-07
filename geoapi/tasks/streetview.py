@@ -28,7 +28,7 @@ def upload(user: User, params: Dict):
     service = params['service']
     system_id = params['system_id']
     path = params['path']
-    organization_id = params['organization_id']
+    organization_key = params['organization_key']
 
     streetview_service = StreetviewService.getByService(user, service)
 
@@ -49,7 +49,7 @@ def upload(user: User, params: Dict):
                                    streetview_service.id,
                                    system_id,
                                    path,
-                                   organization_id)
+                                   organization_key)
 
 def progress_error(user: User,
                  task_uuid: UUID,
@@ -77,7 +77,7 @@ def clean_session(streetview_instance: StreetviewInstance,
         # TODO: Change to include service after user id
         remove_project_streetview_dir(user.id, task_uuid)
 
-def _from_tapis(user: User, task_uuid: UUID, systemId: str, path: str):
+def _from_tapis(user: User, task_uuid: UUID, systemId: str, path: str, organization_key: str):
     client = AgaveUtils(user.jwt)
     listing = client.listing(systemId, path)
     files_in_directory = listing[1:]
@@ -116,7 +116,7 @@ def _from_tapis(user: User, task_uuid: UUID, systemId: str, path: str):
 
             NotificationsService.updateProgress(task_uuid=task_uuid,
                                                 status="in_progress",
-                                                message="From Tapis [1/3]",
+                                                message="Transferring files from DesignSafe to geoapi",
                                                 progress=int(done_files / files_length * 100),
                                                 logItem={"uploadFiles": img_list})
 
@@ -129,7 +129,7 @@ def _from_tapis(user: User, task_uuid: UUID, systemId: str, path: str):
         raise Exception("No images have been uploaded to geoapi!")
 
 
-def _to_mapillary(user: User, streetview_instance: StreetviewInstance, task_uuid: UUID, organization_id: str):
+def _to_mapillary(user: User, streetview_instance: StreetviewInstance, task_uuid: UUID, organization_key: str):
     streetview_service = streetview_instance.streetview
     token = streetview_service.token
 
@@ -137,11 +137,11 @@ def _to_mapillary(user: User, streetview_instance: StreetviewInstance, task_uuid
 
     try:
         NotificationsService.updateProgress(task_uuid,
-                                            "in_progress",
-                                            "To Mapillary [2/3]", 0)
+                                            "created",
+                                            "Started upload to Mapillary")
 
         MapillaryUtils.authenticate(user.id, token, service_user)
-        MapillaryUtils.upload(user.id, task_uuid, service_user, organization_id)
+        MapillaryUtils.upload(user.id, task_uuid, service_user, organization_key)
     except Exception as e:
         raise Exception("Errors during mapillary upload task {} for user {}: Error: {}" \
                       .format(task_uuid, user.username, e))
@@ -156,28 +156,18 @@ def _to_mapillary(user: User, streetview_instance: StreetviewInstance, task_uuid
 #
 #       Relative documentation here: https://www.mapillary.com/developer/api-documentation
 def _mapillary_finalize(user: User, streetview_instance: StreetviewInstance, task_uuid: UUID):
-    list_per_sequence_mapping = MapillaryUtils.get_sequence_mappings(user, task_uuid)
-    combined_list_sequence_mappings = MapillaryUtils.get_filtered_sequence_mappings(list_per_sequence_mapping)
+    uploaded_sequences = MapillaryUtils.extract_uploaded_sequences(user, task_uuid)
 
-    if len(combined_list_sequence_mappings) == 0:
+    if len(uploaded_sequences) == 0:
         error_message = "Error during Mapillary finalize. No logs have been found for the uploaded files."
         raise Exception(error_message)
     else:
-        for seq in combined_list_sequence_mappings:
+        for seq in uploaded_sequences:
             StreetviewService.createSequence(streetview_instance=streetview_instance,
                                              start_date=seq['start_date'],
                                              end_date=seq['end_date'],
                                              bbox='{}, {}, {}, {}'.format(seq['lon_min'], seq['lat_min'], seq['lon_max'], seq['lat_max'])
                                              )
-
-
-def _mapillary_check_error(user: User,
-                           streetview_instance: StreetviewInstance,
-                           task_uuid: UUID):
-    if MapillaryUtils.upload_error(user, task_uuid) > 0:
-        error_message = "Error during Mapillary upload task {} for user {}." \
-            .format(task_uuid, user.username)
-        raise Exception(error_message)
 
 
 # TODO: Handle retry (deleteprogress) and different progress statuses and resuming
@@ -198,7 +188,7 @@ def from_tapis_to_streetview(user_id: int,
                              streetview_service_id: int,
                              system_id: str,
                              path: str,
-                             organization_id: str):
+                             organization_key: str):
     user = UserService.get(user_id);
     streetview_service = StreetviewService.get(streetview_service_id)
 
@@ -229,7 +219,7 @@ def from_tapis_to_streetview(user_id: int,
 
     # Get from tapis
     try:
-      _from_tapis(user, task_uuid, system_id, path)
+      _from_tapis(user, task_uuid, system_id, path, organization_key)
     # TODO: Handle
     except Exception as e:
         error_message = "Error during getting files from tapis system:{} path:{} \
@@ -246,7 +236,7 @@ def from_tapis_to_streetview(user_id: int,
 
     if streetview_service.service == 'mapillary':
         try:
-            _to_mapillary(user, streetview_instance, task_uuid)
+            _to_mapillary(user, streetview_instance, task_uuid, organization_key)
         except Exception as e:
             error_message = "Error during uploading to mapillary for streetview task: {} \
               for user: {}. Error message: {}" \
@@ -262,7 +252,6 @@ def from_tapis_to_streetview(user_id: int,
 
         try:
             _mapillary_finalize(user, streetview_instance, task_uuid)
-            _mapillary_check_error(user, streetview_instance, task_uuid)
         except Exception as e:
             error_message = "Error during finalization of mapillary upload for streetview task: {} \
             for user: {}. Error message: {}" \

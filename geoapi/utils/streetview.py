@@ -9,10 +9,6 @@ import datetime
 from typing import Dict, List
 from uuid import UUID
 
-from mapillary_tools import api_v4 as mapillary_api
-from mapillary_tools import uploader as mapillary_uploader
-from mapillary_tools import processing as mapillary_processing
-
 from geoapi.services.notifications import NotificationsService
 
 from geoapi.models import User
@@ -96,24 +92,20 @@ class MapillaryUtils:
 
         command = [
             '/usr/local/bin/mapillary_tools',
-            '--advanced',
             'authenticate',
-            '--config_file',
-            MapillaryUtils.get_auth_file(userId),
             '--user_name',
             service_user,
             '--jwt',
-            jwt,
-             # TODO: Currently arbitrary because mapillary hasn't specified
-             # api but required in mapillary_tools
-            '--user_key',
-            '1234567890'
+            jwt
         ]
 
         try:
             subprocess.run(command,
                            check=True,
-                           env={'MAPILLARY_WEB_CLIENT_ID': settings.MAPILLARY_CLIENT_ID})
+                           env={
+                               'MAPILLARY_CLIENT_TOKEN': settings.MAPILLARY_CLIENT_ID,
+                               'MAPILLARY_CONFIG_PATH': MapillaryUtils.get_auth_file(userId)
+                           })
         except subprocess.CalledProcessError as e:
             error_message = "Errors occured during Mapillary authentication for user with userId: {}. {}"\
                 .format(userId, e)
@@ -124,16 +116,15 @@ class MapillaryUtils:
         pass
 
     @staticmethod
-    def upload(userId: int, task_uuid: UUID, service_user: str, organization_id: str):
+    def upload(userId: int, task_uuid: UUID, service_user: str, organization_key: str):
         command = [
             '/usr/local/bin/mapillary_tools',
             'process_and_upload',
-            '--import_path',
             get_project_streetview_dir(userId, task_uuid),
             '--user_name',
             service_user,
-            '--organization_username',
-            organization_id
+            '--organization_key',
+            organization_key,
         ]
 
         try:
@@ -142,45 +133,27 @@ class MapillaryUtils:
                                     stdin=subprocess.PIPE,
                                     stderr=subprocess.STDOUT,
                                     env={
-                                        'MAPILLARY_WEB_CLIENT_ID': settings.MAPILLARY_CLIENT_ID,
-                                        'GLOBAL_CONFIG_FILEPATH': MapillaryUtils.get_auth_file(userId)
+                                        'MAPILLARY_CLIENT_TOKEN': settings.MAPILLARY_CLIENT_ID,
+                                        'MAPILLARY_CONFIG_PATH': MapillaryUtils.get_auth_file(userId)
                                     },
                                     text=True)
-            NotificationsService.updateProgress(task_uuid, "in_progress", "To Mapillary [2/3]", 50)
+            NotificationsService.updateProgress(task_uuid, "created", "Uploading to Mapillary")
 
             for line in iter(prog.stdout.readline, b''):
                 if line == '':
                     break
-                catch_upload_percent = re.compile(r'\d+\.\d+(?=%|$)')
-                catch_upload_logs = re.compile(r'images left')
-                upload_percent_match = re.findall(catch_upload_percent, str(line.rstrip()))
-                upload_logs_match = re.findall(catch_upload_logs, str(line.rstrip()))
-                if len(upload_percent_match) > 0 and len(upload_logs_match) > 0:
+
+                catch_upload_status = re.compile(r'(.*): (\d+(?=%))')
+                upload_status_match = re.search(catch_upload_status, str(line.rstrip()))
+                if upload_status_match:
                     NotificationsService.updateProgress(task_uuid,
                                                         "in_progress",
-                                                        "To Mapillary [2/2]",
-                                                        int(float(upload_percent_match[0])))
+                                                        upload_status_match.group(1),
+                                                        int(float(upload_status_match.group(2))))
                 else:
                     NotificationsService.updateProgress(task_uuid,
                                                         "created",
-                                                        "Processing images...")
-
-                catch_retry = re.compile(r'Retry uploading previously failed image uploads')
-                retry_match = re.findall(catch_retry, str(line.rstrip()))
-                if len(retry_match) > 0:
-                    prog.communicate(input='n\n')[0]
-                    error_message = "Failed to upload with mapillary_tools for user with id: {}"\
-                                        .format(userId)
-                    logging.error(error_message)
-                    raise Exception(error_message)
-
-                catch_error = re.compile(r'Error')
-                error_match = re.findall(catch_error, str(line.rstrip()))
-                if len(error_match) > 0:
-                    error_message = "Errors occured during mapillary_tools for user with userId: {}" \
-                                        .format(userId)
-                    logger.error(error_message)
-                    raise Exception(error_message)
+                                                        "Processing upload...")
 
         except Exception as e:
             error_message = "Error occured mapillary_tools upload task for user with id: {} \n {}"\
@@ -192,96 +165,53 @@ class MapillaryUtils:
             return
 
     @staticmethod
-    def get_image_sequence(userId, task_uuid: UUID):
-        streetview_path = get_project_streetview_dir(userId, task_uuid)
+    def extract_uploaded_sequences(user: User, task_uuid: UUID) -> List:
+        desc_path = os.path.join(get_project_streetview_dir(user.id, task_uuid),
+                                 'mapillary_image_description.json');
 
-        if not os.path.isdir(streetview_path):
-            return None
+        mapped_sequences = {}
+        uploaded_sequences = []
 
-        total_files = mapillary_uploader.get_total_file_list(streetview_path)
+        if os.path.isfile(desc_path):
+            with open(desc_path, "rb") as jf:
+                 descs = json.load(jf)
+                 for desc in descs:
+                     seq = desc['MAPSequenceUUID']
+                     lat = desc['MAPLatitude']
+                     lon = desc['MAPLongitude']
+                     time = datetime.datetime.strptime(desc['MAPCaptureTime'], "%Y_%m_%d_%H_%M_%S_%f")
 
-        if len(total_files) == 0:
-            return None
+                     try:
+                         mapped_sequences[seq]
+                     except KeyError:
+                         mapped_sequences[seq] = {}
 
-        log_root = mapillary_uploader.log_rootpath(total_files[0])
-        sequence_data_path = os.path.join(log_root, "sequence_process.json")
-        if not os.path.isfile(sequence_data_path):
-            return None
+                     try:
+                         mapped_sequences[seq]['lat']
+                     except KeyError:
+                         mapped_sequences[seq]['lat'] = []
 
-        sequence_data = mapillary_processing.load_json(sequence_data_path)
-        return sequence_data['MAPSequenceUUID']
+                     try:
+                         mapped_sequences[seq]['lon']
+                     except KeyError:
+                         mapped_sequences[seq]['lon'] = []
 
-    @staticmethod
-    def get_image_capture_time(userId, task_uuid: UUID):
-        streetview_path = get_project_streetview_dir(userId, task_uuid)
+                     try:
+                         mapped_sequences[seq]['time']
+                     except KeyError:
+                         mapped_sequences[seq]['time'] = []
 
-        if not os.path.isdir(streetview_path):
-            return None
+                     mapped_sequences[seq]['lat'].append(lat)
+                     mapped_sequences[seq]['lon'].append(lon)
+                     mapped_sequences[seq]['time'].append(time)
 
-        total_files = mapillary_uploader.get_total_file_list(streetview_path)
-
-        if len(total_files) == 0:
-            return None
-
-        log_root = mapillary_uploader.log_rootpath(total_files[0])
-        sequence_data_path = os.path.join(log_root, "sequence_process.json")
-        if not os.path.isfile(sequence_data_path):
-            return None
-
-        sequence_data = mapillary_processing.load_json(sequence_data_path)
-        return sequence_data['MAPCaptureTime']
-
-    @staticmethod
-    def upload_error(user: User, task_uuid: UUID):
-        return len(mapillary_uploader.get_failed_upload_file_list(get_project_streetview_dir(user.id, task_uuid)))
-
-    @staticmethod
-    def get_sequence_mappings(user: User, task_uuid: UUID):
-        upload_file_list = mapillary_uploader.get_success_upload_file_list(
-            get_project_streetview_dir(user.id, task_uuid),
-            False)
-        params = {}
-        list_per_sequence_mapping = {}
-        for image in upload_file_list:
-            log_root = mapillary_uploader.log_rootpath(image)
-            upload_params_path = os.path.join(
-                log_root, "upload_params_process.json"
-            )
-            if os.path.isfile(upload_params_path):
-                with open(upload_params_path, "rb") as jf:
-                    params[image] = json.load(jf)
-                    sequence = params[image]["key"]
-                    if sequence in list_per_sequence_mapping:
-                        list_per_sequence_mapping[sequence].append(image)
-                    else:
-                        list_per_sequence_mapping[sequence] = [image]
-        return list_per_sequence_mapping
-
-    @staticmethod
-    def get_filtered_sequence_mappings(mappings: Dict) -> List:
-        combined_list_sequence_mappings = []
-        for key, val in mappings.items():
-            dates = []
-            lons = []
-            lats = []
-            for img in val:
-                log_root = mapillary_uploader.log_rootpath(img)
-                params_path = os.path.join(
-                    log_root, "geotag_process.json"
-                )
-                if os.path.isfile(params_path):
-                    with open(params_path, "rb") as jf:
-                        my_params = json.load(jf)
-                        dates.append(datetime.datetime.strptime(my_params['MAPCaptureTime'], "%Y_%m_%d_%H_%M_%S_%f"))
-                        lons.append(my_params['MAPLongitude'])
-                        lats.append(my_params['MAPLatitude'])
-            seq_obj = {
-                'start_date': min(dates),
-                'end_date': max(dates),
-                'lat_max': max(lats),
-                'lat_min': min(lats),
-                'lon_max': max(lons),
-                'lon_min': min(lons)
-            }
-            combined_list_sequence_mappings.append(seq_obj)
-        return combined_list_sequence_mappings
+            for key, val in mapped_sequences.items():
+                uploaded_sequences.append({
+                    'start_date': min(val['time']),
+                    'end_date': max(val['time']),
+                    'lat_max': max(val['lat']),
+                    'lat_min': min(val['lat']),
+                    'lon_max': max(val['lon']),
+                    'lon_min': min(val['lon'])
+                })
+        return uploaded_sequences

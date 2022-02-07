@@ -82,18 +82,6 @@ class ProjectsService:
             raise ObservableProjectAlreadyExists("'{}' project already exists".format(name))
         import_from_agave.apply_async(args=[obs.project.tenant_id, user.id, obs.system_id, obs.path, obs.project_id])
 
-        try:
-            ProjectsService.export(user,
-                                   {'system_id': systemId,
-                                    'path': path,
-                                    'link': True,
-                                    'file_name': ''
-                                    },
-                                   True,
-                                   proj.id)
-        except:
-            NotificationsService.create(user, "error", "Failed to export file to {}{}.".format(systemId, path))
-
         return proj
 
     @staticmethod

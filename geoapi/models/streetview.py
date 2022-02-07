@@ -25,6 +25,7 @@ class StreetviewOrganization(Base):
     streetview = relationship('Streetview')
     key = Column(String())
     name = Column(String())
+    slug = Column(String())
 
     def __repr__(self):
         return '<StreetviewOrganization(id={})>'.format(self.id)

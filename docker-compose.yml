@@ -55,7 +55,7 @@ services:
       - .:/app
       - assets:/assets
     environment:
-      - MAPILLARY_WEB_CLIENT_ID=4045602648858965
+      - MAPILLARY_CLIENT_TOKEN=4045602648858965
       - FLASK_APP=/app/geoapi/app.py
       - APP_ENV=development
       - ASSETS_BASE_DIR=/assets
@@ -76,7 +76,7 @@ services:
       - .:/app
       - assets:/assets
     environment:
-      - MAPILLARY_WEB_CLIENT_ID=4045602648858965
+      - MAPILLARY_CLIENT_TOKEN=4045602648858965
       - FLASK_APP=/app/geoapi/app.py
       - APP_ENV=development
       - ASSETS_BASE_DIR=/assets
@@ -101,7 +101,7 @@ services:
       - 8.8.8.8
       - 8.8.4.4
     environment:
-      - MAPILLARY_WEB_CLIENT_ID=4045602648858965
+      - MAPILLARY_CLIENT_TOKEN=4045602648858965
       - FLASK_APP=/app/geoapi/app.py
       - APP_ENV=development
       - ASSETS_BASE_DIR=/assets
@@ -111,3 +111,5 @@ services:
     container_name: geoapi
     hostname: geoapi
     command: "gunicorn -w 4 -b 0.0.0.0:8000 geoapi.app:app -k gevent --reload --timeout 300"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
