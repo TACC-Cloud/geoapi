@@ -135,6 +135,13 @@ def image_file_fixture():
 
 
 @pytest.fixture(scope="function")
+def image_small_DES_2176_fixture():
+    home = os.path.dirname(__file__)
+    with open(os.path.join(home, 'fixtures/image_small_file_DES_2176.jpg'), 'rb') as f:
+        yield f
+
+
+@pytest.fixture(scope="function")
 def video_file_fixture():
     home = os.path.dirname(__file__)
     with open(os.path.join(home, 'fixtures/video.mov'), 'rb') as f:

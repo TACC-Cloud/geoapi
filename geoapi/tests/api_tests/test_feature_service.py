@@ -53,6 +53,17 @@ def test_create_feature_image(projects_fixture, image_file_fixture):
     os.path.isfile(os.path.join(get_project_asset_dir(projects_fixture.id), str(feature.assets[0].uuid) + ".thumb.jpeg"))
 
 
+def test_create_feature_image_small_image(projects_fixture, image_small_DES_2176_fixture):
+    feature = FeaturesService.fromImage(projects_fixture.id, image_small_DES_2176_fixture, metadata={})
+    assert feature.project_id == projects_fixture.id
+    assert len(feature.assets) == 1
+    assert db_session.query(Feature).count() == 1
+    assert db_session.query(FeatureAsset).count() == 1
+    assert len(os.listdir(get_project_asset_dir(feature.project_id))) == 2
+    os.path.isfile(get_asset_path(feature.assets[0].path))
+    os.path.isfile(os.path.join(get_project_asset_dir(projects_fixture.id), str(feature.assets[0].uuid) + ".thumb.jpeg"))
+
+
 def test_remove_feature_image(projects_fixture, image_file_fixture):
     feature = FeaturesService.fromImage(projects_fixture.id, image_file_fixture, metadata={})
     FeaturesService.delete(feature.id)
