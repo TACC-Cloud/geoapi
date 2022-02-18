@@ -127,6 +127,7 @@ def test_create_feature_shpfile(projects_fixture, shapefile_fixture, shapefile_a
     assert db_session.query(Feature).count() == 10
     assert features[0].project_id == projects_fixture.id
 
+
 def test_create_tile_server(projects_fixture):
     data = {
         "name": "Test",
@@ -141,6 +142,7 @@ def test_create_tile_server(projects_fixture):
     assert tile_server.url == "www.test.com"
     assert tile_server.attribution == "contributors"
 
+
 def test_remove_tile_server(projects_fixture):
     data = {
         "name": "Test",
@@ -153,6 +155,7 @@ def test_remove_tile_server(projects_fixture):
     FeaturesService.deleteTileServer(tile_server.id)
 
     assert db_session.query(TileServer).count() == 0
+
 
 def test_update_tile_server(projects_fixture):
     data = {
@@ -172,6 +175,7 @@ def test_update_tile_server(projects_fixture):
                                                            data=updated_data)
     assert updated_tile_server.name == "NewTestName"
 
+
 def test_update_tile_servers(projects_fixture):
     data = {
         "name": "Test",
@@ -188,9 +192,9 @@ def test_update_tile_servers(projects_fixture):
 
     updated_tile_server_list = FeaturesService.updateTileServers(dataList=updated_data)
 
-
     assert updated_tile_server_list[0].name == "NewTestName1"
     assert updated_tile_server_list[1].name == "NewTestName2"
+
 
 def test_create_tile_server_from_file(projects_fixture, tile_server_ini_file_fixture):
     tile_server = FeaturesService.fromINI(projects_fixture.id,
