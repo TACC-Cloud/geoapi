@@ -167,10 +167,14 @@ class ProjectsService:
         startDate = query.get("startDate")
         endDate = query.get("endDate")
 
+        assetTypes = assetType.split(',')
+
         params = {'projectId': projectId,
-                  'assetType': assetType,
                   'startDate': startDate,
                   'endDate': endDate}
+
+        for asset in assetTypes:
+            params[asset] = asset
 
         select_stmt = text("""
         json_build_object(
@@ -217,8 +221,11 @@ class ProjectsService:
         if startDate and endDate:
             sub_select = sub_select.where(text("feat.created_date BETWEEN :startDate AND :endDate"))
 
-        if assetType:
-            sub_select = sub_select.where(text("fa.asset_type = :assetType"))
+        if not assetType:
+            assetType = 'image'
+            params['image'] = 'none'
+
+        sub_select = sub_select.where(text('(' + ' OR '.join(str("fa.asset_type = :" + currentAsset) for currentAsset in assetType.split(',')) + ')'))
 
         sub_select = sub_select.group_by(text("feat.id")).alias("tmp")
         s = select([select_stmt]).select_from(sub_select)
