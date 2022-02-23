@@ -53,6 +53,17 @@ def test_create_feature_image(projects_fixture, image_file_fixture):
     os.path.isfile(os.path.join(get_project_asset_dir(projects_fixture.id), str(feature.assets[0].uuid) + ".thumb.jpeg"))
 
 
+def test_create_feature_image_small_image(projects_fixture, image_small_DES_2176_fixture):
+    feature = FeaturesService.fromImage(projects_fixture.id, image_small_DES_2176_fixture, metadata={})
+    assert feature.project_id == projects_fixture.id
+    assert len(feature.assets) == 1
+    assert db_session.query(Feature).count() == 1
+    assert db_session.query(FeatureAsset).count() == 1
+    assert len(os.listdir(get_project_asset_dir(feature.project_id))) == 2
+    os.path.isfile(get_asset_path(feature.assets[0].path))
+    os.path.isfile(os.path.join(get_project_asset_dir(projects_fixture.id), str(feature.assets[0].uuid) + ".thumb.jpeg"))
+
+
 def test_remove_feature_image(projects_fixture, image_file_fixture):
     feature = FeaturesService.fromImage(projects_fixture.id, image_file_fixture, metadata={})
     FeaturesService.delete(feature.id)
@@ -116,6 +127,7 @@ def test_create_feature_shpfile(projects_fixture, shapefile_fixture, shapefile_a
     assert db_session.query(Feature).count() == 10
     assert features[0].project_id == projects_fixture.id
 
+
 def test_create_tile_server(projects_fixture):
     data = {
         "name": "Test",
@@ -130,6 +142,7 @@ def test_create_tile_server(projects_fixture):
     assert tile_server.url == "www.test.com"
     assert tile_server.attribution == "contributors"
 
+
 def test_remove_tile_server(projects_fixture):
     data = {
         "name": "Test",
@@ -142,6 +155,7 @@ def test_remove_tile_server(projects_fixture):
     FeaturesService.deleteTileServer(tile_server.id)
 
     assert db_session.query(TileServer).count() == 0
+
 
 def test_update_tile_server(projects_fixture):
     data = {
@@ -161,6 +175,7 @@ def test_update_tile_server(projects_fixture):
                                                            data=updated_data)
     assert updated_tile_server.name == "NewTestName"
 
+
 def test_update_tile_servers(projects_fixture):
     data = {
         "name": "Test",
@@ -177,9 +192,9 @@ def test_update_tile_servers(projects_fixture):
 
     updated_tile_server_list = FeaturesService.updateTileServers(dataList=updated_data)
 
-
     assert updated_tile_server_list[0].name == "NewTestName1"
     assert updated_tile_server_list[1].name == "NewTestName2"
+
 
 def test_create_tile_server_from_file(projects_fixture, tile_server_ini_file_fixture):
     tile_server = FeaturesService.fromINI(projects_fixture.id,
