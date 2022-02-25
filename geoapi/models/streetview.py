@@ -9,7 +9,7 @@ class Streetview(Base):
     user_id = Column(ForeignKey('users.id', ondelete="CASCADE", onupdate="CASCADE"), index=True)
     user = relationship('User')
     token = Column(String())
-    service = Column(String(), unique=True)
+    service = Column(String())
     service_user = Column(String())
     organizations = relationship('StreetviewOrganization', cascade="all, delete-orphan")
     instances = relationship('StreetviewInstance', cascade="all, delete-orphan")
