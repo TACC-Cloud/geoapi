@@ -224,7 +224,7 @@ def import_from_agave(tenant_id: str, userId: int, systemId: str, path: str, pro
     files_in_directory = listing[1:]
     filenames_in_directory = [str(f.path) for f in files_in_directory]
     for item in files_in_directory:
-        if item.type == "dir":
+        if item.type == "dir" and not str(item.path).endswith("/.Trash"):
             import_from_agave(tenant_id, userId, systemId, item.path, projectId)
         # skip any junk files that are not allowed
         if item.path.suffix.lower().lstrip('.') not in FeaturesService.ALLOWED_EXTENSIONS:
