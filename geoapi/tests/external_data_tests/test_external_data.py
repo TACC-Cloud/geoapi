@@ -64,6 +64,40 @@ def agave_utils_with_geojson_file(geojson_file_fixture):
 
 
 @pytest.fixture(scope="function")
+def agave_utils_with_bad_image_file(image_file_no_location_fixture):
+    with patch('geoapi.tasks.external_data.AgaveUtils') as MockAgaveUtils:
+        with patch('geoapi.utils.agave.AgaveUtils') as MockAgaveUtilsInUtils:
+            filesListing = [
+                    AgaveFileListing({
+                        "system": "testSystem",
+                        "path": "/testPath",
+                        "type": "dir",
+                        "length": 4,
+                        "_links": "links",
+                        "mimeType": "folder",
+                        "lastModified": "2020-08-31T12:00:00Z"
+                    }),
+                    AgaveFileListing({
+                        "system": "testSystem",
+                        "type": "file",
+                        "length": 4096,
+                        "path": "/testPath/file_no_location_data.jpg",
+                        "_links": "links",
+                        "mimeType": "application/json",
+                        "lastModified": "2020-08-31T12:00:00Z"
+                    })
+                ]
+            MockAgaveUtils().listing.return_value = filesListing
+            MockAgaveUtils().getFile.return_value = image_file_no_location_fixture
+            MockAgaveUtilsInUtils().listing.return_value = filesListing
+            MockAgaveUtilsInUtils().getFile.return_value = image_file_no_location_fixture
+            class MockAgave:
+                client_in_utils = MockAgaveUtilsInUtils()
+                client_in_external_data = MockAgaveUtils()
+            yield MockAgave
+
+
+@pytest.fixture(scope="function")
 def agave_utils_with_image_file_from_rapp_folder(image_file_fixture):
     filesListing = [
         AgaveFileListing({
@@ -173,6 +207,34 @@ def test_external_data_good_files(userdata, projects_fixture, agave_utils_with_g
     # This should only have been called once, since there is only
     # one FILE in the listing
     agave_utils_with_geojson_file.getFile.assert_called_once()
+
+    agave_utils_with_geojson_file.reset_mock()
+
+    # run import again (to mimic the periodically scheduled refresh_observable_projects)
+    import_from_agave(projects_fixture.tenant_id, u1.id, "testSystem", "/testPath", projects_fixture.id)
+    # This should only have been called once, since there is only
+    # one FILE in the listing
+    agave_utils_with_geojson_file.getFile.assert_not_called()
+
+
+@pytest.mark.worker
+def test_external_data_bad_files(userdata, projects_fixture, agave_utils_with_bad_image_file):
+    u1 = db_session.query(User).filter(User.username == "test1").first()
+
+    import_from_agave(projects_fixture.tenant_id, u1.id, "testSystem", "/testPath", projects_fixture.id)
+    features = db_session.query(Feature).all()
+    assert len(features) == 0
+    assert not os.path.exists(get_project_asset_dir(projects_fixture.id))
+    agave_utils_with_bad_image_file.client_in_external_data.getFile.assert_called_once()
+
+    agave_utils_with_bad_image_file.client_in_external_data.reset_mock()
+
+    # run import again (to mimic the periodically scheduled refresh_observable_projects)
+    import_from_agave(projects_fixture.tenant_id, u1.id, "testSystem", "/testPath", projects_fixture.id)
+    # Getting the file should only have been called once, since there is only
+    # one FILE in the listing and we already attempted to import it in the first call
+    # to import_from_agave
+    agave_utils_with_bad_image_file.client_in_external_data.getFile.assert_not_called()
 
 
 @pytest.mark.worker

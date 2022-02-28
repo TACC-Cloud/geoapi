@@ -15,6 +15,12 @@ from geoapi.exceptions import MissingServiceAccount
 logger = logging.getLogger(__name__)
 
 
+class AgaveFileGetError(Exception):
+    '''' Unable to fetch file from agave
+    '''
+    pass
+
+
 class AgaveFileListing:
 
     def __init__(self, data: Dict):
@@ -133,7 +139,7 @@ class AgaveUtils:
                         logger.warn("{}/{}.  System is not public so not trying "
                                     "work-around for CS-169/DES-2084.".format(systemId, path))
                 if r.status_code > 400:
-                    raise ValueError("Could not fetch file ({}/{}) status_code:{}".format(systemId,
+                    raise AgaveFileGetError("Could not fetch file ({}/{}) status_code:{}".format(systemId,
                                                                                           path,
                                                                                           r.status_code))
                 tmpFile = NamedTemporaryFile()
@@ -158,10 +164,10 @@ class AgaveUtils:
         url = quote('/files/media/system/{}/{}'.format(systemId, path))
         with service_client.client.get(service_client.base_url + url, stream=True) as r:
             if r.status_code > 400:
-                raise ValueError("Could not fetch file ({}/{}) with "
-                                 "service account status_code:{}".format(systemId,
-                                                                         path,
-                                                                         r.status_code))
+                raise AgaveFileGetError("Could not fetch file ({}/{}) with "
+                                        "service account status_code:{}".format(systemId,
+                                                                                path,
+                                                                                r.status_code))
             tmpFile = NamedTemporaryFile()
             for chunk in r.iter_content(1024 * 1024):
                 tmpFile.write(chunk)
