@@ -66,7 +66,7 @@ class ImageService:
         thumb.thumbnail(ImageService.THUMBSIZE)
         resized = _fix_orientation(fileObj)
         resized.thumbnail(ImageService.RESIZE, PIL.Image.ANTIALIAS)
-        imdata = ImageData(thumb, resized, (0,0))
+        imdata = ImageData(thumb, resized, (0, 0))
         return imdata
 
     @staticmethod
@@ -76,6 +76,7 @@ class ImageService:
         original = Image.open(fileObj)
         imdata = ImageOverlay(thumb, original)
         return imdata
+
 
 def _fix_orientation(fileObj: IO) -> PILImage:
     im = Image.open(fileObj)
@@ -122,6 +123,7 @@ def get_exif_data(image):
             exif_data[decoded] = value
 
     return exif_data
+
 
 def _convert_to_degrees(value):
     """

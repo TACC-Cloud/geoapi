@@ -308,7 +308,6 @@ class FeaturesService:
         :return: None
         """
         imdata = ImageService.processImage(fileObj)
-        fileObj.close()
         point = Point(imdata.coordinates)
         f = Feature()
         f.project_id = projectId
@@ -328,8 +327,19 @@ class FeaturesService:
             feature=f,
         )
         f.assets.append(fa)
-        imdata.thumb.save(os.path.join(base_filepath, str(asset_uuid) + ".thumb.jpeg"), "JPEG")
-        imdata.resized.save(os.path.join(base_filepath, str(asset_uuid) + '.jpeg'), "JPEG")
+        thumbnail_path = os.path.join(base_filepath, str(asset_uuid) + ".thumb.jpeg")
+        resized_image_path = os.path.join(base_filepath, str(asset_uuid) + '.jpeg')
+        try:
+            imdata.thumb.save(thumbnail_path, "JPEG")
+            imdata.resized.save(resized_image_path, "JPEG")
+        except:
+            if os.path.exists(thumbnail_path):
+                os.remove(thumbnail_path)
+            if os.path.exists(resized_image_path):
+                os.remove(resized_image_path)
+            raise
+        finally:
+            fileObj.close()
         db_session.add(f)
         db_session.commit()
         return f

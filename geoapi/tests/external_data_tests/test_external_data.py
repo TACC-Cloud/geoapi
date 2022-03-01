@@ -100,6 +100,68 @@ def agave_utils_with_image_file_from_rapp_folder(image_file_fixture):
             yield MockAgave
 
 
+@pytest.fixture(scope="function")
+def agave_utils_listing_with_single_trash_folder_of_image(image_file_fixture):
+    """
+    Creates a file listing for a single .Trash folder with a file in it:
+    * /
+    *   .Trash/
+    *          file.jpg
+    """
+
+    top_level_file_listing = [
+        AgaveFileListing({
+            "system": "testSystem",
+            "path": "/",
+            "type": "dir",
+            "length": 4,
+            "_links": "links",
+            "mimeType": "folder",
+            "lastModified": "2020-08-31T12:00:00Z"
+        }),
+        AgaveFileListing({
+            "system": "testSystem",
+            "path": "/.Trash",
+            "type": "dir",
+            "length": 4,
+            "_links": "links",
+            "mimeType": "folder",
+            "lastModified": "2020-08-31T12:00:00Z"
+        })
+    ]
+    subfolder_file_listing = [
+        AgaveFileListing({
+            "system": "testSystem",
+            "path": "/.Trash",
+            "type": "dir",
+            "length": 4,
+            "_links": "links",
+            "mimeType": "folder",
+            "lastModified": "2020-08-31T12:00:00Z"
+        }),
+        AgaveFileListing({
+            "system": "testSystem",
+            "type": "file",
+            "length": 4096,
+            "path": "/.Trash/file.jpg",
+            "_links": "links",
+            "mimeType": "application/jpg",
+            "lastModified": "2020-08-31T12:00:00Z"
+        })
+    ]
+    with patch('geoapi.utils.agave.AgaveUtils') as MockAgaveUtilsInUtils:
+        MockAgaveUtilsInUtils().listing.side_effect = [top_level_file_listing, subfolder_file_listing]
+        MockAgaveUtilsInUtils().getFile.return_value = image_file_fixture
+        with patch('geoapi.tasks.external_data.AgaveUtils') as MockAgaveUtils:
+            MockAgaveUtils().listing.side_effect = [top_level_file_listing, subfolder_file_listing]
+            MockAgaveUtils().getFile.return_value = image_file_fixture
+
+            class MockAgave:
+                client_in_utils = MockAgaveUtilsInUtils()
+                client_in_external_data = MockAgaveUtils()
+            yield MockAgave
+
+
 @pytest.mark.worker
 def test_external_data_good_files(userdata, projects_fixture, agave_utils_with_geojson_file):
     u1 = db_session.query(User).filter(User.username == "test1").first()
@@ -111,6 +173,19 @@ def test_external_data_good_files(userdata, projects_fixture, agave_utils_with_g
     # This should only have been called once, since there is only
     # one FILE in the listing
     agave_utils_with_geojson_file.getFile.assert_called_once()
+
+
+@pytest.mark.worker
+def test_external_data_no_files_except_for_trash(userdata, projects_fixture, agave_utils_listing_with_single_trash_folder_of_image):
+    u1 = db_session.query(User).filter(User.username == "test1").first()
+
+    import_from_agave(projects_fixture.tenant_id, u1.id, "testSystem", "/", projects_fixture.id)
+    features = db_session.query(Feature).all()
+    # just a .Trash dir so nothing to import and only top level listing should occur
+    assert len(features) == 0
+    assert agave_utils_listing_with_single_trash_folder_of_image.client_in_external_data.listing.call_count == 1
+    agave_utils_listing_with_single_trash_folder_of_image.client_in_external_data.getFile.assert_not_called()
+    agave_utils_listing_with_single_trash_folder_of_image.client_in_utils.getFile.assert_not_called()
 
 
 @pytest.mark.worker
