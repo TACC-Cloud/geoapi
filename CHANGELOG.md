@@ -1,5 +1,16 @@
 # Changelog
 
+[unreleased]: https://github.com/TACC-Cloud/geoapi/compare/v2.5...HEAD
+
+## [2.5] - 2022-03-07
+
+### Changed
+- DES-2177: do not scrape files in .Trash folder (#77)
+
+### Fixed
+- DES-2176: fix failed importing of some images (#75)
+- Transition to larger volume for /assets (#78)
+
 ## [2.4] - 2022-01-21
 
 ### Changed
