@@ -413,3 +413,21 @@ def test_create_observable_project(test_client,
     assert resp.status_code == 200
     proj = db_session.query(Project).get(1)
     assert proj.name == "Observable name"
+
+
+def test_create_observable_project_unauthorized(test_client):
+    data = {
+        'project': {
+            'name': 'Observable name',
+            'description': 'Observable description',
+            'system_id': 'testSystem',
+            'system_path': 'testPath',
+            'system_file': 'testFilename',
+        },
+        'observable': True,
+        'watch_content': False
+    }
+
+    resp = test_client.post('/projects/', json=data)
+
+    assert resp.status_code == 403
