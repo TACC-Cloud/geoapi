@@ -390,7 +390,6 @@ def test_create_observable_project_already_exists(test_client,
 
 
 def test_create_observable_project(test_client,
-                                   projects_fixture,
                                    get_system_users_mock,
                                    import_from_agave_mock,
                                    agave_utils_with_geojson_file_mock):
@@ -412,5 +411,5 @@ def test_create_observable_project(test_client,
                             headers={'x-jwt-assertion-test': u1.jwt})
 
     assert resp.status_code == 200
-    proj = db_session.query(Project).get(2)
+    proj = db_session.query(Project).get(1)
     assert proj.name == "Observable name"
