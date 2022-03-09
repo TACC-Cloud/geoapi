@@ -251,6 +251,19 @@ def test_external_data_no_files_except_for_trash(userdata, projects_fixture, aga
 
 
 @pytest.mark.worker
+def test_external_data_no_files_except_for_trash(userdata, projects_fixture, agave_utils_listing_with_single_trash_folder_of_image):
+    u1 = db_session.query(User).filter(User.username == "test1").first()
+
+    import_from_agave(projects_fixture.tenant_id, u1.id, "testSystem", "/", projects_fixture.id)
+    features = db_session.query(Feature).all()
+    # just a .Trash dir so nothing to import and only top level listing should occur
+    assert len(features) == 0
+    assert agave_utils_listing_with_single_trash_folder_of_image.client_in_external_data.listing.call_count == 1
+    agave_utils_listing_with_single_trash_folder_of_image.client_in_external_data.getFile.assert_not_called()
+    agave_utils_listing_with_single_trash_folder_of_image.client_in_utils.getFile.assert_not_called()
+
+
+@pytest.mark.worker
 def test_external_data_rapp(userdata, projects_fixture,
                             agave_utils_with_image_file_from_rapp_folder):
     u1 = db_session.query(User).filter(User.username == "test1").first()
