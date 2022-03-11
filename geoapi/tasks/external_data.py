@@ -306,7 +306,7 @@ def import_from_agave(tenant_id: str, userId: int, systemId: str, path: str, pro
                 logger.exception(e)
             if import_state != ImportState.RETRYABLE_FAILURE:
                 try:
-                    successful = True if ImportState.SUCCESS else False
+                    successful = True if import_state == ImportState.SUCCESS else False
                     # Save the row in the database that marks this file so we don't try to import it again
                     target_file = ImportsService.createImportedFile(projectId=projectId,
                                                                     systemId=systemId,
