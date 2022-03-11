@@ -10,7 +10,7 @@ from geoapi.celery_app import app
 from geoapi.exceptions import InvalidCoordinateReferenceSystem, MissingServiceAccount
 from geoapi.models import User, ObservableDataProject, Task
 from geoapi.utils.agave import AgaveUtils, get_system_users, get_metadata_using_service_account, AgaveFileGetError
-from geoapi.log import logging
+from geoapi.log import logger
 from geoapi.services.features import FeaturesService
 from geoapi.services.imports import ImportsService
 from geoapi.services.vectors import SHAPEFILE_FILE_ADDITIONAL_FILES
@@ -19,8 +19,6 @@ from geoapi.tasks.lidar import convert_to_potree, check_point_cloud, get_point_c
 from geoapi.db import db_session
 from geoapi.services.notifications import NotificationsService
 from geoapi.services.users import UserService
-
-logger = logging.getLogger(__file__)
 
 
 class ImportState(Enum):
@@ -240,9 +238,9 @@ def import_from_agave(tenant_id: str, userId: int, systemId: str, path: str, pro
                 item_system_path = os.path.join(item.system, str(item.path).lstrip("/"))
                 target_file = ImportsService.getImport(projectId, systemId, str(item.path))
                 if target_file:
-                    logger.info(f"Already imported {item_system_path} for project:{projectId} so skipping. "
-                                f"The original import was on {target_file.created} and "
-                                f"successful_import={target_file.successful_import}")
+                    logger.debug(f"Already imported {item_system_path} for project:{projectId} so skipping. "
+                                 f"The original import was on {target_file.created} and "
+                                 f"successful_import={target_file.successful_import}")
                     continue
 
                 # If its a RApp project folder, grab the metadata from tapis meta service
