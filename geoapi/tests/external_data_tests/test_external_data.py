@@ -2,7 +2,7 @@ from unittest.mock import patch
 import pytest
 import os
 
-from geoapi.models import User, Feature
+from geoapi.models import User, Feature, ImportedFile
 from geoapi.db import db_session
 from geoapi.tasks.external_data import (import_from_agave,
                                         import_point_clouds_from_agave,
@@ -204,6 +204,9 @@ def test_external_data_good_files(userdata, projects_fixture, agave_utils_with_g
     features = db_session.query(Feature).all()
     # the test geojson has 3 features in it
     assert len(features) == 3
+    imported_file = db_session.query(ImportedFile).first()
+    assert imported_file.successful_import
+
     # This should only have been called once, since there is only
     # one FILE in the listing
     agave_utils_with_geojson_file.getFile.assert_called_once()
@@ -226,6 +229,8 @@ def test_external_data_bad_files(userdata, projects_fixture, agave_utils_with_ba
     assert len(features) == 0
     assert not os.path.exists(get_project_asset_dir(projects_fixture.id))
     agave_utils_with_bad_image_file.client_in_external_data.getFile.assert_called_once()
+    imported_file = db_session.query(ImportedFile).first()
+    assert not imported_file.successful_import
 
     agave_utils_with_bad_image_file.client_in_external_data.reset_mock()
 
