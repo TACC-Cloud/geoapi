@@ -5,6 +5,8 @@ from celery import uuid as celery_uuid
 import concurrent.futures
 from enum import Enum
 import json
+import time
+import datetime
 
 from geoapi.celery_app import app
 from geoapi.exceptions import InvalidCoordinateReferenceSystem, MissingServiceAccount
@@ -321,6 +323,7 @@ def import_from_agave(tenant_id: str, userId: int, systemId: str, path: str, pro
 
 @app.task()
 def refresh_observable_projects():
+    start_time = time.time()
     try:
         obs = db_session.query(ObservableDataProject).all()
         for i, o in enumerate(obs):
@@ -352,6 +355,11 @@ def refresh_observable_projects():
     except Exception:
         logger.exception("Unhandled exception when importing observable project")
         db_session.rollback()
+
+    total_time = time.time() - start_time
+    logger.info(f"{total_time}")
+    logger.info("refresh_observable_projects completed. "
+                "Elapsed time {}".format(datetime.timedelta(seconds=total_time)))
 
 
 if __name__ == "__main__":
