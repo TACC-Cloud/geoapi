@@ -15,6 +15,7 @@ class ImportedFile(Base):
     # last_updated is the timestamp on the file itself as to when it was last touched
     last_updated = Column(DateTime(timezone=True), nullable=False)
     created = Column(DateTime(timezone=True), server_default=func.now())
+    successful_import = Column(Boolean, default=True)
 
     def __repr__(self):
         return '<ImportedFile(system={sys}::path={path})>'.format(sys=self.system_id, path=self.path)
