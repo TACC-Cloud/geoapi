@@ -14,7 +14,7 @@ from geoapi.services.point_cloud import PointCloudService
 from geoapi.services.projects import ProjectsService
 from geoapi.tasks import external_data
 from geoapi.utils.decorators import jwt_decoder, project_permissions_allow_public, project_permissions, project_feature_exists, \
-    project_point_cloud_exists, project_point_cloud_not_processing, check_access_and_get_project, is_anonymous
+    project_point_cloud_exists, project_point_cloud_not_processing, check_access_and_get_project, is_anonymous, not_anonymous
 from geoapi.tasks import external_data
 
 logger = logging.getLogger(__name__)
@@ -184,6 +184,7 @@ class ProjectsListing(Resource):
              description='Create a new project')
     @api.expect(project)
     @api.marshal_with(project)
+    @not_anonymous
     def post(self):
         u = request.current_user
         logger.info("Create project for user:{} : {}".format(u.username,
@@ -221,7 +222,6 @@ class ProjectResource(Resource):
         return ProjectsService.update(user=u,
                                       projectId=projectId,
                                       data=api.payload)
-
 
 
 @api.route('/<int:projectId>/users/')

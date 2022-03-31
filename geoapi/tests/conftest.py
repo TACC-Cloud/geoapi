@@ -135,6 +135,13 @@ def image_file_fixture():
 
 
 @pytest.fixture(scope="function")
+def image_file_no_location_fixture():
+    home = os.path.dirname(__file__)
+    with open(os.path.join(home, 'fixtures/image_no_location_data.jpg'), 'rb') as f:
+        yield f
+
+
+@pytest.fixture(scope="function")
 def image_small_DES_2176_fixture():
     home = os.path.dirname(__file__)
     with open(os.path.join(home, 'fixtures/image_small_file_DES_2176.jpg'), 'rb') as f:
@@ -307,11 +314,11 @@ def feature_properties_file_fixture():
 
 
 @pytest.fixture(scope="function")
-def feature_fixture():
+def feature_fixture(projects_fixture):
     home = os.path.dirname(__file__)
     with open(os.path.join(home, 'fixtures/properties.json'), 'rb') as f:
         feat = Feature.fromGeoJSON(json.loads(f.read()))
-        feat.project_id = 1
+        feat.project_id = projects_fixture.id
         db_session.add(feat)
         db_session.commit()
         yield feat
