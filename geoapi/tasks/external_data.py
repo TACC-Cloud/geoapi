@@ -3,14 +3,16 @@ import concurrent
 from pathlib import Path
 from celery import uuid as celery_uuid
 import concurrent.futures
-
+from enum import Enum
 import json
+import time
+import datetime
 
 from geoapi.celery_app import app
 from geoapi.exceptions import InvalidCoordinateReferenceSystem, MissingServiceAccount
 from geoapi.models import User, ObservableDataProject, Task
-from geoapi.utils.agave import AgaveUtils, get_system_users, get_metadata_using_service_account
-from geoapi.log import logging
+from geoapi.utils.agave import AgaveUtils, get_system_users, get_metadata_using_service_account, AgaveFileGetError
+from geoapi.log import logger
 from geoapi.services.features import FeaturesService
 from geoapi.services.imports import ImportsService
 from geoapi.services.vectors import SHAPEFILE_FILE_ADDITIONAL_FILES
@@ -21,7 +23,10 @@ from geoapi.services.notifications import NotificationsService
 from geoapi.services.users import UserService
 
 
-logger = logging.getLogger(__file__)
+class ImportState(Enum):
+    SUCCESS = 1
+    FAILURE = 2
+    RETRYABLE_FAILURE = 3
 
 
 def _parse_rapid_geolocation(loc):
@@ -233,15 +238,18 @@ def import_from_agave(tenant_id: str, userId: int, systemId: str, path: str, pro
             try:
                 # first check if there already is a file in the DB
                 item_system_path = os.path.join(item.system, str(item.path).lstrip("/"))
-                targetFile = ImportsService.getImport(projectId, systemId, str(item.path))
-                if targetFile:
-                    logger.info("Already imported {}".format(item_system_path))
+                target_file = ImportsService.getImport(projectId, systemId, str(item.path))
+                if target_file:
+                    logger.debug(f"Already imported {item_system_path} for project:{projectId} so skipping. "
+                                 f"The original import was on {target_file.created} and "
+                                 f"successful_import={target_file.successful_import}")
                     continue
 
                 # If its a RApp project folder, grab the metadata from tapis meta service
                 if is_member_of_rapp_project_folder(item_system_path):
                     logger.info("RApp: importing:{} for user:{}".format(item_system_path, user.username))
-                    if item.path.suffix.lower().lstrip('.') not in FeaturesService.ALLOWED_GEOSPATIAL_FEATURE_ASSET_EXTENSIONS:
+                    if item.path.suffix.lower().lstrip(
+                            '.') not in FeaturesService.ALLOWED_GEOSPATIAL_FEATURE_ASSET_EXTENSIONS:
                         logger.info("{path} is unsupported; skipping.".format(path=item_system_path))
                         continue
 
@@ -250,7 +258,8 @@ def import_from_agave(tenant_id: str, userId: int, systemId: str, path: str, pro
                     try:
                         meta = get_metadata_using_service_account(tenant_id, item.system, item.path)
                     except MissingServiceAccount:
-                        logger.error("No service account. Unable to get metadata for {}:{}".format(item.system, item.path))
+                        logger.error(
+                            "No service account. Unable to get metadata for {}:{}".format(item.system, item.path))
                         return {}
 
                     logger.debug("metadata from service account for file:{} : {}".format(item_system_path, meta))
@@ -287,22 +296,34 @@ def import_from_agave(tenant_id: str, userId: int, systemId: str, path: str, pro
                     tmpFile.close()
                 else:
                     continue
-                # Save the row in the database that marks this file as already imported so it doesn't get added again
-                targetFile = ImportsService.createImportedFile(projectId, systemId, str(item.path), item.lastModified)
-                db_session.add(targetFile)
-                db_session.commit()
-
+                import_state = ImportState.SUCCESS
             except Exception as e:
                 db_session.rollback()
                 logger.error(
                     "Could not import for user:{} from agave:{}/{}".format(user.username, systemId, path))
                 NotificationsService.create(user, "error", "Error importing {f}".format(f=item_system_path))
+                import_state = ImportState.FAILURE if e is not AgaveFileGetError else ImportState.RETRYABLE_FAILURE
                 logger.exception(e)
-                continue
+            if import_state != ImportState.RETRYABLE_FAILURE:
+                try:
+                    successful = True if import_state == ImportState.SUCCESS else False
+                    # Save the row in the database that marks this file so we don't try to import it again
+                    target_file = ImportsService.createImportedFile(projectId=projectId,
+                                                                    systemId=systemId,
+                                                                    path=str(item.path),
+                                                                    lastUpdated=item.lastModified,
+                                                                    successful_import=successful)
+                    db_session.add(target_file)
+                    db_session.commit()
+                except Exception as e:
+                    logger.exception(f"Failed to create db entry (imported_file)"
+                                     f"for projectId:{projectId}  {systemId}/{path}")
+                    db_session.rollback()
 
 
 @app.task()
 def refresh_observable_projects():
+    start_time = time.time()
     try:
         obs = db_session.query(ObservableDataProject).all()
         for i, o in enumerate(obs):
@@ -334,6 +355,11 @@ def refresh_observable_projects():
     except Exception:
         logger.exception("Unhandled exception when importing observable project")
         db_session.rollback()
+
+    total_time = time.time() - start_time
+    logger.info(f"{total_time}")
+    logger.info("refresh_observable_projects completed. "
+                "Elapsed time {}".format(datetime.timedelta(seconds=total_time)))
 
 
 if __name__ == "__main__":
