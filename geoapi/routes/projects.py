@@ -10,6 +10,7 @@ from werkzeug.utils import secure_filename
 from geoapi.log import logging
 from geoapi.schemas import FeatureSchema
 from geoapi.services.features import FeaturesService
+from geoapi.services.streetview import StreetviewService
 from geoapi.services.point_cloud import PointCloudService
 from geoapi.services.projects import ProjectsService
 from geoapi.tasks import external_data
@@ -58,6 +59,23 @@ feature_collection_model = api.model('FeatureCollection', {
     "features": fields.Nested(api_feature)
 })
 
+streetview_sequence = api.model('StreetviewSequence', {
+    'id': fields.Integer(),
+    'streetview_instance_id': fields.Integer(),
+    'start_date': fields.DateTime(dt_format='rfc822', required=False),
+    'end_date': fields.DateTime(dt_format='rfc822', required=False),
+    'bbox': fields.String(required=False),
+    'sequence_id': fields.String(required=False)
+})
+
+streetview_instance = api.model('StreetviewInstance', {
+    'id': fields.Integer(),
+    'streetview_id': fields.Integer(),
+    'system_id': fields.String(),
+    'path': fields.String(),
+    'sequences': fields.List(fields.Nested(streetview_sequence), allow_null=True),
+})
+
 project = api.model('Project', {
     'id': fields.Integer(),
     'name': fields.String(required=True),
@@ -66,7 +84,8 @@ project = api.model('Project', {
     'uuid': fields.String(),
     'system_file': fields.String(),
     'system_id': fields.String(),
-    'system_path': fields.String()
+    'system_path': fields.String(),
+    'streetview_instances': fields.List(fields.Nested(streetview_instance), allow_null=True),
 })
 
 user = api.model('User', {
@@ -493,6 +512,25 @@ class ProjectOverlayResource(Resource):
             overlayId, projectId, request.current_user.username))
         FeaturesService.deleteOverlay(projectId, overlayId)
         return "Overlay {id} deleted".format(id=overlayId)
+
+@api.route('/<int:projectId>/streetview/')
+class ProjectStreetviewResource(Resource):
+
+    @api.doc(id="getAllStreetviewInstances",
+             description="Get a listing of all the streetview instances of a project")
+    @api.marshal_with(streetview_instance, as_list=True)
+    @project_permissions_allow_public
+    def get(self, projectId: int):
+        return StreetviewService.getInstances(projectId)
+
+    @api.doc(id="addStreetviewInstance",
+             description="Add a streetview instance to a project")
+    @project_permissions
+    def post(self, projectId: int):
+        logger.info("Add streetview instance to project:{} for user:{}".format(
+            projectId, request.current_user.username))
+        instanceId = api.payload['instanceId']
+        StreetviewService.addInstanceToProject(projectId, instanceId)
 
 
 @api.route('/<int:projectId>/point-cloud/')

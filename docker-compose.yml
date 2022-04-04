@@ -55,7 +55,7 @@ services:
       - .:/app
       - assets:/assets
     environment:
-      - MAPILLARY_CLIENT_TOKEN=4045602648858965
+      - MAPILLARY_CLIENT_TOKEN=4866220476802272
       - FLASK_APP=/app/geoapi/app.py
       - APP_ENV=development
       - ASSETS_BASE_DIR=/assets
@@ -76,7 +76,7 @@ services:
       - .:/app
       - assets:/assets
     environment:
-      - MAPILLARY_CLIENT_TOKEN=4045602648858965
+      - MAPILLARY_CLIENT_TOKEN=4866220476802272
       - FLASK_APP=/app/geoapi/app.py
       - APP_ENV=development
       - ASSETS_BASE_DIR=/assets
@@ -101,7 +101,7 @@ services:
       - 8.8.8.8
       - 8.8.4.4
     environment:
-      - MAPILLARY_CLIENT_TOKEN=4045602648858965
+      - MAPILLARY_CLIENT_TOKEN=4866220476802272
       - FLASK_APP=/app/geoapi/app.py
       - APP_ENV=development
       - ASSETS_BASE_DIR=/assets

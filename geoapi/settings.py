@@ -17,7 +17,6 @@ class Config(object):
     RESTPLUS_MASK_SWAGGER = False
     TENANT = os.environ.get("TENANT")
     STREETVIEW_DIR = os.environ.get('STREETVIEW_DIR', '/assets/streetview')
-    MAPILLARY_CLIENT_ID = os.environ.get('MAPILLARY_CLIENT_ID', 'MLY|4045602648858965|5b906cb2dfd6d0f7c5ed7cb7d50620d8')
 
 class ProductionConfig(Config):
     DEBUG = False
@@ -29,11 +28,13 @@ class ProductionConfig(Config):
     RABBITMQ_PASSWD = os.environ.get("RABBITMQ_PASSWD")
     RABBITMQ_VHOST = os.environ.get("RABBITMQ_VHOST")
     RABBITMQ_HOSTNAME = os.environ.get("RABBITMQ_HOSTNAME")
+    MAPILLARY_CLIENT_ID = os.environ.get('MAPILLARY_CLIENT_ID', 'MLY|5156692464392931|4f1118aa1b06f051a44217cb56bedf79')
 
 
 class DevelopmentConfig(Config):
     DEBUG = True
     PROPAGATE_EXCEPTIONS = False
+    MAPILLARY_CLIENT_ID = os.environ.get('MAPILLARY_CLIENT_ID', 'MLY|4866220476802272|cedfb10deac752ca3ddf83997cef60a4')
 
 class TestingConfig(Config):
     DB_USERNAME = 'dev'
@@ -44,6 +45,7 @@ class TestingConfig(Config):
     ASSETS_BASE_DIR = '/tmp'
     TENANT = "{\"DESIGNSAFE\": {\"service_account_token\": \"ABCDEFG12344\"}," \
              " \"TEST\": {\"service_account_token\": \"ABCDEFG12344\"}  }"
+    MAPILLARY_CLIENT_ID = os.environ.get('MAPILLARY_CLIENT_ID', 'MLY|4936281379826603|f8c4732d3c9d96582b86158feb1c1a7a')
 
 
 APP_ENV = os.environ.get('APP_ENV', '').lower()

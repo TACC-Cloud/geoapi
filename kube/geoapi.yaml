@@ -67,7 +67,7 @@ data:
 
   ASSETS_BASE_DIR: /assets/
   JWT_SECRET_KEY: your-256-bit-secret
-  MAPILLARY_CLIENT_TOKEN: '4045602648858965'
+  MAPILLARY_CLIENT_TOKEN: '5156692464392931'
   FLASK_APP: /app/geoapi/app.py
   APP_ENV: production
   RABBITMQ_HOSTNAME: geoapi-rabbitmq

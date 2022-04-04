@@ -2,7 +2,7 @@ from geoapi.services.notifications import NotificationsService
 from typing import List, Dict
 from datetime import datetime
 
-from geoapi.models import User, Streetview, StreetviewInstance, StreetviewSequence, StreetviewOrganization
+from geoapi.models import User, Streetview, StreetviewInstance, StreetviewSequence, StreetviewOrganization, Project
 from geoapi.db import db_session
 from geoapi.log import logging
 
@@ -213,6 +213,18 @@ class StreetviewService:
         db_session.commit()
 
         return svi
+
+    @staticmethod
+    def getInstances(projectId: int) -> List[StreetviewInstance]:
+        proj = db_session.query(Project).get(projectId)
+        return proj.streetview_instances
+
+    @staticmethod
+    def addInstanceToProject(projectId: int, streetview_instance_id: int) -> None:
+        proj = db_session.query(Project).get(projectId)
+        streetview_instance = db_session.query(StreetviewInstance).get(streetview_instance_id)
+        proj.streetview_instances.append(streetview_instance)
+        db_session.commit()
 
     @staticmethod
     def getInstanceFromSystemPath(streetview_id: int, system_id: str, path: str) -> StreetviewInstance:
