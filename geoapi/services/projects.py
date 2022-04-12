@@ -177,7 +177,7 @@ class ProjectsService:
         for asset in assetTypes:
             if asset:
                 params[asset] = asset
-                assetQueries.append( 'fa is null' if asset == 'no_asset_vector' else 'fa.asset_type = :' + asset)
+                assetQueries.append('fa is null' if asset == 'no_asset_vector' else 'fa.asset_type = :' + asset)
 
         select_stmt = text("""
         json_build_object(
