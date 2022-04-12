@@ -171,7 +171,7 @@ class ProjectsService:
                   'startDate': startDate,
                   'endDate': endDate}
 
-        assetTypes = assetType.split(',')
+        assetTypes = assetType.split(',') if assetType else []
         assetQueries = []
 
         for asset in assetTypes:
