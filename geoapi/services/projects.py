@@ -226,9 +226,6 @@ class ProjectsService:
 
         if len(assetQueries):
             sub_select = sub_select.where(text('(' + ' OR '.join(assetQueries) + ')'))
-        else:
-            params['none'] = 'none'
-            sub_select = sub_select.where(text('fa.asset_type = :' + params['none']))
 
         sub_select = sub_select.group_by(text("feat.id")).alias("tmp")
         s = select([select_stmt]).select_from(sub_select)
