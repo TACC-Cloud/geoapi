@@ -219,6 +219,14 @@ class StreetviewSequencesResource(Resource):
 
 @api.route('/sequences/<sequence_id>/')
 class StreetviewSequenceResource(Resource):
+    @api.doc(id="getStreetviewSequence",
+             description="Get a streetview service's sequence")
+    @marshal_with(streetview_sequence)
+    def get(self, sequence_id: str):
+        u = request.current_user
+        logger.info("Get streetview sequence of id:{} for user:{}".format(sequence_id, u.username))
+        return StreetviewService.getSequenceFromId(sequence_id)
+
     @api.doc(id="deleteStreetviewSequence",
              description="Delete a streetview service's sequence")
     def delete(self, sequence_id: int):

@@ -3,7 +3,6 @@ import pathlib
 import shutil
 import re
 import json
-# import requests
 import subprocess
 import datetime
 from typing import Dict, List
@@ -18,8 +17,6 @@ from geoapi.log import logging
 
 
 logger = logging.getLogger(__file__)
-
-
 def make_project_streetview_dir(userId: int, task_uuid: UUID) -> str:
     """
     Creates a directory for a temporary streetview paths in the STREETVIEW_DIR location

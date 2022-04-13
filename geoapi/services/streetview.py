@@ -1,10 +1,12 @@
 from geoapi.services.notifications import NotificationsService
 from typing import List, Dict
 from datetime import datetime
+import uuid
 
-from geoapi.models import User, Streetview, StreetviewInstance, StreetviewSequence, StreetviewOrganization, Project
+from geoapi.models import User, Streetview, StreetviewInstance, StreetviewSequence, StreetviewOrganization, Project, Feature, FeatureAsset
 from geoapi.db import db_session
 from geoapi.log import logging
+
 
 logger = logging.getLogger(__name__)
 
@@ -227,6 +229,12 @@ class StreetviewService:
         db_session.commit()
 
     @staticmethod
+    def sequenceFromFeature(featureId: int):
+        return db_session.query(StreetviewSequence)\
+            .filter(StreetviewSequence.feature.id == featureId)\
+            .first()
+
+    @staticmethod
     def getInstanceFromSystemPath(streetview_id: int, system_id: str, path: str) -> StreetviewInstance:
         """
         Get a Streetview instance object for a system and path.
@@ -299,6 +307,18 @@ class StreetviewService:
         db_session.add(seq)
         db_session.commit()
         return seq
+
+    @staticmethod
+    def getSequenceFromId(sequence_id: str) -> StreetviewSequence:
+        """
+        Get a Streetview Sequence by its sequence_id.
+        :param sequence_id: str
+        :return: StreetviewSequence
+        """
+        sequence = db_session.query(StreetviewSequence)\
+            .filter(StreetviewSequence.sequence_id == sequence_id)\
+            .first()
+        return sequence
 
     @staticmethod
     def getSequence(id: int) -> StreetviewSequence:

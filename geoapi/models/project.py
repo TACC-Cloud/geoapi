@@ -32,10 +32,6 @@ class Project(Base):
     updated = Column(DateTime(timezone=True), onupdate=func.now())
     features = relationship('Feature', cascade="all, delete-orphan")
 
-    streetview_instances = relationship('StreetviewInstance',
-                         secondary='projects_streetview_instances',
-                         back_populates='projects')
-
     users = relationship('User',
                          secondary='projects_users',
                          back_populates='projects')

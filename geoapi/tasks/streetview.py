@@ -1,16 +1,23 @@
+from geoapi.models.feature import Feature, FeatureAsset
 from geoapi.services.users import UserService
 import os
 import uuid
 from uuid import UUID
 from typing import Dict
 from pathlib import Path
+import requests
+import json
+
+from shapely.geometry import Point, LineString
+from geoalchemy2.shape import from_shape
+from celery import uuid as celery_uuid
 
 from geoapi.celery_app import app
 from geoapi.exceptions import (ApiException,
                                StreetviewAuthException,
                                StreetviewLimitException,
                                StreetviewExistsException)
-from geoapi.models import User, Streetview, StreetviewInstance, streetview
+from geoapi.models import User, Streetview, StreetviewInstance, StreetviewSequence
 from geoapi.utils.agave import AgaveUtils
 from geoapi.utils.streetview import (get_project_streetview_dir,
                                      make_project_streetview_dir,
@@ -20,6 +27,7 @@ from geoapi.log import logging
 import geoapi.services.features as features
 from geoapi.services.streetview import StreetviewService
 from geoapi.services.notifications import NotificationsService
+from geoapi.db import db_session
 
 logger = logging.getLogger(__file__)
 
@@ -180,6 +188,59 @@ def check_existing_upload(user, streetview_service, task_uuid, system_id, path):
     if existing_progress or existing_instance:
         raise StreetviewExistsException("Path {f} is already in progress or uploaded."
                                         .format(f=(system_id + path)))
+
+@app.task(rate_limit="5/s")
+def convert_sequence_to_feature(projectId, sequenceId, token):
+    streetview_sequence = db_session.query(StreetviewSequence).get(sequenceId)
+    feature = Feature()
+
+    logger.info("Starting streetview sequence processing task for sequence (#{}).".format(sequenceId))
+
+    sequence_id = streetview_sequence.sequence_id
+    original_dir = streetview_sequence.streetview_instance.path
+    display_path = original_dir + '/' + sequence_id
+
+    api_call_headers = {
+        'Authorization': 'OAuth ' + token
+    }
+
+    sequence_response = requests.get(f"https://graph.mapillary.com/image_ids?sequence_id={sequenceId}", headers=api_call_headers)
+
+    jsonResp = json.loads(sequence_response.content).get('data')
+
+    point_features = []
+
+    for img in jsonResp:
+        image_response = requests.get(f"https://graph.mapillary.com/{img['id']}?fields=computed_geometry", headers=api_call_headers)
+        image_coordinates = json.loads(image_response.content) \
+            .get('computed_geometry') \
+            .get('coordinates')
+        point_features.append(Point(image_coordinates))
+
+    fa = FeatureAsset(
+        uuid=sequence_id,
+        asset_type="streetview",
+        path="",
+        display_path=display_path,
+        original_path=original_dir,
+        feature=feature
+    )
+
+    feature.assets.append(fa)
+    streetview_sequence.feature = feature
+    streetview_sequence.feature_id = feature.id
+    feature.project_id = projectId
+
+    feature.the_geom = from_shape(LineString(point_features), srid=4326)
+
+    logger.info("Finished streetview sequence processing task for sequence (#{}).".format(sequenceId))
+
+    try:
+        db_session.add(feature)
+        db_session.commit()
+    except:
+        db_session.rollback()
+        raise
 
 
 # TODO: Ensure that just user works and not userid (previously took userid)

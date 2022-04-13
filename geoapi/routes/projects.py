@@ -13,7 +13,7 @@ from geoapi.services.features import FeaturesService
 from geoapi.services.streetview import StreetviewService
 from geoapi.services.point_cloud import PointCloudService
 from geoapi.services.projects import ProjectsService
-from geoapi.tasks import external_data
+from geoapi.tasks import external_data, streetview
 from geoapi.utils.decorators import jwt_decoder, project_permissions_allow_public, project_permissions, project_feature_exists, \
     project_point_cloud_exists, project_point_cloud_not_processing, check_access_and_get_project, is_anonymous, not_anonymous
 from geoapi.tasks import external_data
@@ -59,22 +59,22 @@ feature_collection_model = api.model('FeatureCollection', {
     "features": fields.Nested(api_feature)
 })
 
-streetview_sequence = api.model('StreetviewSequence', {
-    'id': fields.Integer(),
-    'streetview_instance_id': fields.Integer(),
-    'start_date': fields.DateTime(dt_format='rfc822', required=False),
-    'end_date': fields.DateTime(dt_format='rfc822', required=False),
-    'bbox': fields.String(required=False),
-    'sequence_id': fields.String(required=False)
-})
-
-streetview_instance = api.model('StreetviewInstance', {
-    'id': fields.Integer(),
-    'streetview_id': fields.Integer(),
-    'system_id': fields.String(),
-    'path': fields.String(),
-    'sequences': fields.List(fields.Nested(streetview_sequence), allow_null=True),
-})
+# streetview_sequence = api.model('StreetviewSequence', {
+#     'id': fields.Integer(),
+#     'streetview_instance_id': fields.Integer(),
+#     'start_date': fields.DateTime(dt_format='rfc822', required=False),
+#     'end_date': fields.DateTime(dt_format='rfc822', required=False),
+#     'bbox': fields.String(required=False),
+#     'sequence_id': fields.String(required=False)
+# })
+#
+# streetview_instance = api.model('StreetviewInstance', {
+#     'id': fields.Integer(),
+#     'streetview_id': fields.Integer(),
+#     'system_id': fields.String(),
+#     'path': fields.String(),
+#     'sequences': fields.List(fields.Nested(streetview_sequence), allow_null=True),
+# })
 
 project = api.model('Project', {
     'id': fields.Integer(),
@@ -85,7 +85,7 @@ project = api.model('Project', {
     'system_file': fields.String(),
     'system_id': fields.String(),
     'system_path': fields.String(),
-    'streetview_instances': fields.List(fields.Nested(streetview_instance), allow_null=True),
+    # 'streetview_instances': fields.List(fields.Nested(streetview_instance), allow_null=True),
 })
 
 user = api.model('User', {
@@ -515,22 +515,25 @@ class ProjectOverlayResource(Resource):
 
 @api.route('/<int:projectId>/streetview/')
 class ProjectStreetviewResource(Resource):
-
-    @api.doc(id="getAllStreetviewInstances",
-             description="Get a listing of all the streetview instances of a project")
-    @api.marshal_with(streetview_instance, as_list=True)
-    @project_permissions_allow_public
-    def get(self, projectId: int):
-        return StreetviewService.getInstances(projectId)
-
-    @api.doc(id="addStreetviewInstance",
-             description="Add a streetview instance to a project")
+    @api.doc(id="addStreetviewSequenceToFeature",
+             description="Add a streetview sequence to a project feature")
     @project_permissions
     def post(self, projectId: int):
-        logger.info("Add streetview instance to project:{} for user:{}".format(
+        logger.info("Add streetview sequence to project features:{} for user:{}".format(
             projectId, request.current_user.username))
-        instanceId = api.payload['instanceId']
-        StreetviewService.addInstanceToProject(projectId, instanceId)
+        sequenceId = api.payload['sequenceId']
+        token = api.payload['token']['token']
+        streetview.convert_sequence_to_feature.delay(projectId, sequenceId, token)
+
+@api.route('/<int:projectId>/streetview/<int:featureId>/')
+class ProjectStreetviewFeatureResource(Resource):
+    @api.doc(id="getStreetviewSequenceFromFeature",
+             description="Get a streetview sequence from a project feature")
+    @project_permissions
+    def get(self, projectId: int, featureId: int):
+        logger.info("Get streetview sequence from project features:{} for user:{}".format(
+            projectId, request.current_user.username))
+        return StreetviewService.sequenceFromFeature(featureId)
 
 
 @api.route('/<int:projectId>/point-cloud/')

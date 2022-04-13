@@ -45,7 +45,6 @@ class TestingConfig(Config):
     ASSETS_BASE_DIR = '/tmp'
     TENANT = "{\"DESIGNSAFE\": {\"service_account_token\": \"ABCDEFG12344\"}," \
              " \"TEST\": {\"service_account_token\": \"ABCDEFG12344\"}  }"
-    MAPILLARY_CLIENT_ID = os.environ.get('MAPILLARY_CLIENT_ID', 'MLY|4936281379826603|f8c4732d3c9d96582b86158feb1c1a7a')
 
 
 APP_ENV = os.environ.get('APP_ENV', '').lower()

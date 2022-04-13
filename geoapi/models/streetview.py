@@ -2,13 +2,6 @@ from sqlalchemy import Column, Integer, String, DateTime, ForeignKey
 from sqlalchemy.orm import relationship
 from geoapi.db import Base
 
-class ProjectStreetviewInstance(Base):
-    __tablename__ = 'projects_streetview_instances'
-
-    streetview_instance_id = Column(Integer, ForeignKey('streetview_instance.id', ondelete="CASCADE"), primary_key=True, )
-    project_id = Column(Integer, ForeignKey('projects.id', ondelete="CASCADE"), primary_key=True)
-
-
 class Streetview(Base):
     __tablename__ = 'streetview'
 
@@ -45,11 +38,6 @@ class StreetviewInstance(Base):
 
     streetview_id = Column(ForeignKey('streetview.id', ondelete="CASCADE", onupdate="CASCADE"), index=True)
     streetview = relationship('Streetview')
-
-    projects = relationship('Project',
-                 secondary='projects_streetview_instances',
-                 back_populates='streetview_instances', lazy="joined")
-
     system_id = Column(String(), nullable=True, index=True)
     path = Column(String(), nullable=True, index=True)
     sequences = relationship('StreetviewSequence', cascade="all, delete-orphan")
@@ -62,12 +50,16 @@ class StreetviewSequence(Base):
     __tablename__ = 'streetview_sequence'
 
     id = Column(Integer, primary_key=True)
+    feature_id = Column(ForeignKey('features.id', ondelete="SET NULL", onupdate="CASCADE"), index=True)
+    task_id = Column(ForeignKey('tasks.id'), index=True)
+    sequence_id = Column(String(), index=True)
     streetview_instance_id = Column(ForeignKey('streetview_instance.id', ondelete="CASCADE", onupdate="CASCADE"), index=True)
-    streetview_instance = relationship('StreetviewInstance')
     start_date = Column(DateTime(timezone=True))
     end_date = Column(DateTime(timezone=True))
     bbox = Column(String(), index=True)
-    sequence_id = Column(String(), index=True)
+    streetview_instance = relationship('StreetviewInstance')
+    feature = relationship("Feature", lazy="joined")
+    task = relationship("Task", lazy="joined")
 
     def __repr__(self):
         return '<StreetviewSequence(id={})>'.format(self.id)
