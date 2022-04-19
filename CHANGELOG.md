@@ -5,7 +5,7 @@
 ## [2.6] - 2022-04-19
 
 ### Added
-- DES-2198: Update map project scrapting to avoid importing files that had previously failed (#81)
+- DES-2198: Update periodic importing of files to avoid importing files that had previously failed (#81)
 
 ### Changed
 - DES-2185: Fix filtering query (#76)
