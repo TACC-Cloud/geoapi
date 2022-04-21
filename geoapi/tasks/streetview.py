@@ -206,7 +206,7 @@ def convert_sequence_to_feature(projectId, sequenceId, token):
         'Authorization': 'OAuth ' + token
     }
 
-    sequence_response = requests.get(f"{mapillary_api_url}/image_ids?sequence_id={sequenceId}", headers=api_call_headers)
+    sequence_response = requests.get(f"{mapillary_api_url}/image_ids?sequence_id={sequence_id}", headers=api_call_headers)
 
     jsonResp = json.loads(sequence_response.content).get('data')
 
