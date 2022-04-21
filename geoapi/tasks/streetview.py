@@ -163,7 +163,7 @@ def _to_mapillary(user: User, streetview_instance: StreetviewInstance, task_uuid
 #       start/end dates using some utility functions that mapillary_tools provides.
 #
 #       Relative documentation here: https://www.mapillary.com/developer/api-documentation
-def _mapillary_finalize(user: User, streetview_instance: StreetviewInstance, task_uuid: UUID):
+def _mapillary_finalize(user: User, streetview_instance: StreetviewInstance, task_uuid: UUID, organization_key: str):
     uploaded_sequences = MapillaryUtils.extract_uploaded_sequences(user, task_uuid)
 
     if len(uploaded_sequences) == 0:
@@ -174,7 +174,8 @@ def _mapillary_finalize(user: User, streetview_instance: StreetviewInstance, tas
             StreetviewService.createSequence(streetview_instance=streetview_instance,
                                              start_date=seq['start_date'],
                                              end_date=seq['end_date'],
-                                             bbox='{}, {}, {}, {}'.format(seq['lon_min'], seq['lat_min'], seq['lon_max'], seq['lat_max'])
+                                             bbox='{}, {}, {}, {}'.format(seq['lon_min'], seq['lat_min'], seq['lon_max'], seq['lat_max']),
+                                             organization_id=organization_key
                                              )
 
 
@@ -252,7 +253,6 @@ def convert_sequence_to_feature(projectId, sequenceId, token):
         db_session.rollback()
         raise
 
-
 # TODO: Ensure that just user works and not userid (previously took userid)
 @app.task(rate_limit="5/s")
 def from_tapis_to_streetview(user_id: int,
@@ -322,7 +322,7 @@ def from_tapis_to_streetview(user_id: int,
             return
 
         try:
-            _mapillary_finalize(user, streetview_instance, task_uuid)
+            _mapillary_finalize(user, streetview_instance, task_uuid, organization_key)
         except Exception as e:
             error_message = "Error during finalization of mapillary upload for streetview task: {} \
             for user: {}. Error message: {}" \

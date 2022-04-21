@@ -155,10 +155,10 @@ class MapillaryUtils:
         except Exception as e:
             error_message = "Error occured mapillary_tools upload task for user with id: {} \n {}"\
                           .format(userId, str(e))
-            logging.error(error_message)
+            logger.error(error_message)
             raise Exception(error_message)
         else:
-            logging.info('Subprocess finished')
+            logger.info('Subprocess finished')
             return
 
     @staticmethod

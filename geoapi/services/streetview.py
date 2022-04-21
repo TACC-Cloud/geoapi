@@ -274,7 +274,7 @@ class StreetviewService:
         if not svi:
             svi = StreetviewService.createInstance(data['streetviewId'], dir['system'], dir['path'])
 
-        sequence = StreetviewService.createSequence(streetview_instance=svi, sequence_id=data['sequenceId'])
+        sequence = StreetviewService.createSequence(streetview_instance=svi, sequence_id=data['sequenceId'], organization_id=data['organizationId'])
         svi.sequences.append(sequence)
         db_session.commit()
 
@@ -283,6 +283,7 @@ class StreetviewService:
                        start_date: datetime=None,
                        end_date: datetime=None,
                        bbox: str=None,
+                       organization_id: str=None,
                        sequence_id: str=None) -> StreetviewSequence:
         """
         Create a Streetview Sequence to link to a Streetview Instance.
@@ -302,6 +303,8 @@ class StreetviewService:
             seq.end_date = end_date
         if bbox:
             seq.bbox = bbox
+        if organization_id:
+            seq.organization_id = organization_id
         if sequence_id:
             seq.sequence_id = sequence_id
         db_session.add(seq)

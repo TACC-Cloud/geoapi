@@ -73,7 +73,8 @@ def test_add_sequence_to_path():
         },
         'service': 'mapillary',
         'sequences': ['test key 1', 'test key 2', 'test key 3', 'test key 4'],
-        'service': 'mapillary'
+        'service': 'mapillary',
+        'organizationId': '12345678'
     }
     StreetviewService.addSequenceToStreetview(user, data)
     assert len(streetview.sequences) == 4

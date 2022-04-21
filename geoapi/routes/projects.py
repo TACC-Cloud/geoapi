@@ -59,23 +59,6 @@ feature_collection_model = api.model('FeatureCollection', {
     "features": fields.Nested(api_feature)
 })
 
-# streetview_sequence = api.model('StreetviewSequence', {
-#     'id': fields.Integer(),
-#     'streetview_instance_id': fields.Integer(),
-#     'start_date': fields.DateTime(dt_format='rfc822', required=False),
-#     'end_date': fields.DateTime(dt_format='rfc822', required=False),
-#     'bbox': fields.String(required=False),
-#     'sequence_id': fields.String(required=False)
-# })
-#
-# streetview_instance = api.model('StreetviewInstance', {
-#     'id': fields.Integer(),
-#     'streetview_id': fields.Integer(),
-#     'system_id': fields.String(),
-#     'path': fields.String(),
-#     'sequences': fields.List(fields.Nested(streetview_sequence), allow_null=True),
-# })
-
 project = api.model('Project', {
     'id': fields.Integer(),
     'name': fields.String(required=True),
@@ -85,7 +68,6 @@ project = api.model('Project', {
     'system_file': fields.String(),
     'system_id': fields.String(),
     'system_path': fields.String(),
-    # 'streetview_instances': fields.List(fields.Nested(streetview_instance), allow_null=True),
 })
 
 user = api.model('User', {

@@ -47,7 +47,8 @@ streetview_sequence = api.model('StreetviewSequence', {
     'start_date': fields.DateTime(dt_format='rfc822', required=False),
     'end_date': fields.DateTime(dt_format='rfc822', required=False),
     'bbox': fields.String(required=False),
-    'sequence_id': fields.String(required=False)
+    'sequence_id': fields.String(required=False),
+    'organization_id': fields.String(required=False)
 })
 
 streetview_organization = api.model('StreetviewOrganization', {
@@ -63,7 +64,7 @@ streetview_instance = api.model('StreetviewInstance', {
     'streetview_id': fields.Integer(),
     'system_id': fields.String(),
     'path': fields.String(),
-   'sequences': fields.List(fields.Nested(streetview_sequence), allow_null=True),
+    'sequences': fields.List(fields.Nested(streetview_sequence), allow_null=True),
 })
 
 streetview_service = api.model('Streetview', {

@@ -53,6 +53,7 @@ class StreetviewSequence(Base):
     feature_id = Column(ForeignKey('features.id', ondelete="SET NULL", onupdate="CASCADE"), index=True)
     task_id = Column(ForeignKey('tasks.id'), index=True)
     sequence_id = Column(String(), index=True)
+    organization_id = Column(String(), index=True)
     streetview_instance_id = Column(ForeignKey('streetview_instance.id', ondelete="CASCADE", onupdate="CASCADE"), index=True)
     start_date = Column(DateTime(timezone=True))
     end_date = Column(DateTime(timezone=True))
