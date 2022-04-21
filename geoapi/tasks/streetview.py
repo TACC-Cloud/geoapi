@@ -200,27 +200,37 @@ def convert_sequence_to_feature(projectId, sequenceId, token):
     original_dir = streetview_sequence.streetview_instance.path
     display_path = original_dir + '/' + sequence_id
 
+    mapillary_api_url = 'https://graph.mapillary.com'
+
     api_call_headers = {
         'Authorization': 'OAuth ' + token
     }
 
-    sequence_response = requests.get(f"https://graph.mapillary.com/image_ids?sequence_id={sequenceId}", headers=api_call_headers)
+    sequence_response = requests.get(f"{mapillary_api_url}/image_ids?sequence_id={sequenceId}", headers=api_call_headers)
 
     jsonResp = json.loads(sequence_response.content).get('data')
 
     point_features = []
 
+    image_url = ''
+
+    if len(jsonResp) != 0:
+        image_response = requests.get(f"{mapillary_api_url}/{jsonResp[0]['id']}?fields=thumb_1024_url", headers=api_call_headers)
+        image_url = json.loads(image_response.content).get('thumb_1024_url')
+
     for img in jsonResp:
-        image_response = requests.get(f"https://graph.mapillary.com/{img['id']}?fields=computed_geometry", headers=api_call_headers)
+        image_response = requests.get(f"{mapillary_api_url}/{img['id']}?fields=computed_geometry", headers=api_call_headers)
         image_coordinates = json.loads(image_response.content) \
             .get('computed_geometry') \
             .get('coordinates')
         point_features.append(Point(image_coordinates))
 
+    asset_uuid = uuid.uuid4()
+
     fa = FeatureAsset(
-        uuid=sequence_id,
+        uuid=asset_uuid,
         asset_type="streetview",
-        path="",
+        path=image_url,
         display_path=display_path,
         original_path=original_dir,
         feature=feature
