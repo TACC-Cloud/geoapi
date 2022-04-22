@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 
 api = Namespace('streetview', decorators=[jwt_decoder])
 
-streetview_params = api.model('StreetviewParams', {
+streetview_service_object_params = api.model('StreetviewParams', {
     'service': fields.String(required=False),
     'service_user': fields.String(required=False),
     'token': fields.String(required=False)
@@ -77,19 +77,20 @@ streetview_service = api.model('Streetview', {
     'instances': fields.List(fields.Nested(streetview_instance), allow_null=True)
 })
 
+
 @api.route('/')
 class StreetviewListing(Resource):
-    @api.doc(id="getStreetviews",
-             description="Get all streetviews for a user")
+    @api.doc(id="getStreetviewServiceObjects",
+             description="Get all streetview service objects for a user")
     @api.marshal_with(streetview_service, as_list=True)
     def get(self):
         u = request.current_user
         logger.info("Get all streetview objects user:{}".format(u.username))
         return StreetviewService.list(u)
 
-    @api.doc(id="createStreetview",
-             description="Create streetview for a user")
-    @api.expect(streetview_params)
+    @api.doc(id="createStreetviewServiceObject",
+             description="Create streetview service object for a user")
+    @api.expect(streetview_service_object_params)
     @api.marshal_with(streetview_service)
     def post(self):
         u = request.current_user
@@ -101,15 +102,15 @@ class StreetviewListing(Resource):
 @api.route('/<service>/')
 class StreetviewServiceResource(Resource):
     @api.doc(id="getStreetviewByService",
-             description="Get a streetview object by service name")
+             description="Get a streetview service object by service name")
     @api.marshal_with(streetview_service)
     def get(self, service: str):
         u = request.current_user
-        logger.info("Get streetview object for service:{} for user:{}".format(service, u.username))
+        logger.info("Get streetview service object for service:{} for user:{}".format(service, u.username))
         return StreetviewService.getByService(u, service)
 
     @api.doc(id="deleteStreetviewByService",
-             description="Delete a streetview object by service name")
+             description="Delete a streetview service object by service name")
     def delete(self, service: str):
         u = request.current_user
         logger.info("Delete streetview object for service:{} for user:{}".format(service, u.username))
@@ -117,7 +118,7 @@ class StreetviewServiceResource(Resource):
 
     @api.doc(id="updateStreetviewByService",
              description="Update streetview for a user by service name")
-    @api.expect(streetview_params)
+    @api.expect(streetview_service_object_params)
     @api.marshal_with(streetview_service)
     def put(self, service: str):
         u = request.current_user
