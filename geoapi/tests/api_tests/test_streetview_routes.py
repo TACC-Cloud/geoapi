@@ -2,8 +2,8 @@ import pytest
 
 from geoapi.db import db_session
 from geoapi.models.users import User
-from geoapi.models.streetview import Streetview
-
+from geoapi.models.streetview import Streetview, StreetviewOrganization
+from geoapi.services.streetview import StreetviewService
 
 @pytest.fixture(scope="function")
 def streetview_service_resource_fixture():
@@ -14,6 +14,14 @@ def streetview_service_resource_fixture():
     db_session.add(streetview_service_object)
     db_session.commit()
     yield streetview_service_object
+
+
+@pytest.fixture(scope="function")
+def organization_fixture(streetview_service_resource_fixture):
+    org = StreetviewService.createOrganization(
+        streetview_id=streetview_service_resource_fixture.id,
+        data={"key": "my_key", "name": "my_name", "slug": "my_slug"})
+    yield org
 
 
 def test_list_streetview_service_resource(test_client, streetview_service_resource_fixture):
@@ -62,8 +70,7 @@ def test_delete_streetview_service_resource(test_client, streetview_service_reso
     resp = test_client.delete('/streetview/{}/'.format(streetview_service_resource_fixture.service),
                               headers={'x-jwt-assertion-test': u1.jwt})
     assert resp.status_code == 200
-    service = db_session.query(Streetview).get(1)
-    assert service is None
+    assert db_session.query(StreetviewOrganization).first() is None
 
 
 def test_update_streetview_service_resource(test_client, streetview_service_resource_fixture):
@@ -77,6 +84,35 @@ def test_update_streetview_service_resource(test_client, streetview_service_reso
     assert resp.status_code == 200
     service = db_session.query(Streetview).get(1)
     assert service.service_user == "some_different_username"
+
+
+def test_create_organization(test_client, streetview_service_resource_fixture):
+    u1 = db_session.query(User).get(1)
+    data = {
+        "name": "my_name",
+        "slug": "my_slug",
+        "key": "my_key"
+
+    }
+    resp = test_client.post('/streetview/{}/organization/'.format(streetview_service_resource_fixture.id),
+                            json=data,
+                            headers={'x-jwt-assertion-test': u1.jwt})
+    assert resp.status_code == 200
+    assert resp.get_json() == {'id': 1,'key': 'my_key','name': 'my_name',    'slug': 'my_slug',  'streetview_id': 1}
+
+    streetview_service_resource = db_session.query(Streetview).get(1)
+    organization = streetview_service_resource.organizations[0]
+    assert organization.name == "my_name"
+    assert organization.slug == "my_slug"
+    assert organization.key == "my_key"
+
+
+def test_delete_organization(test_client, organization_fixture):
+    u1 = db_session.query(User).get(1)
+    resp = test_client.delete('streetview/organization/{}/'.format(organization_fixture.id),
+                              headers={'x-jwt-assertion-test': u1.jwt})
+    assert resp.status_code == 200
+    assert db_session.query(StreetviewOrganization).first() is None
 
 
 def test_post_streetview_sequences(test_client):
