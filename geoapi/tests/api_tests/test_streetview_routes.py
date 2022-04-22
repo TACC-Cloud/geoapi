@@ -6,7 +6,7 @@ from geoapi.models.streetview import Streetview
 
 
 @pytest.fixture(scope="function")
-def streetview_service_object_fixture():
+def streetview_service_resource_fixture():
     u1 = db_session.query(User).get(1)
     streetview_service_object = Streetview(user_id=u1.id,
                                            service="my_service",
@@ -16,7 +16,7 @@ def streetview_service_object_fixture():
     yield streetview_service_object
 
 
-def test_list_streetview_service_objects(test_client, streetview_service_object_fixture):
+def test_list_streetview_service_resource(test_client, streetview_service_resource_fixture):
     u1 = db_session.query(User).get(1)
     resp = test_client.get('/streetview/',
                            headers={'x-jwt-assertion-test': u1.jwt})
@@ -26,7 +26,7 @@ def test_list_streetview_service_objects(test_client, streetview_service_object_
                                 'organizations': [], 'instances': []}]
 
 
-def test_create_streetview_service_object(test_client):
+def test_create_streetview_service_resource(test_client):
     u1 = db_session.query(User).get(1)
     data = {
         "service": "service",
@@ -47,9 +47,9 @@ def test_create_streetview_service_object(test_client):
                                'token': 'my_token', 'user_id': 1}
 
 
-def test_get_streetview_service_object(test_client, streetview_service_object_fixture):
+def test_get_streetview_service_resource(test_client, streetview_service_resource_fixture):
     u1 = db_session.query(User).get(1)
-    resp = test_client.get('/streetview/{}/'.format(streetview_service_object_fixture.service),
+    resp = test_client.get('/streetview/{}/'.format(streetview_service_resource_fixture.service),
                            headers={'x-jwt-assertion-test': u1.jwt})
     assert resp.status_code == 200
     assert resp.get_json() == {'id': 1, 'user_id': 1, 'token': 'my_token',
@@ -57,21 +57,21 @@ def test_get_streetview_service_object(test_client, streetview_service_object_fi
                                'organizations': [], 'instances': []}
 
 
-def test_delete_streetview_service_object(test_client, streetview_service_object_fixture):
+def test_delete_streetview_service_resource(test_client, streetview_service_resource_fixture):
     u1 = db_session.query(User).get(1)
-    resp = test_client.delete('/streetview/{}/'.format(streetview_service_object_fixture.service),
+    resp = test_client.delete('/streetview/{}/'.format(streetview_service_resource_fixture.service),
                               headers={'x-jwt-assertion-test': u1.jwt})
     assert resp.status_code == 200
     service = db_session.query(Streetview).get(1)
     assert service is None
 
 
-def test_update_streetview_service_object(test_client, streetview_service_object_fixture):
+def test_update_streetview_service_resource(test_client, streetview_service_resource_fixture):
     u1 = db_session.query(User).get(1)
     data = {
         "service_user": "some_different_username"
     }
-    resp = test_client.put('/streetview/{}/'.format(streetview_service_object_fixture.service),
+    resp = test_client.put('/streetview/{}/'.format(streetview_service_resource_fixture.service),
                            json=data,
                            headers={'x-jwt-assertion-test': u1.jwt})
     assert resp.status_code == 200
