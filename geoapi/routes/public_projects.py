@@ -13,8 +13,7 @@ from geoapi.log import logging
 from geoapi.routes.projects import (ProjectsListing, ProjectResource,
                                     ProjectFeaturesResource, ProjectFeatureResource,
                                     ProjectOverlaysResource, ProjectPointCloudResource,
-                                    ProjectPointCloudsResource, ProjectTileServersResource,
-                                    ProjectStreetviewResource)
+                                    ProjectPointCloudsResource, ProjectTileServersResource)
 
 logger = logging.getLogger(__name__)
 
