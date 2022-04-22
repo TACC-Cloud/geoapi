@@ -41,7 +41,6 @@ def test_create_streetview_service_resource(test_client):
         "service": "service",
         "service_user": "some_username",
         "token": "my_token"
-
     }
     resp = test_client.post('/streetview/',
                             json=data,
