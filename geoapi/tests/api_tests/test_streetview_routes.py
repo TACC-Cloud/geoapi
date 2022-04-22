@@ -5,6 +5,7 @@ from geoapi.models.users import User
 from geoapi.models.streetview import Streetview, StreetviewOrganization
 from geoapi.services.streetview import StreetviewService
 
+
 @pytest.fixture(scope="function")
 def streetview_service_resource_fixture():
     u1 = db_session.query(User).get(1)
@@ -57,8 +58,9 @@ def test_create_streetview_service_resource(test_client):
 
 def test_get_streetview_service_resource(test_client, streetview_service_resource_fixture):
     u1 = db_session.query(User).get(1)
-    resp = test_client.get('/streetview/{}/'.format(streetview_service_resource_fixture.service),
-                           headers={'x-jwt-assertion-test': u1.jwt})
+    resp = test_client.get(
+        '/streetview/{}/'.format(streetview_service_resource_fixture.service),
+        headers={'x-jwt-assertion-test': u1.jwt})
     assert resp.status_code == 200
     assert resp.get_json() == {'id': 1, 'user_id': 1, 'token': 'my_token',
                                'service': 'my_service', 'service_user': None,
@@ -94,11 +96,13 @@ def test_create_organization(test_client, streetview_service_resource_fixture):
         "key": "my_key"
 
     }
-    resp = test_client.post('/streetview/{}/organization/'.format(streetview_service_resource_fixture.id),
-                            json=data,
-                            headers={'x-jwt-assertion-test': u1.jwt})
+    resp = test_client.post(
+        '/streetview/{}/organization/'.format(streetview_service_resource_fixture.id),
+        json=data,
+        headers={'x-jwt-assertion-test': u1.jwt})
     assert resp.status_code == 200
-    assert resp.get_json() == {'id': 1,'key': 'my_key','name': 'my_name',    'slug': 'my_slug',  'streetview_id': 1}
+    assert resp.get_json() == {'id': 1, 'key': 'my_key', 'name': 'my_name',
+                               'slug': 'my_slug', 'streetview_id': 1}
 
     streetview_service_resource = db_session.query(Streetview).get(1)
     organization = streetview_service_resource.organizations[0]
