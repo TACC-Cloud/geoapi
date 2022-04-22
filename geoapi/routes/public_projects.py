@@ -54,9 +54,6 @@ class PublicProjectFeatureResource(ProjectFeatureResource, metaclass=HideNonPubl
 class PublicProjectOverlaysResource(ProjectOverlaysResource, metaclass=HideNonPublicMeta):
     pass
 
-@api.route('/<int:projectId>/streetview/')
-class PublicProjectStreetviewResource(ProjectStreetviewResource, metaclass=HideNonPublicMeta):
-    pass
 
 @api.route('/<int:projectId>/point-cloud/')
 class PublicProjectPointCloudsResource(ProjectPointCloudsResource, metaclass=HideNonPublicMeta):

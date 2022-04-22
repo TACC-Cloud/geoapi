@@ -495,6 +495,7 @@ class ProjectOverlayResource(Resource):
         FeaturesService.deleteOverlay(projectId, overlayId)
         return "Overlay {id} deleted".format(id=overlayId)
 
+
 @api.route('/<int:projectId>/streetview/')
 class ProjectStreetviewResource(Resource):
     @api.doc(id="addStreetviewSequenceToFeature",
@@ -506,6 +507,7 @@ class ProjectStreetviewResource(Resource):
         sequenceId = api.payload['sequenceId']
         token = api.payload['token']['token']
         streetview.convert_sequence_to_feature.delay(projectId, sequenceId, token)
+
 
 @api.route('/<int:projectId>/streetview/<int:featureId>/')
 class ProjectStreetviewFeatureResource(Resource):
