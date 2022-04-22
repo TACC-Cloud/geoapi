@@ -98,33 +98,6 @@ class StreetviewListing(Resource):
         return StreetviewService.create(u, api.payload)
 
 
-@api.route('/<int:streetview_id>/')
-class StreetviewResource(Resource):
-    @api.doc(id="getStreetview",
-             description="Get a streetview object")
-    @api.marshal_with(streetview_service)
-    def get(self, streetview_id: int):
-        u = request.current_user
-        logger.info("Get streetview object of id:{} for user:{}".format(streetview_id, u.username))
-        return StreetviewService.get(streetview_id)
-
-    @api.doc(id="deleteStreetview",
-             description="Delete a streetview object")
-    def delete(self, streetview_id: int):
-        u = request.current_user
-        logger.info("Delete streetview object of id:{} for user:{}".format(streetview_id, u.username))
-        return StreetviewService.delete(streetview_id)
-
-    @api.doc(id="updateStreetview",
-             description="Update streetview for a user")
-    @api.expect(streetview_params)
-    @api.marshal_with(streetview_service)
-    def put(self, streetview_id: int):
-        u = request.current_user
-        logger.info("Update streetview object id:{} user:{}".format(streetview_id, u.username))
-        return StreetviewService.update(streetview_id, api.payload)
-
-
 @api.route('/<service>/')
 class StreetviewServiceResource(Resource):
     @api.doc(id="getStreetviewByService",
