@@ -174,6 +174,7 @@ class StreetviewInstanceResource(Resource):
              description="Delete streetview instance")
     def delete(self, instance_id: int):
         u = request.current_user
+        payload = request.json
         logger.info("Delete streetview instance for user:{}"
                     .format(u.username))
         StreetviewService.deleteInstance(instance_id)

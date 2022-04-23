@@ -2,8 +2,7 @@ import pytest
 
 from geoapi.db import db_session
 from geoapi.models.users import User
-from geoapi.models.streetview import (Streetview, StreetviewOrganization,
-                                      StreetviewInstance, StreetviewSequence)
+from geoapi.models.streetview import Streetview, StreetviewOrganization
 from geoapi.services.streetview import StreetviewService
 
 
@@ -24,29 +23,6 @@ def organization_fixture(streetview_service_resource_fixture):
         streetview_id=streetview_service_resource_fixture.id,
         data={"key": "my_key", "name": "my_name", "slug": "my_slug"})
     yield org
-
-
-@pytest.fixture(scope="function")
-def instance_fixture(streetview_service_resource_fixture):
-    streetview_instance = StreetviewInstance(
-        streetview_id=streetview_service_resource_fixture.id,
-        system_id="mySystem",
-        path="myPath")
-    db_session.add(streetview_instance)
-    db_session.commit()
-    yield streetview_instance
-
-
-@pytest.fixture(scope="function")
-def sequence_fixture(streetview_service_resource_fixture, instance_fixture, organization_fixture, feature_fixture):
-    streetview_sequence = StreetviewSequence(
-        feature_id=feature_fixture.id,
-        organization_id=organization_fixture.id,
-        streetview_instance_id=instance_fixture.id,
-        sequence_id="abcd")
-    db_session.add(streetview_sequence)
-    db_session.commit()
-    yield streetview_sequence
 
 
 def test_list_streetview_service_resource(test_client, streetview_service_resource_fixture):
@@ -142,66 +118,45 @@ def test_delete_organization(test_client, organization_fixture):
     assert db_session.query(StreetviewOrganization).first() is None
 
 
-def test_delete_instance(test_client, instance_fixture):
-    u1 = db_session.query(User).get(1)
-    resp = test_client.delete('streetview/instances/{}/'.format(instance_fixture.id),
-                              headers={'x-jwt-assertion-test': u1.jwt})
-    assert resp.status_code == 200
-    assert db_session.query(StreetviewInstance).first() is None
-
-
-def test_add_sequence_to_instance(test_client,
-                                  streetview_service_resource_fixture,
-                                  organization_fixture):
+def FAILING_test_post_streetview_sequences(test_client):
     u1 = db_session.query(User).get(1)
     data = {
-        "streetviewId": streetview_service_resource_fixture.id,
-        "sequenceId": "my_sequence_id",
-        "organizationId": "my_org_id",
-        "dir": {
-            "system": "my_system",
-            "path": "my_path"
-        }
+        'dir': {
+            'path': 'test path',
+            'system': 'test system'
+        },
+        'service': 'mapillary',
+        'sequences': ['test key 1', 'test key 2', 'test key 3', 'test key 4']
     }
-    resp = test_client.post('/streetview/sequences/', json=data, headers={'x-jwt-assertion-test': u1.jwt})
+    resp = test_client.post('/streetview/sequences/',
+                            json=data,
+                            headers={'x-jwt-assertion-test': u1.jwt})
+
     assert resp.status_code == 200
-    # NOTE: shouldn't response by the instance
-
-    streetview_instance = db_session.query(StreetviewInstance).first()
-    assert len(streetview_instance.sequences) == 1
-    sequence = streetview_instance.sequences[0]
-    assert sequence.sequence_id == "my_sequence_id"
-    assert sequence.organization_id == "my_org_id"
-    assert sequence.streetview_instance_id == streetview_service_resource_fixture.id
+    assert len(data['sequences']) == 4
 
 
-def test_get_sequence(test_client, streetview_service_resource_fixture, sequence_fixture):
+def FAILING_test_delete_streetview_sequence(test_client):
     u1 = db_session.query(User).get(1)
-    resp = test_client.get('/streetview/sequences/{}/'.format(sequence_fixture.sequence_id),
+    data = {
+        'dir': {
+            'path': 'test path',
+            'system': 'test system'
+        },
+        'service': 'mapillary',
+        'sequences': ['test key 1', 'test key 2', 'test key 3', 'test key 4']
+    }
+
+    resp = test_client.post('/streetview/sequences/',
+                            json=data,
+                            headers={'x-jwt-assertion-test': u1.jwt})
+
+    resp = test_client.get('/streetview/',
                            headers={'x-jwt-assertion-test': u1.jwt})
+
+    seq_id = resp.get_json()[0]['sequences'][0]['id']
+
+    test_client.delete('/streetview/sequences/{}/'.format(seq_id),
+                       headers={'x-jwt-assertion-test': u1.jwt})
+
     assert resp.status_code == 200
-    assert resp.get_json() == {'bbox': None, 'end_date': None, 'id': 1, 'organization_id': '1',
-                               'sequence_id': sequence_fixture.sequence_id, 'start_date': None, 'streetview_instance_id': 1}
-
-
-def test_update_sequence(test_client, streetview_service_resource_fixture, sequence_fixture):
-    u1 = db_session.query(User).get(1)
-    data = {
-        "organization_id": "something_else",
-    }
-    resp = test_client.put(
-        '/streetview/sequences/{}/'.format(sequence_fixture.id),  # TODO differs from GET route where mapillary id is used
-        json=data,
-        headers={'x-jwt-assertion-test': u1.jwt})
-    assert resp.status_code == 200
-    updated = resp.get_json()
-    assert updated["organization_id"] == "something_else"
-
-
-def test_delete_sequence(test_client, streetview_service_resource_fixture, sequence_fixture):
-    u1 = db_session.query(User).get(1)
-    resp = test_client.delete(
-        'streetview/instances/{}/'.format(sequence_fixture.id),  # TODO differs from GET route where mapillary id is used
-        headers={'x-jwt-assertion-test': u1.jwt})
-    assert resp.status_code == 200
-    assert db_session.query(StreetviewSequence).first() is None

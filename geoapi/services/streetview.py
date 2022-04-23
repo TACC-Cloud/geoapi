@@ -320,7 +320,7 @@ class StreetviewService:
         """
         sequence = db_session.query(StreetviewSequence)\
             .filter(StreetviewSequence.sequence_id == sequence_id)\
-            .one()
+            .first()
         return sequence
 
     @staticmethod
