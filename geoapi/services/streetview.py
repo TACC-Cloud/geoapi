@@ -3,7 +3,7 @@ from typing import List, Dict
 from datetime import datetime
 import uuid
 
-from geoapi.models import User, Streetview, StreetviewInstance, StreetviewSequence, StreetviewOrganization, Project, Feature, FeatureAsset
+from geoapi.models import User, Streetview, StreetviewInstance, StreetviewSequence, StreetviewOrganization, Project
 from geoapi.db import db_session
 from geoapi.log import logging
 
