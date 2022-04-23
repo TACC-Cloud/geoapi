@@ -214,9 +214,11 @@ def convert_sequence_to_feature(projectId, sequenceId, token):
     point_features = []
 
     image_url = ''
+    image_id = 0
 
     if len(jsonResp) != 0:
-        image_response = requests.get(f"{mapillary_api_url}/{jsonResp[0]['id']}?fields=thumb_1024_url", headers=api_call_headers)
+        image_id = str(jsonResp[0]['id'])
+        image_response = requests.get(f"{mapillary_api_url}/{image_id}?fields=thumb_1024_url", headers=api_call_headers)
         image_url = json.loads(image_response.content).get('thumb_1024_url')
 
     for img in jsonResp:
@@ -234,6 +236,7 @@ def convert_sequence_to_feature(projectId, sequenceId, token):
         path=image_url,
         display_path=display_path,
         original_path=original_dir,
+        original_name=image_id,
         feature=feature
     )
 
