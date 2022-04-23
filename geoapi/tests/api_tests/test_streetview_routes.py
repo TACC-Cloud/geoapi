@@ -2,7 +2,7 @@ import pytest
 
 from geoapi.db import db_session
 from geoapi.models.users import User
-from geoapi.models.streetview import Streetview, StreetviewOrganization
+from geoapi.models.streetview import Streetview, StreetviewOrganization, StreetviewInstance
 from geoapi.services.streetview import StreetviewService
 
 
@@ -23,6 +23,17 @@ def organization_fixture(streetview_service_resource_fixture):
         streetview_id=streetview_service_resource_fixture.id,
         data={"key": "my_key", "name": "my_name", "slug": "my_slug"})
     yield org
+
+
+@pytest.fixture(scope="function")
+def instance_fixture(streetview_service_resource_fixture):
+    streetview_instance = StreetviewInstance(
+        streetview_id=streetview_service_resource_fixture.id,
+        system_id="mySystem",
+        path="myPath")
+    db_session.add(streetview_instance)
+    db_session.commit()
+    yield streetview_instance
 
 
 def test_list_streetview_service_resource(test_client, streetview_service_resource_fixture):
@@ -116,6 +127,14 @@ def test_delete_organization(test_client, organization_fixture):
                               headers={'x-jwt-assertion-test': u1.jwt})
     assert resp.status_code == 200
     assert db_session.query(StreetviewOrganization).first() is None
+
+
+def test_delete_instance(test_client, instance_fixture):
+    u1 = db_session.query(User).get(1)
+    resp = test_client.delete('streetview/instances/{}/'.format(instance_fixture.id),
+                              headers={'x-jwt-assertion-test': u1.jwt})
+    assert resp.status_code == 200
+    assert db_session.query(StreetviewInstance).first() is None
 
 
 def FAILING_test_post_streetview_sequences(test_client):
