@@ -13,7 +13,7 @@ from geoapi.services.features import FeaturesService
 from geoapi.services.streetview import StreetviewService
 from geoapi.services.point_cloud import PointCloudService
 from geoapi.services.projects import ProjectsService
-from geoapi.tasks import external_data
+from geoapi.tasks import external_data, streetview
 from geoapi.utils.decorators import jwt_decoder, project_permissions_allow_public, project_permissions, project_feature_exists, \
     project_point_cloud_exists, project_point_cloud_not_processing, check_access_and_get_project, is_anonymous, not_anonymous
 
@@ -507,7 +507,7 @@ class ProjectStreetviewResource(Resource):
             projectId, request.current_user.username))
         sequenceId = api.payload['sequenceId']
         token = api.payload['token']['token']
-        return external_data.process_streetview_sequences(projectId, sequenceId, token)
+        return streetview.process_streetview_sequences(projectId, sequenceId, token)
 
 task = api.model('Task', {
     'id': fields.Integer(),

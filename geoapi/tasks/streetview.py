@@ -5,13 +5,20 @@ import uuid
 from uuid import UUID
 from typing import Dict
 from pathlib import Path
+import requests
+import json
+import celery
+from celery import uuid as celery_uuid
+
+from geoalchemy2.shape import from_shape
+from shapely.geometry import Point, LineString
 
 from geoapi.celery_app import app
 from geoapi.exceptions import (ApiException,
                                StreetviewAuthException,
                                StreetviewLimitException,
                                StreetviewExistsException)
-from geoapi.models import User, Streetview, StreetviewInstance, StreetviewSequence
+from geoapi.models import User, StreetviewInstance, StreetviewSequence, Task
 from geoapi.utils.agave import AgaveUtils
 from geoapi.utils.streetview import (get_project_streetview_dir,
                                      make_project_streetview_dir,
@@ -272,3 +279,118 @@ def from_tapis_to_streetview(user_id: int,
                                         "Finished Upload")
 
     remove_project_streetview_dir(user.id, task_uuid)
+
+
+def process_streetview_sequences(projectId, sequenceId, token) -> Task:
+        """
+        Process streetview files
+
+        :param projectId: int
+        :param sequenceId: int
+        :param token: str
+        :return: processingTask: Task
+        """
+        streetview_sequence = db_session.query(StreetviewSequence).get(sequenceId)
+
+        celery_task_id = celery_uuid()
+        task = Task()
+        task.process_id = celery_task_id
+        task.status = "RUNNING"
+        task.description = "Processing streetview sequence #{}".format(sequenceId)
+
+        streetview_sequence.task = task
+
+        db_session.add(task)
+        db_session.commit()
+
+        logger.info("Starting streetview sequence processing task for sequence (#{}).".format(sequenceId))
+
+        convert_streetview_sequence_to_feature.apply_async(args=[projectId, sequenceId, token], task_id=celery_task_id)
+
+        return task
+
+
+class StreetviewSequenceProcessingTask(celery.Task):
+    def on_failure(self, exc, task_id, args, kwargs, einfo):
+        logger.info("Task ({}, streetview sequence {}) failed: {}".format(task_id, args, exc))
+        failed_task = db_session.query(Task).filter(Task.process_id == task_id).first()
+        failed_task.status = "FAILED"
+        failed_task.description = ""
+        db_session.add(failed_task)
+        db_session.commit()
+
+
+@app.task(bind=True, base=StreetviewSequenceProcessingTask)
+def convert_streetview_sequence_to_feature(self, projectId, sequenceId, token):
+    """
+    Process point cloud files
+
+    :param projectId: int
+    :param seuqenceId: int
+    :param token: str
+    """
+    feature = Feature()
+    streetview_sequence = db_session.query(StreetviewSequence).get(sequenceId)
+
+    sequence_id = streetview_sequence.sequence_id
+    original_dir = streetview_sequence.streetview_instance.path
+    display_path = original_dir + '/' + sequence_id
+
+    mapillary_api_url = 'https://graph.mapillary.com'
+
+    api_call_headers = {
+        'Authorization': 'OAuth ' + token
+    }
+
+    sequence_response = requests.get(f"{mapillary_api_url}/image_ids?sequence_id={sequence_id}", headers=api_call_headers)
+
+    jsonResp = json.loads(sequence_response.content).get('data')
+
+    point_features = []
+
+    image_url = ''
+    image_id = 0
+
+    if len(jsonResp) != 0:
+        image_id = str(jsonResp[0]['id'])
+        image_response = requests.get(f"{mapillary_api_url}/{image_id}?fields=thumb_1024_url", headers=api_call_headers)
+        image_url = json.loads(image_response.content).get('thumb_1024_url')
+
+    for img in jsonResp:
+        image_response = requests.get(f"{mapillary_api_url}/{img['id']}?fields=computed_geometry", headers=api_call_headers)
+        image_coordinates = json.loads(image_response.content) \
+            .get('computed_geometry') \
+            .get('coordinates')
+        point_features.append(Point(image_coordinates))
+
+    asset_uuid = uuid.uuid4()
+
+    fa = FeatureAsset(
+        uuid=asset_uuid,
+        asset_type="streetview",
+        path=image_url,
+        display_path=display_path,
+        original_path=original_dir,
+        original_name=image_id,
+        feature=feature
+    )
+
+    feature.assets.append(fa)
+    streetview_sequence.feature = feature
+    streetview_sequence.feature_id = feature.id
+    feature.project_id = projectId
+
+    feature.the_geom = from_shape(LineString(point_features), srid=4326)
+
+    streetview_sequence.task.status = "FINISHED"
+    streetview_sequence.task.description = ""
+
+    logger.info("Finished streetview sequence processing task for sequence (#{}).".format(sequenceId))
+
+    try:
+        db_session.add(feature)
+        db_session.commit()
+    except:
+        db_session.rollback()
+        raise
+
