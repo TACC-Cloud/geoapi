@@ -20,8 +20,10 @@ def streetview_service_resource_fixture():
 
 @pytest.fixture(scope="function")
 def organization_fixture(streetview_service_resource_fixture):
+    u1 = db_session.query(User).get(1)
     org = StreetviewService.createOrganization(
-        streetview_id=streetview_service_resource_fixture.id,
+        user=u1,
+        service=streetview_service_resource_fixture.service,
         data={"key": "my_key", "name": "my_name", "slug": "my_slug"})
     yield org
 
@@ -51,7 +53,7 @@ def sequence_fixture(streetview_service_resource_fixture, instance_fixture, orga
 
 def test_list_streetview_service_resource(test_client, streetview_service_resource_fixture):
     u1 = db_session.query(User).get(1)
-    resp = test_client.get('/streetview/',
+    resp = test_client.get('/streetview/services/',
                            headers={'x-jwt-assertion-test': u1.jwt})
     assert resp.status_code == 200
     assert resp.get_json() == [{'id': 1, 'user_id': 1, 'token': 'my_token',
@@ -66,7 +68,7 @@ def test_create_streetview_service_resource(test_client):
         "service_user": "some_username",
         "token": "my_token"
     }
-    resp = test_client.post('/streetview/',
+    resp = test_client.post('/streetview/services/',
                             json=data,
                             headers={'x-jwt-assertion-test': u1.jwt})
     assert resp.status_code == 200
@@ -82,7 +84,7 @@ def test_create_streetview_service_resource(test_client):
 def test_get_streetview_service_resource(test_client, streetview_service_resource_fixture):
     u1 = db_session.query(User).get(1)
     resp = test_client.get(
-        '/streetview/{}/'.format(streetview_service_resource_fixture.service),
+        '/streetview/services/{}/'.format(streetview_service_resource_fixture.service),
         headers={'x-jwt-assertion-test': u1.jwt})
     assert resp.status_code == 200
     assert resp.get_json() == {'id': 1, 'user_id': 1, 'token': 'my_token',
@@ -92,7 +94,7 @@ def test_get_streetview_service_resource(test_client, streetview_service_resourc
 
 def test_delete_streetview_service_resource(test_client, streetview_service_resource_fixture):
     u1 = db_session.query(User).get(1)
-    resp = test_client.delete('/streetview/{}/'.format(streetview_service_resource_fixture.service),
+    resp = test_client.delete('/streetview/services/{}/'.format(streetview_service_resource_fixture.service),
                               headers={'x-jwt-assertion-test': u1.jwt})
     assert resp.status_code == 200
     assert db_session.query(StreetviewOrganization).first() is None
@@ -103,7 +105,7 @@ def test_update_streetview_service_resource(test_client, streetview_service_reso
     data = {
         "service_user": "some_different_username"
     }
-    resp = test_client.put('/streetview/{}/'.format(streetview_service_resource_fixture.service),
+    resp = test_client.put('/streetview/services/{}/'.format(streetview_service_resource_fixture.service),
                            json=data,
                            headers={'x-jwt-assertion-test': u1.jwt})
     assert resp.status_code == 200
@@ -120,7 +122,7 @@ def test_create_organization(test_client, streetview_service_resource_fixture):
 
     }
     resp = test_client.post(
-        '/streetview/{}/organization/'.format(streetview_service_resource_fixture.id),
+        '/streetview/services/{}/organization/'.format(streetview_service_resource_fixture.service),
         json=data,
         headers={'x-jwt-assertion-test': u1.jwt})
     assert resp.status_code == 200
@@ -136,8 +138,9 @@ def test_create_organization(test_client, streetview_service_resource_fixture):
 
 def test_delete_organization(test_client, organization_fixture):
     u1 = db_session.query(User).get(1)
-    resp = test_client.delete('streetview/organization/{}/'.format(organization_fixture.id),
-                              headers={'x-jwt-assertion-test': u1.jwt})
+    resp = test_client.delete(
+        f'streetview/services/{organization_fixture.streetview.service}/organization/{organization_fixture.id}/',
+        headers={'x-jwt-assertion-test': u1.jwt})
     assert resp.status_code == 200
     assert db_session.query(StreetviewOrganization).first() is None
 
