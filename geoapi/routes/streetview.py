@@ -78,7 +78,7 @@ streetview_service = api.model('Streetview', {
 })
 
 
-@api.route('/')
+@api.route('/services/')
 class StreetviewServiceResources(Resource):
     @api.doc(id="getStreetviewServiceResources",
              description="Get all streetview service objects for a user")
@@ -99,7 +99,7 @@ class StreetviewServiceResources(Resource):
         return StreetviewService.create(u, api.payload)
 
 
-@api.route('/<service>/')
+@api.route('/services/<service>/')
 class StreetviewServiceResource(Resource):
     @api.doc(id="getStreetviewServiceResource",
              description="Get a streetview service resource by service name")
@@ -126,16 +126,19 @@ class StreetviewServiceResource(Resource):
         return StreetviewService.updateByService(u, service, api.payload)
 
 
-@api.route('/<streetview_id>/organization/')
+# @api.route('/<streetview_id>/organization/')
+@api.route('/services/<service>/organization/')
 class StreetviewOrganizationsResource(Resource):
     @api.doc(id="getStreetviewOrganizations",
              description="Get organizations from streetview service resource")
     @api.marshal_with(streetview_organization)
+    # def get(self, streetview_id: int):
     def get(self, streetview_id: int):
         u = request.current_user
         logger.info("Get streetview organizations from streetview service resource for user:{}"
                     .format(u.username))
-        return StreetviewService.getAllOrganizations(streetview_id)
+        # return StreetviewService.getAllOrganizations(streetview_id)
+        return StreetviewService.getAllOrganizations(u, service)
 
     @api.doc(id="createStreetviewOrganizations",
              description="Create organizations for a streetview object")
@@ -148,7 +151,8 @@ class StreetviewOrganizationsResource(Resource):
         return StreetviewService.createOrganization(streetview_id, api.payload)
 
 
-@api.route('/organization/<organization_key>/')
+# @api.route('/organization/<organization_key>/')
+@api.route('/services/<service>/organization/<organization_key>/')
 class StreetviewOrganizationResource(Resource):
     @api.doc(id="deleteStreetviewOrganization",
              description="Delete organization from streetview service resource")
@@ -219,9 +223,9 @@ class StreetviewSequenceResource(Resource):
         return StreetviewService.updateSequence(sequence_id, api.payload)
 
 
-@api.route('/upload/')
-class StreetviewUploadFilesResource(Resource):
-    @api.doc(id="uploadFilesToStreetview",
+@api.route('/publish/')
+class StreetviewPublishFilesResource(Resource):
+    @api.doc(id="publishFilesToStreetview",
              description='Import all files in a directory into a project from Tapis. The files should '
                          'contain GPano metadata for compatibility with streetview services. This'
                          'is an asynchronous operation, files will be imported in the background'
@@ -230,9 +234,9 @@ class StreetviewUploadFilesResource(Resource):
     @api.marshal_with(ok_response)
     def post(self):
         u = request.current_user
-        logger.info("Upload images to streetview for user:{}".format(u.username))
+        logger.info("Publish images to streetview for user:{}".format(u.username))
         try:
-            streetview.upload(u, api.payload)
+            streetview.publish(u, api.payload)
         except StreetviewAuthException as e:
             abort(401, e)
         except StreetviewLimitException as e:

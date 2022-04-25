@@ -31,7 +31,7 @@ from geoapi.db import db_session
 
 logger = logging.getLogger(__file__)
 
-def upload(user: User, params: Dict):
+def publish(user: User, params: Dict):
 
     service = params['service']
     system_id = params['system_id']
@@ -100,7 +100,7 @@ def _from_tapis(user: User, task_uuid: UUID, systemId: str, path: str, organizat
         make_project_streetview_dir(user.id, task_uuid)
         NotificationsService.create(user,
                                     "success",
-                                    "Cleaning up previous session before upload.")
+                                    "Cleaning up previous session before publish.")
 
     img_list = []
 
