@@ -140,28 +140,25 @@ class StreetviewService:
         return db_session.query(StreetviewOrganization).get(id)
 
     @staticmethod
-    # def getAllOrganizations(streetview_id: int) -> List[StreetviewOrganization]:
     def getAllOrganizations(user: User, service: str) -> List[StreetviewOrganization]:
         """
         Get all the Streetview Organization objects for a service.
-        :param streetview_id: int
+        :param user: User
+        :param service: str
         :return: List[StreetviewOrganization]
         """
         sv = StreetviewService.getByService(user, service)
-        # sv = StreetviewService.get(streetview_id)
-        # service = db_session.query(Streetview).get(streetview.id)
         return sv.organizations
-        # return Streetview.instances
 
     @staticmethod
-    def createOrganization(streetview_id: int, data: Dict) -> StreetviewOrganization:
+    def createOrganization(user: User, service: str, data: Dict) -> StreetviewOrganization:
         """
         Create a Streetview Organization object
-        :param streetview_id: int
+        :param service: str
         :param data: Dict
         :return: StreetviewOrganization
         """
-        sv = StreetviewService.get(streetview_id)
+        sv = StreetviewService.getByService(user, service)
         svo = StreetviewOrganization()
         svo.streetview_id = sv.id
         svo.key = data.get('key')
