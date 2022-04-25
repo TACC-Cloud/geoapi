@@ -1,7 +1,6 @@
 import os
 import concurrent
 from pathlib import Path
-from celery import uuid as celery_uuid
 import concurrent.futures
 from enum import Enum
 import json
@@ -10,7 +9,7 @@ import datetime
 
 from geoapi.celery_app import app
 from geoapi.exceptions import InvalidCoordinateReferenceSystem, MissingServiceAccount
-from geoapi.models import User, ObservableDataProject, Task
+from geoapi.models import User, ObservableDataProject, Task, Feature, FeatureAsset 
 from geoapi.utils.agave import AgaveUtils, get_system_users, get_metadata_using_service_account, AgaveFileGetError
 from geoapi.log import logger
 from geoapi.services.features import FeaturesService
@@ -116,6 +115,7 @@ def import_file_from_agave(userId: int, systemId: str, path: str, projectId: int
         logger.exception("Could not import file from agave: {} :: {}".format(systemId, path))
         NotificationsService.create(user, "error", "Error importing {f}".format(f=path))
         raise e
+
 
 
 def _update_point_cloud_task(pointCloudId: int, description: str = None, status: str = None):

@@ -16,7 +16,7 @@ from geoapi.services.projects import ProjectsService
 from geoapi.tasks import external_data, streetview
 from geoapi.utils.decorators import jwt_decoder, project_permissions_allow_public, project_permissions, project_feature_exists, \
     project_point_cloud_exists, project_point_cloud_not_processing, check_access_and_get_project, is_anonymous, not_anonymous
-from geoapi.tasks import external_data
+
 
 logger = logging.getLogger(__name__)
 
@@ -500,13 +500,22 @@ class ProjectOverlayResource(Resource):
 class ProjectStreetviewResource(Resource):
     @api.doc(id="addStreetviewSequenceToFeature",
              description="Add a streetview sequence to a project feature")
+    @api.marshal_with(task)
     @project_permissions
     def post(self, projectId: int):
         logger.info("Add streetview sequence to project features:{} for user:{}".format(
             projectId, request.current_user.username))
         sequenceId = api.payload['sequenceId']
         token = api.payload['token']['token']
-        streetview.convert_sequence_to_feature.delay(projectId, sequenceId, token)
+        return streetview.process_streetview_sequences(projectId, sequenceId, token)
+
+task = api.model('Task', {
+    'id': fields.Integer(),
+    'status': fields.String(),
+    'description': fields.String(required=False),
+    'created': fields.DateTime(dt_format='rfc822'),
+    'updated': fields.DateTime(dt_format='rfc822'),
+})
 
 
 @api.route('/<int:projectId>/streetview/<int:featureId>/')
