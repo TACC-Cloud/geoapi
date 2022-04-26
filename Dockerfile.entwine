@@ -27,4 +27,6 @@ RUN pip3 install -r requirements.txt
 
 COPY geoapi /api
 ENV PYTHONPATH "${PYTHONPATH}:/api"
+
+
 WORKDIR /api
