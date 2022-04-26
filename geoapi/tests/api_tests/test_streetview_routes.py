@@ -1,5 +1,5 @@
 import pytest
-
+from unittest.mock import patch
 from geoapi.db import db_session
 from geoapi.models.users import User
 from geoapi.models.streetview import (Streetview, StreetviewOrganization,
@@ -12,7 +12,8 @@ def streetview_service_resource_fixture():
     u1 = db_session.query(User).get(1)
     streetview_service_object = Streetview(user_id=u1.id,
                                            service="my_service",
-                                           token="my_token", )
+                                           token="my_token",
+                                           service_user="some_username")
     db_session.add(streetview_service_object)
     db_session.commit()
     yield streetview_service_object
@@ -51,13 +52,19 @@ def sequence_fixture(streetview_service_resource_fixture, instance_fixture, orga
     yield streetview_sequence
 
 
+@pytest.fixture(scope="function")
+def convert_to_potree_mock():
+    with patch('geoapi.tasks.streetview.from_tapis_to_streetview') as from_tapis_mock:
+        yield from_tapis_mock
+
+
 def test_list_streetview_service_resource(test_client, streetview_service_resource_fixture):
     u1 = db_session.query(User).get(1)
     resp = test_client.get('/streetview/services/',
                            headers={'x-jwt-assertion-test': u1.jwt})
     assert resp.status_code == 200
     assert resp.get_json() == [{'id': 1, 'user_id': 1, 'token': 'my_token',
-                                'service': 'my_service', 'service_user': None,
+                                'service': 'my_service', 'service_user': 'some_username',
                                 'organizations': [], 'instances': []}]
 
 
@@ -88,7 +95,7 @@ def test_get_streetview_service_resource(test_client, streetview_service_resourc
         headers={'x-jwt-assertion-test': u1.jwt})
     assert resp.status_code == 200
     assert resp.get_json() == {'id': 1, 'user_id': 1, 'token': 'my_token',
-                               'service': 'my_service', 'service_user': None,
+                               'service': 'my_service', 'service_user': 'some_username',
                                'organizations': [], 'instances': []}
 
 
@@ -208,3 +215,19 @@ def test_delete_sequence(test_client, streetview_service_resource_fixture, seque
         headers={'x-jwt-assertion-test': u1.jwt})
     assert resp.status_code == 200
     assert db_session.query(StreetviewSequence).first() is None
+
+
+def test_publish(test_client, streetview_service_resource_fixture, organization_fixture, convert_to_potree_mock):
+    u1 = db_session.query(User).get(1)
+    data = {
+        "service": streetview_service_resource_fixture.service,
+        "organization_key": organization_fixture.key,
+        "system_id": "mysystem",
+        "path": "mypath"
+    }
+    resp = test_client.post('/streetview/publish/',
+                            json=data,
+                            headers={'x-jwt-assertion-test': u1.jwt})
+    assert resp.status_code == 200
+    assert resp.get_json() == {"message": "accepted"}
+    convert_to_potree_mock.delay.assert_called_once()

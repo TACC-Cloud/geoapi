@@ -36,9 +36,10 @@ tapis_file = api.model('TapisFile', {
 })
 
 streetview_folder_import = api.model('TapisFolderImport', {
-    'service': fields.Nested(tapis_file),
-    'system_id': fields.String(),
-    'path': fields.String()
+    'service': fields.String(required=True),
+    'organization_key': fields.String(required=True),
+    'system_id': fields.String(required=True),
+    'path': fields.String(required=True)
 })
 
 streetview_sequence = api.model('StreetviewSequence', {
