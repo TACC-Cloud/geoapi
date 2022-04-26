@@ -7,6 +7,7 @@ from geoapi.services.users import UserService
 from geoapi.services.projects import ProjectsService
 from geoapi.services.features import FeaturesService
 from geoapi.services.point_cloud import PointCloudService
+from geoapi.services.streetview import StreetviewService
 from geoapi.settings import settings
 from geoapi.utils import jwt_utils
 from geoapi.log import logger
@@ -153,5 +154,17 @@ def not_anonymous(fn):
     def wrapper(*args, **kwargs):
         if is_anonymous(request.current_user):
             abort(403, "Access denied")
+        return fn(*args, **kwargs)
+    return wrapper
+
+
+def streetview_service_permissions(fn):
+    @wraps(fn)
+    def wrapper(*args, **kwargs):
+        service = kwargs.get("service")
+        streetview_resource_service = StreetviewService.getByService(user=request.current_user,
+                                                                     service=service)
+        if not streetview_resource_service:
+            abort(404, "No service found")
         return fn(*args, **kwargs)
     return wrapper

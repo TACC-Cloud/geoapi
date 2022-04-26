@@ -114,12 +114,27 @@ def test_get_streetview_service_resource(test_client, streetview_service_resourc
                                'organizations': [], 'instances': []}
 
 
+def test_get_streetview_service_resource_illegal_access(test_client, streetview_service_resource_fixture):
+    u2 = db_session.query(User).get(2)
+    resp = test_client.get(
+        '/streetview/services/{}/'.format(streetview_service_resource_fixture.service),
+        headers={'x-jwt-assertion-test': u2.jwt})
+    assert resp.status_code == 404
+
+
 def test_delete_streetview_service_resource(test_client, streetview_service_resource_fixture):
     u1 = db_session.query(User).get(1)
     resp = test_client.delete('/streetview/services/{}/'.format(streetview_service_resource_fixture.service),
                               headers={'x-jwt-assertion-test': u1.jwt})
     assert resp.status_code == 200
     assert db_session.query(StreetviewOrganization).first() is None
+
+
+def test_delete_streetview_service_resource_illegal_access(test_client, streetview_service_resource_fixture):
+    u2 = db_session.query(User).get(2)
+    resp = test_client.delete('/streetview/services/{}/'.format(streetview_service_resource_fixture.service),
+                              headers={'x-jwt-assertion-test': u2.jwt})
+    assert resp.status_code == 404
 
 
 def test_update_streetview_service_resource(test_client, streetview_service_resource_fixture):
@@ -133,6 +148,17 @@ def test_update_streetview_service_resource(test_client, streetview_service_reso
     assert resp.status_code == 200
     service = db_session.query(Streetview).get(1)
     assert service.service_user == "some_different_username"
+
+
+def test_update_streetview_service_resource_illegal_access(test_client, streetview_service_resource_fixture):
+    u2 = db_session.query(User).get(2)
+    data = {
+        "service_user": "some_different_username"
+    }
+    resp = test_client.put('/streetview/services/{}/'.format(streetview_service_resource_fixture.service),
+                           json=data,
+                           headers={'x-jwt-assertion-test': u2.jwt})
+    assert resp.status_code == 404
 
 
 def test_create_organization(test_client, streetview_service_resource_fixture):
@@ -158,6 +184,21 @@ def test_create_organization(test_client, streetview_service_resource_fixture):
     assert organization.key == "my_key"
 
 
+def test_create_organization_illegal_access(test_client, streetview_service_resource_fixture):
+    u2 = db_session.query(User).get(2)
+    data = {
+        "name": "my_name",
+        "slug": "my_slug",
+        "key": "my_key"
+
+    }
+    resp = test_client.post(
+        '/streetview/services/{}/organization/'.format(streetview_service_resource_fixture.service),
+        json=data,
+        headers={'x-jwt-assertion-test': u2.jwt})
+    assert resp.status_code == 404
+
+
 def test_delete_organization(test_client, organization_fixture):
     u1 = db_session.query(User).get(1)
     resp = test_client.delete(
@@ -165,6 +206,14 @@ def test_delete_organization(test_client, organization_fixture):
         headers={'x-jwt-assertion-test': u1.jwt})
     assert resp.status_code == 200
     assert db_session.query(StreetviewOrganization).first() is None
+
+
+def test_delete_organization_illegal_access(test_client, organization_fixture):
+    u2 = db_session.query(User).get(2)
+    resp = test_client.delete(
+        f'streetview/services/{organization_fixture.streetview.service}/organization/{organization_fixture.id}/',
+        headers={'x-jwt-assertion-test': u2.jwt})
+    assert resp.status_code == 404
 
 
 def test_delete_instance(test_client, instance_fixture):

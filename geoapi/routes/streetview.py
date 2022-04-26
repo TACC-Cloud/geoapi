@@ -2,7 +2,7 @@ from geoapi.services.streetview import StreetviewService
 from geoapi.tasks import streetview
 from geoapi.log import logging
 from geoapi.exceptions import StreetviewAuthException, StreetviewLimitException
-from geoapi.utils.decorators import jwt_decoder, not_anonymous
+from geoapi.utils.decorators import jwt_decoder, not_anonymous, streetview_service_permissions
 from flask_restplus import Namespace, Resource, fields
 from flask_restplus.marshalling import marshal_with
 from flask import request, abort
@@ -107,6 +107,7 @@ class StreetviewServiceResource(Resource):
     @api.doc(id="getStreetviewServiceResource",
              description="Get a streetview service resource by service name")
     @api.marshal_with(streetview_service)
+    @streetview_service_permissions
     def get(self, service: str):
         u = request.current_user
         logger.info("Get streetview service object for service:{} for user:{}".format(service, u.username))
@@ -114,6 +115,7 @@ class StreetviewServiceResource(Resource):
 
     @api.doc(id="deleteStreetviewServiceResource",
              description="Delete a streetview service resource by service name")
+    @streetview_service_permissions
     def delete(self, service: str):
         u = request.current_user
         logger.info("Delete streetview object for service:{} for user:{}".format(service, u.username))
@@ -123,6 +125,7 @@ class StreetviewServiceResource(Resource):
              description="Update streetview service resource for a user by service name")
     @api.expect(streetview_service_resource_param)
     @api.marshal_with(streetview_service)
+    @streetview_service_permissions
     def put(self, service: str):
         u = request.current_user
         logger.info("Update streetview service resource for service:{} user:{}".format(service, u.username))
@@ -134,6 +137,7 @@ class StreetviewOrganizationsResource(Resource):
     @api.doc(id="getStreetviewOrganizations",
              description="Get organizations from streetview service resource")
     @api.marshal_with(streetview_organization)
+    @streetview_service_permissions
     def get(self, service: str):
         u = request.current_user
         logger.info("Get streetview organizations from streetview service resource for user:{}"
@@ -144,6 +148,7 @@ class StreetviewOrganizationsResource(Resource):
              description="Create organizations for a streetview object")
     @api.expect(streetview_organization)
     @api.marshal_with(streetview_organization)
+    @streetview_service_permissions
     def post(self, service: str):
         u = request.current_user
         logger.info("Create streetview organization for a streetview service resource for user:{}"
@@ -155,6 +160,7 @@ class StreetviewOrganizationsResource(Resource):
 class StreetviewOrganizationResource(Resource):
     @api.doc(id="deleteStreetviewOrganization",
              description="Delete organization from streetview service resource")
+    @streetview_service_permissions
     def delete(self, service: str, organization_id: int):
         u = request.current_user
         logger.info("Delete streetview organization from streetview service resource for user:{} and streetview service: {}"
@@ -164,6 +170,7 @@ class StreetviewOrganizationResource(Resource):
     @api.doc(id="updateStreetviewOrganization",
              description="Update organization from streetview service resource")
     @api.expect(streetview_organization)
+    @streetview_service_permissions
     def put(self, service: str, organization_id: int):
         u = request.current_user
         logger.info("Update streetview organization in streetview service resource for user:{} and streetview servicde: {}"
