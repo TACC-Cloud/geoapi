@@ -121,7 +121,7 @@ def _from_tapis(user: User, task_uuid: UUID, systemId: str, path: str, organizat
         except Exception as e:
             done_files -= 1
             error_message = "Could not import file from agave: {} :: {}, {}" \
-                .format(systemId, path, e))
+                .format(systemId, path, e)
             logger.error(error_message)
             raise Exception(error_message)
 
