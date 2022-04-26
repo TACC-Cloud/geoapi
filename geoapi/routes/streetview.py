@@ -1,8 +1,8 @@
 from geoapi.services.streetview import StreetviewService
 from geoapi.tasks import streetview
 from geoapi.log import logging
-from geoapi.exceptions import ApiException, StreetviewAuthException, StreetviewLimitException
-from geoapi.utils.decorators import jwt_decoder
+from geoapi.exceptions import StreetviewAuthException, StreetviewLimitException
+from geoapi.utils.decorators import jwt_decoder, not_anonymous
 from flask_restplus import Namespace, Resource, fields
 from flask_restplus.marshalling import marshal_with
 from flask import request, abort
@@ -84,6 +84,7 @@ class StreetviewServiceResources(Resource):
     @api.doc(id="getStreetviewServiceResources",
              description="Get all streetview service objects for a user")
     @api.marshal_with(streetview_service, as_list=True)
+    @not_anonymous
     def get(self):
         u = request.current_user
         logger.info("Get all streetview objects user:{}".format(u.username))
@@ -93,6 +94,7 @@ class StreetviewServiceResources(Resource):
              description="Create streetview service object for a user")
     @api.expect(streetview_service_resource_param)
     @api.marshal_with(streetview_service)
+    @not_anonymous
     def post(self):
         u = request.current_user
         service = api.payload.get('service')

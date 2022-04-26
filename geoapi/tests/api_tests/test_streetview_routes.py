@@ -68,6 +68,11 @@ def test_list_streetview_service_resource(test_client, streetview_service_resour
                                 'organizations': [], 'instances': []}]
 
 
+def test_list_streetview_service_resource_unauthed(test_client, streetview_service_resource_fixture):
+    resp = test_client.get('/streetview/services/')
+    assert resp.status_code == 403
+
+
 def test_create_streetview_service_resource(test_client):
     u1 = db_session.query(User).get(1)
     data = {
@@ -86,6 +91,16 @@ def test_create_streetview_service_resource(test_client):
     assert resp.get_json() == {'id': 1, 'instances': [], 'organizations': [],
                                'service': 'service', 'service_user': 'some_username',
                                'token': 'my_token', 'user_id': 1}
+
+
+def test_create_streetview_service_resource_unauthed(test_client):
+    data = {
+        "service": "service",
+        "service_user": "some_username",
+        "token": "my_token"
+    }
+    resp = test_client.post('/streetview/services/', json=data)
+    assert resp.status_code == 403
 
 
 def test_get_streetview_service_resource(test_client, streetview_service_resource_fixture):
