@@ -24,13 +24,13 @@ class ApiException(Exception):
     pass
 
 class StreetviewAuthException(Exception):
-    """ A generic exception from the api"""
+    """ Not logged in to streetview service """
     pass
 
 class StreetviewLimitException(Exception):
-    """ A generic exception from the api"""
+    """ Exceed concurrent streetview publish limit """
     pass
 
 class StreetviewExistsException(Exception):
-    """ A generic exception from the api"""
+    """ Already published the streetview assets from a system/path """
     pass
