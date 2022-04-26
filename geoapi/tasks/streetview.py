@@ -90,15 +90,10 @@ def _from_tapis(user: User, task_uuid: UUID, systemId: str, path: str, organizat
 
     base_filepath = get_project_streetview_dir(user.id, task_uuid)
 
-    # TODO Should handle retry
-    if not os.path.isdir(base_filepath):
-        make_project_streetview_dir(user.id, task_uuid)
-    else:
+    if os.path.isdir(base_filepath):
         remove_project_streetview_dir(user.id, task_uuid)
-        make_project_streetview_dir(user.id, task_uuid)
-        NotificationsService.create(user,
-                                    "success",
-                                    "Cleaning up previous session before publish.")
+        logger.info("Cleaning up previous session before upload.")
+    make_project_streetview_dir(user.id, task_uuid)
 
     img_list = []
 
@@ -107,9 +102,6 @@ def _from_tapis(user: User, task_uuid: UUID, systemId: str, path: str, organizat
 
     for item in files_in_directory:
         if item.type == "dir":
-            NotificationsService.create(user,
-                                        "warning",
-                                        "Invalid upload type. Disregarding...")
             continue
         if item.path.suffix.lower().lstrip('.') not in features.FeaturesService.IMAGE_FILE_EXTENSIONS:
             continue
@@ -128,8 +120,10 @@ def _from_tapis(user: User, task_uuid: UUID, systemId: str, path: str, organizat
 
         except Exception as e:
             done_files -= 1
-            raise Exception("Could not import file from agave: {} :: {}, {}" \
-                            .format(systemId, path, e))
+            error_message = "Could not import file from agave: {} :: {}, {}" \
+                .format(systemId, path, e))
+            logger.error(error_message)
+            raise Exception(error_message)
 
     if len(img_list) == 0:
         raise Exception("No images have been uploaded to geoapi!")
