@@ -20,12 +20,6 @@ streetview_service_resource_param = api.model('StreetviewParams', {
     'token': fields.String(required=False)
 })
 
-default_response = api.model('DefaultAgaveResponse', {
-    "message": fields.String(),
-    "version": fields.String(),
-    "status": fields.String(default="success")
-})
-
 ok_response = api.model('OkResponse', {
     "message": fields.String(default="accepted")
 })

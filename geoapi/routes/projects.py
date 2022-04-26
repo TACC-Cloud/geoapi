@@ -18,12 +18,6 @@ logger = logging.getLogger(__name__)
 
 api = Namespace('projects', decorators=[jwt_decoder])
 
-default_response = api.model('DefaultAgaveResponse', {
-    "message": fields.String(),
-    "version": fields.String(),
-    "status": fields.String(default="success")
-})
-
 ok_response = api.model('OkResponse', {
     "message": fields.String(default="accepted")
 })
@@ -223,7 +217,6 @@ class ProjectResource(Resource):
 
 @api.route('/<int:projectId>/users/')
 class ProjectUsersResource(Resource):
-
     @api.marshal_with(user, as_list=True)
     @project_permissions
     def get(self, projectId: int):
@@ -504,14 +497,6 @@ class ProjectStreetviewResource(Resource):
         sequenceId = api.payload['sequenceId']
         token = api.payload['token']['token']
         return streetview.process_streetview_sequences(projectId, sequenceId, token)
-
-task = api.model('Task', {
-    'id': fields.Integer(),
-    'status': fields.String(),
-    'description': fields.String(required=False),
-    'created': fields.DateTime(dt_format='rfc822'),
-    'updated': fields.DateTime(dt_format='rfc822'),
-})
 
 
 @api.route('/<int:projectId>/streetview/<int:featureId>/')

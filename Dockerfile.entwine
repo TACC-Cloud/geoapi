@@ -4,7 +4,7 @@ ENV CC clang
 ENV CXX clang++
 
 RUN apt-get update && apt-get install -y \
-    git cmake clang libcurl4-openssl-dev libssl-dev python3.7 python3-pip ffmpeg git
+    git cmake clang libcurl4-openssl-dev libssl-dev python3.7 python3-pip ffmpeg
 
 RUN git clone https://github.com/connormanning/entwine.git && \
     cd entwine && \
@@ -23,7 +23,6 @@ COPY requirements.txt /requirements.txt
 WORKDIR /
 RUN mkdir api
 
-RUN pip3 install --upgrade git+https://github.com/mapillary/mapillary_tools
 RUN pip3 install -r requirements.txt
 
 COPY geoapi /api
