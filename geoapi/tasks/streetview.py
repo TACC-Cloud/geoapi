@@ -122,7 +122,7 @@ def _from_tapis(user: User, task_uuid: UUID, systemId: str, path: str, organizat
 
             NotificationsService.updateProgress(task_uuid=task_uuid,
                                                 status="in_progress",
-                                                message="Collecting files from DesignSafe to geoapi",
+                                                message="Collecting files from DesignSafe",
                                                 progress=int(done_files / files_length * 100),
                                                 logItem={"uploadFiles": img_list})
 
