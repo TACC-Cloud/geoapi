@@ -168,19 +168,3 @@ def get_exif_location(image):
         lon = 0 - lon
 
     return lon, lat
-
-def parse(val):
-    """parse literal to actual value"""
-    literal = {
-        'True': True,
-        'False': False
-    }
-    if val in literal:
-        return literal.get(val)
-    elif val.isdigit():
-        return int(val)
-    else:
-        try:
-            return float(val)
-        except ValueError:
-            return val
