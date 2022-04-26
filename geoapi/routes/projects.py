@@ -1,7 +1,3 @@
-# from geoapi.services.notifications import NotificationsService
-# from flask_restplus.marshalling import marshal_with
-# from flask import request
-# from flask_restplus import Namespace, Resource, fields, inputs
 from geoapi.services.users import UserService
 from flask import request, abort
 from flask_restplus import Resource, Namespace, fields, inputs
