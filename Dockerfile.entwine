@@ -29,3 +29,4 @@ COPY geoapi /api
 ENV PYTHONPATH "${PYTHONPATH}:/api"
 
 WORKDIR /api
+
