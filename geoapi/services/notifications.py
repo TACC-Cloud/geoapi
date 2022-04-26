@@ -48,27 +48,6 @@ class NotificationsService:
             db_session.rollback()
             raise
 
-
-    @staticmethod
-    def getAllProgress(user: User) -> List[ProgressNotification]:
-        return db_session.query(ProgressNotification) \
-            .filter(ProgressNotification.user_id == user.id) \
-            .filter(ProgressNotification.tenant_id == user.tenant_id)\
-            .order_by(ProgressNotification.created.desc()) \
-            .limit(100)\
-            .all()
-
-
-    def getAllProgressUUID(user: User, task_uuid: UUID) -> List[ProgressNotification]:
-        return db_session.query(ProgressNotification) \
-            .filter(ProgressNotification.user_id == user.id)\
-            .filter(ProgressNotification.tenant_id == user.tenant_id)\
-            .filter(ProgressNotification.uuid == task_uuid) \
-            .order_by(ProgressNotification.created.desc()) \
-            .limit(100)\
-            .all()
-
-
     @staticmethod
     def getProgress(user: User) -> List[ProgressNotification]:
         q = db_session.query(ProgressNotification) \
