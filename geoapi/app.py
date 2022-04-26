@@ -56,7 +56,7 @@ def handle_streetview_auth_exception(error: Exception):
     return {'message': 'Not logged in to streetview service'}, 401
 
 
-@api.errorhandler(StreetviewLimitException a)
+@api.errorhandler(StreetviewLimitException)
 def handle_streetview_limit_exception(error: Exception):
     return {'message': 'Exceed concurrent streetview publish limit'}, 403
 
