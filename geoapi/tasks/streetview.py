@@ -16,7 +16,8 @@ from shapely.geometry import Point, LineString
 from geoapi.celery_app import app
 from geoapi.exceptions import (ApiException,
                                StreetviewAuthException,
-                               StreetviewLimitException)
+                               StreetviewLimitException,
+                               StreetviewExistsException)
 from geoapi.models import User, StreetviewInstance, StreetviewSequence, Task
 from geoapi.utils.agave import AgaveUtils
 from geoapi.utils.streetview import (get_project_streetview_dir,
