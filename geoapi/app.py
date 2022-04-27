@@ -3,7 +3,9 @@ from flask import Flask
 from geoapi.routes import api
 from geoapi.settings import settings as app_settings
 from geoapi.db import db_session
-from geoapi.exceptions import InvalidGeoJSON, InvalidEXIFData, InvalidCoordinateReferenceSystem, ObservableProjectAlreadyExists, ApiException, StreetviewAuthException, StreetviewLimitException
+from geoapi.exceptions import (InvalidGeoJSON, InvalidEXIFData, InvalidCoordinateReferenceSystem,
+                               ObservableProjectAlreadyExists, ApiException, AccessNotAllowed,
+                               StreetviewAuthException, StreetviewLimitException)
 
 import logging
 
@@ -49,6 +51,11 @@ def handle_coordinate_reference_system_exception(error: Exception):
 @api.errorhandler(ObservableProjectAlreadyExists)
 def handle_observable_project_already_exists_exception(error: Exception):
     return {'message': 'Conflict, a project for this storage system/path already exists'}, 409
+
+
+@api.errorhandler(AccessNotAllowed)
+def handle_access_not_allowed_exception(error: Exception):
+    return {'message': 'Access not allowed'}, 403
 
 
 @api.errorhandler(StreetviewAuthException)

@@ -65,7 +65,7 @@ class ProgressNotifications(Resource):
 
     @api.doc(id="delete",
              description='Delete all done progress notifications')
-    @api.marshal_with(progress_notification_response, as_list=True)
+    @api.marshal_with(ok_response)
     def delete(self):
         return NotificationsService.deleteAllDoneProgress()
 

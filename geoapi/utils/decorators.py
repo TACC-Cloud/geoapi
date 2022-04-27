@@ -7,6 +7,7 @@ from geoapi.services.users import UserService
 from geoapi.services.projects import ProjectsService
 from geoapi.services.features import FeaturesService
 from geoapi.services.point_cloud import PointCloudService
+from geoapi.services.streetview import StreetviewService
 from geoapi.settings import settings
 from geoapi.utils import jwt_utils
 from geoapi.log import logger
@@ -152,6 +153,49 @@ def not_anonymous(fn):
     @wraps(fn)
     def wrapper(*args, **kwargs):
         if is_anonymous(request.current_user):
+            abort(403, "Access denied")
+        return fn(*args, **kwargs)
+    return wrapper
+
+
+def streetview_service_permissions(fn):
+    @wraps(fn)
+    def wrapper(*args, **kwargs):
+        service = kwargs.get("service")
+        streetview_resource_service = StreetviewService.getByService(user=request.current_user,
+                                                                     service=service)
+        if not streetview_resource_service:
+            abort(404, "No service found")
+        return fn(*args, **kwargs)
+    return wrapper
+
+
+def streetview_instance_permissions(fn):
+    @wraps(fn)
+    def wrapper(*args, **kwargs):
+        instance_id = kwargs.get("instance_id")
+
+        streetview_instance = StreetviewService.getInstance(instance_id)
+        if not streetview_instance:
+            abort(404, "No instance found")
+        if request.current_user != streetview_instance.streetview.user:
+            abort(403, "Access denied")
+        return fn(*args, **kwargs)
+    return wrapper
+
+
+def streetview_sequence_permissions(fn):
+    @wraps(fn)
+    def wrapper(*args, **kwargs):
+        instance_id = kwargs.get("sequence_id")
+        sequence = StreetviewService.getSequenceFromId(instance_id)
+        # possible that its a int instance_id as both are supported so check that.
+        if not sequence:
+            sequence = StreetviewService.getSequence(instance_id)
+
+        if not sequence:
+            abort(404, "No sequence found")
+        if request.current_user != sequence.streetview_instance.streetview.user:
             abort(403, "Access denied")
         return fn(*args, **kwargs)
     return wrapper

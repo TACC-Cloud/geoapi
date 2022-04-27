@@ -41,7 +41,10 @@ def publish(user: User, params: Dict):
 
     streetview_service = StreetviewService.getByService(user, service)
 
-    if (not streetview_service.token or not streetview_service.service_user):
+    if streetview_service is None:
+        raise StreetviewAuthException
+
+    if not streetview_service.token or not streetview_service.service_user:
         logger.error('Not authenticated to {} for user: {}'\
             .format(params['service'],
                     user.username))
