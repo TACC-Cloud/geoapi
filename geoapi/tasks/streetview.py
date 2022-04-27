@@ -78,13 +78,10 @@ def clean_session(streetview_instance: StreetviewInstance,
                   task_uuid: UUID,
                   status: str=None,
                   message: str=None,
-                  logItem: dict=None,
-                  remove_dir: bool=False):
+                  logItem: dict=None):
     StreetviewService.deleteInstance(streetview_instance.id)
     progress_error(user, task_uuid, status, message, logItem)
-    if remove_dir:
-        # TODO: Change to include service after user id
-        remove_project_streetview_dir(user.id, task_uuid)
+    remove_project_streetview_dir(user.id, task_uuid)
 
 def _from_tapis(user: User, task_uuid: UUID, systemId: str, path: str, organization_key: str):
     client = AgaveUtils(user.jwt)
@@ -93,15 +90,10 @@ def _from_tapis(user: User, task_uuid: UUID, systemId: str, path: str, organizat
 
     base_filepath = get_project_streetview_dir(user.id, task_uuid)
 
-    # TODO Should handle retry
-    if not os.path.isdir(base_filepath):
-        make_project_streetview_dir(user.id, task_uuid)
-    else:
+    if os.path.isdir(base_filepath):
         remove_project_streetview_dir(user.id, task_uuid)
-        make_project_streetview_dir(user.id, task_uuid)
-        NotificationsService.create(user,
-                                    "success",
-                                    "Cleaning up previous session before publish.")
+        logger.info("Cleaning up previous session before upload.")
+    make_project_streetview_dir(user.id, task_uuid)
 
     img_list = []
 
@@ -110,9 +102,6 @@ def _from_tapis(user: User, task_uuid: UUID, systemId: str, path: str, organizat
 
     for item in files_in_directory:
         if item.type == "dir":
-            NotificationsService.create(user,
-                                        "warning",
-                                        "Invalid upload type. Disregarding...")
             continue
         if item.path.suffix.lower().lstrip('.') not in features.FeaturesService.IMAGE_FILE_EXTENSIONS:
             continue
@@ -125,14 +114,16 @@ def _from_tapis(user: User, task_uuid: UUID, systemId: str, path: str, organizat
 
             NotificationsService.updateProgress(task_uuid=task_uuid,
                                                 status="in_progress",
-                                                message="Transferring files from DesignSafe to geoapi",
+                                                message="Collecting files from DesignSafe",
                                                 progress=int(done_files / files_length * 100),
                                                 logItem={"uploadFiles": img_list})
 
         except Exception as e:
             done_files -= 1
-            raise Exception("Could not import file from agave: {} :: {}, {}" \
-                            .format(systemId, path, e))
+            error_message = "Could not import file from agave: {} :: {}, {}" \
+                .format(systemId, path, e)
+            logger.error(error_message)
+            raise Exception(error_message)
 
     if len(img_list) == 0:
         raise Exception("No images have been uploaded to geoapi!")
@@ -147,7 +138,7 @@ def _to_mapillary(user: User, streetview_instance: StreetviewInstance, task_uuid
     try:
         NotificationsService.updateProgress(task_uuid,
                                             "created",
-                                            "Started upload to Mapillary")
+                                            "Uploading to Mapillary")
 
         MapillaryUtils.authenticate(user.id, token, service_user)
         MapillaryUtils.upload(user.id, task_uuid, service_user, organization_key)
@@ -240,8 +231,7 @@ def from_tapis_to_streetview(user_id: int,
                       task_uuid,
                       'error',
                       error_message,
-                      logItem={'errorMessage': error_message},
-                      remove_dir=True)
+                      logItem={'errorMessage': error_message})
         return
 
     if streetview_service.service == 'mapillary':
@@ -256,8 +246,7 @@ def from_tapis_to_streetview(user_id: int,
                           task_uuid,
                           'error',
                           error_message,
-                          logItem={'errorMessage': error_message},
-                          remove_dir=True)
+                          logItem={'errorMessage': error_message})
             return
 
         try:
@@ -270,8 +259,7 @@ def from_tapis_to_streetview(user_id: int,
                           user,
                           task_uuid,
                           'error',
-                          error_message,
-                          remove_dir=True)
+                          error_message)
             return
 
     NotificationsService.updateProgress(task_uuid,

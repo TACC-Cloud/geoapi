@@ -1,7 +1,6 @@
 from geoapi.services.streetview import StreetviewService
 from geoapi.tasks import streetview
 from geoapi.log import logging
-from geoapi.exceptions import StreetviewAuthException, StreetviewLimitException
 from geoapi.utils.decorators import (
     jwt_decoder, not_anonymous, streetview_service_permissions,
     streetview_instance_permissions, streetview_sequence_permissions)
@@ -20,12 +19,6 @@ streetview_service_resource_param = api.model('StreetviewParams', {
     'service': fields.String(required=False),
     'service_user': fields.String(required=False),
     'token': fields.String(required=False)
-})
-
-default_response = api.model('DefaultAgaveResponse', {
-    "message": fields.String(),
-    "version": fields.String(),
-    "status": fields.String(default="success")
 })
 
 ok_response = api.model('OkResponse', {
@@ -246,10 +239,5 @@ class StreetviewPublishFilesResource(Resource):
     def post(self):
         u = request.current_user
         logger.info("Publish images to streetview for user:{}".format(u.username))
-        try:
-            streetview.publish(u, api.payload)
-        except StreetviewAuthException as e:
-            abort(401, e)
-        except StreetviewLimitException as e:
-            abort(403, e)
+        streetview.publish(u, api.payload)
         return {"message": "accepted"}

@@ -1,7 +1,3 @@
-# from geoapi.services.notifications import NotificationsService
-# from flask_restplus.marshalling import marshal_with
-# from flask import request
-# from flask_restplus import Namespace, Resource, fields, inputs
 from geoapi.services.users import UserService
 from flask import request, abort
 from flask_restplus import Resource, Namespace, fields, inputs
@@ -21,12 +17,6 @@ from geoapi.utils.decorators import jwt_decoder, project_permissions_allow_publi
 logger = logging.getLogger(__name__)
 
 api = Namespace('projects', decorators=[jwt_decoder])
-
-default_response = api.model('DefaultAgaveResponse', {
-    "message": fields.String(),
-    "version": fields.String(),
-    "status": fields.String(default="success")
-})
 
 ok_response = api.model('OkResponse', {
     "message": fields.String(default="accepted")
@@ -227,7 +217,6 @@ class ProjectResource(Resource):
 
 @api.route('/<int:projectId>/users/')
 class ProjectUsersResource(Resource):
-
     @api.marshal_with(user, as_list=True)
     @project_permissions
     def get(self, projectId: int):
@@ -251,13 +240,6 @@ class ProjectUsersResource(Resource):
 
 @api.route('/<int:projectId>/users/<username>/')
 class ProjectUserResource(Resource):
-    @api.doc(id="getUser",
-             description="Get a user from a project")
-    @api.marshal_with(user)
-    @project_permissions
-    def get(self, projectId: int, username: str):
-        return ProjectsService.getUser(projectId, username)
-
     @api.doc(id="removeUser",
              description="Remove a user from a project")
     @project_permissions
@@ -508,14 +490,6 @@ class ProjectStreetviewResource(Resource):
         sequenceId = api.payload['sequenceId']
         token = api.payload['token']['token']
         return streetview.process_streetview_sequences(projectId, sequenceId, token)
-
-task = api.model('Task', {
-    'id': fields.Integer(),
-    'status': fields.String(),
-    'description': fields.String(required=False),
-    'created': fields.DateTime(dt_format='rfc822'),
-    'updated': fields.DateTime(dt_format='rfc822'),
-})
 
 
 @api.route('/<int:projectId>/streetview/<int:featureId>/')
