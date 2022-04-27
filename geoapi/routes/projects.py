@@ -1,26 +1,22 @@
+from geoapi.services.users import UserService
 from flask import request, abort
 from flask_restplus import Resource, Namespace, fields, inputs
 from werkzeug.datastructures import FileStorage
 from werkzeug.utils import secure_filename
-
 from geoapi.log import logging
 from geoapi.schemas import FeatureSchema
 from geoapi.services.features import FeaturesService
-from geoapi.services.projects import ProjectsService
+from geoapi.services.streetview import StreetviewService
 from geoapi.services.point_cloud import PointCloudService
+from geoapi.services.projects import ProjectsService
+from geoapi.tasks import external_data, streetview
 from geoapi.utils.decorators import jwt_decoder, project_permissions_allow_public, project_permissions, project_feature_exists, \
     project_point_cloud_exists, project_point_cloud_not_processing, check_access_and_get_project, is_anonymous, not_anonymous
-from geoapi.tasks import external_data
+
 
 logger = logging.getLogger(__name__)
 
 api = Namespace('projects', decorators=[jwt_decoder])
-
-default_response = api.model('DefaultAgaveResponse', {
-    "message": fields.String(),
-    "version": fields.String(),
-    "status": fields.String(default="success")
-})
 
 ok_response = api.model('OkResponse', {
     "message": fields.String(default="accepted")
@@ -61,7 +57,7 @@ project = api.model('Project', {
     'uuid': fields.String(),
     'system_file': fields.String(),
     'system_id': fields.String(),
-    'system_path': fields.String()
+    'system_path': fields.String(),
 })
 
 user = api.model('User', {
@@ -221,7 +217,6 @@ class ProjectResource(Resource):
 
 @api.route('/<int:projectId>/users/')
 class ProjectUsersResource(Resource):
-
     @api.marshal_with(user, as_list=True)
     @project_permissions
     def get(self, projectId: int):
@@ -245,7 +240,6 @@ class ProjectUsersResource(Resource):
 
 @api.route('/<int:projectId>/users/<username>/')
 class ProjectUserResource(Resource):
-
     @api.doc(id="removeUser",
              description="Remove a user from a project")
     @project_permissions
@@ -484,6 +478,31 @@ class ProjectOverlayResource(Resource):
         return "Overlay {id} deleted".format(id=overlayId)
 
 
+@api.route('/<int:projectId>/streetview/')
+class ProjectStreetviewResource(Resource):
+    @api.doc(id="addStreetviewSequenceToFeature",
+             description="Add a streetview sequence to a project feature")
+    @api.marshal_with(task)
+    @project_permissions
+    def post(self, projectId: int):
+        logger.info("Add streetview sequence to project features:{} for user:{}".format(
+            projectId, request.current_user.username))
+        sequenceId = api.payload['sequenceId']
+        token = api.payload['token']['token']
+        return streetview.process_streetview_sequences(projectId, sequenceId, token)
+
+
+@api.route('/<int:projectId>/streetview/<int:featureId>/')
+class ProjectStreetviewFeatureResource(Resource):
+    @api.doc(id="getStreetviewSequenceFromFeature",
+             description="Get a streetview sequence from a project feature")
+    @project_permissions
+    def get(self, projectId: int, featureId: int):
+        logger.info("Get streetview sequence from project features:{} for user:{}".format(
+            projectId, request.current_user.username))
+        return StreetviewService.sequenceFromFeature(featureId)
+
+
 @api.route('/<int:projectId>/point-cloud/')
 class ProjectPointCloudsResource(Resource):
 
@@ -593,8 +612,8 @@ class ProjectTasksResource(Resource):
     @api.marshal_with(task, as_list=True)
     @project_permissions
     def get(self, projectId: int):
-        from geoapi.models import Task
         from geoapi.db import db_session
+        from geoapi.models import Task
         return db_session.query(Task).all()
 
 

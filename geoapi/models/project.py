@@ -31,6 +31,7 @@ class Project(Base):
     created = Column(DateTime(timezone=True), server_default=func.now())
     updated = Column(DateTime(timezone=True), onupdate=func.now())
     features = relationship('Feature', cascade="all, delete-orphan")
+
     users = relationship('User',
                          secondary='projects_users',
                          back_populates='projects')

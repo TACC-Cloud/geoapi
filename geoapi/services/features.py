@@ -531,7 +531,6 @@ class FeaturesService:
     @staticmethod
     def addTileServer(projectId: int, data: Dict):
         """
-
         :param projectId: int
         :param data: Dict
         :return: ts: TileServer

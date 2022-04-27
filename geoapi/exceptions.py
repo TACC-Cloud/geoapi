@@ -22,3 +22,15 @@ class MissingServiceAccount(Exception):
 class ApiException(Exception):
     """ A generic exception from the api"""
     pass
+
+class StreetviewAuthException(Exception):
+    """ Not logged in to streetview service """
+    pass
+
+class StreetviewLimitException(Exception):
+    """ Exceed concurrent streetview publish limit """
+    pass
+
+class StreetviewExistsException(Exception):
+    """ Already published the streetview assets from a system/path """
+    pass

@@ -292,6 +292,12 @@ class ProjectsService:
         return proj.users
 
     @staticmethod
+    def getUser(projectId: int, username: str) -> User:
+        proj = ProjectsService.get(projectId)
+        user = UserService.getUser(username, proj.tenant_id)
+        return user
+
+    @staticmethod
     def removeUserFromProject(projectId: int, username: str, ) -> None:
         """
         Remove a user from a Project.

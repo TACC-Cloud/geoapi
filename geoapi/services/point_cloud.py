@@ -156,11 +156,11 @@ class PointCloudService:
 
         point_cloud = PointCloudService.get(pointCloudId)
 
-        file_path = PointCloudService.putPointCloudInOriginalsFileDir(point_cloud.path, fileObj, fileName);
+        file_path = PointCloudService.putPointCloudInOriginalsFileDir(point_cloud.path, fileObj, fileName)
 
         try:
             result = check_point_cloud.apply_async(args=[file_path])
-            result.get();
+            result.get()
         except InvalidCoordinateReferenceSystem as e:
             os.remove(file_path)
             logger.error("Point cloud file ({}) missing required coordinate reference system".format(file_path))
