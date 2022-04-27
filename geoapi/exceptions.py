@@ -19,6 +19,10 @@ class MissingServiceAccount(Exception):
     """ No service account for this tenant """
     pass
 
+class AccessNotAllowed(Exception):
+    """ A generic access not allowed exception"""
+    pass
+
 class ApiException(Exception):
     """ A generic exception from the api"""
     pass

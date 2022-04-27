@@ -6,6 +6,7 @@ import uuid
 from geoapi.models import User, Streetview, StreetviewInstance, StreetviewSequence, StreetviewOrganization, Project, Task
 from geoapi.db import db_session
 from geoapi.log import logging
+from geoapi.exceptions import AccessNotAllowed
 
 
 logger = logging.getLogger(__name__)
@@ -221,6 +222,12 @@ class StreetviewService:
         return proj.streetview_instances
 
     @staticmethod
+    def getInstance(instance_id: int) -> StreetviewInstance:
+        return db_session.query(StreetviewInstance) \
+            .filter(StreetviewInstance.id == instance_id) \
+            .first()
+
+    @staticmethod
     def addInstanceToProject(projectId: int, streetview_instance_id: int) -> None:
         proj = db_session.query(Project).get(projectId)
         streetview_instance = db_session.query(StreetviewInstance).get(streetview_instance_id)
@@ -269,6 +276,9 @@ class StreetviewService:
         """
         dir = data['dir']
         svi = StreetviewService.getInstanceFromSystemPath(data['streetviewId'], dir['system'], dir['path'])
+
+        if svi and svi.streetview.user != user:
+            raise AccessNotAllowed
 
         if not svi:
             svi = StreetviewService.createInstance(data['streetviewId'], dir['system'], dir['path'])
@@ -319,7 +329,7 @@ class StreetviewService:
         """
         sequence = db_session.query(StreetviewSequence)\
             .filter(StreetviewSequence.sequence_id == sequence_id)\
-            .one()
+            .first()
         return sequence
 
     @staticmethod

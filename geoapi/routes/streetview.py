@@ -2,7 +2,9 @@ from geoapi.services.streetview import StreetviewService
 from geoapi.tasks import streetview
 from geoapi.log import logging
 from geoapi.exceptions import StreetviewAuthException, StreetviewLimitException
-from geoapi.utils.decorators import jwt_decoder, not_anonymous, streetview_service_permissions
+from geoapi.utils.decorators import (
+    jwt_decoder, not_anonymous, streetview_service_permissions,
+    streetview_instance_permissions, streetview_sequence_permissions)
 from flask_restplus import Namespace, Resource, fields
 from flask_restplus.marshalling import marshal_with
 from flask import request, abort
@@ -182,6 +184,7 @@ class StreetviewOrganizationResource(Resource):
 class StreetviewInstanceResource(Resource):
     @api.doc(id="deleteStreetviewInstance",
              description="Delete streetview instance")
+    @streetview_instance_permissions
     def delete(self, instance_id: int):
         u = request.current_user
         logger.info("Delete streetview instance for user:{}"
@@ -206,6 +209,7 @@ class StreetviewSequenceResource(Resource):
     @api.doc(id="getStreetviewSequence",
              description="Get a streetview service's sequence")
     @marshal_with(streetview_sequence)
+    @streetview_sequence_permissions
     def get(self, sequence_id: str):
         u = request.current_user
         logger.info("Get streetview sequence of id:{} for user:{}".format(sequence_id, u.username))
@@ -213,6 +217,7 @@ class StreetviewSequenceResource(Resource):
 
     @api.doc(id="deleteStreetviewSequence",
              description="Delete a streetview service's sequence")
+    @streetview_sequence_permissions
     def delete(self, sequence_id: int):
         u = request.current_user
         logger.info("Delete streetview sequence of id:{} for user:{}".format(sequence_id, u.username))
@@ -222,6 +227,7 @@ class StreetviewSequenceResource(Resource):
              description="Update a streetview service's sequence")
     @api.expect(streetview_organization)
     @marshal_with(streetview_sequence)
+    @streetview_sequence_permissions
     def put(self, sequence_id: int):
         u = request.current_user
         logger.info("Update streetview sequence of id:{} for user:{}".format(sequence_id, u.username))
