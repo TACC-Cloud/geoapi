@@ -16,8 +16,7 @@ from shapely.geometry import Point, LineString
 from geoapi.celery_app import app
 from geoapi.exceptions import (ApiException,
                                StreetviewAuthException,
-                               StreetviewLimitException,
-                               StreetviewExistsException)
+                               StreetviewLimitException)
 from geoapi.models import User, StreetviewInstance, StreetviewSequence, Task
 from geoapi.utils.agave import AgaveUtils
 from geoapi.utils.streetview import (get_project_streetview_dir,
@@ -41,7 +40,10 @@ def publish(user: User, params: Dict):
 
     streetview_service = StreetviewService.getByService(user, service)
 
-    if (not streetview_service.token or not streetview_service.service_user):
+    if streetview_service is None:
+        raise StreetviewAuthException
+
+    if not streetview_service.token or not streetview_service.service_user:
         logger.error('Not authenticated to {} for user: {}'\
             .format(params['service'],
                     user.username))

@@ -53,7 +53,7 @@ def sequence_fixture(streetview_service_resource_fixture, instance_fixture, orga
 
 
 @pytest.fixture(scope="function")
-def convert_to_potree_mock():
+def from_tapis_to_streetview_mock():
     with patch('geoapi.tasks.streetview.from_tapis_to_streetview') as from_tapis_mock:
         yield from_tapis_mock
 
@@ -370,7 +370,7 @@ def test_delete_sequence_illegal_access(test_client, streetview_service_resource
     assert resp.status_code == 403
 
 
-def test_publish(test_client, streetview_service_resource_fixture, organization_fixture, convert_to_potree_mock):
+def test_publish(test_client, streetview_service_resource_fixture, organization_fixture, from_tapis_to_streetview_mock):
     u1 = db_session.query(User).get(1)
     data = {
         "service": streetview_service_resource_fixture.service,
@@ -383,4 +383,19 @@ def test_publish(test_client, streetview_service_resource_fixture, organization_
                             headers={'x-jwt-assertion-test': u1.jwt})
     assert resp.status_code == 200
     assert resp.get_json() == {"message": "accepted"}
-    convert_to_potree_mock.delay.assert_called_once()
+    from_tapis_to_streetview_mock.delay.assert_called_once()
+
+
+def test_publish_fails_when_missing_streetview_serviced(test_client, from_tapis_to_streetview_mock):
+    u1 = db_session.query(User).get(1)
+    data = {
+        "service": "mapillary",
+        "organization_key": "my_org",
+        "system_id": "mysystem",
+        "path": "mypath"
+    }
+    resp = test_client.post('/streetview/publish/',
+                            json=data,
+                            headers={'x-jwt-assertion-test': u1.jwt})
+    # user not authed into streetservice
+    assert resp.status_code == 401
