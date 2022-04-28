@@ -6,6 +6,7 @@ from enum import Enum
 import json
 import time
 import datetime
+from celery import uuid as celery_uuid
 
 from geoapi.celery_app import app
 from geoapi.exceptions import InvalidCoordinateReferenceSystem, MissingServiceAccount
