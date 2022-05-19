@@ -35,3 +35,11 @@ jobs:
     - name: Run server-side unit tests
       run: |
         APP_ENV=testing DB_HOST=localhost pytest
+  Workers_Unit_Tests:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v1
+    - name: Login to DockerHub Registry
+      run: echo ${{ secrets.DOCKERHUB_PASSWORD }} | docker login -u ${{ secrets.DOCKERHUB_USERNAME }} --password-stdin
+    - name: Run worker test
+      run: docker-compose -f docker-compose.test.yml -p geoapi_test run workers pytest -m "worker"
