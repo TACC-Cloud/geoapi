@@ -5,7 +5,18 @@ on:
     branches: [ main ]
   pull_request:
     branches: [ '**' ]
-
+services:
+  postgres:
+    image: mdillon/postgis:11-alpine
+    env:
+      POSTGRES_USER: dev
+      POSTGRES_PASSWORD: dev
+      POSTGRES_DB: dev
+    options: >-
+      --health-cmd pg_isready
+      --health-interval 10s
+      --health-timeout 5s
+      --health-retries 5
 jobs:
   Geoapi_Server_Side_Unit_Tests:
     runs-on: ubuntu-18.04
