@@ -83,6 +83,18 @@ alembic revision --autogenerate
 # - add/commit migrations
 ```
 
+## Testing
+
+Run route/service tests on the `api` container
+```
+docker-compose -f docker-compose.test.yml -p geoapi_test run api pytest
+```
+
+Run worker-related tasks on the `workers` container
+```
+docker-compose -f docker-compose.test.yml -p geoapi_test run workers pytest -m "worker"
+```
+
 ## Kubernetes (Production/Staging)
 
 Information on Kubernetes configuration for production and staging environments can be found in the [kube/README.md](kube/README.md) including information

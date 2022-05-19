@@ -1,0 +1,78 @@
+---
+version: "3"
+
+volumes:
+  assets:
+  pgdata:
+
+networks:
+  geoapi:
+    driver: bridge
+services:
+
+  postgres:
+    image: mdillon/postgis:11-alpine
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      - 5432:5432
+    networks:
+      - geoapi
+    stdin_open: true
+    tty: true
+    container_name: postgres
+    hostname: postgres
+    environment:
+      - POSTGRES_PASSWORD=dev
+      - POSTGRES_USER=dev
+      - POSTGRES_DB=dev
+
+  workers:
+    build:
+      context: .
+      dockerfile: ./Dockerfile.potree
+    volumes:
+      - .:/app
+      - assets:/assets
+    environment:
+      - MAPILLARY_CLIENT_TOKEN=4866220476802272
+      - FLASK_APP=/app/geoapi/app.py
+      - APP_ENV=testing
+      - ASSETS_BASE_DIR=/assets
+      - TENANT
+    stdin_open: true
+    tty: true
+    networks:
+      - geoapi
+    links:
+      - "postgres:postgres"
+    container_name: geoapiworkers
+    hostname: geoapiworkers
+
+  api:
+    build:
+      context: .
+      dockerfile: ./Dockerfile
+    volumes:
+      - .:/app
+      - assets:/assets
+    ports:
+      - 8000:8000
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
+    environment:
+      - FLASK_APP=/app/geoapi/app.py
+      - APP_ENV=testing
+      - ASSETS_BASE_DIR=/assets
+      - TENANT
+    stdin_open: true
+    tty: true
+    networks:
+      - geoapi
+    links:
+      - "postgres:postgres"
+    container_name: geoapi
+    hostname: geoapi
+    depends_on:
+      - postgres
