@@ -1,6 +1,6 @@
 # GeoAPI
 
-[![Build Status](https://travis-ci.org/TACC-Cloud/geoapi.svg?branch=master)](https://travis-ci.org/TACC-Cloud/geoapi) [![PyPI version](https://badge.fury.io/py/geoapi-client.svg)](https://badge.fury.io/py/geoapi-client)
+[![PyPI version](https://badge.fury.io/py/geoapi-client.svg)](https://badge.fury.io/py/geoapi-client)
 
 ## Overview and Architecture
 
