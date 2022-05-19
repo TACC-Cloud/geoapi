@@ -34,4 +34,4 @@ jobs:
         pip install -q -r requirements.txt
     - name: Run server-side unit tests
       run: |
-        APP_ENV=testing pytest
+        APP_ENV=testing DB_HOST=localhost pytest
