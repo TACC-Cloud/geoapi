@@ -31,7 +31,8 @@ services:
     build:
       context: .
       dockerfile: ./Dockerfile.potree
-      cache_from: taccaci/geoapi-workers:latest
+      cache_from:
+        - taccaci/geoapi-workers:latest
     volumes:
       - .:/app
       - assets:/assets
@@ -54,7 +55,8 @@ services:
     build:
       context: .
       dockerfile: ./Dockerfile
-      cache_from: taccaci/geoapi:latest
+      cache_from:
+        - taccaci/geoapi:latest
     volumes:
       - .:/app
       - assets:/assets
