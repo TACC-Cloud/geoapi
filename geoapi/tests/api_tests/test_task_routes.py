@@ -1,6 +1,6 @@
 from geoapi.db import db_session
 
-from geoapi.models import User, Task
+from geoapi.models import User
 
 
 def test_get_all_tasks(test_client, projects_fixture, task_fixture):

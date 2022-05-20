@@ -14,8 +14,8 @@ class User(Base):
     jwt = Column(String())
     streetviews = relationship('Streetview', cascade="all, delete-orphan")
     projects = relationship('Project',
-                 secondary='projects_users',
-                 back_populates='users', lazy="joined")
+                            secondary='projects_users',
+                            back_populates='users', lazy="joined")
 
     def __repr__(self):
         return '<User(uname={})>'.format(self.username)

@@ -5,6 +5,7 @@ from sqlalchemy import (
 )
 from geoapi.db import Base
 
+
 class ImportedFile(Base):
     __tablename__ = 'imported_file'
 

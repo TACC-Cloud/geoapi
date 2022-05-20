@@ -5,7 +5,6 @@ import uuid
 import json
 from typing import List, IO
 
-from geoapi.celery_app import app
 from celery import uuid as celery_uuid
 
 from geoapi.exceptions import ApiException, InvalidCoordinateReferenceSystem
@@ -104,7 +103,6 @@ class PointCloudService:
         db_session.delete(point_cloud)
         db_session.commit()
 
-
     @staticmethod
     def check_file_extension(file_name):
         """ Checks file extension
@@ -115,7 +113,6 @@ class PointCloudService:
         file_ext = pathlib.Path(file_name).suffix.lstrip('.').lower()
         if file_ext not in PointCloudService.LIDAR_FILE_EXTENSIONS:
             raise ApiException("Invalid file type for point clouds.")
-
 
     @staticmethod
     def putPointCloudInOriginalsFileDir(point_cloud_path: str, fileObj: IO, fileName: str):
@@ -135,7 +132,6 @@ class PointCloudService:
             fileObj.seek(0)
             shutil.copyfileobj(fileObj, f)
         return file_path
-
 
     @staticmethod
     def fromFileObj(pointCloudId: int, fileObj: IO, fileName: str):

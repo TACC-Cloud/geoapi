@@ -41,6 +41,7 @@ def check_point_cloud(file_path: str) -> None:
     # TODO make this a check about if we have enough info ect.
     getProj4(file_path)
 
+
 @app.task()
 def get_point_cloud_info(pointCloudId: int) -> dict:
     """
@@ -143,6 +144,6 @@ def convert_to_potree(self, pointCloudId: int) -> None:
         db_session.add(point_cloud)
         db_session.add(feature)
         db_session.commit()
-    except:
+    except:  # noqa: E722
         db_session.rollback()
         raise

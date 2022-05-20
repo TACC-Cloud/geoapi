@@ -25,4 +25,3 @@ app.conf.beat_schedule = {
 @app.task
 def hello():
     return "Hello World"
-

@@ -10,7 +10,7 @@ from celery import uuid as celery_uuid
 
 from geoapi.celery_app import app
 from geoapi.exceptions import InvalidCoordinateReferenceSystem, MissingServiceAccount
-from geoapi.models import User, ObservableDataProject, Task, Feature, FeatureAsset 
+from geoapi.models import User, ObservableDataProject, Task
 from geoapi.utils.agave import AgaveUtils, get_system_users, get_metadata_using_service_account, AgaveFileGetError
 from geoapi.log import logger
 from geoapi.services.features import FeaturesService
@@ -52,7 +52,7 @@ def get_file(client, system_id, path, required):
     error = None
     try:
         result_file = client.getFile(system_id, path)
-    except Exception as e:
+    except Exception as e:  # noqa: E722
         error = e
     return system_id, path, required, result_file, error
 
@@ -111,12 +111,11 @@ def import_file_from_agave(userId: int, systemId: str, path: str, projectId: int
         FeaturesService.fromFileObj(projectId, tmpFile, {}, original_path=path, additional_files=additional_files)
         NotificationsService.create(user, "success", "Imported {f}".format(f=path))
         tmpFile.close()
-    except Exception as e:
+    except Exception as e:  # noqa: E722
         db_session.rollback()
         logger.exception("Could not import file from agave: {} :: {}".format(systemId, path))
         NotificationsService.create(user, "error", "Error importing {f}".format(f=path))
         raise e
-
 
 
 def _update_point_cloud_task(pointCloudId: int, description: str = None, status: str = None):
@@ -198,7 +197,7 @@ def import_point_clouds_from_agave(userId: int, files, pointCloudId: int):
         db_session.add(point_cloud)
         db_session.add(task)
         db_session.commit()
-    except:
+    except:  # noqa: E722
         db_session.rollback()
         raise
     NotificationsService.create(user,
@@ -210,7 +209,7 @@ def import_point_clouds_from_agave(userId: int, files, pointCloudId: int):
         NotificationsService.create(user,
                                     "success",
                                     "Completed potree converter (for point cloud {}).".format(pointCloudId))
-    except:
+    except:  # noqa: E722
         logger.exception("point cloud:{} conversion failed for user:{}".format(pointCloudId, user.username))
         _update_point_cloud_task(pointCloudId, description="", status="FAILED")
         NotificationsService.create(user, "error", "Processing failed for point cloud ({})!".format(pointCloudId))
@@ -280,7 +279,7 @@ def import_from_agave(tenant_id: str, userId: int, systemId: str, path: str, pro
                     tmpFile.filename = Path(item.path).name
                     try:
                         FeaturesService.createFeatureAsset(projectId, feat.id, tmpFile, original_path=item_system_path)
-                    except:
+                    except:  # noqa: E722
                         # remove newly-created placeholder feature if we fail to create an asset
                         FeaturesService.delete(feat.id)
                         raise RuntimeError("Unable to create feature asset")
@@ -316,7 +315,7 @@ def import_from_agave(tenant_id: str, userId: int, systemId: str, path: str, pro
                                                                     successful_import=successful)
                     db_session.add(target_file)
                     db_session.commit()
-                except Exception as e:
+                except Exception:  # noqa: E722
                     logger.exception(f"Failed to create db entry (imported_file)"
                                      f"for projectId:{projectId}  {systemId}/{path}")
                     db_session.rollback()
@@ -353,7 +352,7 @@ def refresh_observable_projects():
             # perform the importing
             if o.watch_content:
                 import_from_agave(o.project.tenant_id, importing_user.id, o.system_id, o.path, o.project.id)
-    except Exception:
+    except Exception:  # noqa: E722
         logger.exception("Unhandled exception when importing observable project")
         db_session.rollback()
 

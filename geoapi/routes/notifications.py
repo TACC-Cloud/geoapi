@@ -1,5 +1,5 @@
-from flask import request, abort
-from flask_restplus import Resource, Namespace, fields, inputs
+from flask import request
+from flask_restplus import Resource, Namespace, fields
 
 from geoapi.log import logging
 from geoapi.utils.decorators import jwt_decoder, not_anonymous
@@ -33,6 +33,7 @@ ok_response = api.model('OkResponse', {
     "message": fields.String(default="accepted")
 })
 
+
 def utc_datetime(value):
     dt = parser.parse(value)
     dt = dt.replace(tzinfo=tz.UTC)
@@ -44,6 +45,7 @@ class Notifications(Resource):
     parser = api.parser()
     parser.add_argument('startDate', location='args', type=utc_datetime,
                         help="Only return notifications created more recently than startDate")
+
     @api.doc(id="get",
              description='Get a list of notifications')
     @api.marshal_with(notification_response, as_list=True)

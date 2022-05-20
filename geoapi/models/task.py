@@ -1,6 +1,6 @@
 from sqlalchemy import (
     Column, Integer, String,
-    Index, DateTime
+    DateTime
 )
 from sqlalchemy.sql import func
 from geoapi.db import Base

@@ -1,7 +1,6 @@
 import ffmpeg
 import uuid
 import os
-from typing import IO
 
 
 class VideoService:

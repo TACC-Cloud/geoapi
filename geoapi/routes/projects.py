@@ -1,4 +1,3 @@
-from geoapi.services.users import UserService
 from flask import request, abort
 from flask_restplus import Resource, Namespace, fields, inputs
 from werkzeug.datastructures import FileStorage

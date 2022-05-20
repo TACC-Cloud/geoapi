@@ -134,15 +134,15 @@ class AgaveUtils:
                     systemInfo = self.systemsGet(systemId)
                     if systemInfo["public"]:
                         logger.warn("As system is a public storage system for projects. we will use service "
-                                    "account to get file".format(systemId, path))
+                                    "account to get file: {}/{}".format(systemId, path))
                         return self._get_file_using_service_account(systemId, path)
                     else:
                         logger.warn("{}/{}.  System is not public so not trying "
                                     "work-around for CS-169/DES-2084.".format(systemId, path))
                 if r.status_code > 400:
                     raise AgaveFileGetError("Could not fetch file ({}/{}) status_code:{}".format(systemId,
-                                                                                          path,
-                                                                                          r.status_code))
+                                                                                                 path,
+                                                                                                 r.status_code))
                 tmpFile = NamedTemporaryFile()
                 for chunk in r.iter_content(1024 * 1024):
                     tmpFile.write(chunk)
@@ -151,7 +151,6 @@ class AgaveUtils:
         except Exception as e:
             logger.error("Could not fetch file ({}/{}): {}".format(systemId, path, e))
             raise e
-
 
     def _get_file_using_service_account(self, systemId: str, path: str) -> IO:
         """
@@ -174,7 +173,6 @@ class AgaveUtils:
                 tmpFile.write(chunk)
             tmpFile.seek(0)
             return tmpFile
-
 
     def getRawFileToPath(self, systemId: str, fromPath: str, toPath: str):
         url = quote('/files/media/system/{}/{}'.format(systemId, fromPath))
@@ -226,7 +224,7 @@ def get_system_users(tenant_id, jwt, system_id: str):
         user_names = set(user_names + user_names_from_service_account)
     except MissingServiceAccount:
         logger.error("No service account. Unable to get system roles/users for {}".format(system_id))
-    except:
+    except: # noqa
         logger.exception("Unable to get system roles/users for {} using service account".format(system_id))
 
     # remove any possible service accounts

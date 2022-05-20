@@ -56,11 +56,11 @@ class FeaturesService:
         'ini',
     )
 
-    ALLOWED_GEOSPATIAL_EXTENSIONS = IMAGE_FILE_EXTENSIONS + GPX_FILE_EXTENSIONS + GEOJSON_FILE_EXTENSIONS + \
-        SHAPEFILE_FILE_EXTENSIONS
+    ALLOWED_GEOSPATIAL_EXTENSIONS = IMAGE_FILE_EXTENSIONS + GPX_FILE_EXTENSIONS + GEOJSON_FILE_EXTENSIONS\
+        + SHAPEFILE_FILE_EXTENSIONS
 
-    ALLOWED_EXTENSIONS = IMAGE_FILE_EXTENSIONS + VIDEO_FILE_EXTENSIONS + AUDIO_FILE_EXTENSIONS + GPX_FILE_EXTENSIONS + \
-        GEOJSON_FILE_EXTENSIONS + SHAPEFILE_FILE_EXTENSIONS + INI_FILE_EXTENSIONS
+    ALLOWED_EXTENSIONS = IMAGE_FILE_EXTENSIONS + VIDEO_FILE_EXTENSIONS + AUDIO_FILE_EXTENSIONS + GPX_FILE_EXTENSIONS\
+        + GEOJSON_FILE_EXTENSIONS + SHAPEFILE_FILE_EXTENSIONS + INI_FILE_EXTENSIONS
 
     @staticmethod
     def get(featureId: int) -> Feature:
@@ -156,7 +156,7 @@ class FeaturesService:
         db_session.commit()
         return features
 
-    #TODO: we should be able to get rid of the old Hazmapper stuff at some point...
+    # TODO: we should be able to get rid of the old Hazmapper stuff at some point...
     @staticmethod
     def _importHazmapperV1Images(feat: Feature) -> Feature:
         if feat.properties.get("image_src"):
@@ -211,7 +211,8 @@ class FeaturesService:
         return FeaturesService.addGeoJSON(projectId, data)
 
     @staticmethod
-    def fromShapefile(projectId: int, fileObj: IO, metadata: Dict, additional_files: List[IO], original_path=None) -> Feature:
+    def fromShapefile(projectId: int, fileObj: IO, metadata: Dict, additional_files: List[IO],
+                      original_path=None) -> Feature:
         """ Create features from shapefile
 
         :param projectId: int
@@ -283,7 +284,7 @@ class FeaturesService:
         return FeaturesService.addTileServer(projectId, tile_server_data)
 
     @staticmethod
-    def fromFileObj(projectId: int, fileObj: IO, metadata: Dict, original_path: str=None, additional_files=None) -> List[Feature]:
+    def fromFileObj(projectId: int, fileObj: IO, metadata: Dict, original_path: str = None, additional_files=None) -> List[Feature]:
         ext = pathlib.Path(fileObj.filename).suffix.lstrip(".").lower()
         if ext in FeaturesService.IMAGE_FILE_EXTENSIONS:
             return [FeaturesService.fromImage(projectId, fileObj, metadata, original_path)]
@@ -299,7 +300,7 @@ class FeaturesService:
             raise ApiException("Filetype not supported for direct upload. Create a feature and attach as an asset?")
 
     @staticmethod
-    def fromImage(projectId: int, fileObj: IO, metadata: Dict, original_path: str=None) -> Feature:
+    def fromImage(projectId: int, fileObj: IO, metadata: Dict, original_path: str = None) -> Feature:
         """
         Create a Point feature from a georeferenced image
         :param projectId: int
@@ -332,7 +333,7 @@ class FeaturesService:
         try:
             imdata.thumb.save(thumbnail_path, "JPEG")
             imdata.resized.save(resized_image_path, "JPEG")
-        except:
+        except:  # noqa: E722
             if os.path.exists(thumbnail_path):
                 os.remove(thumbnail_path)
             if os.path.exists(resized_image_path):
@@ -397,7 +398,7 @@ class FeaturesService:
         return fa
 
     @staticmethod
-    def createImageFeatureAsset(projectId: int, fileObj: IO, original_path: str=None) -> FeatureAsset:
+    def createImageFeatureAsset(projectId: int, fileObj: IO, original_path: str = None) -> FeatureAsset:
         asset_uuid = uuid.uuid4()
         imdata = ImageService.resizeImage(fileObj)
         base_filepath = make_project_asset_dir(projectId)
@@ -414,7 +415,7 @@ class FeaturesService:
         return fa
 
     @staticmethod
-    def createVideoFeatureAsset(projectId: int, fileObj: IO, original_path: str =None) -> FeatureAsset:
+    def createVideoFeatureAsset(projectId: int, fileObj: IO, original_path: str = None) -> FeatureAsset:
         """
 
         :param projectId:

@@ -91,6 +91,7 @@ def agave_utils_with_bad_image_file(image_file_no_location_fixture):
             MockAgaveUtils().getFile.return_value = image_file_no_location_fixture
             MockAgaveUtilsInUtils().listing.return_value = filesListing
             MockAgaveUtilsInUtils().getFile.return_value = image_file_no_location_fixture
+
             class MockAgave:
                 client_in_utils = MockAgaveUtilsInUtils()
                 client_in_external_data = MockAgaveUtils()

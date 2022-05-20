@@ -8,7 +8,6 @@ from geoapi.db import db_session
 from sqlalchemy.sql import select, text
 from sqlalchemy.exc import IntegrityError
 from geoapi.services.users import UserService
-from geoapi.services.notifications import NotificationsService
 from geoapi.utils.agave import AgaveUtils, get_system_users
 from geoapi.utils.assets import get_project_asset_dir
 from geoapi.tasks.external_data import import_from_agave
@@ -40,7 +39,7 @@ class ProjectsService:
             try:
                 ProjectsService.makeObservable(project,
                                                user,
-                                               data.get('watch_content', False));
+                                               data.get('watch_content', False))
             except Exception as e:
                 logger.exception("{}".format(e))
                 raise e
@@ -66,7 +65,7 @@ class ProjectsService:
         name = proj.system_id + '/' + folder_name
 
         # TODO: Handle no storage system found
-        system = AgaveUtils(user.jwt).systemsGet(proj.system_id)
+        AgaveUtils(user.jwt).systemsGet(proj.system_id)
 
         obs = ObservableDataProject(
             system_id=proj.system_id,
@@ -84,7 +83,7 @@ class ProjectsService:
         try:
             db_session.add(obs)
             db_session.commit()
-        except IntegrityError as e:
+        except IntegrityError:
             db_session.rollback()
             logger.exception("User:{} tried to create an observable project that already exists: '{}'".format(user.username, name))
             raise ObservableProjectAlreadyExists("'{}' project already exists".format(name))
@@ -121,7 +120,6 @@ class ProjectsService:
         elif uuid is not None:
             return db_session.query(Project).filter(Project.uuid == uuid).first()
         raise ValueError("project_id or uid is required")
-
 
     @staticmethod
     def getFeatures(projectId: int, query: dict = None) -> object:
