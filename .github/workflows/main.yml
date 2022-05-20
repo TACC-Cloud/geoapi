@@ -5,6 +5,9 @@ on:
     branches: [ main ]
   pull_request:
     branches: [ '**' ]
+env:
+  APP_ENV:testing
+  DB_HOST:localhost
 jobs:
   Geoapi_Unit_Tests:
     runs-on: ubuntu-18.04
@@ -35,15 +38,32 @@ jobs:
         python -m pip install --upgrade pip
         pip install -q -r requirements.txt
     - name: Run server-side unit tests
-      run: |
-        APP_ENV=testing DB_HOST=localhost pytest
+      run: pytest
   Workers_Unit_Tests:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-18.04
+    services:
+      postgres:
+        image: mdillon/postgis:11-alpine
+        env:
+          POSTGRES_USER: dev
+          POSTGRES_PASSWORD: dev
+          POSTGRES_DB: test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     steps:
     - uses: actions/checkout@v1
     - uses: docker/login-action@v1
       with:
         password: ${{ secrets.DOCKER_PASSWORD }}
         username: ${{ secrets.DOCKER_USER  }}
+    - name: Build worker image
+      run: |
+        docker pull taccaci/geoapi-workers:latest
+        docker build --cache-from taccaci/geoapi-workers:latest -t taccaci/geoapi-workers:latest -f Dockerfile.potree .
     - name: Run worker test
-      run: docker-compose -f docker-compose.test.yml -p geoapi_test run workers pytest -m "worker"
+      run: docker run taccaci/geoapi-workers:latest pytest -m "worker"
