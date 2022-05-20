@@ -1,5 +1,5 @@
 ---
-version: "3"
+version: "3.8"
 
 volumes:
   assets:
@@ -10,7 +10,7 @@ networks:
     driver: bridge
 services:
 
-  postgres:
+  postgres_test:
     image: mdillon/postgis:11-alpine
     volumes:
       - pgdata:/var/lib/postgresql/data
@@ -47,7 +47,7 @@ services:
     networks:
       - geoapi
     links:
-      - "postgres:postgres"
+      - "postgres_test:postgres_test"
     container_name: geoapiworkers
     hostname: geoapiworkers
 
@@ -75,8 +75,8 @@ services:
     networks:
       - geoapi
     links:
-      - "postgres:postgres"
+      - "postgres_test:postgres_test"
     container_name: geoapi
     hostname: geoapi
     depends_on:
-      - postgres
+      - postgres_test
