@@ -5,12 +5,12 @@ on:
     branches: [ main ]
   pull_request:
     branches: [ '**' ]
-env:
-  APP_ENV: testing
-  DB_HOST: localhost
 jobs:
   Geoapi_Unit_Tests:
     runs-on: ubuntu-18.04
+    env:
+      APP_ENV: testing
+      DB_HOST: localhost
     services:
       postgres:
         image: mdillon/postgis:11-alpine
@@ -66,4 +66,4 @@ jobs:
         docker pull taccaci/geoapi-workers:latest
         docker build --cache-from taccaci/geoapi-workers:latest -t taccaci/geoapi-workers:latest -f Dockerfile.potree .
     - name: Run worker test
-      run: docker run taccaci/geoapi-workers:latest pytest -m "worker"
+      run: docker run -e APP_ENV='testing' -e DB_HOST='localhost'  taccaci/geoapi-workers:latest pytest -m "worker"
