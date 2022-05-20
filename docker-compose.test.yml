@@ -25,7 +25,7 @@ services:
     environment:
       - POSTGRES_PASSWORD=dev
       - POSTGRES_USER=dev
-      - POSTGRES_DB=dev
+      - POSTGRES_DB=test
 
   workers:
     build:
