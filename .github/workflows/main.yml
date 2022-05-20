@@ -67,5 +67,4 @@ jobs:
         docker build --cache-from taccaci/geoapi-workers:latest -t taccaci/geoapi-workers:latest -f Dockerfile.potree .
     - name: Run worker test
       run: |
-        docker network create -d bridge test
-        docker run --net=test -p 5432:5432 -e APP_ENV='testing' -e DB_HOST='localhost'  taccaci/geoapi-workers:latest pytest -m "worker"
+        docker run --network="host" -e APP_ENV='testing' -e DB_HOST='localhost'  taccaci/geoapi-workers:latest pytest -m "worker"
