@@ -6,8 +6,8 @@ on:
   pull_request:
     branches: [ '**' ]
 env:
-  APP_ENV:testing
-  DB_HOST:localhost
+  APP_ENV: testing
+  DB_HOST: localhost
 jobs:
   Geoapi_Unit_Tests:
     runs-on: ubuntu-18.04
