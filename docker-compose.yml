@@ -23,8 +23,6 @@ services:
     image: mdillon/postgis:11-alpine
     volumes:
       - pgdata:/var/lib/postgresql/data
-    ports:
-      - 5432:5432
     networks:
       - geoapi
     container_name: geoapi_postgres
