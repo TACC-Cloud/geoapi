@@ -301,7 +301,7 @@ spec:
           requests:
             memory: '3G'
           limits:
-            memory: '8G'
+            memory: '100G'
         volumeMounts:
         - mountPath: /assets
           name: assets
