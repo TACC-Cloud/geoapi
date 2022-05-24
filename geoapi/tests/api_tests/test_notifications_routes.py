@@ -19,8 +19,9 @@ def notifications(userdata):
 def progress_notifications(userdata):
     u1 = db_session.query(User).filter(User.username == "test1").first()
     u2 = db_session.query(User).filter(User.username == "test2").first()
-    NotificationsService.createProgress(u1, "error", "test error", test_uuid1)
-    NotificationsService.createProgress(u2, "success", "test success", test_uuid2)
+    error = NotificationsService.createProgress(u1, "error", "test error", test_uuid1)
+    success = NotificationsService.createProgress(u2, "success", "test success", test_uuid2)
+    yield [error, success]
 
 
 def test_get_notifications_unauthorized_guest(test_client, projects_fixture):
@@ -58,13 +59,15 @@ def test_filter_notifications_positive(test_client, notifications):
     assert len(data) == 2
 
 
-def test_get_progress_notifications(test_client, notifications):
+def test_get_progress_notifications(test_client, progress_notifications):
     u1 = db_session.query(User).get(1)
 
     resp = test_client.get('/notifications/progress',
                            headers={'x-jwt-assertion-test': u1.jwt})
 
     assert resp.status_code == 200
+    data = resp.get_json()
+    assert len(data) == 1
 
 
 def test_delete_done_progress_notifications(test_client, progress_notifications):
@@ -89,7 +92,7 @@ def test_get_progress_notification(test_client, progress_notifications):
 
     data = resp.get_json()
     assert resp.status_code == 200
-    assert len(data) == 1
+    assert data["id"] == progress_notifications[0].id
 
 
 def test_delete_progress_notification(test_client, progress_notifications):
