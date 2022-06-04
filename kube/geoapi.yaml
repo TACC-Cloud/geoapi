@@ -198,6 +198,11 @@ spec:
           limits:
             memory: '2G'
       restartPolicy: Always
+      tolerations:
+        - key: "type"
+          operator: "Equal"
+          value: "hazmapper"
+          effect: "NoSchedule"
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -243,7 +248,12 @@ spec:
         - name: assets
           nfs:
             server: ${NSFSHARE_CLUSTER_IP}
-            path: / 
+            path: /
+      tolerations:
+        - key: "type"
+          operator: "Equal"
+          value: "hazmapper"
+          effect: "NoSchedule"
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -312,6 +322,11 @@ spec:
         nfs:
           server: ${NSFSHARE_CLUSTER_IP}
           path: /
+      tolerations:
+        - key: "type"
+          operator: "Equal"
+          value: "hazmapper"
+          effect: "NoSchedule"
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -371,6 +386,11 @@ spec:
             memory: '1G'
       hostname: geoapi-celerybeat
       restartPolicy: Always
+      tolerations:
+        - key: "type"
+          operator: "Equal"
+          value: "hazmapper"
+          effect: "NoSchedule"
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -424,6 +444,11 @@ spec:
       - name: pgdata
         persistentVolumeClaim:
           claimName: ${PGDATA_PVC}
+      tolerations:
+        - key: "type"
+          operator: "Equal"
+          value: "hazmapper"
+          effect: "NoSchedule"
 
 ---
 apiVersion: apps/v1
@@ -499,6 +524,11 @@ spec:
           nfs:
             server: ${NSFSHARE_CLUSTER_IP}
             path: /
+      tolerations:
+        - key: "type"
+          operator: "Equal"
+          value: "hazmapper"
+          effect: "NoSchedule"
 ---
 apiVersion: batch/v1
 kind: Job
@@ -529,3 +559,8 @@ spec:
         image: taccaci/geoapi:${GEOAPI_TAG}
         command: ["alembic", "upgrade", "head"]
       restartPolicy: Never
+      tolerations:
+        - key: "type"
+          operator: "Equal"
+          value: "hazmapper"
+          effect: "NoSchedule"
