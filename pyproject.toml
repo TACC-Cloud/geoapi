@@ -30,6 +30,7 @@ requests = "^2.28.0"
 laspy = "^2.1.2"
 configparser = "^5.2.0"
 cryptography = "^37.0.2"
+mapillary-tools = { git = "https://github.com/mapillary/mapillary_tools.git", rev = "4bfebf8" }
 
 [tool.poetry.dev-dependencies]
 
