@@ -6,7 +6,7 @@ allows us to provide access to guests (via WSO2 configuration for guests:
 more details.
  """
 
-from flask_restplus import Namespace
+from flask_restx import Namespace
 from flask.views import MethodView
 from geoapi.utils.decorators import jwt_decoder
 from geoapi.log import logging

@@ -1,4 +1,4 @@
-from flask_restplus import Api
+from flask_restx import Api
 from .projects import api as projects
 from .public_projects import api as public_projects
 from .notifications import api as notifications

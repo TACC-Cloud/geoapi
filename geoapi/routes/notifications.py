@@ -1,5 +1,5 @@
 from flask import request, abort
-from flask_restplus import Resource, Namespace, fields, inputs
+from flask_restx import Resource, Namespace, fields, inputs
 
 from geoapi.log import logging
 from geoapi.utils.decorators import jwt_decoder, not_anonymous

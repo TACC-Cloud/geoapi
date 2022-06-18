@@ -1,5 +1,5 @@
 from flask import request, abort
-from flask_restplus import Resource, Namespace, fields, inputs
+from flask_restx import Resource, Namespace, fields, inputs
 from werkzeug.datastructures import FileStorage
 from werkzeug.utils import secure_filename
 
