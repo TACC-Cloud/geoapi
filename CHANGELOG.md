@@ -2,6 +2,33 @@
 
 ## [Unreleased]
 
+## [2.8] - 2022-06-03
+
+### Changed
+- DES-2216: Use description for point cloud asset name instead of ID (#89)
+- DES-2211: Increase memory limit for worker pods (#93)
+
+### Fixed
+- DES-2262: use github actions for unit testing (#91)
+
+## [2.7] - 2022-04-27
+
+### Added
+- DES-1828: Add Streetview support through Mapillary (#46)
+- DES-2240: Test for access to streetview (#85)
+
+## [2.6] - 2022-04-19
+
+### Added
+- DES-2198: Update periodic importing of files to avoid importing files that had previously failed (#81)
+
+### Changed
+- DES-2185: Fix filtering query (#76)
+
+### Fixed
+- DES-2195 fix tests for project service (#81)
+
+
 ## [2.5] - 2022-03-07
 
 ### Changed
@@ -64,7 +91,9 @@
 - DES-1687: Add rollingback to worker tasks (#30)
 - DES-1663: Fix image rotations (#36)
 
-[unreleased]: https://github.com/TACC-Cloud/geoapi/compare/v2.5...HEAD
+[unreleased]: https://github.com/TACC-Cloud/geoapi/compare/v2.8...HEAD
+[2.7]: https://github.com/TACC-Cloud/geoapi/releases/tag/v2.7
+[2.6]: https://github.com/TACC-Cloud/geoapi/releases/tag/v2.6
 [2.5]: https://github.com/TACC-Cloud/geoapi/releases/tag/v2.5
 [2.4]: https://github.com/TACC-Cloud/geoapi/releases/tag/v2.4
 [2.3]: https://github.com/TACC-Cloud/geoapi/releases/tag/v2.3

@@ -1,3 +1,4 @@
+import shutil
 from tempfile import NamedTemporaryFile
 
 import requests
@@ -13,6 +14,12 @@ from geoapi.utils.tenants import get_api_server, get_service_accounts
 from geoapi.exceptions import MissingServiceAccount
 
 logger = logging.getLogger(__name__)
+
+
+class AgaveFileGetError(Exception):
+    '''' Unable to fetch file from agave
+    '''
+    pass
 
 
 class AgaveFileListing:
@@ -133,7 +140,7 @@ class AgaveUtils:
                         logger.warn("{}/{}.  System is not public so not trying "
                                     "work-around for CS-169/DES-2084.".format(systemId, path))
                 if r.status_code > 400:
-                    raise ValueError("Could not fetch file ({}/{}) status_code:{}".format(systemId,
+                    raise AgaveFileGetError("Could not fetch file ({}/{}) status_code:{}".format(systemId,
                                                                                           path,
                                                                                           r.status_code))
                 tmpFile = NamedTemporaryFile()
@@ -158,15 +165,29 @@ class AgaveUtils:
         url = quote('/files/media/system/{}/{}'.format(systemId, path))
         with service_client.client.get(service_client.base_url + url, stream=True) as r:
             if r.status_code > 400:
-                raise ValueError("Could not fetch file ({}/{}) with "
-                                 "service account status_code:{}".format(systemId,
-                                                                         path,
-                                                                         r.status_code))
+                raise AgaveFileGetError("Could not fetch file ({}/{}) with "
+                                        "service account status_code:{}".format(systemId,
+                                                                                path,
+                                                                                r.status_code))
             tmpFile = NamedTemporaryFile()
             for chunk in r.iter_content(1024 * 1024):
                 tmpFile.write(chunk)
             tmpFile.seek(0)
             return tmpFile
+
+
+    def getRawFileToPath(self, systemId: str, fromPath: str, toPath: str):
+        url = quote('/files/media/system/{}/{}'.format(systemId, fromPath))
+        try:
+            with self.client.get(self.base_url + url, stream=True) as r:
+                if r.status_code > 400:
+                    raise ValueError("Could not fetch file: {}".format(r.status_code))
+                with open(toPath, 'wb') as out_file:
+                    r.raw.decode_content = True
+                    shutil.copyfileobj(r.raw, out_file)
+        except Exception as e:
+            logger.error(e)
+            raise e
 
 
 def service_account_client(tenant_id):

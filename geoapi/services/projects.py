@@ -168,9 +168,16 @@ class ProjectsService:
         endDate = query.get("endDate")
 
         params = {'projectId': projectId,
-                  'assetType': assetType,
                   'startDate': startDate,
                   'endDate': endDate}
+
+        assetTypes = assetType.split(',') if assetType else []
+        assetQueries = []
+
+        for asset in assetTypes:
+            if asset:
+                params[asset] = asset
+                assetQueries.append('fa is null' if asset == 'no_asset_vector' else 'fa.asset_type = :' + asset)
 
         select_stmt = text("""
         json_build_object(
@@ -217,8 +224,8 @@ class ProjectsService:
         if startDate and endDate:
             sub_select = sub_select.where(text("feat.created_date BETWEEN :startDate AND :endDate"))
 
-        if assetType:
-            sub_select = sub_select.where(text("fa.asset_type = :assetType"))
+        if len(assetQueries):
+            sub_select = sub_select.where(text('(' + ' OR '.join(assetQueries) + ')'))
 
         sub_select = sub_select.group_by(text("feat.id")).alias("tmp")
         s = select([select_stmt]).select_from(sub_select)
@@ -283,6 +290,12 @@ class ProjectsService:
     def getUsers(projectId: int) -> List[User]:
         proj = db_session.query(Project).get(projectId)
         return proj.users
+
+    @staticmethod
+    def getUser(projectId: int, username: str) -> User:
+        proj = ProjectsService.get(projectId)
+        user = UserService.getUser(username, proj.tenant_id)
+        return user
 
     @staticmethod
     def removeUserFromProject(projectId: int, username: str, ) -> None:

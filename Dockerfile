@@ -3,7 +3,8 @@ RUN apt-get update -q && apt-get install -q -y \
   software-properties-common \
   libgdal-dev \
   ffmpeg \
-  curl
+  curl \
+  git
 
 ENV POETRY_VERSION=1.1.13
 ENV POETRY_HOME=/opt/poetry

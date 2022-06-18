@@ -1,6 +1,6 @@
 # GeoAPI
 
-[![Build Status](https://travis-ci.org/TACC-Cloud/geoapi.svg?branch=master)](https://travis-ci.org/TACC-Cloud/geoapi) [![PyPI version](https://badge.fury.io/py/geoapi-client.svg)](https://badge.fury.io/py/geoapi-client)
+[![PyPI version](https://badge.fury.io/py/geoapi-client.svg)](https://badge.fury.io/py/geoapi-client)
 
 ## Overview and Architecture
 
@@ -81,6 +81,18 @@ alembic revision --autogenerate
 # Then:
 # - remove drop table commands for postgis
 # - add/commit migrations
+```
+
+## Testing
+
+Run route/service tests on the `api` container
+```
+docker-compose -f docker-compose.test.yml -p geoapi_test run api pytest
+```
+
+Run worker-related tasks on the `workers` container
+```
+docker-compose -f docker-compose.test.yml -p geoapi_test run workers pytest -m "worker"
 ```
 
 ## Kubernetes (Production/Staging)

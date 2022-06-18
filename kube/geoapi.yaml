@@ -67,6 +67,8 @@ data:
 
   ASSETS_BASE_DIR: /assets/
   JWT_SECRET_KEY: your-256-bit-secret
+  MAPILLARY_CLIENT_TOKEN: '${MAPILLARY_CLIENT_TOKEN}'
+  MAPILLARY_CLIENT_ID: '${MAPILLARY_CLIENT_ID}'
   FLASK_APP: /app/geoapi/app.py
   APP_ENV: production
   RABBITMQ_HOSTNAME: geoapi-rabbitmq
@@ -299,7 +301,7 @@ spec:
           requests:
             memory: '3G'
           limits:
-            memory: '8G'
+            memory: '100G'
         volumeMounts:
         - mountPath: /assets
           name: assets

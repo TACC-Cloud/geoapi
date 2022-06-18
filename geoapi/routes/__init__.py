@@ -1,7 +1,9 @@
 from flask_restx import Api
 from .projects import api as projects
-from .public_projects import api as public_projects
+from .streetview import api as streetview
 from .notifications import api as notifications
+from .public_projects import api as public_projects
+
 api = Api(
     title='GeoAPI',
     version='0.1',
@@ -24,4 +26,4 @@ api = Api(
 api.add_namespace(projects)
 api.add_namespace(public_projects)
 api.add_namespace(notifications)
-
+api.add_namespace(streetview)

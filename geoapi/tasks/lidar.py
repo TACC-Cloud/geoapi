@@ -125,6 +125,7 @@ def convert_to_potree(self, pointCloudId: int) -> None:
             uuid=asset_uuid,
             asset_type="point_cloud",
             path=get_asset_relative_path(asset_path),
+            display_path=point_cloud.description,
             feature=feature
         )
         feature.assets.append(fa)

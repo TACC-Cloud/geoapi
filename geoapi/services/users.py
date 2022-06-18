@@ -1,6 +1,6 @@
 from geoapi.models import User, Project, ProjectUser
 from geoapi.db import db_session
-from typing import List
+from typing import List, Dict
 # from pytas.http import TASClient
 
 class UserService:
@@ -38,6 +38,10 @@ class UserService:
             .first()
 
     @staticmethod
+    def get(userId: int) -> User:
+        return db_session.query(User).get(userId)
+
+    @staticmethod
     def canAccess(user: User, projectId: int) -> bool:
         up = db_session.query(ProjectUser)\
             .join(Project)\
@@ -51,4 +55,14 @@ class UserService:
     @staticmethod
     def setJWT(user: User, token: str) -> None:
         user.jwt = token
+        db_session.commit()
+
+    @staticmethod
+    def setMapillaryToken(user: User, token: str) -> None:
+        user.google_jwt = token
+        db_session.commit()
+
+    @staticmethod
+    def setGoogleToken(user: User, token: str) -> None:
+        user.mapillary_jwt = token
         db_session.commit()
