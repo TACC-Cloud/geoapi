@@ -152,8 +152,6 @@ def get_exif_location(image):
     Returns the latitude and longitude, if available, from the provided exif_data (obtained through get_exif_data above)
     """
     exif_data = get_exif_data(image)
-    lat = None
-    lon = None
     gps_latitude = exif_data['GPSLatitude']
     gps_latitude_ref = exif_data['GPSLatitudeRef']
     gps_longitude = exif_data['GPSLongitude']
