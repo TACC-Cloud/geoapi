@@ -95,6 +95,10 @@ Run worker-related tasks on the `workers` container
 docker-compose -f docker-compose.test.yml -p geoapi_test run workers pytest -m "worker"
 ```
 
+Note that images need to be rebuilt before running tests if they have been updated (e.g. packages):
+```
+docker-compose -f docker-compose.test.yml build
+```
 ## Kubernetes (Production/Staging)
 
 Information on Kubernetes configuration for production and staging environments can be found in the [kube/README.md](kube/README.md) including information
