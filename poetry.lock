@@ -540,7 +540,7 @@ zookeeper = ["kazoo (>=1.3.1)"]
 
 [[package]]
 name = "laspy"
-version = "2.1.2"
+version = "1.7.1"
 description = "Native Python ASPRS LAS read/write library"
 category = "main"
 optional = false
@@ -550,9 +550,8 @@ python-versions = "*"
 numpy = "*"
 
 [package.extras]
-dev = ["pytest", "sphinx", "sphinx-rtd-theme", "nox", "black (==20.8b1)", "pytest-benchmark", "m2r2"]
-laszip = ["laszip (>=0.1.0,<0.2.0)"]
-lazrs = ["lazrs (>=0.4.0,<0.5.0)"]
+dev = ["sphinx"]
+laz = ["lazperf"]
 
 [[package]]
 name = "mako"
@@ -1011,7 +1010,7 @@ testing = ["coverage (>=5.0.3)", "zope.event", "zope.testing"]
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.9"
-content-hash = "ba8074088801c4b3896bcc04011c56f4c4bc7f95bb0818bf996430dcadd14a7d"
+content-hash = "0bf7e3b542e9b16a18c1207468ae07b7628d5bc45029080f7a11a4408014b41e"
 
 [metadata.files]
 alembic = [
@@ -1368,7 +1367,7 @@ kombu = [
     {file = "kombu-5.2.4.tar.gz", hash = "sha256:37cee3ee725f94ea8bb173eaab7c1760203ea53bbebae226328600f9d2799610"},
 ]
 laspy = [
-    {file = "laspy-2.1.2.tar.gz", hash = "sha256:724d51db4e6c52010495eea460caedec5ceb06bedb1192c7f7ae9c15eb52bafa"},
+    {file = "laspy-1.7.1.tar.gz", hash = "sha256:4dca394226b80616c4f7d9083abd4942ed95aa39f20e0c442df31a384e852f4b"},
 ]
 mako = [
     {file = "Mako-1.2.0-py3-none-any.whl", hash = "sha256:23aab11fdbbb0f1051b93793a58323ff937e98e34aece1c4219675122e57e4ba"},
