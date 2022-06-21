@@ -10,7 +10,7 @@ CELERY_CONNECTION_STRING = "amqp://{user}:{pwd}@{hostname}/{vhost}".format(
 )
 
 app = Celery('hello',
-             backend=CELERY_CONNECTION_STRING,
+             backend='rpc',
              broker=CELERY_CONNECTION_STRING,
              include=['geoapi.tasks'])
 
