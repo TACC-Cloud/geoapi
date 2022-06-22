@@ -35,14 +35,12 @@ RUN poetry config virtualenvs.create false
 COPY pyproject.toml poetry.lock ./
 RUN poetry install
 
-#COPY requirements.txt /requirements.txt
-#RUN pip3 install -r /requirements.txt
+ENV PYTHONPATH "${PYTHONPATH}:/app"
 
-# Multiple gdal's are installed but we want 2.2 to get needed crs information
-ENV GDAL_DATA "/usr/share/gdal/2.2"
+RUN conda install geos -y
+
 
 WORKDIR /
 RUN mkdir app
 COPY ./geoapi /app/geoapi
-ENV PYTHONPATH "${PYTHONPATH}:/app"
 WORKDIR /app/geoapi
