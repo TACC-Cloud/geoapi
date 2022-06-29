@@ -37,7 +37,8 @@ RUN poetry install
 
 ENV PYTHONPATH "${PYTHONPATH}:/app"
 
-RUN conda install geos -y
+# isntall geos into condo the base pdal image is using
+RUN conda install geos -y -n base
 
 
 WORKDIR /
