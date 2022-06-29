@@ -46,7 +46,7 @@ jobs:
     - name: Install Python Packages
       run: poetry install
     - name: Run server-side unit tests
-      run: pytest
+      run: poetry run pytest
   Workers_Unit_Tests:
     runs-on: ubuntu-18.04
     services:
