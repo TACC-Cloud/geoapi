@@ -6,7 +6,7 @@ RUN apt-get update && apt-get install -y \
 libtiff-dev libgeotiff-dev libgdal-dev \
 libboost-system-dev libboost-thread-dev libboost-filesystem-dev \
 libboost-program-options-dev libboost-regex-dev libboost-iostreams-dev \
-git cmake build-essential python3.9 python3-pip python3-dev ffmpeg \
+git cmake build-essential python3.8 python3-pip python3-dev ffmpeg \
 unzip git wget libc6-dev gcc-multilib
 
 WORKDIR /opt
