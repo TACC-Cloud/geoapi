@@ -1,7 +1,7 @@
 import uuid
 from sqlalchemy import (
     Column, Integer, String,
-    ForeignKey, Boolean, Index, DateTime
+    ForeignKey, Index, DateTime
 )
 import shapely
 from sqlalchemy.dialects.postgresql import JSONB
@@ -12,7 +12,6 @@ from geoalchemy2 import Geometry
 from geoalchemy2.shape import from_shape, to_shape
 from geoapi.db import Base
 from geoapi.utils import geometries
-from typing import TypeVar
 
 
 class Feature(Base):

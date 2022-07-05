@@ -9,7 +9,7 @@ class Config(object):
     DB_PASSWD = 'dev'
     DB_HOST = 'postgres'
     ASSETS_BASE_DIR = os.environ.get('ASSETS_BASE_DIR', '/assets')
-    JWT_PUB_KEY = 'MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQCUp/oV1vWc8/TkQSiAvTousMzOM4asB2iltr2QKozni5aVFu818MpOLZIr8LMnTzWllJvvaA5RAAdpbECb+48FjbBe0hseUdN5HpwvnH/DW8ZccGvk53I6Orq7hLCv1ZHtuOCokghz/ATrhyPq+QktMfXnRS4HrKGJTzxaCcU7OQIDAQAB'
+    JWT_PUB_KEY = 'MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQCUp/oV1vWc8/TkQSiAvTousMzOM4asB2iltr2QKozni5aVFu818MpOLZIr8LMnTzWllJvvaA5RAAdpbECb+48FjbBe0hseUdN5HpwvnH/DW8ZccGvk53I6Orq7hLCv1ZHtuOCokghz/ATrhyPq+QktMfXnRS4HrKGJTzxaCcU7OQIDAQAB'  # noqa: E501
     RABBITMQ_USERNAME = 'dev'
     RABBITMQ_PASSWD = 'dev'
     RABBITMQ_VHOST = 'dev'
@@ -17,6 +17,7 @@ class Config(object):
     RESTPLUS_MASK_SWAGGER = False
     TENANT = os.environ.get("TENANT")
     STREETVIEW_DIR = os.environ.get('STREETVIEW_DIR', '/assets/streetview')
+
 
 class ProductionConfig(Config):
     DEBUG = False
@@ -35,6 +36,7 @@ class DevelopmentConfig(Config):
     DEBUG = True
     PROPAGATE_EXCEPTIONS = False
     MAPILLARY_CLIENT_ID = os.environ.get('MAPILLARY_CLIENT_ID', 'MLY|4866220476802272|cedfb10deac752ca3ddf83997cef60a4')
+
 
 class TestingConfig(Config):
     DB_USERNAME = 'dev'

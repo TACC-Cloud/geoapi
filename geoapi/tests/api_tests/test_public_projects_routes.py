@@ -76,4 +76,3 @@ def test_post_feature_not_found(test_client, projects_fixture, image_file_fixtur
     assert resp.status_code == 404
 
 # TODO test tile server
-

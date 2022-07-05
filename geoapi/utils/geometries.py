@@ -1,8 +1,8 @@
 from shapely.geometry import shape
 import shapely
-from shapely.wkb import dumps, loads
 
-def convert_3D_2D(shape) -> shape :
+
+def convert_3D_2D(shape) -> shape:
     def _to_2d(x, y, z=None):
         return tuple(filter(None, [x, y]))
 

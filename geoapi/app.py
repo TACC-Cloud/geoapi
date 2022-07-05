@@ -3,7 +3,9 @@ from flask import Flask
 from geoapi.routes import api
 from geoapi.settings import settings as app_settings
 from geoapi.db import db_session
-from geoapi.exceptions import InvalidGeoJSON, InvalidEXIFData, InvalidCoordinateReferenceSystem, ObservableProjectAlreadyExists, ApiException, StreetviewAuthException, StreetviewLimitException
+from geoapi.exceptions import (InvalidGeoJSON, InvalidEXIFData, InvalidCoordinateReferenceSystem,
+                               ObservableProjectAlreadyExists, ApiException, StreetviewAuthException,
+                               StreetviewLimitException)
 
 import logging
 

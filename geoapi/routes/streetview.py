@@ -1,14 +1,11 @@
 from geoapi.services.streetview import StreetviewService
 from geoapi.tasks import streetview
 from geoapi.log import logging
-from geoapi.exceptions import ApiException
 from geoapi.utils.decorators import jwt_decoder
 from flask_restplus import Namespace, Resource, fields
 from flask_restplus.marshalling import marshal_with
-from flask import request, abort
-import uuid
+from flask import request
 
-from sqlalchemy.sql.functions import current_user
 
 logger = logging.getLogger(__name__)
 
