@@ -17,6 +17,8 @@ from geoapi.exceptions import MissingServiceAccount
 
 logger = logging.getLogger(__name__)
 
+SLEEP_SECONDS_BETWEEN_RETRY = 2
+
 
 class AgaveFileGetError(Exception):
     '''' Unable to fetch file from agave
@@ -196,7 +198,7 @@ class AgaveUtils:
                 allowed_attempts = allowed_attempts - 1
                 logger.error(f"File fetching failed but is retryable (i.e. could be CS-1960): ({systemId}/{path}) ")
                 if allowed_attempts > 0:
-                    time.sleep(2)
+                    time.sleep(SLEEP_SECONDS_BETWEEN_RETRY)
                 continue
             except Exception as e:
                 logger.exception(f"Could not fetch file and did not attempt to retry: ({systemId}/{path})")
