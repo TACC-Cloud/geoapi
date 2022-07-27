@@ -1,5 +1,5 @@
 import pytest
-from unittest.mock import patch
+from unittest.mock import patch, call
 from geoapi.exceptions import MissingServiceAccount
 from geoapi.utils.agave import service_account_client, AgaveUtils, AgaveFileGetError
 
@@ -52,3 +52,16 @@ def test_get_file_retry_too_many_attempts(requests_mock, retry_sleep_seconds_moc
     agave_utils = AgaveUtils()
     with pytest.raises(AgaveFileGetError):
         agave_utils.getFile(system, path)
+
+
+def test_get_file_using_service_account_for_CS_169(requests_mock, retry_sleep_seconds_mock, image_file_fixture):
+    system = "system"
+    path = "path"
+    responses = [{'status_code': 403}, {"status_code": 200, "body": image_file_fixture}]
+    requests_mock.get(AgaveUtils.BASE_URL + f"/files/media/system/{system}/{path}", responses)
+    agave_utils = AgaveUtils()
+    with patch.object(AgaveUtils, 'systemsGet', return_value={"public": True}):
+        with patch.object(agave_utils, '_get_file', wraps=agave_utils._get_file) as mock:
+            agave_utils.getFile(system, path)
+    # assert that there is a second call to use the service account if we get a 403 on a public folder
+    mock.assert_has_calls([call("system", "path"), call("system", "path", use_service_account=True)])

@@ -128,9 +128,9 @@ class AgaveUtils:
         out = {k: v for d in results for k, v in d.items()}
         return out
 
-    def _get_file(self, systemId: str, path: str) -> IO:
+    def _get_file(self, systemId: str, path: str, use_service_account: bool=False) -> IO:
         """
-        Get
+        Get file
 
         :raises
             RetryableTapisFileError: If tapis error occurs where its possible to retry
@@ -138,12 +138,15 @@ class AgaveUtils:
 
         :param systemId:
         :param path:
+        :parm use_service_account: if service account should be used
         :return:
         """
         url = quote('/files/media/system/{}/{}'.format(systemId, path))
 
-        with self.client.get(self.base_url + url, stream=True) as r:
-            if r.status_code == 403:
+        client = service_account_client("designsafe").client if use_service_account else self.client
+
+        with client.get(self.base_url + url, stream=True) as r:
+            if r.status_code == 403 and not use_service_account:
                 # This is a workaround for bug documented in https://jira.tacc.utexas.edu/browse/CS-169
                 # and in https://jira.tacc.utexas.edu/browse/DES-2084 where sometimes a 403 is returned by tapis
                 # for some files.
@@ -152,7 +155,7 @@ class AgaveUtils:
                 if systemInfo["public"]:
                     logger.warning("As system is a public storage system for projects. we will use service "
                                    "account to get file: {}/{}".format(systemId, path))
-                    return self._get_file_using_service_account(systemId, path)
+                    return self._get_file(systemId, path, use_service_account=True)
                 else:
                     logger.warning(f"System is not public so not trying work-around for CS-169/DES-2084: {systemId}/{path}")
             if r.status_code > 400:
@@ -207,27 +210,6 @@ class AgaveUtils:
         logger.exception(msg)
         raise AgaveFileGetError(msg)
 
-    def _get_file_using_service_account(self, systemId: str, path: str) -> IO:
-        """
-        Download a file from agave using service account
-
-        :param systemId: str
-        :param path: str
-        :return: temporary file
-        """
-        service_client = service_account_client("designsafe")
-        url = quote('/files/media/system/{}/{}'.format(systemId, path))
-        with service_client.client.get(service_client.base_url + url, stream=True) as r:
-            if r.status_code > 400:
-                raise AgaveFileGetError("Could not fetch file ({}/{}) with "
-                                        "service account status_code:{}".format(systemId,
-                                                                                path,
-                                                                                r.status_code))
-            tmpFile = NamedTemporaryFile()
-            for chunk in r.iter_content(1024 * 1024):
-                tmpFile.write(chunk)
-            tmpFile.seek(0)
-            return tmpFile
 
     def getRawFileToPath(self, systemId: str, fromPath: str, toPath: str):
         url = quote('/files/media/system/{}/{}'.format(systemId, fromPath))
