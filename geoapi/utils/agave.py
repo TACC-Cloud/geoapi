@@ -179,9 +179,9 @@ class AgaveUtils:
         """
         Download a file from tapis
 
-        We attempt to get the file multiple times in case tapis is having issues (like if we see CS-196
-        where we get a 500 to hitting ssh limits via tapis or if the file is 0 bytes ) but eventually
-        raise AgaveFileGetError if we can't get the file.
+        We attempt to get the file multiple times in case tapis is having issues (like if we see CS-196/DES-2236
+        where tapis hits an ssh limits and then we get a a 500 or a file with 0 bytes). Eventually
+        we will raise AgaveFileGetError if we can't get the file.
 
         :raises
             AgaveFileGetError: Raised if unable to get file via tapis.
@@ -196,7 +196,7 @@ class AgaveUtils:
                 return self._get_file(systemId, path)
             except RetryableTapisFileError:
                 allowed_attempts = allowed_attempts - 1
-                logger.error(f"File fetching failed but is retryable (i.e. could be CS-1960): ({systemId}/{path}) ")
+                logger.error(f"File fetching failed but is retryable (i.e. could be CS-196): ({systemId}/{path}) ")
                 if allowed_attempts > 0:
                     time.sleep(SLEEP_SECONDS_BETWEEN_RETRY)
                 continue

@@ -36,10 +36,9 @@ def test_get_file(requests_mock, retry_sleep_seconds_mock, image_file_fixture):
 def test_get_file_retry_after_first_attempt(requests_mock, retry_sleep_seconds_mock, image_file_fixture):
     system = "system"
     path = "path"
-    bad_response = [{'status_code': 500} for _ in range(2)]
-    bad_response.append({"status_code": 200, "body": image_file_fixture})
-    requests_mock.get(AgaveUtils.BASE_URL + f"/files/media/system/{system}/{path}",
-                      bad_response)
+    responses = [{'status_code': 500} for _ in range(2)]
+    responses.append({"status_code": 200, "body": image_file_fixture})
+    requests_mock.get(AgaveUtils.BASE_URL + f"/files/media/system/{system}/{path}", responses)
     agave_utils = AgaveUtils()
     agave_utils.getFile(system, path)
 
