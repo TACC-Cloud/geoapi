@@ -128,7 +128,7 @@ class AgaveUtils:
         out = {k: v for d in results for k, v in d.items()}
         return out
 
-    def _get_file(self, systemId: str, path: str, use_service_account: bool=False) -> IO:
+    def _get_file(self, systemId: str, path: str, use_service_account: bool = False) -> IO:
         """
         Get file
 
@@ -209,7 +209,6 @@ class AgaveUtils:
         msg = f"Could not fetch file and no longer retrying. (could be CS-196): ({systemId}/{path})"
         logger.exception(msg)
         raise AgaveFileGetError(msg)
-
 
     def getRawFileToPath(self, systemId: str, fromPath: str, toPath: str):
         url = quote('/files/media/system/{}/{}'.format(systemId, fromPath))
