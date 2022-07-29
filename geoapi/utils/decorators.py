@@ -83,6 +83,10 @@ def check_access_and_get_project(current_user, allow_public_use=False, project_i
 
 
 def project_permissions(fn):
+    """
+    Ensure user has access to project.
+
+    """
     @wraps(fn)
     def wrapper(*args, **kwargs):
         projectId = kwargs.get("projectId")
@@ -92,10 +96,29 @@ def project_permissions(fn):
 
 
 def project_permissions_allow_public(fn):
+    """
+    Ensure user has access to project or project is public.
+
+    """
     @wraps(fn)
     def wrapper(*args, **kwargs):
         projectId = kwargs.get("projectId")
         check_access_and_get_project(request.current_user, project_id=projectId, allow_public_use=True)
+        return fn(*args, **kwargs)
+    return wrapper
+
+
+def project_admin_or_creator_permissions(fn):
+    """
+        Ensure user has admin-level access to project or is project's creator.
+
+    """
+    @wraps(fn)
+    def wrapper(*args, **kwargs):
+        projectId = kwargs.get("projectId")
+        check_access_and_get_project(request.current_user, project_id=projectId, allow_public_use=False)
+        if not UserService.is_admin_or_creator(request.current_user, projectId):
+            abort(403, "Access denied")
         return fn(*args, **kwargs)
     return wrapper
 

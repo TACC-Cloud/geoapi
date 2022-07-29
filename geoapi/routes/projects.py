@@ -9,8 +9,10 @@ from geoapi.services.streetview import StreetviewService
 from geoapi.services.point_cloud import PointCloudService
 from geoapi.services.projects import ProjectsService
 from geoapi.tasks import external_data, streetview
-from geoapi.utils.decorators import jwt_decoder, project_permissions_allow_public, project_permissions, project_feature_exists, \
-    project_point_cloud_exists, project_point_cloud_not_processing, check_access_and_get_project, is_anonymous, not_anonymous
+from geoapi.utils.decorators import (jwt_decoder, project_permissions_allow_public, project_permissions,
+                                     project_feature_exists,  project_point_cloud_exists,
+                                     project_point_cloud_not_processing, check_access_and_get_project, is_anonymous,
+                                     not_anonymous, project_admin_or_creator_permissions)
 
 
 logger = logging.getLogger(__name__)
@@ -194,7 +196,7 @@ class ProjectResource(Resource):
 
     @api.doc(id="deleteProject",
              description="Delete a project, all associated features and metadata. THIS CANNOT BE UNDONE")
-    @project_permissions
+    @project_admin_or_creator_permissions
     def delete(self, projectId: int):
         u = request.current_user
         logger.info("Delete project:{} for user:{}".format(projectId,
