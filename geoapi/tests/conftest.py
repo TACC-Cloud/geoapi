@@ -76,7 +76,6 @@ def projects_fixture():
     db_session.add(project_user1)
     db_session.commit()
 
-
     yield proj
 
     shutil.rmtree(get_project_asset_dir(proj.id), ignore_errors=True)

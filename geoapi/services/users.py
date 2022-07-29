@@ -61,5 +61,3 @@ class UserService:
     def setJWT(user: User, token: str) -> None:
         user.jwt = token
         db_session.commit()
-
-
