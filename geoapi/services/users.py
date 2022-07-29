@@ -52,6 +52,17 @@ class UserService:
         return False
 
     @staticmethod
+    def is_admin_or_creator(user: User, projectId: int) -> bool:
+        up = db_session.query(ProjectUser) \
+            .join(Project) \
+            .filter(ProjectUser.user_id == user.id) \
+            .filter(Project.tenant_id == user.tenant_id) \
+            .filter(ProjectUser.project_id == projectId).first()
+        if up:
+            return up.admin or up.creator
+        return False
+
+    @staticmethod
     def setJWT(user: User, token: str) -> None:
         user.jwt = token
         db_session.commit()

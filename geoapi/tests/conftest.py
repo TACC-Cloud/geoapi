@@ -9,7 +9,7 @@ import laspy
 
 from geoapi.db import Base, db_session, engine
 from geoapi.models.users import User
-from geoapi.models.project import Project
+from geoapi.models.project import Project, ProjectUser
 from geoapi.models.observable_data import ObservableDataProject
 from geoapi.models.feature import Feature
 from geoapi.models.task import Task
@@ -44,19 +44,39 @@ def test_client():
 def userdata(test_client):
     u1 = User(username="test1", jwt=user1JWT, tenant_id="test")
     u2 = User(username="test2", jwt=user2JWT, tenant_id="test")
-    db_session.add_all([u1, u2])
+    u3 = User(username="test3", jwt=user2JWT, tenant_id="test")
+    db_session.add_all([u1, u2, u3])
     db_session.commit()
     yield u1
 
 
 @pytest.fixture(scope="function")
+def user1():
+    yield db_session.query(User).filter(User.username == "test1").first()
+
+
+@pytest.fixture(scope="function")
+def user2():
+    yield db_session.query(User).filter(User.username == "test2").first()
+
+
+@pytest.fixture(scope="function")
 def projects_fixture():
+    """ Project with 1 users and test1 is an admin"""
     proj = Project(name="test", description="description")
     u1 = db_session.query(User).filter(User.username == "test1").first()
     proj.users.append(u1)
+
     proj.tenant_id = u1.tenant_id
     db_session.add(proj)
     db_session.commit()
+
+    project_user1 = db_session.query(ProjectUser).filter(ProjectUser.project_id == proj.id).first()
+    project_user1.admin = True
+    db_session.add(project_user1)
+    db_session.commit()
+
+
     yield proj
 
     shutil.rmtree(get_project_asset_dir(proj.id), ignore_errors=True)
@@ -64,11 +84,21 @@ def projects_fixture():
 
 @pytest.fixture(scope="function")
 def projects_fixture2():
+    """ Project with 2 users and test1 is creator"""
+    ""
     proj = Project(name="test2", description="description2")
     u1 = db_session.query(User).filter(User.username == "test1").first()
+    u2 = db_session.query(User).filter(User.username == "test2").first()
     proj.users.append(u1)
+    proj.users.append(u2)
     proj.tenant_id = u1.tenant_id
     db_session.add(proj)
+    db_session.commit()
+
+    project_user1 = db_session.query(ProjectUser).filter(ProjectUser.project_id == proj.id and
+                                                         ProjectUser.user_id == u1.id).first()
+    project_user1.creator = True
+    db_session.add(project_user1)
     db_session.commit()
     yield proj
 
