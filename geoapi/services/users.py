@@ -18,11 +18,6 @@ class UserService:
         return u
 
     @staticmethod
-    def checkUser(username: str) -> bool:
-        # TODO: Add in TAS check
-        pass
-
-    @staticmethod
     def getOrCreateUser(username: str, tenant: str) -> User:
         user = UserService.getUser(username, tenant)
         if not user:
@@ -67,12 +62,4 @@ class UserService:
         user.jwt = token
         db_session.commit()
 
-    @staticmethod
-    def setMapillaryToken(user: User, token: str) -> None:
-        user.google_jwt = token
-        db_session.commit()
 
-    @staticmethod
-    def setGoogleToken(user: User, token: str) -> None:
-        user.mapillary_jwt = token
-        db_session.commit()
