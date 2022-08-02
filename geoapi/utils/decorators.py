@@ -16,9 +16,6 @@ from cryptography.hazmat.primitives import serialization
 import base64
 
 
-
-
-
 def get_pub_key():
     pkey = base64.b64decode(settings.JWT_PUB_KEY)
     pub_key = serialization.load_der_public_key(pkey,
@@ -68,7 +65,8 @@ def check_access_and_get_project(current_user, allow_public_use=False, project_i
     :param allow_public_use: boolean
     :return: project: Project
     """
-    proj = ProjectsService.get(user=current_user, project_id=project_id) if project_id else ProjectsService.get(user=current_user, uuid=uuid)
+    proj = ProjectsService.get(user=current_user, project_id=project_id) if project_id \
+        else ProjectsService.get(user=current_user, uuid=uuid)
     if not proj:
         abort(404, "No project found")
     if not allow_public_use or not proj.public:

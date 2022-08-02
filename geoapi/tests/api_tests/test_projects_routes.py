@@ -11,7 +11,7 @@ def test_get_projects(test_client, projects_fixture):
     data = resp.get_json()
     assert resp.status_code == 200
     assert len(data) == 1
-    assert data[0]["deletable"] == True
+    assert data[0]["deletable"] is True
 
 
 def test_get_projects_but_not_admin_or_creator(test_client, user2, projects_fixture2, projects_fixture):
@@ -19,7 +19,7 @@ def test_get_projects_but_not_admin_or_creator(test_client, user2, projects_fixt
     data = resp.get_json()
     assert resp.status_code == 200
     assert len(data) == 1
-    assert data[0]["deletable"] == False
+    assert data[0]["deletable"] is False
 
 
 def test_get_projects_not_allowed(test_client):
@@ -49,7 +49,7 @@ def test_get_projects_using_single_uuid(test_client, projects_fixture, projects_
     assert resp.status_code == 200
     assert len(data) == 1
     assert data[0]["uuid"] == str(projects_fixture2.uuid)
-    assert data[0]["deletable"] == True
+    assert data[0]["deletable"] is True
 
 
 def test_get_projects_using_single_uuid_that_is_wrong(test_client):
@@ -101,7 +101,7 @@ def test_project_data(test_client, projects_fixture):
     assert resp.status_code == 200
     assert data[0]["name"] == projects_fixture.name
     assert data[0]["description"] == projects_fixture.description
-    assert data[0]["deletable"] == True
+    assert data[0]["deletable"] is True
 
 
 def test_project_data_single(test_client, projects_fixture):
@@ -111,7 +111,7 @@ def test_project_data_single(test_client, projects_fixture):
     assert resp.status_code == 200
     assert data["name"] == projects_fixture.name
     assert data["description"] == projects_fixture.description
-    assert data["deletable"] == True
+    assert data["deletable"] is True
 
 
 def test_project_data_protected(test_client, projects_fixture):

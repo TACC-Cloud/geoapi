@@ -61,9 +61,10 @@ project = api.model('Project', {
     'system_path': fields.String(),
 })
 
-#project_response = api.extend('Project', project, {
+# TODO
+# project_response = api.extend('Project', project, {
 #    'deletable': fields.Boolean(),
-#})
+# })
 
 project_response = api.model('Project', {
     'id': fields.Integer(),
