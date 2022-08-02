@@ -11,6 +11,15 @@ def test_get_projects(test_client, projects_fixture):
     data = resp.get_json()
     assert resp.status_code == 200
     assert len(data) == 1
+    assert data[0]["deletable"] == True
+
+
+def test_get_projects_but_not_admin_or_creator(test_client, user2, projects_fixture2, projects_fixture):
+    resp = test_client.get('/projects/', headers={'x-jwt-assertion-test': user2.jwt})
+    data = resp.get_json()
+    assert resp.status_code == 200
+    assert len(data) == 1
+    assert data[0]["deletable"] == False
 
 
 def test_get_projects_not_allowed(test_client):
