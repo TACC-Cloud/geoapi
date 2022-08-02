@@ -61,6 +61,22 @@ project = api.model('Project', {
     'system_path': fields.String(),
 })
 
+#project_response = api.extend('Project', project, {
+#    'deletable': fields.Boolean(),
+#})
+
+project_response = api.model('Project', {
+    'id': fields.Integer(),
+    'name': fields.String(required=True),
+    'description': fields.String(required=False),
+    'public': fields.Boolean(required=False),
+    'uuid': fields.String(),
+    'system_file': fields.String(),
+    'system_id': fields.String(),
+    'system_path': fields.String(),
+    'deletable': fields.Boolean()
+})
+
 user = api.model('User', {
     'id': fields.Integer(),
     'username': fields.String(required=True)
@@ -155,7 +171,7 @@ class ProjectsListing(Resource):
     @api.doc(id="getProjects",
              description='Get a listing of projects',
              parser=parser)
-    @api.marshal_with(project, as_list=True)
+    @api.marshal_with(project_response, as_list=True)
     def get(self):
         u = request.current_user
         query = self.parser.parse_args()
@@ -175,7 +191,7 @@ class ProjectsListing(Resource):
     @api.doc(id="createProject",
              description='Create a new project')
     @api.expect(project)
-    @api.marshal_with(project)
+    @api.marshal_with(project_response)
     @not_anonymous
     def post(self):
         u = request.current_user
@@ -189,10 +205,10 @@ class ProjectResource(Resource):
 
     @api.doc(id="getProjectById",
              description="Get the metadata about a project")
-    @api.marshal_with(project)
+    @api.marshal_with(project_response)
     @project_permissions_allow_public
     def get(self, projectId: int):
-        return ProjectsService.get(project_id=projectId)
+        return ProjectsService.get(project_id=projectId, user=request.current_user)
 
     @api.doc(id="deleteProject",
              description="Delete a project, all associated features and metadata. THIS CANNOT BE UNDONE")
@@ -205,7 +221,7 @@ class ProjectResource(Resource):
 
     @api.doc(id="updateProject",
              description="Update metadata about a project")
-    @api.marshal_with(project)
+    @api.marshal_with(project_response)
     @project_permissions
     def put(self, projectId: int):
         u = request.current_user

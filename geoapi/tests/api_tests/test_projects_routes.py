@@ -2,7 +2,7 @@ import datetime
 import uuid
 from geoapi.db import db_session
 from geoapi.models.users import User
-from geoapi.models.project import Project
+from geoapi.models.project import Project, ProjectUser
 
 
 def test_get_projects(test_client, projects_fixture):
@@ -40,6 +40,7 @@ def test_get_projects_using_single_uuid(test_client, projects_fixture, projects_
     assert resp.status_code == 200
     assert len(data) == 1
     assert data[0]["uuid"] == str(projects_fixture2.uuid)
+    assert data[0]["deletable"] == True
 
 
 def test_get_projects_using_single_uuid_that_is_wrong(test_client):
@@ -88,16 +89,20 @@ def test_project_data(test_client, projects_fixture):
     u1 = db_session.query(User).get(1)
     resp = test_client.get('/projects/', headers={'x-jwt-assertion-test': u1.jwt})
     data = resp.get_json()
+    assert resp.status_code == 200
     assert data[0]["name"] == projects_fixture.name
     assert data[0]["description"] == projects_fixture.description
+    assert data[0]["deletable"] == True
 
 
 def test_project_data_single(test_client, projects_fixture):
     u1 = db_session.query(User).get(1)
     resp = test_client.get(f'/projects/{projects_fixture.id}/', headers={'x-jwt-assertion-test': u1.jwt})
     data = resp.get_json()
+    assert resp.status_code == 200
     assert data["name"] == projects_fixture.name
     assert data["description"] == projects_fixture.description
+    assert data["deletable"] == True
 
 
 def test_project_data_protected(test_client, projects_fixture):
@@ -115,20 +120,25 @@ def test_project_data_allow_public_access(test_client, public_projects_fixture):
     assert resp.status_code == 200
 
 
-def test_delete_empty_project(test_client, projects_fixture):
-    u1 = db_session.query(User).get(1)
-    resp = test_client.delete(f'/projects/{projects_fixture.id}/', headers={'x-jwt-assertion-test': u1.jwt})
+def test_delete_empty_project(test_client, projects_fixture, user1):
+    resp = test_client.delete(f'/projects/{projects_fixture.id}/', headers={'x-jwt-assertion-test': user1.jwt})
     assert resp.status_code == 200
-    proj = db_session.query(Project).get(1)
-    assert proj is None
+    projects = db_session.query(Project).all()
+    projectUsers = db_session.query(ProjectUser).all()
+    assert projects == []
+    assert projectUsers == []
 
 
-def test_delete_unauthorized(test_client, projects_fixture):
-    u2 = db_session.query(User).get(2)
-    resp = test_client.delete(f'/projects/{projects_fixture.id}/', headers={'x-jwt-assertion-test': u2.jwt})
+def test_delete_unauthorized(test_client, projects_fixture, user2):
+    resp = test_client.delete(f'/projects/{projects_fixture.id}/', headers={'x-jwt-assertion-test': user2.jwt})
     assert resp.status_code == 403
     proj = db_session.query(Project).get(1)
     assert proj is not None
+
+
+def test_delete_project_not_admin_or_creator(test_client, projects_fixture2, projects_fixture, user2):
+    resp = test_client.delete(f'/projects/{projects_fixture2.id}/', headers={'x-jwt-assertion-test': user2.jwt})
+    assert resp.status_code == 403
 
 
 def test_delete_unauthorized_guest(test_client, projects_fixture):

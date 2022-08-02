@@ -9,18 +9,14 @@ from geoapi.services.features import FeaturesService
 from geoapi.services.point_cloud import PointCloudService
 from geoapi.settings import settings
 from geoapi.utils import jwt_utils
+from geoapi.utils.users import is_anonymous, AnonymousUser
 from geoapi.log import logger
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import serialization
 import base64
 
 
-class AnonymousUser:
-    username = "Guest"
 
-
-def is_anonymous(user):
-    return isinstance(user, AnonymousUser)
 
 
 def get_pub_key():
@@ -72,7 +68,7 @@ def check_access_and_get_project(current_user, allow_public_use=False, project_i
     :param allow_public_use: boolean
     :return: project: Project
     """
-    proj = ProjectsService.get(project_id=project_id) if project_id else ProjectsService.get(uuid=uuid)
+    proj = ProjectsService.get(user=current_user, project_id=project_id) if project_id else ProjectsService.get(user=current_user, uuid=uuid)
     if not proj:
         abort(404, "No project found")
     if not allow_public_use or not proj.public:
