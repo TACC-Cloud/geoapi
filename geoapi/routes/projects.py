@@ -208,7 +208,9 @@ class ProjectResource(Resource):
     @api.marshal_with(project_response)
     @project_permissions_allow_public
     def get(self, projectId: int):
-        return ProjectsService.get(project_id=projectId, user=request.current_user)
+        u = request.current_user
+        logger.info("Get metadata project:{} for user:{}".format(projectId, u.username))
+        return ProjectsService.get(project_id=projectId, user=u)
 
     @api.doc(id="deleteProject",
              description="Delete a project, all associated features and metadata. THIS CANNOT BE UNDONE")
