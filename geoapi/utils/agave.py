@@ -1,5 +1,6 @@
 import shutil
 from tempfile import NamedTemporaryFile
+from dataclasses import dataclass
 
 import requests
 import pathlib
@@ -12,6 +13,7 @@ from dateutil import parser
 from geoapi.settings import settings
 from geoapi.utils.tenants import get_api_server, get_service_accounts
 from geoapi.exceptions import MissingServiceAccount
+from geoapi.custom import custom_system_user_retrieval
 
 logger = logging.getLogger(__name__)
 
@@ -75,27 +77,29 @@ class AgaveUtils:
         self.base_url = get_api_server(tenant) if tenant else self.BASE_URL
         self.client = client
 
+    def get(self, url):
+        return self.client.get(self.base_url + url)
+
     def systemsList(self):
-        url = quote('/systems/')
-        resp = self.client.get(self.base_url + url)
+        resp = self.get(quote('/systems/'))
         listing = resp.json()
         return listing["result"]
 
     def systemsGet(self, systemId: str) -> Dict:
         url = quote('/systems/{}'.format(systemId))
-        resp = self.client.get(self.base_url + url)
+        resp = self.get(url)
         listing = resp.json()
         return listing["result"]
 
     def systemsRolesGet(self, systemId: str) -> Dict:
         url = quote('/systems/{}/roles'.format(systemId))
-        resp = self.client.get(self.base_url + url)
+        resp = self.get(url)
         listing = resp.json()
         return listing["result"]
 
     def listing(self, systemId: str, path: str) -> List[AgaveFileListing]:
         url = quote('/files/listings/system/{}/{}?limit=10000'.format(systemId, path))
-        resp = self.client.get(self.base_url + url)
+        resp = self.get(url)
         listing = resp.json()
         out = [AgaveFileListing(d) for d in listing["result"]]
         return out
@@ -109,7 +113,7 @@ class AgaveUtils:
         q = {'associationIds': uuid}
         qstring = quote(json.dumps(q), safe='')
         url = '/meta/data?q={}'.format(qstring)
-        resp = self.client.get(self.base_url + url)
+        resp = self.get(url)
         meta = resp.json()
         results = [rec["value"] for rec in meta["result"]]
         out = {k: v for d in results for k, v in d.items()}
@@ -203,9 +207,15 @@ def service_account_client(tenant_id):
     return client
 
 
-def get_system_users(tenant_id, jwt, system_id: str):
+@dataclass
+class SystemUser:
+    username: str
+    admin: bool = False
+
+
+def get_default_system_users(tenant_id, jwt, system_id: str) -> List[SystemUser]:
     """
-    Get systems users for a system using a user's jwt and (potentially) the tenant's service account
+    Get systems users for a system using a user's jwt and (potentially) the tenant's service account.
 
     Tapis provides all roles for owner of system which is why we attempt
     to use the service account super token as well.
@@ -213,8 +223,9 @@ def get_system_users(tenant_id, jwt, system_id: str):
     :param tenant_id: tenant id
     :param jwt: jwt of a user
     :param system_id: str
-    :return: list of usernames
+    :return: list of users with admin status
     """
+
     client = AgaveUtils(jwt)
     user_names = [entry["username"] for entry in client.systemsRolesGet(system_id)]
 
@@ -235,7 +246,25 @@ def get_system_users(tenant_id, jwt, system_id: str):
             pass  # do nothing if no service account
 
     logger.info("System:{} has the following users: {}".format(system_id, user_names))
-    return user_names
+    return {SystemUser(username=u, admin=False) for u in user_names}
+
+
+def get_system_users(tenant_id, jwt, system_id: str) -> List[SystemUser]:
+    """
+    Get systems users for a system and their admin status.
+
+    Right now, this would always be DesignSafe.
+
+    :param tenant_id: tenant id
+    :param jwt: jwt of a user
+    :param system_id: str
+    :return: list of users with admin status
+    """
+
+    if tenant_id in custom_system_user_retrieval:
+        return custom_system_user_retrieval[tenant_id](tenant_id, jwt, system_id)
+
+    return get_default_system_users(tenant_id, jwt, system_id)
 
 
 def get_metadata_using_service_account(tenant_id: str, system_id: str, path: str) -> Dict:
