@@ -9,7 +9,7 @@ from geoapi.tasks.external_data import (import_from_agave,
                                         refresh_observable_projects,
                                         get_additional_files,
                                         is_member_of_rapp_project_folder)
-from geoapi.utils.agave import AgaveFileListing
+from geoapi.utils.agave import AgaveFileListing, SystemUser
 from geoapi.utils.assets import get_project_asset_dir, get_asset_path
 from geoapi.exceptions import InvalidCoordinateReferenceSystem
 from geoapi.services.point_cloud import PointCloudService
@@ -19,7 +19,8 @@ from geoapi.services.point_cloud import PointCloudService
 def get_system_users_mock(userdata):
     u1 = db_session.query(User).get(1)
     u2 = db_session.query(User).get(2)
-    with patch('geoapi.tasks.external_data.get_system_users', return_value=[u1.username, u2.username]) as get_system_users:
+    users = [SystemUser(username=u1.username, admin=True), SystemUser(username=u2.username, admin=False)]
+    with patch('geoapi.tasks.external_data.get_system_users', return_value=users) as get_system_users:
         yield get_system_users
 
 

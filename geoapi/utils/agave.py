@@ -246,7 +246,7 @@ def get_default_system_users(tenant_id, jwt, system_id: str) -> List[SystemUser]
             pass  # do nothing if no service account
 
     logger.info("System:{} has the following users: {}".format(system_id, user_names))
-    return {SystemUser(username=u, admin=False) for u in user_names}
+    return [SystemUser(username=u, admin=False) for u in user_names]
 
 
 def get_system_users(tenant_id, jwt, system_id: str) -> List[SystemUser]:

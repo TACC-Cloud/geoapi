@@ -80,7 +80,8 @@ project_response = api.model('Project', {
 
 user = api.model('User', {
     'id': fields.Integer(),
-    'username': fields.String(required=True)
+    'username': fields.String(required=True),
+    'admin': fields.Boolean(default=False)
 })
 
 task = api.model('Task', {
@@ -243,18 +244,19 @@ class ProjectUsersResource(Resource):
         return ProjectsService.getUsers(projectId)
 
     @api.doc(id="addUser",
-             description="Add a user to the project. This allows full access to the project, "
+             description="Add a user to the project. If `admin` is True then user has full access to the project, "
                          "including deleting the entire thing so chose carefully")
     @api.expect(user)
     @project_permissions
     def post(self, projectId: int):
         payload = request.json
         username = payload["username"]
+        admin = payload.get("admin", False)
         logger.info("Add user:{} to project:{} for user:{}".format(
             username,
             projectId,
             request.current_user.username))
-        ProjectsService.addUserToProject(projectId, username)
+        ProjectsService.addUserToProject(projectId, username, admin)
         return "ok"
 
 
@@ -262,7 +264,7 @@ class ProjectUsersResource(Resource):
 class ProjectUserResource(Resource):
     @api.doc(id="removeUser",
              description="Remove a user from a project")
-    @project_permissions
+    @project_admin_or_creator_permissions
     def delete(self, projectId: int, username: str):
         logger.info("Delete user:{} from project:{} for user:{}".format(
             username,

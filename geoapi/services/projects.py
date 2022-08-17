@@ -80,7 +80,7 @@ class ProjectsService:
 
         users = get_system_users(proj.tenant_id, user.jwt, proj.system_id)
         logger.info("Updating project:{} to have the following users: {}".format(name, users))
-        project_users = [UserService.getOrCreateUser(u, tenant=proj.tenant_id) for u in users]
+        project_users = [UserService.getOrCreateUser(u.username, tenant=proj.tenant_id) for u in users]
         proj.users = project_users
 
         obs.project = proj
@@ -283,19 +283,25 @@ class ProjectsService:
         return {"status": "ok"}
 
     @staticmethod
-    def addUserToProject(projectId: int, username: str) -> None:
+    def addUserToProject(projectId: int, username: str, admin: bool) -> None:
         """
         Add a user to a project
         :param projectId: int
         :param username: string
+        :param admin: bool
         :return:
         """
 
-        # TODO: Add TAS integration
         proj = db_session.query(Project).get(projectId)
         user = UserService.getOrCreateUser(username, proj.tenant_id)
         proj.users.append(user)
         db_session.commit()
+
+        project_user = db_session.query(ProjectUser).filter(Project.id == projectId)\
+            .filter(User.id == user.id).first()
+        project_user.admin = admin
+        db_session.commit()
+
 
     @staticmethod
     def getUsers(projectId: int) -> List[User]:
@@ -309,7 +315,7 @@ class ProjectsService:
         return user
 
     @staticmethod
-    def removeUserFromProject(projectId: int, username: str, ) -> None:
+    def removeUserFromProject(projectId: int, username: str) -> None:
         """
         Remove a user from a Project.
         :param projectId: int
