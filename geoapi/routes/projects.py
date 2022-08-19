@@ -70,7 +70,7 @@ user = api.model('User', {
     'username': fields.String(required=True),
 })
 
-user_payload = api.clone('UserPayload', project, {
+user_payload = api.clone('UserPayload', user, {
     'admin': fields.Boolean(default=False)
 })
 
