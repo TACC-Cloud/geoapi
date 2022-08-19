@@ -56,7 +56,7 @@ def test_add_existing_user_to_project(user1, user2, projects_fixture):
     assert UserService.canAccess(user2, projects_fixture.id)
     project_user = db_session.query(ProjectUser).filter(Project.id == projects_fixture.id) \
         .filter(User.id == user2.id).first()
-    assert project_user.admin == False
+    assert project_user.admin is False
     assert UserService.canAccess(user1, projects_fixture.id)
 
 
@@ -67,7 +67,7 @@ def test_add_existing_user_to_project_as_admin(user1, user2, projects_fixture):
     assert UserService.canAccess(user2, projects_fixture.id)
     project_user = db_session.query(ProjectUser).filter(Project.id == projects_fixture.id) \
         .filter(User.id == user2.id).first()
-    assert project_user.admin == True
+    assert project_user.admin is True
     assert UserService.canAccess(user1, projects_fixture.id)
 
 
