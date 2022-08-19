@@ -207,7 +207,7 @@ def service_account_client(tenant_id):
     return client
 
 
-@dataclass
+@dataclass(frozen=True, eq=True)
 class SystemUser:
     username: str
     admin: bool = False

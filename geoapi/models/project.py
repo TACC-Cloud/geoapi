@@ -17,6 +17,7 @@ class ProjectUser(Base):
     creator = Column(Boolean, default=False)
     admin = Column(Boolean, default=False)
     project = relationship('Project', backref=backref('project_users', cascade="all, delete-orphan"))
+    user = relationship('User')
 
     def __repr__(self):
         return f'<ProjectUser(user_id={self.user_id}, project_id={self.project_id}, admin={self.admin}, creator={self.creator})>'

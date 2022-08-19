@@ -10,8 +10,8 @@ from celery import uuid as celery_uuid
 
 from geoapi.celery_app import app
 from geoapi.exceptions import InvalidCoordinateReferenceSystem, MissingServiceAccount
-from geoapi.models import User, ObservableDataProject, Task
-from geoapi.utils.agave import AgaveUtils, get_system_users, get_metadata_using_service_account, AgaveFileGetError
+from geoapi.models import User, Project, ProjectUser, ObservableDataProject, Task
+from geoapi.utils.agave import AgaveUtils, SystemUser, get_system_users, get_metadata_using_service_account, AgaveFileGetError
 from geoapi.log import logger
 from geoapi.services.features import FeaturesService
 from geoapi.services.imports import ImportsService
@@ -334,20 +334,39 @@ def refresh_observable_projects():
                                                                                                       importing_user,
                                                                                                       o.system_id,
                                                                                                       o.path))
-            current_user_names = set([u.username for u in o.project.users])
 
-            # we need to add any users who have been added to the system roles
-            # (note that we do not delete any that are no longer listed on system roles; we only add users)
-            system_users = set(get_system_users(o.project.tenant_id, importing_user.jwt, o.system_id))
-            updated_user_names = system_users.union(current_user_names)
-            if updated_user_names != current_user_names:
-                logger.info("Updating to add the following users:{}   "
-                            "Updated user list is now: {}".format(updated_user_names - current_user_names,
-                                                                  updated_user_names))
-                o.project.users = [UserService.getOrCreateUser(u, tenant=o.project.tenant_id)
-                                   for u in updated_user_names]
+            # we need to add any users who have been added to the project/system or update if their admin-status
+            # has changed
+            current_users = set([SystemUser(username=u.user.username, admin=u.admin) for u in o.project.project_users])
+            updated_users = set(get_system_users(o.project.tenant_id, importing_user.jwt, o.system_id))
+
+            current_creator = db_session.query(ProjectUser).filter(Project.id == o.id).filter(ProjectUser.creator is True).one_or_none()
+
+            if current_users != updated_users:
+                logger.info("Updating users from:{} to:{}".format(current_users, updated_users))
+
+                # set project users
+                o.project.users = [UserService.getOrCreateUser(u.username, tenant=o.project.tenant_id) for u in updated_users]
                 db_session.add(o)
                 db_session.commit()
+
+                updated_users_to_admin_status = {u.username: u for u in updated_users}
+                logger.info("current_users_to_admin_status:{}".format(updated_users_to_admin_status))
+                for u in o.project.project_users:
+                    u.admin = updated_users_to_admin_status[u.user.username].admin
+                    db_session.add(u)
+                db_session.commit()
+
+                if current_creator:
+                    # reset the creator
+                    current_creator = db_session.query(ProjectUser)\
+                        .filter(Project.id == o.id)\
+                        .filter(ProjectUser.user_id == current_creator.user_id)\
+                        .one_or_none()
+                    if current_creator:
+                        current_creator.creator = True
+                        db_session.add(current_creator)
+                        db_session.commit()
 
             # perform the importing
             if o.watch_content:

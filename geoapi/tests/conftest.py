@@ -128,6 +128,8 @@ def observable_projects_fixture():
     db_session.add(obs)
     db_session.add(proj)
     db_session.commit()
+    proj.project_users[0].creator=True
+    db_session.commit()
     yield obs
 
     shutil.rmtree(get_project_asset_dir(proj.id), ignore_errors=True)

@@ -397,18 +397,29 @@ def test_import_from_agave_failed_dbsession_rollback(agave_utils_with_geojson_fi
 
 
 @pytest.mark.worker
-def test_refresh_observable_projects(agave_utils_with_image_file_from_rapp_folder,
+def test_refresh_observable_projects(user1,
+                                     user2,
+                                     agave_utils_with_image_file_from_rapp_folder,
                                      observable_projects_fixture,
                                      get_system_users_mock,
                                      rollback_side_effect):
+    assert len(observable_projects_fixture.project.project_users) == 1
+    # single user with no admin but is creator
+    assert [(user1.username, False, True)] == [(u.user.username, u.admin, u.creator)
+                                               for u in observable_projects_fixture.project.project_users]
+
     refresh_observable_projects()
     rollback_side_effect.assert_not_called()
     assert len(os.listdir(get_project_asset_dir(observable_projects_fixture.project_id))) == 2
+    # now two users with one being the admin and creator
+    assert [(user1.username, True, True), (user2.username, False, False)] == [(u.user.username, u.admin, u.creator)
+                                                                              for u in observable_projects_fixture.project.project_users]
 
 
 @pytest.mark.worker
 def test_refresh_observable_projects_dbsession_rollback(agave_utils_with_geojson_file,
                                                         observable_projects_fixture,
+                                                        get_system_users_mock,
                                                         db_session_commit_throws_exception,
                                                         rollback_side_effect):
     refresh_observable_projects()
