@@ -68,6 +68,9 @@ project_response = api.clone('Project', project, {
 user = api.model('User', {
     'id': fields.Integer(),
     'username': fields.String(required=True),
+})
+
+user_payload = api.clone('UserPayload', project, {
     'admin': fields.Boolean(default=False)
 })
 
@@ -233,7 +236,7 @@ class ProjectUsersResource(Resource):
     @api.doc(id="addUser",
              description="Add a user to the project. If `admin` is True then user has full access to the project, "
                          "including deleting the entire thing so chose carefully")
-    @api.expect(user)
+    @api.expect(user_payload)
     @project_permissions
     def post(self, projectId: int):
         payload = request.json

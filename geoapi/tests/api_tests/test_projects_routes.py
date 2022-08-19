@@ -147,6 +147,15 @@ def test_delete_unauthorized_guest(test_client, projects_fixture):
     assert proj is not None
 
 
+def test_get_users(test_client, projects_fixture, user1):
+    resp = test_client.get(
+        f'/projects/{projects_fixture.id}/users/',
+        headers={'x-jwt-assertion-test': user1.jwt}
+    )
+    assert resp.status_code == 200
+    assert resp.get_json() == [{"id": user1.id, "username": user1.username}]
+
+
 def test_add_user(test_client, projects_fixture, user1):
     resp = test_client.post(
         f'/projects/{projects_fixture.id}/users/',
