@@ -23,7 +23,7 @@ def upgrade():
 
     # Update existing rows so that everyone is an admin
     op.execute("UPDATE projects_users SET admin = true")
-    op.execute("UPDATE projects_users SET creator = true")
+    op.execute("UPDATE projects_users SET creator = false")
 
     op.alter_column('projects_users', 'admin', nullable=False)
     op.alter_column('projects_users', 'creator', nullable=False)
