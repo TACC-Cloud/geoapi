@@ -61,20 +61,7 @@ project = api.model('Project', {
     'system_path': fields.String(),
 })
 
-# TODO
-# project_response = api.extend('Project', project, {
-#    'deletable': fields.Boolean(),
-# })
-
-project_response = api.model('Project', {
-    'id': fields.Integer(),
-    'name': fields.String(required=True),
-    'description': fields.String(required=False),
-    'public': fields.Boolean(required=False),
-    'uuid': fields.String(),
-    'system_file': fields.String(),
-    'system_id': fields.String(),
-    'system_path': fields.String(),
+project_response = api.clone('Project', project, {
     'deletable': fields.Boolean()
 })
 
