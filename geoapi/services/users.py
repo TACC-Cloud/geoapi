@@ -1,6 +1,5 @@
 from geoapi.models import User, Project, ProjectUser
 from geoapi.db import db_session
-from geoapi.log import logger
 
 
 class UserService:
