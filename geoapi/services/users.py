@@ -27,10 +27,6 @@ class UserService:
 
     @staticmethod
     def getUser(username: str, tenant: str) -> User:
-        all_users = db_session.query(User).all()
-        logger.info(f"number of users {len(all_users)}")
-        for u in all_users:
-            logger.info(f"user: {u.username}")
         return db_session.query(User)\
             .filter(User.username == username)\
             .filter(User.tenant_id == tenant)\
