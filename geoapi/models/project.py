@@ -14,8 +14,8 @@ class ProjectUser(Base):
 
     user_id = Column(Integer, ForeignKey('users.id', ondelete="CASCADE"), primary_key=True)
     project_id = Column(Integer, ForeignKey('projects.id', ondelete="CASCADE"), primary_key=True)
-    creator = Column(Boolean, default=False)
-    admin = Column(Boolean, default=False)
+    creator = Column(Boolean, nullable=False, default=False)
+    admin = Column(Boolean, nullable=False, default=False)
     project = relationship('Project', backref=backref('project_users', cascade="all, delete-orphan"))
     user = relationship('User')
 
