@@ -14,17 +14,17 @@ See https://github.com/TACC-Cloud/hazmapper which is an associated viewer applic
 
 ## Setup
 
+#### Configure .env file
+
+Environment variables are used to define the tenant's service accounts which are needed to access metadata and some user
+information. An .env file for developers can be found on [UT Stache](https://stache.utexas.edu/entry/892c730561534ed3b3d306dbf933455d).
+
 #### Python side
 
 The API is built with flask and flask-restplus. It is running in its own container
 under gunicorn on port 8000
 
 `docker-compose up`
-
-###### Run locally with service accounts
-
-For some access to metadata and user information, a service account is required:
-`TENANT="{\"DESIGNSAFE\": {\"service_account_token\": \"ABCDEFG12344\"}}" docker-compose up`
 
 ###### Initialize the database
 
