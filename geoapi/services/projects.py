@@ -302,7 +302,6 @@ class ProjectsService:
         project_user.admin = admin
         db_session.commit()
 
-
     @staticmethod
     def getUsers(projectId: int) -> List[User]:
         proj = db_session.query(Project).get(projectId)
