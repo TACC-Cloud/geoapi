@@ -68,6 +68,7 @@ python-editor==1.0.4
 pytz==2019.3
 regex==2020.2.20
 requests==2.23.0
+requests-mock==1.9.3
 requests-toolbelt==0.9.1
 Shapely==1.7.0
 six==1.14.0

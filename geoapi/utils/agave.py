@@ -1,4 +1,6 @@
 import shutil
+import os
+import time
 from tempfile import NamedTemporaryFile
 
 import requests
@@ -15,10 +17,21 @@ from geoapi.exceptions import MissingServiceAccount
 
 logger = logging.getLogger(__name__)
 
+SLEEP_SECONDS_BETWEEN_RETRY = 2
+
 
 class AgaveFileGetError(Exception):
     '''' Unable to fetch file from agave
     '''
+    pass
+
+
+class RetryableTapisFileError(Exception):
+    """ Tapis file errors which are known to possibly work if retried.
+
+        This is raised if we know its an error that we can re-attempt to get. Note that if we
+        try multiple times and it still doesn't work, we then raise a AgaveFileGetError exception
+    """
     pass
 
 
@@ -115,64 +128,87 @@ class AgaveUtils:
         out = {k: v for d in results for k, v in d.items()}
         return out
 
-    def getFile(self, systemId: str, path: str) -> IO:
+    def _get_file(self, systemId: str, path: str, use_service_account: bool = False) -> IO:
         """
-        Download a file from agave
-        :param systemId: str
-        :param path: str
-        :return: temporary file
+        Get file
+
+        :raises
+            RetryableTapisFileError: If tapis error occurs where its possible to retry
+            AgaveFileGetError: Raised if tapis error occurs and uncertain if we can retry
+
+        :param systemId:
+        :param path:
+        :parm use_service_account: if service account should be used
+        :return:
         """
         url = quote('/files/media/system/{}/{}'.format(systemId, path))
-        try:
-            with self.client.get(self.base_url + url, stream=True) as r:
-                if r.status_code == 403:
-                    # This is a workaround for bug documented in https://jira.tacc.utexas.edu/browse/CS-169
-                    # and in https://jira.tacc.utexas.edu/browse/DES-2084 where sometimes a 403 is returned by tapis
-                    # for some files.
-                    logger.warn("Could not fetch file ({}/{}) due to unexpected 403. "
-                                "Possibly CS-169/DES-2084.".format(systemId, path))
-                    systemInfo = self.systemsGet(systemId)
-                    if systemInfo["public"]:
-                        logger.warn("As system is a public storage system for projects. we will use service "
-                                    "account to get file: {}/{}".format(systemId, path))
-                        return self._get_file_using_service_account(systemId, path)
-                    else:
-                        logger.warn("{}/{}.  System is not public so not trying "
-                                    "work-around for CS-169/DES-2084.".format(systemId, path))
-                if r.status_code > 400:
-                    raise AgaveFileGetError("Could not fetch file ({}/{}) status_code:{}".format(systemId,
-                                                                                                 path,
-                                                                                                 r.status_code))
-                tmpFile = NamedTemporaryFile()
-                for chunk in r.iter_content(1024 * 1024):
-                    tmpFile.write(chunk)
-                tmpFile.seek(0)
-                return tmpFile
-        except Exception as e:
-            logger.error("Could not fetch file ({}/{}): {}".format(systemId, path, e))
-            raise e
 
-    def _get_file_using_service_account(self, systemId: str, path: str) -> IO:
-        """
-        Download a file from agave using service account
+        client = service_account_client("designsafe").client if use_service_account else self.client
 
-        :param systemId: str
-        :param path: str
-        :return: temporary file
-        """
-        service_client = service_account_client("designsafe")
-        url = quote('/files/media/system/{}/{}'.format(systemId, path))
-        with service_client.client.get(service_client.base_url + url, stream=True) as r:
+        with client.get(self.base_url + url, stream=True) as r:
+            if r.status_code == 403 and not use_service_account:
+                # This is a workaround for bug documented in https://jira.tacc.utexas.edu/browse/CS-169
+                # and in https://jira.tacc.utexas.edu/browse/DES-2084 where sometimes a 403 is returned by tapis
+                # for some files.
+                logger.warning(f"Could not fetch file ({systemId}/{path}) due to unexpected 403. Possibly CS-169/DES-2084.")
+                systemInfo = self.systemsGet(systemId)
+                if systemInfo["public"]:
+                    logger.warning("As system is a public storage system for projects. we will use service "
+                                   "account to get file: {}/{}".format(systemId, path))
+                    return self._get_file(systemId, path, use_service_account=True)
+                else:
+                    logger.warning(f"System is not public so not trying work-around for CS-169/DES-2084: {systemId}/{path}")
             if r.status_code > 400:
-                raise AgaveFileGetError("Could not fetch file ({}/{}) with "
-                                        "service account status_code:{}".format(systemId,
-                                                                                path,
-                                                                                r.status_code))
+                if r.status_code == 500:
+                    logger.warning(f"Fetch file ({systemId}/{path}) but got 500 {r}: {r.content};"
+                                   f"500 is possibly due to CS-196/DES-2236.")
+                    raise RetryableTapisFileError
+
+                raise AgaveFileGetError("Could not fetch file ({}/{}) status_code:{} exception:".format(systemId,
+                                                                                                        path,
+                                                                                                        r.status_code))
             tmpFile = NamedTemporaryFile()
             for chunk in r.iter_content(1024 * 1024):
                 tmpFile.write(chunk)
             tmpFile.seek(0)
-            return tmpFile
+
+            if os.path.getsize(tmpFile.name) < 1:
+                logger.warning(f"Fetch file ({systemId}/{path}) but is empty. "
+                               f"Either file is really empty or possibly due to CS-196/DES-2236.")
+                raise RetryableTapisFileError
+        return tmpFile
+
+    def getFile(self, systemId: str, path: str) -> IO:
+        """
+        Download a file from tapis
+
+        We attempt to get the file multiple times in case tapis is having issues (like if we see CS-196/DES-2236
+        where tapis hits an ssh limits and then we get a a 500 or a file with 0 bytes). Eventually
+        we will raise AgaveFileGetError if we can't get the file.
+
+        :raises
+            AgaveFileGetError: Raised if unable to get file via tapis.
+
+        :param systemId: str
+        :param path: str
+        :return: temporary file
+        """
+        allowed_attempts = 5
+        while allowed_attempts > 0:
+            try:
+                return self._get_file(systemId, path)
+            except RetryableTapisFileError:
+                allowed_attempts = allowed_attempts - 1
+                logger.error(f"File fetching failed but is retryable (i.e. could be CS-196): ({systemId}/{path}) ")
+                if allowed_attempts > 0:
+                    time.sleep(SLEEP_SECONDS_BETWEEN_RETRY)
+                continue
+            except Exception as e:
+                logger.exception(f"Could not fetch file and did not attempt to retry: ({systemId}/{path})")
+                raise e
+        msg = f"Could not fetch file and no longer retrying. (could be CS-196): ({systemId}/{path})"
+        logger.exception(msg)
+        raise AgaveFileGetError(msg)
 
     def getRawFileToPath(self, systemId: str, fromPath: str, toPath: str):
         url = quote('/files/media/system/{}/{}'.format(systemId, fromPath))
