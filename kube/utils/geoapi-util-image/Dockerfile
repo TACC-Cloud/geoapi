@@ -1,2 +1,7 @@
-FROM alpine:3.15
-RUN apk add --no-cache bash rsync vim openssh python3
+FROM debian:bullseye
+RUN apt-get update && apt-get install -y \
+  bash \
+  rsync \
+  ssh \
+  python3 \
+  vim
