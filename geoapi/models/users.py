@@ -18,4 +18,4 @@ class User(Base):
                             back_populates='users', lazy="joined")
 
     def __repr__(self):
-        return '<User(uname={})>'.format(self.username)
+        return '<User(uname={}, id={})>'.format(self.username, self.id)

@@ -3,7 +3,7 @@ from sqlalchemy import (
     Column, Integer, String,
     ForeignKey, Boolean, DateTime
 )
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import relationship, backref
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.sql import func
 from geoapi.db import Base
@@ -12,8 +12,15 @@ from geoapi.db import Base
 class ProjectUser(Base):
     __tablename__ = 'projects_users'
 
-    user_id = Column(Integer, ForeignKey('users.id', ondelete="CASCADE"), primary_key=True, )
+    user_id = Column(Integer, ForeignKey('users.id', ondelete="CASCADE"), primary_key=True)
     project_id = Column(Integer, ForeignKey('projects.id', ondelete="CASCADE"), primary_key=True)
+    creator = Column(Boolean, nullable=False, default=False)
+    admin = Column(Boolean, nullable=False, default=False)
+    project = relationship('Project', backref=backref('project_users', cascade="all, delete-orphan"))
+    user = relationship('User')
+
+    def __repr__(self):
+        return f'<ProjectUser(user_id={self.user_id}, project_id={self.project_id}, admin={self.admin}, creator={self.creator})>'
 
 
 class Project(Base):
