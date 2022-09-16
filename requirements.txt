@@ -40,7 +40,7 @@ Jinja2==2.11.1
 jsonschema==3.2.0
 kombu==4.6.8
 laspy==1.6.0
-Mako==1.1.2
+Mako==1.2.2
 MarkupSafe==1.1.1
 more-itertools==8.2.0
 munch==2.5.0
