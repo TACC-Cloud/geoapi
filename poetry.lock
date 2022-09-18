@@ -889,6 +889,22 @@ socks = ["PySocks (>=1.5.6,!=1.5.7)"]
 use_chardet_on_py3 = ["chardet (>=3.0.2,<6)"]
 
 [[package]]
+name = "requests-mock"
+version = "1.10.0"
+description = "Mock out responses from the requests package"
+category = "main"
+optional = false
+python-versions = "*"
+
+[package.dependencies]
+requests = ">=2.3,<3"
+six = "*"
+
+[package.extras]
+fixture = ["fixtures"]
+test = ["fixtures", "mock", "purl", "pytest", "sphinx", "testrepository (>=0.0.18)", "testtools", "requests-futures"]
+
+[[package]]
 name = "shapely"
 version = "1.8.4"
 description = "Geometric objects, predicates, and operations"
@@ -1054,7 +1070,7 @@ testing = ["coverage (>=5.0.3)", "zope.event", "zope.testing"]
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.8"
-content-hash = "3bfa978c076e7aeab26d3b9d86cb4b7b6277fbfd7b607c4c40432edf7c513b04"
+content-hash = "7e5fbc65fd43b24cbb1aa7c1ee6aff14c53e2615ed00b67c15d1afdcf9fa8bf9"
 
 [metadata.files]
 alembic = []
@@ -1125,6 +1141,7 @@ pytest-cov = []
 python-dateutil = []
 pytz = []
 requests = []
+requests-mock = []
 shapely = []
 six = []
 sqlalchemy = []

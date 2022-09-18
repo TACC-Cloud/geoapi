@@ -31,6 +31,7 @@ laspy = "1.6.0"
 configparser = "^5.2.0"
 cryptography = "^37.0.2"
 mapillary-tools = { git = "https://github.com/mapillary/mapillary_tools.git", rev = "4bfebf8" }
+requests-mock = "^1.10.0"
 
 [tool.poetry.dev-dependencies]
 
