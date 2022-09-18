@@ -44,6 +44,7 @@ def getProj4(filePath: str):
 
     raise InvalidCoordinateReferenceSystem()
 
+
 def get_bounding_box_2d(filePaths: List[str]) -> MultiPolygon:
     """
     Get 2D bounding box(s) from las file(s)

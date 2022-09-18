@@ -1,4 +1,3 @@
-from geoapi.services.users import UserService
 from flask import request, abort
 from flask_restx import Resource, Namespace, fields, inputs
 from werkzeug.datastructures import FileStorage
@@ -10,8 +9,10 @@ from geoapi.services.streetview import StreetviewService
 from geoapi.services.point_cloud import PointCloudService
 from geoapi.services.projects import ProjectsService
 from geoapi.tasks import external_data, streetview
-from geoapi.utils.decorators import jwt_decoder, project_permissions_allow_public, project_permissions, project_feature_exists, \
-    project_point_cloud_exists, project_point_cloud_not_processing, check_access_and_get_project, is_anonymous, not_anonymous
+from geoapi.utils.decorators import (jwt_decoder, project_permissions_allow_public, project_permissions,
+                                     project_feature_exists,  project_point_cloud_exists,
+                                     project_point_cloud_not_processing, check_access_and_get_project, is_anonymous,
+                                     not_anonymous, project_admin_or_creator_permissions)
 
 
 logger = logging.getLogger(__name__)
@@ -60,9 +61,17 @@ project = api.model('Project', {
     'system_path': fields.String(),
 })
 
+project_response = api.clone('Project', project, {
+    'deletable': fields.Boolean()
+})
+
 user = api.model('User', {
     'id': fields.Integer(),
-    'username': fields.String(required=True)
+    'username': fields.String(required=True),
+})
+
+user_payload = api.clone('UserPayload', user, {
+    'admin': fields.Boolean(default=False)
 })
 
 task = api.model('Task', {
@@ -154,7 +163,7 @@ class ProjectsListing(Resource):
     @api.doc(id="getProjects",
              description='Get a listing of projects',
              parser=parser)
-    @api.marshal_with(project, as_list=True)
+    @api.marshal_with(project_response, as_list=True)
     def get(self):
         u = request.current_user
         query = self.parser.parse_args()
@@ -174,7 +183,7 @@ class ProjectsListing(Resource):
     @api.doc(id="createProject",
              description='Create a new project')
     @api.expect(project)
-    @api.marshal_with(project)
+    @api.marshal_with(project_response)
     @not_anonymous
     def post(self):
         u = request.current_user
@@ -188,14 +197,16 @@ class ProjectResource(Resource):
 
     @api.doc(id="getProjectById",
              description="Get the metadata about a project")
-    @api.marshal_with(project)
+    @api.marshal_with(project_response)
     @project_permissions_allow_public
     def get(self, projectId: int):
-        return ProjectsService.get(project_id=projectId)
+        u = request.current_user
+        logger.info("Get metadata project:{} for user:{}".format(projectId, u.username))
+        return ProjectsService.get(project_id=projectId, user=u)
 
     @api.doc(id="deleteProject",
              description="Delete a project, all associated features and metadata. THIS CANNOT BE UNDONE")
-    @project_permissions
+    @project_admin_or_creator_permissions
     def delete(self, projectId: int):
         u = request.current_user
         logger.info("Delete project:{} for user:{}".format(projectId,
@@ -204,7 +215,7 @@ class ProjectResource(Resource):
 
     @api.doc(id="updateProject",
              description="Update metadata about a project")
-    @api.marshal_with(project)
+    @api.marshal_with(project_response)
     @project_permissions
     def put(self, projectId: int):
         u = request.current_user
@@ -223,18 +234,19 @@ class ProjectUsersResource(Resource):
         return ProjectsService.getUsers(projectId)
 
     @api.doc(id="addUser",
-             description="Add a user to the project. This allows full access to the project, "
+             description="Add a user to the project. If `admin` is True then user has full access to the project, "
                          "including deleting the entire thing so chose carefully")
-    @api.expect(user)
+    @api.expect(user_payload)
     @project_permissions
     def post(self, projectId: int):
         payload = request.json
         username = payload["username"]
+        admin = payload.get("admin", False)
         logger.info("Add user:{} to project:{} for user:{}".format(
             username,
             projectId,
             request.current_user.username))
-        ProjectsService.addUserToProject(projectId, username)
+        ProjectsService.addUserToProject(projectId, username, admin)
         return "ok"
 
 
@@ -242,7 +254,7 @@ class ProjectUsersResource(Resource):
 class ProjectUserResource(Resource):
     @api.doc(id="removeUser",
              description="Remove a user from a project")
-    @project_permissions
+    @project_admin_or_creator_permissions
     def delete(self, projectId: int, username: str):
         logger.info("Delete user:{} from project:{} for user:{}".format(
             username,

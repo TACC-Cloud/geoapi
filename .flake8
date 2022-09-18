@@ -1,0 +1,12 @@
+[flake8]
+max-line-length = 140
+exclude = 
+    geoapi/migrations/
+    geoapi/models/__init__.py
+    geoapi/tasks/__init__.py
+    geoapi/schemas/__init__.py
+    # Files below are tied with https://jira.tacc.utexas.edu/browse/DES-2267
+    geoapi/initdb.py
+    geoapi/tasks/streetview.py  
+    geoapi/utils/streetview.py
+    geoapi/services/streetview.py

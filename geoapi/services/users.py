@@ -1,7 +1,6 @@
 from geoapi.models import User, Project, ProjectUser
 from geoapi.db import db_session
-from typing import List, Dict
-# from pytas.http import TASClient
+
 
 class UserService:
 
@@ -17,11 +16,6 @@ class UserService:
         db_session.add(u)
         db_session.commit()
         return u
-
-    @staticmethod
-    def checkUser(username: str) -> bool:
-        # TODO: Add in TAS check
-        pass
 
     @staticmethod
     def getOrCreateUser(username: str, tenant: str) -> User:
@@ -53,16 +47,17 @@ class UserService:
         return False
 
     @staticmethod
+    def is_admin_or_creator(user: User, projectId: int) -> bool:
+        up = db_session.query(ProjectUser) \
+            .join(Project) \
+            .filter(ProjectUser.user_id == user.id) \
+            .filter(Project.tenant_id == user.tenant_id) \
+            .filter(ProjectUser.project_id == projectId).first()
+        if up:
+            return up.admin or up.creator
+        return False
+
+    @staticmethod
     def setJWT(user: User, token: str) -> None:
         user.jwt = token
-        db_session.commit()
-
-    @staticmethod
-    def setMapillaryToken(user: User, token: str) -> None:
-        user.google_jwt = token
-        db_session.commit()
-
-    @staticmethod
-    def setGoogleToken(user: User, token: str) -> None:
-        user.mapillary_jwt = token
         db_session.commit()

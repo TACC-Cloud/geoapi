@@ -1,13 +1,12 @@
 import base64
 import re
 import io
-import xml.etree.ElementTree as ET
 import PIL
 from PIL import Image
 from PIL.Image import Image as PILImage
 from PIL.ExifTags import TAGS, GPSTAGS
 
-from typing import Tuple, IO, AnyStr, Dict
+from typing import Tuple, IO, AnyStr
 from dataclasses import dataclass
 from geoapi.exceptions import InvalidEXIFData
 from geoapi.log import logging
@@ -56,7 +55,7 @@ class ImageService:
             exif_loc = get_exif_location(imdata.resized)
             imdata.coordinates = exif_loc
             return imdata
-        except:
+        except:  # noqa: E722
             raise InvalidEXIFData()
 
     @staticmethod

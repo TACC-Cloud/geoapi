@@ -14,12 +14,11 @@ class NotificationsService:
     @staticmethod
     def getAll(user: User) -> List[Notification]:
         return db_session.query(Notification) \
-            .filter(Notification.username == user.username)\
-            .filter(Notification.tenant_id == user.tenant_id)\
+            .filter(Notification.username == user.username) \
+            .filter(Notification.tenant_id == user.tenant_id) \
             .order_by(Notification.created.desc()) \
-            .limit(100)\
+            .limit(100) \
             .all()
-
 
     @staticmethod
     def get(user: User, filters: Dict) -> List[Notification]:
@@ -29,8 +28,7 @@ class NotificationsService:
         if filters.get("startDate"):
             q = q.filter(Notification.created > filters.get("startDate"))
         return q.order_by(Notification.created.desc()) \
-                .limit(100).all()
-
+            .limit(100).all()
 
     @staticmethod
     def create(user: User, status: AnyStr, message: AnyStr) -> Notification:
@@ -54,22 +52,23 @@ class NotificationsService:
             .filter(ProgressNotification.user_id == user.id) \
             .filter(ProgressNotification.tenant_id == user.tenant_id)
         return q.order_by(ProgressNotification.created.desc()) \
-                .limit(100).all()
+            .limit(100).all()
 
     @staticmethod
     def getProgressUUID(task_uuid: UUID) -> ProgressNotification:
         return db_session.query(ProgressNotification) \
-                         .filter(ProgressNotification.uuid == task_uuid) \
-                         .first()
+            .filter(ProgressNotification.uuid == task_uuid) \
+            .first()
 
     @staticmethod
     def getProgressStatus(status: str) -> List[ProgressNotification]:
         return db_session.query(ProgressNotification) \
-                         .filter(ProgressNotification.status == status) \
-                         .all()
+            .filter(ProgressNotification.status == status) \
+            .all()
 
     @staticmethod
-    def createProgress(user: User, status: AnyStr, message: AnyStr, task_uuid: UUID, logs: List=None) -> ProgressNotification:
+    def createProgress(user: User, status: AnyStr, message: AnyStr, task_uuid: UUID,
+                       logs: List = None) -> ProgressNotification:
         note = ProgressNotification(
             user_id=user.id,
             tenant_id=user.tenant_id,
@@ -87,12 +86,12 @@ class NotificationsService:
             db_session.rollback()
             raise
 
-
     @staticmethod
-    def updateProgress(task_uuid: UUID, status: AnyStr=None, message: AnyStr=None, progress: int=None, logItem: Dict=None):
+    def updateProgress(task_uuid: UUID, status: AnyStr = None, message: AnyStr = None, progress: int = None,
+                       logItem: Dict = None):
         note = db_session.query(ProgressNotification) \
-                         .filter(ProgressNotification.uuid == task_uuid) \
-                         .first()
+            .filter(ProgressNotification.uuid == task_uuid) \
+            .first()
         try:
             if status is not None:
                 note.status = status
@@ -109,11 +108,10 @@ class NotificationsService:
             db_session.rollback()
             raise
 
-
     @staticmethod
     def deleteProgress(task_uuid: UUID):
         notes = db_session.query(ProgressNotification) \
-                         .filter(ProgressNotification.uuid == task_uuid)
+            .filter(ProgressNotification.uuid == task_uuid)
         try:
             for i in notes:
                 db_session.delete(i)
@@ -122,11 +120,10 @@ class NotificationsService:
             db_session.rollback()
             raise
 
-
     @staticmethod
     def deleteAllDoneProgress():
         note = db_session.query(ProgressNotification) \
-                         .filter(ProgressNotification.status == 'success')
+            .filter(ProgressNotification.status == 'success')
         try:
             for pn in note:
                 db_session.delete(pn)

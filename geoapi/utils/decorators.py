@@ -9,18 +9,11 @@ from geoapi.services.features import FeaturesService
 from geoapi.services.point_cloud import PointCloudService
 from geoapi.settings import settings
 from geoapi.utils import jwt_utils
+from geoapi.utils.users import is_anonymous, AnonymousUser
 from geoapi.log import logger
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import serialization
 import base64
-
-
-class AnonymousUser:
-    username = "Guest"
-
-
-def is_anonymous(user):
-    return isinstance(user, AnonymousUser)
 
 
 def get_pub_key():
@@ -72,7 +65,8 @@ def check_access_and_get_project(current_user, allow_public_use=False, project_i
     :param allow_public_use: boolean
     :return: project: Project
     """
-    proj = ProjectsService.get(project_id=project_id) if project_id else ProjectsService.get(uuid=uuid)
+    proj = ProjectsService.get(user=current_user, project_id=project_id) if project_id \
+        else ProjectsService.get(user=current_user, uuid=uuid)
     if not proj:
         abort(404, "No project found")
     if not allow_public_use or not proj.public:
@@ -83,6 +77,10 @@ def check_access_and_get_project(current_user, allow_public_use=False, project_i
 
 
 def project_permissions(fn):
+    """
+    Ensure user has access to project.
+
+    """
     @wraps(fn)
     def wrapper(*args, **kwargs):
         projectId = kwargs.get("projectId")
@@ -92,10 +90,29 @@ def project_permissions(fn):
 
 
 def project_permissions_allow_public(fn):
+    """
+    Ensure user has access to project or project is public.
+
+    """
     @wraps(fn)
     def wrapper(*args, **kwargs):
         projectId = kwargs.get("projectId")
         check_access_and_get_project(request.current_user, project_id=projectId, allow_public_use=True)
+        return fn(*args, **kwargs)
+    return wrapper
+
+
+def project_admin_or_creator_permissions(fn):
+    """
+        Ensure user has admin-level access to project or is project's creator.
+
+    """
+    @wraps(fn)
+    def wrapper(*args, **kwargs):
+        projectId = kwargs.get("projectId")
+        check_access_and_get_project(request.current_user, project_id=projectId, allow_public_use=False)
+        if not UserService.is_admin_or_creator(request.current_user, projectId):
+            abort(403, "Access denied")
         return fn(*args, **kwargs)
     return wrapper
 

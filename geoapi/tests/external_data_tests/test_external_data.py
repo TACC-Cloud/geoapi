@@ -9,7 +9,7 @@ from geoapi.tasks.external_data import (import_from_agave,
                                         refresh_observable_projects,
                                         get_additional_files,
                                         is_member_of_rapp_project_folder)
-from geoapi.utils.agave import AgaveFileListing
+from geoapi.utils.agave import AgaveFileListing, SystemUser
 from geoapi.utils.assets import get_project_asset_dir, get_asset_path
 from geoapi.exceptions import InvalidCoordinateReferenceSystem
 from geoapi.services.point_cloud import PointCloudService
@@ -19,7 +19,8 @@ from geoapi.services.point_cloud import PointCloudService
 def get_system_users_mock(userdata):
     u1 = db_session.query(User).get(1)
     u2 = db_session.query(User).get(2)
-    with patch('geoapi.tasks.external_data.get_system_users', return_value=[u1.username, u2.username]) as get_system_users:
+    users = [SystemUser(username=u1.username, admin=True), SystemUser(username=u2.username, admin=False)]
+    with patch('geoapi.tasks.external_data.get_system_users', return_value=users) as get_system_users:
         yield get_system_users
 
 
@@ -91,6 +92,7 @@ def agave_utils_with_bad_image_file(image_file_no_location_fixture):
             MockAgaveUtils().getFile.return_value = image_file_no_location_fixture
             MockAgaveUtilsInUtils().listing.return_value = filesListing
             MockAgaveUtilsInUtils().getFile.return_value = image_file_no_location_fixture
+
             class MockAgave:
                 client_in_utils = MockAgaveUtilsInUtils()
                 client_in_external_data = MockAgaveUtils()
@@ -395,18 +397,29 @@ def test_import_from_agave_failed_dbsession_rollback(agave_utils_with_geojson_fi
 
 
 @pytest.mark.worker
-def test_refresh_observable_projects(agave_utils_with_image_file_from_rapp_folder,
+def test_refresh_observable_projects(user1,
+                                     user2,
+                                     agave_utils_with_image_file_from_rapp_folder,
                                      observable_projects_fixture,
                                      get_system_users_mock,
                                      rollback_side_effect):
+    assert len(observable_projects_fixture.project.project_users) == 1
+    # single user with no admin but is creator
+    assert [(user1.username, False, True)] == [(u.user.username, u.admin, u.creator)
+                                               for u in observable_projects_fixture.project.project_users]
+
     refresh_observable_projects()
     rollback_side_effect.assert_not_called()
     assert len(os.listdir(get_project_asset_dir(observable_projects_fixture.project_id))) == 2
+    # now two users with one being the admin and creator
+    assert [(user1.username, True, True), (user2.username, False, False)] == [(u.user.username, u.admin, u.creator)
+                                                                              for u in observable_projects_fixture.project.project_users]
 
 
 @pytest.mark.worker
 def test_refresh_observable_projects_dbsession_rollback(agave_utils_with_geojson_file,
                                                         observable_projects_fixture,
+                                                        get_system_users_mock,
                                                         db_session_commit_throws_exception,
                                                         rollback_side_effect):
     refresh_observable_projects()

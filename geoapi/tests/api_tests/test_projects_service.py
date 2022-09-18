@@ -3,7 +3,7 @@ import pytest
 from geoapi.db import db_session
 
 from geoapi.services.projects import ProjectsService
-from geoapi.models import User, observable_data
+from geoapi.models import User
 from geoapi.exceptions import ObservableProjectAlreadyExists
 
 

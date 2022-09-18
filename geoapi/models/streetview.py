@@ -2,6 +2,7 @@ from sqlalchemy import Column, Integer, String, DateTime, ForeignKey
 from sqlalchemy.orm import relationship
 from geoapi.db import Base
 
+
 class Streetview(Base):
     __tablename__ = 'streetview'
 
@@ -16,6 +17,7 @@ class Streetview(Base):
 
     def __repr__(self):
         return '<Streetview(id={})>'.format(self.id)
+
 
 class StreetviewOrganization(Base):
     __tablename__ = 'streetview_organization'

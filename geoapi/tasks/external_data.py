@@ -10,8 +10,8 @@ from celery import uuid as celery_uuid
 
 from geoapi.celery_app import app
 from geoapi.exceptions import InvalidCoordinateReferenceSystem, MissingServiceAccount
-from geoapi.models import User, ObservableDataProject, Task, Feature, FeatureAsset 
-from geoapi.utils.agave import AgaveUtils, get_system_users, get_metadata_using_service_account, AgaveFileGetError
+from geoapi.models import User, Project, ProjectUser, ObservableDataProject, Task
+from geoapi.utils.agave import AgaveUtils, SystemUser, get_system_users, get_metadata_using_service_account, AgaveFileGetError
 from geoapi.log import logger
 from geoapi.services.features import FeaturesService
 from geoapi.services.imports import ImportsService
@@ -52,7 +52,7 @@ def get_file(client, system_id, path, required):
     error = None
     try:
         result_file = client.getFile(system_id, path)
-    except Exception as e:
+    except Exception as e:  # noqa: E722
         error = e
     return system_id, path, required, result_file, error
 
@@ -111,12 +111,11 @@ def import_file_from_agave(userId: int, systemId: str, path: str, projectId: int
         FeaturesService.fromFileObj(projectId, tmpFile, {}, original_path=path, additional_files=additional_files)
         NotificationsService.create(user, "success", "Imported {f}".format(f=path))
         tmpFile.close()
-    except Exception as e:
+    except Exception as e:  # noqa: E722
         db_session.rollback()
         logger.exception("Could not import file from agave: {} :: {}".format(systemId, path))
         NotificationsService.create(user, "error", "Error importing {f}".format(f=path))
         raise e
-
 
 
 def _update_point_cloud_task(pointCloudId: int, description: str = None, status: str = None):
@@ -198,7 +197,7 @@ def import_point_clouds_from_agave(userId: int, files, pointCloudId: int):
         db_session.add(point_cloud)
         db_session.add(task)
         db_session.commit()
-    except:
+    except:  # noqa: E722
         db_session.rollback()
         raise
     NotificationsService.create(user,
@@ -210,7 +209,7 @@ def import_point_clouds_from_agave(userId: int, files, pointCloudId: int):
         NotificationsService.create(user,
                                     "success",
                                     "Completed potree converter (for point cloud {}).".format(pointCloudId))
-    except:
+    except:  # noqa: E722
         logger.exception("point cloud:{} conversion failed for user:{}".format(pointCloudId, user.username))
         _update_point_cloud_task(pointCloudId, description="", status="FAILED")
         NotificationsService.create(user, "error", "Processing failed for point cloud ({})!".format(pointCloudId))
@@ -280,7 +279,7 @@ def import_from_agave(tenant_id: str, userId: int, systemId: str, path: str, pro
                     tmpFile.filename = Path(item.path).name
                     try:
                         FeaturesService.createFeatureAsset(projectId, feat.id, tmpFile, original_path=item_system_path)
-                    except:
+                    except:  # noqa: E722
                         # remove newly-created placeholder feature if we fail to create an asset
                         FeaturesService.delete(feat.id)
                         raise RuntimeError("Unable to create feature asset")
@@ -316,7 +315,7 @@ def import_from_agave(tenant_id: str, userId: int, systemId: str, path: str, pro
                                                                     successful_import=successful)
                     db_session.add(target_file)
                     db_session.commit()
-                except Exception as e:
+                except Exception:  # noqa: E722
                     logger.exception(f"Failed to create db entry (imported_file)"
                                      f"for projectId:{projectId}  {systemId}/{path}")
                     db_session.rollback()
@@ -335,25 +334,44 @@ def refresh_observable_projects():
                                                                                                       importing_user,
                                                                                                       o.system_id,
                                                                                                       o.path))
-            current_user_names = set([u.username for u in o.project.users])
 
-            # we need to add any users who have been added to the system roles
-            # (note that we do not delete any that are no longer listed on system roles; we only add users)
-            system_users = set(get_system_users(o.project.tenant_id, importing_user.jwt, o.system_id))
-            updated_user_names = system_users.union(current_user_names)
-            if updated_user_names != current_user_names:
-                logger.info("Updating to add the following users:{}   "
-                            "Updated user list is now: {}".format(updated_user_names - current_user_names,
-                                                                  updated_user_names))
-                o.project.users = [UserService.getOrCreateUser(u, tenant=o.project.tenant_id)
-                                   for u in updated_user_names]
+            # we need to add any users who have been added to the project/system or update if their admin-status
+            # has changed
+            current_users = set([SystemUser(username=u.user.username, admin=u.admin) for u in o.project.project_users])
+            updated_users = set(get_system_users(o.project.tenant_id, importing_user.jwt, o.system_id))
+
+            current_creator = db_session.query(ProjectUser).filter(Project.id == o.id).filter(ProjectUser.creator is True).one_or_none()
+
+            if current_users != updated_users:
+                logger.info("Updating users from:{} to:{}".format(current_users, updated_users))
+
+                # set project users
+                o.project.users = [UserService.getOrCreateUser(u.username, tenant=o.project.tenant_id) for u in updated_users]
                 db_session.add(o)
                 db_session.commit()
+
+                updated_users_to_admin_status = {u.username: u for u in updated_users}
+                logger.info("current_users_to_admin_status:{}".format(updated_users_to_admin_status))
+                for u in o.project.project_users:
+                    u.admin = updated_users_to_admin_status[u.user.username].admin
+                    db_session.add(u)
+                db_session.commit()
+
+                if current_creator:
+                    # reset the creator
+                    current_creator = db_session.query(ProjectUser)\
+                        .filter(Project.id == o.id)\
+                        .filter(ProjectUser.user_id == current_creator.user_id)\
+                        .one_or_none()
+                    if current_creator:
+                        current_creator.creator = True
+                        db_session.add(current_creator)
+                        db_session.commit()
 
             # perform the importing
             if o.watch_content:
                 import_from_agave(o.project.tenant_id, importing_user.id, o.system_id, o.path, o.project.id)
-    except Exception:
+    except Exception:  # noqa: E722
         logger.exception("Unhandled exception when importing observable project")
         db_session.rollback()
 

@@ -3,14 +3,14 @@ from pathlib import Path
 from typing import List, Optional
 
 from sqlalchemy import desc
-from geoapi.models import Project, User, ObservableDataProject
+from geoapi.models import Project, ProjectUser, User, ObservableDataProject
 from geoapi.db import db_session
 from sqlalchemy.sql import select, text
 from sqlalchemy.exc import IntegrityError
 from geoapi.services.users import UserService
-from geoapi.services.notifications import NotificationsService
 from geoapi.utils.agave import AgaveUtils, get_system_users
 from geoapi.utils.assets import get_project_asset_dir
+from geoapi.utils.users import is_anonymous
 from geoapi.tasks.external_data import import_from_agave
 from geoapi.log import logging
 from geoapi.exceptions import ApiException, ObservableProjectAlreadyExists
@@ -40,11 +40,15 @@ class ProjectsService:
             try:
                 ProjectsService.makeObservable(project,
                                                user,
-                                               data.get('watch_content', False));
+                                               data.get('watch_content', False))
             except Exception as e:
                 logger.exception("{}".format(e))
                 raise e
 
+        db_session.add(project)
+        db_session.commit()
+
+        project.project_users[0].creator = True
         db_session.add(project)
         db_session.commit()
 
@@ -66,7 +70,7 @@ class ProjectsService:
         name = proj.system_id + '/' + folder_name
 
         # TODO: Handle no storage system found
-        system = AgaveUtils(user.jwt).systemsGet(proj.system_id)
+        AgaveUtils(user.jwt).systemsGet(proj.system_id)
 
         obs = ObservableDataProject(
             system_id=proj.system_id,
@@ -76,7 +80,7 @@ class ProjectsService:
 
         users = get_system_users(proj.tenant_id, user.jwt, proj.system_id)
         logger.info("Updating project:{} to have the following users: {}".format(name, users))
-        project_users = [UserService.getOrCreateUser(u, tenant=proj.tenant_id) for u in users]
+        project_users = [UserService.getOrCreateUser(u.username, tenant=proj.tenant_id) for u in users]
         proj.users = project_users
 
         obs.project = proj
@@ -84,7 +88,7 @@ class ProjectsService:
         try:
             db_session.add(obs)
             db_session.commit()
-        except IntegrityError as e:
+        except IntegrityError:
             db_session.rollback()
             logger.exception("User:{} tried to create an observable project that already exists: '{}'".format(user.username, name))
             raise ObservableProjectAlreadyExists("'{}' project already exists".format(name))
@@ -99,17 +103,22 @@ class ProjectsService:
         :param user: User
         :return: List[Project]
         """
-        projects = db_session.query(Project) \
-            .join(User.projects)\
-            .filter(User.username == user.username)\
+
+        projects_and_project_user = db_session.query(Project, ProjectUser) \
+            .join(ProjectUser) \
+            .filter(User.username == user.username) \
             .filter(User.tenant_id == user.tenant_id) \
-            .order_by(desc(Project.created))\
+            .filter(ProjectUser.user_id == user.id) \
+            .order_by(desc(Project.created)) \
             .all()
 
-        return projects
+        for p, u in projects_and_project_user:
+            setattr(p, 'deletable', u.admin or u.creator)
+
+        return [p for p, _ in projects_and_project_user]
 
     @staticmethod
-    def get(project_id: Optional[int] = None, uuid: Optional[str] = None) -> Project:
+    def get(project_id: Optional[int] = None, uuid: Optional[str] = None, user: User = None) -> Project:
         """
         Get the metadata associated with a project
         :param project_id: int
@@ -117,11 +126,16 @@ class ProjectsService:
         :return: Project
         """
         if project_id is not None:
-            return db_session.query(Project).get(project_id)
+            project = db_session.query(Project).get(project_id)
         elif uuid is not None:
-            return db_session.query(Project).filter(Project.uuid == uuid).first()
-        raise ValueError("project_id or uid is required")
+            project = db_session.query(Project).filter(Project.uuid == uuid).first()
+        else:
+            raise ValueError("project_id or uid is required")
 
+        if project and user and not is_anonymous(user):
+            project_user = db_session.query(ProjectUser).filter(Project.id == project.id).filter(User.id == user.id).first()
+            setattr(project, 'deletable', project_user.admin or project_user.creator)
+        return project
 
     @staticmethod
     def getFeatures(projectId: int, query: dict = None) -> object:
@@ -259,10 +273,7 @@ class ProjectsService:
         :param projectId: int
         :return:
         """
-        proj = db_session.query(Project).get(projectId)
-
-        db_session.delete(proj)
-        db_session.commit()
+        db_session.query(Project).filter(Project.id == projectId).delete()
 
         assets_folder = get_project_asset_dir(projectId)
         try:
@@ -272,18 +283,23 @@ class ProjectsService:
         return {"status": "ok"}
 
     @staticmethod
-    def addUserToProject(projectId: int, username: str) -> None:
+    def addUserToProject(projectId: int, username: str, admin: bool) -> None:
         """
         Add a user to a project
         :param projectId: int
         :param username: string
+        :param admin: bool
         :return:
         """
 
-        # TODO: Add TAS integration
         proj = db_session.query(Project).get(projectId)
         user = UserService.getOrCreateUser(username, proj.tenant_id)
         proj.users.append(user)
+        db_session.commit()
+
+        project_user = db_session.query(ProjectUser).filter(Project.id == projectId)\
+            .filter(User.id == user.id).first()
+        project_user.admin = admin
         db_session.commit()
 
     @staticmethod
@@ -298,7 +314,7 @@ class ProjectsService:
         return user
 
     @staticmethod
-    def removeUserFromProject(projectId: int, username: str, ) -> None:
+    def removeUserFromProject(projectId: int, username: str) -> None:
         """
         Remove a user from a Project.
         :param projectId: int

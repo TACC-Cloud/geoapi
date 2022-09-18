@@ -1,10 +1,9 @@
-import uuid
 from sqlalchemy import (
-    Column, Integer, String, Numeric, Boolean,
+    Column, Integer, String,
     ForeignKey
 )
 from sqlalchemy.orm import relationship
-from sqlalchemy.dialects.postgresql import (UUID, JSONB)
+from sqlalchemy.dialects.postgresql import JSONB
 from geoapi.db import Base
 
 

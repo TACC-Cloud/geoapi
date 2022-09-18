@@ -3,6 +3,7 @@ from geoapi.log import logging
 
 logger = logging.getLogger(__name__)
 
+
 def jwt_tenant(headers: Dict) -> (str, str, str):
     """
     Extract the tenant info from the headers
