@@ -109,7 +109,6 @@ def _fix_orientation(fileObj: IO) -> PILImage:
     return im
 
 
-
 def _convert_to_degrees(value):
     """
     Helper function to convert the GPS coordinates stored in the EXIF to decimal degrees in float format

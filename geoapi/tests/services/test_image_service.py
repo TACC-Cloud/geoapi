@@ -2,7 +2,6 @@ from geoapi.services.images import ImageService, get_exif_location
 from PIL import Image, ImageChops
 
 
-
 def test_image_service_rotations(flipped_image_fixture, corrected_image_fixture):
     imdata = ImageService.processImage(flipped_image_fixture)
     imdata.resized.save("/tmp/test_it_is_rotated.jpg")
