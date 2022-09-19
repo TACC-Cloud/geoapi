@@ -168,9 +168,10 @@ class AgaveUtils:
                                    f"500 is possibly due to CS-196/DES-2236.")
                     raise RetryableTapisFileError
 
-                raise AgaveFileGetError("Could not fetch file ({}/{}) status_code:{} exception:".format(systemId,
+                raise AgaveFileGetError("Could not fetch file ({}/{}) status_code:{} content:{}".format(systemId,
                                                                                                         path,
-                                                                                                        r.status_code))
+                                                                                                        r.status_code,
+                                                                                                        r.content))
             tmpFile = NamedTemporaryFile()
             for chunk in r.iter_content(1024 * 1024):
                 tmpFile.write(chunk)
