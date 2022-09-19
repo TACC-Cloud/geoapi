@@ -281,7 +281,9 @@ def test_get_project_features_filter_with_assettype(test_client, projects_fixtur
 
 def test_get_project_features_filter_with_bounding_box(test_client, projects_fixture,
                                                        feature_fixture, image_feature_fixture):
-    bbox = [-80.9, 32.61, -80, 32.62]
+    # feature fixture is (125.6, 10.1)
+    # image is (-80.78037499999999, 32.61850555555556)
+    bbox = [-80.9, 32.61, -80, 32.62] # query just the image
     u1 = db_session.query(User).get(1)
     resp = test_client.get(f'/projects/{projects_fixture.id}/features/',
                            query_string='bbox={}'.format(','.join(map(str, bbox))),
