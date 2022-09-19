@@ -30,7 +30,9 @@ def test_get_proj4_raises_error(empty_las_file_path_fixture):
 @pytest.mark.worker
 def test_get_bounding_box(lidar_las1pt4_file_path_fixture):
     bounding_box = get_bounding_box_2d([lidar_las1pt4_file_path_fixture])
-    assert str(bounding_box) == "POLYGON ((-105.20913391035427 39.661306045666485, -105.20095836629945 39.661306045666485, -105.20095836629945 39.66928109125274, -105.20913391035427 39.66928109125274, -105.20913391035427 39.661306045666485))"
+    assert str(bounding_box) == "POLYGON ((-105.20913391035427 39.661306045666485, -105.20095836629945 39.661306045666485," \
+                                " -105.20095836629945 39.66928109125274, -105.20913391035427 39.66928109125274," \
+                                " -105.20913391035427 39.661306045666485))"
 
 
 @pytest.mark.worker

@@ -128,6 +128,7 @@ def _convert_to_degrees(value):
 
     return d + (m / 60.0) + (s / 3600.0)
 
+
 def _get_if_exist(data, key):
     if key in data:
         return data[key]
@@ -147,6 +148,7 @@ def _convert_to_degress(value):
     s = float(value.values[2].num) / float(value.values[2].den)
 
     return d + (m / 60.0) + (s / 3600.0)
+
 
 def get_exif_location(image):
     """
