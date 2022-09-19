@@ -18,9 +18,9 @@ def test_image_service_rotations(flipped_image_fixture, corrected_image_fixture)
 
 def test_get_exif_location(image_file_fixture):
     coordinates = get_exif_location(image_file_fixture)
-    assert coordinates == (32.61850555555556, -80.78037499999999)
+    assert coordinates == (-80.78037499999999, 32.61850555555556)
 
 
 def test_process_image(image_file_fixture):
     imdata = ImageService.processImage(image_file_fixture)
-    assert imdata.coordinates == (32.61850555555556, -80.78037499999999)
+    assert imdata.coordinates == (-80.78037499999999, 32.61850555555556)
