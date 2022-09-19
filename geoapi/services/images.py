@@ -4,7 +4,6 @@ import io
 import PIL
 from PIL import Image
 from PIL.Image import Image as PILImage
-from PIL.ExifTags import TAGS, GPSTAGS
 
 from typing import Tuple, IO, AnyStr
 from dataclasses import dataclass
@@ -52,7 +51,7 @@ class ImageService:
 
         try:
             imdata = ImageService.resizeImage(fileObj)
-            exif_loc = get_exif_location(imdata.resized)
+            exif_loc = get_exif_location(fileObj)
             imdata.coordinates = exif_loc
             return imdata
         except:  # noqa: E722
@@ -108,22 +107,6 @@ def _fix_orientation(fileObj: IO) -> PILImage:
         return im
 
 
-def get_exif_data(image):
-    """Returns a dictionary from the exif data of an PIL Image item. Also converts the GPS Tags"""
-    exif_data = {}
-    info = image.getexif()
-    for tag, value in info.items():
-        decoded = TAGS.get(tag, tag)
-        if decoded == "GPSInfo":
-            for t in value:
-                sub_decoded = GPSTAGS.get(t, t)
-                exif_data[sub_decoded] = value[t]
-        else:
-            exif_data[decoded] = value
-
-    return exif_data
-
-
 def _convert_to_degrees(value):
     """
     Helper function to convert the GPS coordinates stored in the EXIF to decimal degrees in float format
@@ -145,23 +128,48 @@ def _convert_to_degrees(value):
 
     return d + (m / 60.0) + (s / 3600.0)
 
+def _get_if_exist(data, key):
+    if key in data:
+        return data[key]
+
+    return None
+
+
+def _convert_to_degress(value):
+    """
+    Helper function to convert the GPS coordinates stored in the EXIF to degress in float format
+    :param value:
+    :type value: exifread.utils.Ratio
+    :rtype: float
+    """
+    d = float(value.values[0].num) / float(value.values[0].den)
+    m = float(value.values[1].num) / float(value.values[1].den)
+    s = float(value.values[2].num) / float(value.values[2].den)
+
+    return d + (m / 60.0) + (s / 3600.0)
 
 def get_exif_location(image):
     """
     Returns the latitude and longitude, if available, from the provided exif_data (obtained through get_exif_data above)
     """
-    exif_data = get_exif_data(image)
-    gps_latitude = exif_data['GPSLatitude']
-    gps_latitude_ref = exif_data['GPSLatitudeRef']
-    gps_longitude = exif_data['GPSLongitude']
-    gps_longitude_ref = exif_data['GPSLongitudeRef']
 
-    lat = _convert_to_degrees(gps_latitude)
-    if gps_latitude_ref != 'N':
-        lat = 0 - lat
+    import exifread
+    exif_data = exifread.process_file(image)
+    lat = None
+    lon = None
 
-    lon = _convert_to_degrees(gps_longitude)
-    if gps_longitude_ref != 'E':
-        lon = 0 - lon
+    gps_latitude = _get_if_exist(exif_data, 'GPS GPSLatitude')
+    gps_latitude_ref = _get_if_exist(exif_data, 'GPS GPSLatitudeRef')
+    gps_longitude = _get_if_exist(exif_data, 'GPS GPSLongitude')
+    gps_longitude_ref = _get_if_exist(exif_data, 'GPS GPSLongitudeRef')
 
-    return lon, lat
+    if gps_latitude and gps_latitude_ref and gps_longitude and gps_longitude_ref:
+        lat = _convert_to_degress(gps_latitude)
+        if gps_latitude_ref.values[0] != 'N':
+            lat = 0 - lat
+
+        lon = _convert_to_degress(gps_longitude)
+        if gps_longitude_ref.values[0] != 'E':
+            lon = 0 - lon
+
+    return lat, lon
