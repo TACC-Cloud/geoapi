@@ -4,6 +4,7 @@ from geoapi.db import db_session
 
 from geoapi.services.projects import ProjectsService
 from geoapi.models import User
+from geoapi.models.project import Project, ProjectUser
 from geoapi.exceptions import ObservableProjectAlreadyExists
 
 
@@ -20,6 +21,12 @@ def test_create_project():
     assert len(proj.users) == 1
     assert proj.name == "test name"
     assert proj.description == "test description"
+
+
+def test_delete_project(projects_fixture, user1):
+    ProjectsService.delete(user1, projects_fixture.id)
+    projects = db_session.query(Project).all()
+    assert projects == []
 
 
 def test_create_observable_project(userdata,
