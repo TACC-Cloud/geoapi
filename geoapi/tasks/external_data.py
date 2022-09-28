@@ -11,7 +11,8 @@ from celery import uuid as celery_uuid
 from geoapi.celery_app import app
 from geoapi.exceptions import InvalidCoordinateReferenceSystem, MissingServiceAccount
 from geoapi.models import User, Project, ProjectUser, ObservableDataProject, Task
-from geoapi.utils.agave import AgaveUtils, SystemUser, get_system_users, get_metadata_using_service_account, AgaveFileGetError
+from geoapi.utils.agave import (AgaveUtils, SystemUser, get_system_users, get_metadata_using_service_account,
+                                AgaveFileGetError, AgaveListingError)
 from geoapi.log import logger
 from geoapi.services.features import FeaturesService
 from geoapi.services.imports import ImportsService
@@ -224,7 +225,13 @@ def import_from_agave(tenant_id: str, userId: int, systemId: str, path: str, pro
                                                                               systemId,
                                                                               path,
                                                                               user.username))
-    listing = client.listing(systemId, path)
+    try:
+        listing = client.listing(systemId, path)
+    except AgaveListingError:
+        logger.exception(f"Unable to perform file listing on {systemId}/{path} when importing for project:{projectId}")
+        NotificationsService.create(user, "error", f"Error importing as unable to access {systemId}/{path}")
+        return
+
     # First item is always a reference to self
     files_in_directory = listing[1:]
     filenames_in_directory = [str(f.path) for f in files_in_directory]

@@ -22,6 +22,12 @@ logger = logging.getLogger(__name__)
 SLEEP_SECONDS_BETWEEN_RETRY = 2
 
 
+class AgaveListingError(Exception):
+    '''' Unable to list directory from agave
+    '''
+    pass
+
+
 class AgaveFileGetError(Exception):
     '''' Unable to fetch file from agave
     '''
@@ -113,6 +119,9 @@ class AgaveUtils:
     def listing(self, systemId: str, path: str) -> List[AgaveFileListing]:
         url = quote('/files/listings/system/{}/{}?limit=10000'.format(systemId, path))
         resp = self.get(url)
+        if resp.status_code != 200:
+            raise AgaveListingError(f"Unable to perform files listing of {systemId}/{path}. "
+                                    f"Status code: {resp.status_code}")
         listing = resp.json()
         out = [AgaveFileListing(d) for d in listing["result"]]
         return out
