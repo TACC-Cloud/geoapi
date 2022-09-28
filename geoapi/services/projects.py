@@ -272,6 +272,7 @@ class ProjectsService:
         :return:
         """
         db_session.query(Project).filter(Project.id == projectId).delete()
+        db_session.commit()
 
         assets_folder = get_project_asset_dir(projectId)
         try:
