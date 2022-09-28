@@ -331,16 +331,13 @@ def import_from_agave(tenant_id: str, userId: int, systemId: str, path: str, pro
 @app.task()
 def refresh_observable_projects():
     start_time = time.time()
-    try:
-        obs = db_session.query(ObservableDataProject).all()
-        for i, o in enumerate(obs):
+    obs = db_session.query(ObservableDataProject).all()
+    for i, o in enumerate(obs):
+        try:
             # we need a user with a jwt for importing
             importing_user = next((u for u in o.project.users if u.jwt))
-            logger.info("Refreshing observable project ({}/{}): observer:{} system:{} path:{}".format(i,
-                                                                                                      len(obs),
-                                                                                                      importing_user,
-                                                                                                      o.system_id,
-                                                                                                      o.path))
+            logger.info(f"Refreshing observable project ({i}/{len(obs)}): observer:{importing_user} "
+                        f"system:{o.system_id} path:{o.path} project:{o.project.id}")
 
             # we need to add any users who have been added to the project/system or update if their admin-status
             # has changed
@@ -378,12 +375,11 @@ def refresh_observable_projects():
             # perform the importing
             if o.watch_content:
                 import_from_agave(o.project.tenant_id, importing_user.id, o.system_id, o.path, o.project.id)
-    except Exception:  # noqa: E722
-        logger.exception("Unhandled exception when importing observable project")
-        db_session.rollback()
+        except Exception:  # noqa: E722
+            logger.exception(f"Unhandled exception when importing observable project:{o.project.id}")
+            db_session.rollback()
 
     total_time = time.time() - start_time
-    logger.info(f"{total_time}")
     logger.info("refresh_observable_projects completed. "
                 "Elapsed time {}".format(datetime.timedelta(seconds=total_time)))
 
