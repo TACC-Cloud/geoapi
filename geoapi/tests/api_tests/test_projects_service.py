@@ -4,7 +4,7 @@ from geoapi.db import db_session
 
 from geoapi.services.projects import ProjectsService
 from geoapi.models import User
-from geoapi.models.project import Project, ProjectUser
+from geoapi.models.project import Project
 from geoapi.exceptions import ObservableProjectAlreadyExists
 
 
