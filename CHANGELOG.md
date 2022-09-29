@@ -2,6 +2,20 @@
 
 ## [Unreleased]
 
+## [2.9] - 2022-09-29
+
+### Added
+
+- DES-2231: handle potential listing errors (#105)
+- Add util image (#102)
+- Use env file for docker compose (#101)
+- DES-1996: Restrict project deletion (#100)
+- DES-2236: Add retry attempts to file getting (#99)
+
+### Fixed
+
+- Hotfix: Project deletion (#104)
+
 ## [2.8] - 2022-06-03
 
 ### Changed
@@ -91,7 +105,9 @@
 - DES-1687: Add rollingback to worker tasks (#30)
 - DES-1663: Fix image rotations (#36)
 
-[unreleased]: https://github.com/TACC-Cloud/geoapi/compare/v2.8...HEAD
+[unreleased]: https://github.com/TACC-Cloud/hazmapper/compare/v2.9...HEAD
+[2.9]: https://github.com/TACC-Cloud/hazmapper/releases/tag/v2.9
+[2.8]: https://github.com/TACC-Cloud/hazmapper/releases/tag/v2.8
 [2.7]: https://github.com/TACC-Cloud/geoapi/releases/tag/v2.7
 [2.6]: https://github.com/TACC-Cloud/geoapi/releases/tag/v2.6
 [2.5]: https://github.com/TACC-Cloud/geoapi/releases/tag/v2.5
