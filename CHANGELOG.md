@@ -105,9 +105,9 @@
 - DES-1687: Add rollingback to worker tasks (#30)
 - DES-1663: Fix image rotations (#36)
 
-[unreleased]: https://github.com/TACC-Cloud/hazmapper/compare/v2.9...HEAD
-[2.9]: https://github.com/TACC-Cloud/hazmapper/releases/tag/v2.9
-[2.8]: https://github.com/TACC-Cloud/hazmapper/releases/tag/v2.8
+[unreleased]: https://github.com/TACC-Cloud/geoapi/compare/v2.9...HEAD
+[2.9]: https://github.com/TACC-Cloud/geoapi/releases/tag/v2.9
+[2.8]: https://github.com/TACC-Cloud/geoapi/releases/tag/v2.8
 [2.7]: https://github.com/TACC-Cloud/geoapi/releases/tag/v2.7
 [2.6]: https://github.com/TACC-Cloud/geoapi/releases/tag/v2.6
 [2.5]: https://github.com/TACC-Cloud/geoapi/releases/tag/v2.5
