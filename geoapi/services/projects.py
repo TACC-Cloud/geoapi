@@ -12,10 +12,8 @@ from geoapi.utils.agave import AgaveUtils, get_system_users
 from geoapi.utils.assets import get_project_asset_dir
 from geoapi.utils.users import is_anonymous
 from geoapi.tasks.external_data import import_from_agave
-from geoapi.log import logging
+from geoapi.log import logger
 from geoapi.exceptions import ApiException, ObservableProjectAlreadyExists
-
-logger = logging.getLogger(__name__)
 
 
 class ProjectsService:
@@ -274,6 +272,7 @@ class ProjectsService:
         :return:
         """
         db_session.query(Project).filter(Project.id == projectId).delete()
+        db_session.commit()
 
         assets_folder = get_project_asset_dir(projectId)
         try:
