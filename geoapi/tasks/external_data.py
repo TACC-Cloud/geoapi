@@ -11,7 +11,8 @@ from celery import uuid as celery_uuid
 from geoapi.celery_app import app
 from geoapi.exceptions import InvalidCoordinateReferenceSystem, MissingServiceAccount
 from geoapi.models import User, Project, ProjectUser, ObservableDataProject, Task
-from geoapi.utils.agave import AgaveUtils, SystemUser, get_system_users, get_metadata_using_service_account, AgaveFileGetError
+from geoapi.utils.agave import (AgaveUtils, SystemUser, get_system_users, get_metadata_using_service_account,
+                                AgaveFileGetError, AgaveListingError)
 from geoapi.log import logger
 from geoapi.services.features import FeaturesService
 from geoapi.services.imports import ImportsService
@@ -224,7 +225,13 @@ def import_from_agave(tenant_id: str, userId: int, systemId: str, path: str, pro
                                                                               systemId,
                                                                               path,
                                                                               user.username))
-    listing = client.listing(systemId, path)
+    try:
+        listing = client.listing(systemId, path)
+    except AgaveListingError:
+        logger.exception(f"Unable to perform file listing on {systemId}/{path} when importing for project:{projectId}")
+        NotificationsService.create(user, "error", f"Error importing as unable to access {systemId}/{path}")
+        return
+
     # First item is always a reference to self
     files_in_directory = listing[1:]
     filenames_in_directory = [str(f.path) for f in files_in_directory]
@@ -324,16 +331,13 @@ def import_from_agave(tenant_id: str, userId: int, systemId: str, path: str, pro
 @app.task()
 def refresh_observable_projects():
     start_time = time.time()
-    try:
-        obs = db_session.query(ObservableDataProject).all()
-        for i, o in enumerate(obs):
+    obs = db_session.query(ObservableDataProject).all()
+    for i, o in enumerate(obs):
+        try:
             # we need a user with a jwt for importing
             importing_user = next((u for u in o.project.users if u.jwt))
-            logger.info("Refreshing observable project ({}/{}): observer:{} system:{} path:{}".format(i,
-                                                                                                      len(obs),
-                                                                                                      importing_user,
-                                                                                                      o.system_id,
-                                                                                                      o.path))
+            logger.info(f"Refreshing observable project ({i}/{len(obs)}): observer:{importing_user} "
+                        f"system:{o.system_id} path:{o.path} project:{o.project.id}")
 
             # we need to add any users who have been added to the project/system or update if their admin-status
             # has changed
@@ -371,12 +375,11 @@ def refresh_observable_projects():
             # perform the importing
             if o.watch_content:
                 import_from_agave(o.project.tenant_id, importing_user.id, o.system_id, o.path, o.project.id)
-    except Exception:  # noqa: E722
-        logger.exception("Unhandled exception when importing observable project")
-        db_session.rollback()
+        except Exception:  # noqa: E722
+            logger.exception(f"Unhandled exception when importing observable project:{o.project.id}")
+            db_session.rollback()
 
     total_time = time.time() - start_time
-    logger.info(f"{total_time}")
     logger.info("refresh_observable_projects completed. "
                 "Elapsed time {}".format(datetime.timedelta(seconds=total_time)))
 

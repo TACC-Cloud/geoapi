@@ -2,7 +2,7 @@ from flask import request, abort
 from flask_restx import Resource, Namespace, fields, inputs
 from werkzeug.datastructures import FileStorage
 from werkzeug.utils import secure_filename
-from geoapi.log import logging
+from geoapi.log import logger
 from geoapi.schemas import FeatureSchema
 from geoapi.services.features import FeaturesService
 from geoapi.services.streetview import StreetviewService
@@ -14,8 +14,6 @@ from geoapi.utils.decorators import (jwt_decoder, project_permissions_allow_publ
                                      project_point_cloud_not_processing, check_access_and_get_project, is_anonymous,
                                      not_anonymous, project_admin_or_creator_permissions)
 
-
-logger = logging.getLogger(__name__)
 
 api = Namespace('projects', decorators=[jwt_decoder])
 
