@@ -157,8 +157,9 @@ class AgaveUtils:
         url = quote('/files/media/system/{}/{}'.format(systemId, path))
 
         client = service_account_client("designsafe").client if use_service_account else self.client
+        base_url = service_account_client("designsafe").base_url if use_service_account else self.base_url
 
-        with client.get(self.base_url + url, stream=True) as r:
+        with client.get(base_url + url, stream=True) as r:
             if r.status_code == 403 and not use_service_account:
                 # This is a workaround for bug documented in https://jira.tacc.utexas.edu/browse/CS-169
                 # and in https://jira.tacc.utexas.edu/browse/DES-2084 where sometimes a 403 is returned by tapis
