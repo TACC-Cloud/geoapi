@@ -2,8 +2,8 @@ from geoapi.services.streetview import StreetviewService
 from geoapi.tasks import streetview
 from geoapi.log import logging
 from geoapi.utils.decorators import jwt_decoder
-from flask_restplus import Namespace, Resource, fields
-from flask_restplus.marshalling import marshal_with
+from flask_restx import Namespace, Resource, fields
+from flask_restx.marshalling import marshal_with
 from flask import request
 
 

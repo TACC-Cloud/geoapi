@@ -1,0 +1,42 @@
+[tool.poetry]
+name = "geoapi"
+version = "2.5"
+description = ""
+authors = ["Your Name <you@example.com>"]
+
+[tool.poetry.dependencies]
+python = "^3.9"
+celery = "5.2.3"
+alembic = "^1"
+GeoAlchemy2 = "0.11.1"
+geojson = "2.5.0"
+ffmpeg-python = "^0.2.0"
+geopandas = "^0.10.2"
+PyJWT = "==1.7.1"
+pyproj = "^3.3.0"
+pytest = "^5.3.5"
+pytest-cov = "^2.8.1"
+Shapely = "^1.8"
+SQLAlchemy = "^1.3.13"
+Pillow = "^9.2.0"
+Fiona = "1.8.21"
+gunicorn = "^20.1.0"
+gevent = "^21.12.0"
+Flask = "^2.1.2"
+Werkzeug = "2.1.2"
+flask-restx = "^0.5.1"
+psycopg2 = "^2.9.3"
+requests = "^2.28.0"
+laspy = "1.6.0"
+configparser = "^5.2.0"
+cryptography = "^37.0.2"
+mapillary-tools = { git = "https://github.com/mapillary/mapillary_tools.git", rev = "4bfebf8" }
+requests-mock = "^1.10.0"
+ExifRead = "^2.3.2"
+flake8 = "^5.0.4"
+
+[tool.poetry.dev-dependencies]
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"

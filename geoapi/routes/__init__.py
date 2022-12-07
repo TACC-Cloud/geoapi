@@ -1,4 +1,4 @@
-from flask_restplus import Api
+from flask_restx import Api
 from .projects import api as projects
 from .streetview import api as streetview
 from .notifications import api as notifications

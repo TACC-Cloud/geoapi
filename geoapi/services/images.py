@@ -4,14 +4,12 @@ import io
 import PIL
 from PIL import Image
 from PIL.Image import Image as PILImage
-from PIL.ExifTags import TAGS, GPSTAGS
+import exifread
 
 from typing import Tuple, IO, AnyStr
 from dataclasses import dataclass
 from geoapi.exceptions import InvalidEXIFData
-from geoapi.log import logging
-
-logger = logging.getLogger(__name__)
+from geoapi.log import logger
 
 
 @dataclass
@@ -52,7 +50,7 @@ class ImageService:
 
         try:
             imdata = ImageService.resizeImage(fileObj)
-            exif_loc = get_exif_location(imdata.resized)
+            exif_loc = get_exif_location(fileObj)
             imdata.coordinates = exif_loc
             return imdata
         except:  # noqa: E722
@@ -78,50 +76,37 @@ class ImageService:
 
 
 def _fix_orientation(fileObj: IO) -> PILImage:
+    # from https://github.com/ianare/exif-py#usage-example
     im = Image.open(fileObj)
-    try:
-        image_exif = im._getexif()
-        # 274 is a magic number here and I don't like it. Alternatively
-        # can do something like:
-        #         for orientation in ExifTags.TAGS.keys():
-        #             if ExifTags.TAGS[orientation] == 'Orientation': break
-        # That will also return 274, the key for the value of 'Orientation'. I have no idea
-        # why PIL would arrange things that way, it seems a bit insane.
-        image_orientation = image_exif[274]
-        if image_orientation in (2, '2'):
-            return im.transpose(Image.FLIP_LEFT_RIGHT)
-        elif image_orientation in (3, '3'):
-            return im.transpose(Image.ROTATE_180)
-        elif image_orientation in (4, '4'):
-            return im.transpose(Image.FLIP_TOP_BOTTOM)
-        elif image_orientation in (5, '5'):
-            return im.transpose(Image.ROTATE_90).transpose(Image.FLIP_TOP_BOTTOM)
-        elif image_orientation in (6, '6'):
-            return im.transpose(Image.ROTATE_270)
-        elif image_orientation in (7, '7'):
-            return im.transpose(Image.ROTATE_270).transpose(Image.FLIP_TOP_BOTTOM)
-        elif image_orientation in (8, '8'):
-            return im.transpose(Image.ROTATE_90)
-        else:
-            return im
-    except (KeyError, AttributeError, TypeError, IndexError):
-        return im
+    tags = exifread.process_file(fileObj, details=False)
+    if "Image Orientation" in tags.keys():
+        logger.info("yes Image Orientation")
+    else:
+        logger.info("no Image Orientation")
 
-
-def get_exif_data(image):
-    """Returns a dictionary from the exif data of an PIL Image item. Also converts the GPS Tags"""
-    exif_data = {}
-    info = image.getexif()
-    for tag, value in info.items():
-        decoded = TAGS.get(tag, tag)
-        if decoded == "GPSInfo":
-            for t in value:
-                sub_decoded = GPSTAGS.get(t, t)
-                exif_data[sub_decoded] = value[t]
-        else:
-            exif_data[decoded] = value
-
-    return exif_data
+    if "Image Orientation" in tags.keys():
+        orientation = tags["Image Orientation"]
+        logger.info("Orientation: %s (%s)", orientation, orientation.values)
+        val = orientation.values
+        if 2 in val:
+            val += [4, 3]
+        if 5 in val:
+            val += [4, 6]
+        if 7 in val:
+            val += [4, 8]
+        if 3 in val:
+            logger.info("Rotating by 180 degrees.")
+            im = im.transpose(Image.ROTATE_180)
+        if 4 in val:
+            logger.info("Mirroring horizontally.")
+            im = im.transpose(Image.FLIP_TOP_BOTTOM)
+        if 6 in val:
+            logger.info("Rotating by 270 degrees.")
+            im = im.transpose(Image.ROTATE_270)
+        if 8 in val:
+            logger.info("Rotating by 90 degrees.")
+            im = im.transpose(Image.ROTATE_90)
+    return im
 
 
 def _convert_to_degrees(value):
@@ -146,24 +131,47 @@ def _convert_to_degrees(value):
     return d + (m / 60.0) + (s / 3600.0)
 
 
+def _get_if_exist(data, key):
+    if key in data:
+        return data[key]
+
+    return None
+
+
+def _convert_to_degress(value):
+    """
+    Helper function to convert the GPS coordinates stored in the EXIF to degress in float format
+    :param value:
+    :type value: exifread.utils.Ratio
+    :rtype: float
+    """
+    d = float(value.values[0].num) / float(value.values[0].den)
+    m = float(value.values[1].num) / float(value.values[1].den)
+    s = float(value.values[2].num) / float(value.values[2].den)
+
+    return d + (m / 60.0) + (s / 3600.0)
+
+
 def get_exif_location(image):
     """
     Returns the latitude and longitude, if available, from the provided exif_data (obtained through get_exif_data above)
     """
-    exif_data = get_exif_data(image)
+    exif_data = exifread.process_file(image)
     lat = None
     lon = None
-    gps_latitude = exif_data['GPSLatitude']
-    gps_latitude_ref = exif_data['GPSLatitudeRef']
-    gps_longitude = exif_data['GPSLongitude']
-    gps_longitude_ref = exif_data['GPSLongitudeRef']
 
-    lat = _convert_to_degrees(gps_latitude)
-    if gps_latitude_ref != 'N':
-        lat = 0 - lat
+    gps_latitude = _get_if_exist(exif_data, 'GPS GPSLatitude')
+    gps_latitude_ref = _get_if_exist(exif_data, 'GPS GPSLatitudeRef')
+    gps_longitude = _get_if_exist(exif_data, 'GPS GPSLongitude')
+    gps_longitude_ref = _get_if_exist(exif_data, 'GPS GPSLongitudeRef')
 
-    lon = _convert_to_degrees(gps_longitude)
-    if gps_longitude_ref != 'E':
-        lon = 0 - lon
+    if gps_latitude and gps_latitude_ref and gps_longitude and gps_longitude_ref:
+        lat = _convert_to_degress(gps_latitude)
+        if gps_latitude_ref.values[0] != 'N':
+            lat = 0 - lat
+
+        lon = _convert_to_degress(gps_longitude)
+        if gps_longitude_ref.values[0] != 'E':
+            lon = 0 - lon
 
     return lon, lat
