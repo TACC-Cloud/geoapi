@@ -49,7 +49,7 @@ class ProjectsService:
         project.project_users[0].creator = True
         db_session.add(project)
         db_session.commit()
-
+        setattr(project, 'deletable', True)
         return project
 
     @staticmethod
