@@ -1,8 +1,7 @@
 from geoapi.services.users import UserService
 from geoapi.services.projects import ProjectsService
 from geoapi.exceptions import ApiException
-from geoapi.models.project import ProjectUser, Project
-from geoapi.models.users import User
+from geoapi.models.project import ProjectUser
 from geoapi.db import db_session
 import pytest
 

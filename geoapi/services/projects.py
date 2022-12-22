@@ -128,7 +128,9 @@ class ProjectsService:
             raise ValueError("project_id or uid is required")
 
         if project and user and not is_anonymous(user):
-            project_user = db_session.query(ProjectUser).filter(ProjectUser.project_id == project.id).filter(ProjectUser.user_id == user.id).one_or_none()
+            project_user = db_session.query(ProjectUser)\
+                .filter(ProjectUser.project_id == project.id)\
+                .filter(ProjectUser.user_id == user.id).one_or_none()
             if project_user:
                 setattr(project, 'deletable', project_user.admin or project_user.creator)
         return project
@@ -294,7 +296,9 @@ class ProjectsService:
         proj.users.append(user)
         db_session.commit()
 
-        project_user = db_session.query(ProjectUser).filter(ProjectUser.project_id == projectId).filter(ProjectUser.user_id == user.id).one()
+        project_user = db_session.query(ProjectUser)\
+            .filter(ProjectUser.project_id == projectId)\
+            .filter(ProjectUser.user_id == user.id).one()
         project_user.admin = admin
         db_session.commit()
 

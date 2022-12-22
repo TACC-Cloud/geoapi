@@ -21,7 +21,7 @@ def test_create_project():
     assert len(proj.users) == 1
     assert proj.name == "test name"
     assert proj.description == "test description"
-    assert proj.deletable == True
+    assert proj.deletable
 
 
 def test_delete_project(projects_fixture, user1):
