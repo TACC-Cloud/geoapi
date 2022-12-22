@@ -344,7 +344,7 @@ def refresh_observable_projects():
             current_users = set([SystemUser(username=u.user.username, admin=u.admin) for u in o.project.project_users])
             updated_users = set(get_system_users(o.project.tenant_id, importing_user.jwt, o.system_id))
 
-            current_creator = db_session.query(ProjectUser).filter(Project.id == o.id).filter(ProjectUser.creator is True).one_or_none()
+            current_creator = db_session.query(ProjectUser).filter(ProjectUser.project_id == o.id).filter(ProjectUser.creator is True).one_or_none()
 
             if current_users != updated_users:
                 logger.info("Updating users from:{} to:{}".format(current_users, updated_users))
@@ -362,9 +362,9 @@ def refresh_observable_projects():
                 db_session.commit()
 
                 if current_creator:
-                    # reset the creator
+                    # reset the creator by finding that updated user again and updating it.
                     current_creator = db_session.query(ProjectUser)\
-                        .filter(Project.id == o.id)\
+                        .filter(ProjectUser.project_id == o.id)\
                         .filter(ProjectUser.user_id == current_creator.user_id)\
                         .one_or_none()
                     if current_creator:

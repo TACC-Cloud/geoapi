@@ -101,11 +101,8 @@ class ProjectsService:
         :param user: User
         :return: List[Project]
         """
-
         projects_and_project_user = db_session.query(Project, ProjectUser) \
             .join(ProjectUser) \
-            .filter(User.username == user.username) \
-            .filter(User.tenant_id == user.tenant_id) \
             .filter(ProjectUser.user_id == user.id) \
             .order_by(desc(Project.created)) \
             .all()
@@ -297,8 +294,7 @@ class ProjectsService:
         proj.users.append(user)
         db_session.commit()
 
-        project_user = db_session.query(ProjectUser).filter(Project.id == projectId)\
-            .filter(User.id == user.id).first()
+        project_user = db_session.query(ProjectUser).filter(ProjectUser.project_id == projectId).filter(ProjectUser.user_id == user.id).one()
         project_user.admin = admin
         db_session.commit()
 
