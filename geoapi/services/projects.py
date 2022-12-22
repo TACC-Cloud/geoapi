@@ -131,8 +131,9 @@ class ProjectsService:
             raise ValueError("project_id or uid is required")
 
         if project and user and not is_anonymous(user):
-            project_user = db_session.query(ProjectUser).filter(Project.id == project.id).filter(User.id == user.id).first()
-            setattr(project, 'deletable', project_user.admin or project_user.creator)
+            project_user = db_session.query(ProjectUser).filter(ProjectUser.project_id == project.id).filter(ProjectUser.user_id == user.id).one_or_none()
+            if project_user:
+                setattr(project, 'deletable', project_user.admin or project_user.creator)
         return project
 
     @staticmethod
