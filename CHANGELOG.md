@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+## [2.10] - 2023-01-04
+
+### Fixed
+- DES-2374: fix service account url for getting files (#108)
+- DES-2213: update dependencies (#97)
+
 ## [2.9] - 2022-09-29
 
 ### Added
@@ -105,7 +111,8 @@
 - DES-1687: Add rollingback to worker tasks (#30)
 - DES-1663: Fix image rotations (#36)
 
-[unreleased]: https://github.com/TACC-Cloud/geoapi/compare/v2.9...HEAD
+[unreleased]: https://github.com/TACC-Cloud/geoapi/compare/v2.10...HEAD
+[2.10]: https://github.com/TACC-Cloud/geoapi/releases/tag/v2.10
 [2.9]: https://github.com/TACC-Cloud/geoapi/releases/tag/v2.9
 [2.8]: https://github.com/TACC-Cloud/geoapi/releases/tag/v2.8
 [2.7]: https://github.com/TACC-Cloud/geoapi/releases/tag/v2.7
