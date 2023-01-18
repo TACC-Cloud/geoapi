@@ -39,10 +39,8 @@ import {{{packageName}}}
 Please follow the [installation procedure](#installation--usage) and then run the following:
 
 ```python
-from __future__ import print_function
 import geoapi_client
 from geoapi_client.rest import ApiException
-from pprint import pprint
 
 configuration = geoapi_client.Configuration()
 configuration.host = MY_HOST # e.g. https://agave.designsafe-ci.org/geo/v2
@@ -51,12 +49,21 @@ configuration.api_key['Authorization'] = TOKEN
 
 api_client = geoapi_client.ApiClient(configuration)
 api_instance = geoapi_client.ProjectsApi(api_client=api_client)
+```
 
+To get api/help:
+
+
+```
+help(api_instance)
+```
+To list projects and create a project:
+```
 try:
-    project = api_instance.create_project(payload={"name": "My project"})
-    pprint(project)
-    features = api_instance.upload_file(project.id, 'image.jpg')
-    pprint(features)
+    projects = api_instance.get_projects()
+    print(projects)
+    project = api_instance.create_project(payload={"project": {"name": "My project"}})
+    print(project)
 except ApiException as e:
     print("Exception: %s\n" % e)
 ```
