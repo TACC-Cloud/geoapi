@@ -1,4 +1,3 @@
-import shutil
 from pathlib import Path
 from typing import List, Optional
 
@@ -9,9 +8,9 @@ from sqlalchemy.sql import select, text
 from sqlalchemy.exc import IntegrityError
 from geoapi.services.users import UserService
 from geoapi.utils.agave import AgaveUtils, get_system_users
-from geoapi.utils.assets import get_project_asset_dir
 from geoapi.utils.users import is_anonymous
 from geoapi.tasks.external_data import import_from_agave
+from geoapi.tasks.projects import remove_project_assets
 from geoapi.log import logger
 from geoapi.exceptions import ApiException, ObservableProjectAlreadyExists
 
@@ -274,11 +273,8 @@ class ProjectsService:
         db_session.query(Project).filter(Project.id == projectId).delete()
         db_session.commit()
 
-        assets_folder = get_project_asset_dir(projectId)
-        try:
-            shutil.rmtree(assets_folder)
-        except FileNotFoundError:
-            pass
+        remove_project_assets.apply_async(args=[projectId])
+
         return {"status": "ok"}
 
     @staticmethod

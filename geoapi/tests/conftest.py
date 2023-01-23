@@ -457,6 +457,20 @@ def get_system_users_mock(userdata):
 
 
 @pytest.fixture(scope="function")
+def remove_project_assets_mock():
+    # we mock method so that we execute it synchronously (and not as a celery task on worker)
+    # when testing some routes
+    with patch('geoapi.services.projects.remove_project_assets') as mock_remove_project:
+        from geoapi.tasks.projects import remove_project_assets
+
+        def remove(args):
+            remove_project_assets(project_id=args[0])
+
+        mock_remove_project.apply_async.side_effect = remove
+        yield mock_remove_project
+
+
+@pytest.fixture(scope="function")
 def tile_server_ini_file_fixture():
     home = os.path.dirname(__file__)
     with open(os.path.join(home, 'fixtures/metadata.ini'), 'rb') as f:
