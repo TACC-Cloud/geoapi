@@ -1,8 +1,10 @@
 import datetime
 import uuid
+import os
 from geoapi.db import db_session
 from geoapi.models.users import User
 from geoapi.models.project import Project, ProjectUser
+from geoapi.utils.assets import get_project_asset_dir
 
 
 def test_get_projects(test_client, projects_fixture, user1):
@@ -119,13 +121,24 @@ def test_project_data_allow_public_access(test_client, public_projects_fixture, 
     assert resp.status_code == 200
 
 
-def test_delete_empty_project(test_client, projects_fixture, user1):
+def test_delete_empty_project(test_client, projects_fixture, remove_project_assets_mock, user1):
     resp = test_client.delete(f'/projects/{projects_fixture.id}/', headers={'x-jwt-assertion-test': user1.jwt})
     assert resp.status_code == 200
     projects = db_session.query(Project).all()
     projectUsers = db_session.query(ProjectUser).all()
     assert projects == []
     assert projectUsers == []
+
+
+def test_delete_project(test_client, projects_fixture, remove_project_assets_mock, image_feature_fixture, user1):
+    assert os.path.isdir(get_project_asset_dir(projects_fixture.id))
+    resp = test_client.delete(f'/projects/{projects_fixture.id}/', headers={'x-jwt-assertion-test': user1.jwt})
+    assert resp.status_code == 200
+    projects = db_session.query(Project).all()
+    projectUsers = db_session.query(ProjectUser).all()
+    assert projects == []
+    assert projectUsers == []
+    assert not os.path.isdir(get_project_asset_dir(projects_fixture.id))
 
 
 def test_delete_unauthorized(test_client, projects_fixture, user2):

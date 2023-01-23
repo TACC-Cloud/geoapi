@@ -23,7 +23,7 @@ def test_create_project():
     assert proj.description == "test description"
 
 
-def test_delete_project(projects_fixture, user1):
+def test_delete_project(projects_fixture, remove_project_assets_mock, user1):
     ProjectsService.delete(user1, projects_fixture.id)
     projects = db_session.query(Project).all()
     assert projects == []
