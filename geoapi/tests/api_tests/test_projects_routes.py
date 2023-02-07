@@ -24,6 +24,17 @@ def test_get_projects_but_not_admin_or_creator(test_client, user2, projects_fixt
     assert data[0]["deletable"] is False
 
 
+def test_get_projects_with_multiple(test_client, user1, projects_fixture2, projects_fixture):
+    resp = test_client.get('/projects/', headers={'x-jwt-assertion-test': user1.jwt})
+    data = resp.get_json()
+    assert resp.status_code == 200
+    assert len(data) == 2
+    assert data[0]["deletable"] is True
+    assert data[0]["id"] == projects_fixture.id
+    assert data[1]["id"] == projects_fixture2.id
+    assert data[1]["deletable"] is True
+
+
 def test_get_projects_not_allowed(test_client):
     resp = test_client.get('/projects/')
     assert resp.status_code == 403

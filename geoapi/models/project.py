@@ -17,7 +17,7 @@ class ProjectUser(Base):
     creator = Column(Boolean, nullable=False, default=False)
     admin = Column(Boolean, nullable=False, default=False)
     project = relationship('Project', backref=backref('project_users', cascade="all, delete-orphan"))
-    user = relationship('User')
+    user = relationship('User', viewonly=True)
 
     def __repr__(self):
         return f'<ProjectUser(user_id={self.user_id}, project_id={self.project_id}, admin={self.admin}, creator={self.creator})>'
@@ -41,7 +41,8 @@ class Project(Base):
 
     users = relationship('User',
                          secondary='projects_users',
-                         back_populates='projects')
+                         back_populates='projects',
+                         overlaps="project,project_users")
     point_clouds = relationship('PointCloud', cascade="all, delete-orphan")
 
     def __repr__(self):

@@ -1,7 +1,4 @@
 from urllib.parse import quote
-from geoapi.log import logging
-
-logger = logging.getLogger(__name__)
 
 
 def get_system_users(tenant_id, jwt, system_id: str):
