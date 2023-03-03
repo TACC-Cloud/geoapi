@@ -103,6 +103,11 @@ def get_additional_files(systemId: str, path: str, client, available_files=None)
 
 @app.task(rate_limit="1/s")
 def import_file_from_agave(userId: int, systemId: str, path: str, projectId: int):
+    """
+    Import file from TAPIS system
+
+    Note: all geolocation information is expected to be embedded in the imported file.
+    """
     user = db_session.query(User).get(userId)
     client = AgaveUtils(user.jwt)
     try:

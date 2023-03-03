@@ -44,17 +44,18 @@ class ImageService:
     def processImage(fileObj: IO) -> ImageData:
         """
         Resize and get the EXIF GeoLocation from an image
+
+        Image need geolocation information. If missing, then
+        get_exif_location raises InvalidEXIFData.
+
         :param fileObj:
         :return:
         """
+        imdata = ImageService.resizeImage(fileObj)
+        exif_loc = get_exif_location(fileObj)
+        imdata.coordinates = exif_loc
+        return imdata
 
-        try:
-            imdata = ImageService.resizeImage(fileObj)
-            exif_loc = get_exif_location(fileObj)
-            imdata.coordinates = exif_loc
-            return imdata
-        except:  # noqa: E722
-            raise InvalidEXIFData()
 
     @staticmethod
     def resizeImage(fileObj: IO) -> ImageData:
@@ -155,6 +156,9 @@ def _convert_to_degress(value):
 def get_exif_location(image):
     """
     Returns the latitude and longitude, if available, from the provided exif_data (obtained through get_exif_data above)
+
+    raises: InvalidEXIFData: if geospatial data missing
+
     """
     exif_data = exifread.process_file(image)
     lat = None
@@ -174,4 +178,6 @@ def get_exif_location(image):
         if gps_longitude_ref.values[0] != 'E':
             lon = 0 - lon
 
+    if not lat or not lon:
+        raise InvalidEXIFData
     return lon, lat
