@@ -101,7 +101,7 @@ def get_additional_files(systemId: str, path: str, client, available_files=None)
     return additional_files
 
 
-@app.task(rate_limit="1/s")
+@app.task(rate_limit="10/s")
 def import_file_from_agave(userId: int, systemId: str, path: str, projectId: int):
     """
     Import file from TAPIS system
