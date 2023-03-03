@@ -56,7 +56,6 @@ class ImageService:
         imdata.coordinates = exif_loc
         return imdata
 
-
     @staticmethod
     def resizeImage(fileObj: IO) -> ImageData:
 

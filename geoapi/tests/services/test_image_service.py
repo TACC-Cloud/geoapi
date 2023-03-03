@@ -3,6 +3,7 @@ from geoapi.exceptions import InvalidEXIFData
 from PIL import Image, ImageChops
 import pytest
 
+
 def test_image_service_rotations(flipped_image_fixture, corrected_image_fixture):
     imdata = ImageService.processImage(flipped_image_fixture)
     imdata.resized.save("/tmp/test_it_is_rotated.jpg")
