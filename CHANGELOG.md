@@ -2,6 +2,11 @@
 
 ## [Unreleased]
 
+## [2.12] - 2023-04-11
+
+### Fixed
+- DES-2420: fix handling of missing image geolocation
+
 ## [2.11] - 2023-03-02
 
 ### Fixed
