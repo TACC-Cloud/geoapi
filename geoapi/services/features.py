@@ -17,7 +17,7 @@ from geoapi.services.vectors import VectorService
 from geoapi.models import Feature, FeatureAsset, Overlay, User, TileServer
 from geoapi.db import db_session
 from geoapi.exceptions import InvalidGeoJSON, ApiException
-from geoapi.utils.assets import make_project_asset_dir, delete_assets, get_asset_relative_path
+from geoapi.utils.assets import make_project_asset_dir, delete_assets, get_asset_relative_path, get_project_asset_dir
 from geoapi.log import logging
 from geoapi.utils import geometries
 from geoapi.utils.agave import AgaveUtils
@@ -623,3 +623,19 @@ class FeaturesService:
             ret_list.append(ts)
             db_session.commit()
         return ret_list
+
+
+    @staticmethod
+    def getAssetSource(projectId: int, featureId: int):
+        """
+        Retreive the source of a Feature Asset
+        :param projectId: int
+        :param featureId: int
+        :return: {data: $asset_source}
+        """
+        feature = db_session.query(Feature).get(featureId)
+        asset_path = "/assets/{}".format(feature.assets[0].path)
+
+        with open(asset_path, 'r') as tmp:
+            asset_source = json.load(tmp)
+        return {'data': asset_source}

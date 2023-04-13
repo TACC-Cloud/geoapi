@@ -10,7 +10,7 @@ from flask_restx import Namespace
 from flask.views import MethodView
 from geoapi.utils.decorators import jwt_decoder
 from geoapi.log import logging
-from geoapi.routes.projects import (ProjectsListing, ProjectResource,
+from geoapi.routes.projects import (ProjectFeatureAssetSourceResource, ProjectsListing, ProjectResource,
                                     ProjectFeaturesResource, ProjectFeatureResource,
                                     ProjectOverlaysResource, ProjectPointCloudResource,
                                     ProjectPointCloudsResource, ProjectTileServersResource)
@@ -66,4 +66,9 @@ class PublicProjectPointCloudResource(ProjectPointCloudResource, metaclass=HideN
 
 @api.route('/<int:projectId>/tile-servers/')
 class PublicProjectTileServersResource(ProjectTileServersResource, metaclass=HideNonPublicMeta):
+    pass
+
+
+@api.route('/<int:projectId>/assets/<int:featureId>/')
+class PublicProjectFeatureAssetSourceResource(ProjectFeatureAssetSourceResource, metaclass=HideNonPublicMeta):
     pass
