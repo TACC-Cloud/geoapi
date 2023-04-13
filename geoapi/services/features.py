@@ -256,7 +256,6 @@ class FeaturesService:
         feat = Feature()
         feat.project_id = projectId
         feat.the_geom = from_shape(point, srid=4326)
-        feat.properties = metadata or data
 
         asset_uuid = uuid.uuid4()
         base_filepath = make_project_asset_dir(projectId)
