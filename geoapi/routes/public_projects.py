@@ -10,7 +10,7 @@ from flask_restx import Namespace
 from flask.views import MethodView
 from geoapi.utils.decorators import jwt_decoder
 from geoapi.log import logging
-from geoapi.routes.projects import (ProjectFeatureAssetSourceResource, ProjectsListing, ProjectResource,
+from geoapi.routes.projects import (ProjectsListing, ProjectResource,
                                     ProjectFeaturesResource, ProjectFeatureResource,
                                     ProjectOverlaysResource, ProjectPointCloudResource,
                                     ProjectPointCloudsResource, ProjectTileServersResource)

@@ -1,6 +1,5 @@
 from flask import request, abort
 from flask_restx import Resource, Namespace, fields, inputs
-# from flask_cors import cross_origin
 from werkzeug.datastructures import FileStorage
 from werkzeug.utils import secure_filename
 from geoapi.log import logger
