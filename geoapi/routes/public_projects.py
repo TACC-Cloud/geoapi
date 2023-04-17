@@ -67,8 +67,3 @@ class PublicProjectPointCloudResource(ProjectPointCloudResource, metaclass=HideN
 @api.route('/<int:projectId>/tile-servers/')
 class PublicProjectTileServersResource(ProjectTileServersResource, metaclass=HideNonPublicMeta):
     pass
-
-
-@api.route('/<int:projectId>/assets/<int:featureId>/')
-class PublicProjectFeatureAssetSourceResource(ProjectFeatureAssetSourceResource, metaclass=HideNonPublicMeta):
-    pass

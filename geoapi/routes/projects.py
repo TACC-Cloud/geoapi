@@ -1,5 +1,6 @@
 from flask import request, abort
 from flask_restx import Resource, Namespace, fields, inputs
+# from flask_cors import cross_origin
 from werkzeug.datastructures import FileStorage
 from werkzeug.utils import secure_filename
 from geoapi.log import logger
@@ -111,11 +112,6 @@ tile_server = api.model('TileServer', {
     'tileOptions': fields.Raw(allow_null=True),
     'uiOptions': fields.Raw(allow_null=True)
 })
-
-asset_source = api.model('AssetSource', {
-    'data': fields.Raw(allow_null=True),
-})
-
 
 file_upload_parser = api.parser()
 file_upload_parser.add_argument('file', location='files', type=FileStorage, required=True)
@@ -690,15 +686,3 @@ class ProjectTileServerResource(Resource):
 
         return FeaturesService.updateTileServer(tileServerId=tileServerId,
                                                 data=api.payload)
-
-
-@api.route('/<int:projectId>/assets/<int:featureId>/')
-class ProjectFeatureAssetSourceResource(Resource):
-    @api.doc(id="getFeatureAssetSource",
-             description='Gets the asset source of a feature')
-    @api.marshal_with(asset_source)
-    @project_permissions_allow_public
-    def get(self, projectId: int, featureId: int):
-        logger.info("Get asset source for Feature:{} in project:{} for user:{}".format(
-            featureId, projectId, request.current_user.username))
-        return FeaturesService.getAssetSource(projectId, featureId)
