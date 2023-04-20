@@ -259,7 +259,9 @@ class FeaturesService:
 
         asset_uuid = uuid.uuid4()
         base_filepath = make_project_asset_dir(projectId)
-        asset_path = os.path.join(base_filepath, str(asset_uuid) + '.rq')
+        questionnaire_path = os.path.join(base_filepath, str(asset_uuid))
+        pathlib.Path(questionnaire_path).mkdir(parents=True, exist_ok=True)
+        asset_path = os.path.join(questionnaire_path, 'questionnaire.rq')
 
         with open(asset_path, 'w') as tmp:
             tmp.write(json.dumps(data))
@@ -269,7 +271,7 @@ class FeaturesService:
             asset_type="questionnaire",
             original_path=original_path,
             display_path=original_path,
-            path=get_asset_relative_path(asset_path),
+            path=get_asset_relative_path(questionnaire_path),
             feature=feat,
         )
         feat.assets.append(fa)
