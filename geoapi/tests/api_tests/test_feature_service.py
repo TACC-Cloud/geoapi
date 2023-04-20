@@ -205,3 +205,14 @@ def test_create_tile_server_from_file(projects_fixture, tile_server_ini_file_fix
     assert tile_server.type == "tms"
     assert tile_server.url == "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
     assert tile_server.attribution == "OpenStreetMap contributorshttps://www.openstreetmap.org/copyright"
+
+
+def test_create_questionnaire_feature(projects_fixture, questionnaire_file_fixture):
+    feature = FeaturesService.fromRAPP(projects_fixture.id, questionnaire_file_fixture, metadata={})
+    assert feature.project_id == projects_fixture.id
+    assert len(feature.assets) == 1
+    assert db_session.query(Feature).count() == 1
+    assert db_session.query(FeatureAsset).count() == 1
+    assert len(os.listdir(get_project_asset_dir(feature.project_id))) == 1
+    os.path.isfile(get_asset_path(feature.assets[0].path + '/questionnaire.rq'))
+    os.path.isfile(os.path.join(get_project_asset_dir(projects_fixture.id), str(feature.assets[0].uuid) + "/questionnaire.rq"))

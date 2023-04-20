@@ -337,6 +337,7 @@ def shapefile_first_element_geometry():
     yield wkt
 
 
+
 @pytest.fixture(scope="function")
 def feature_properties_file_fixture():
     home = os.path.dirname(__file__)
@@ -460,4 +461,11 @@ def get_system_users_mock(userdata):
 def tile_server_ini_file_fixture():
     home = os.path.dirname(__file__)
     with open(os.path.join(home, 'fixtures/metadata.ini'), 'rb') as f:
+        yield f
+
+
+@pytest.fixture(scope="function")
+def questionnaire_file_fixture():
+    home = os.path.dirname(__file__)
+    with open(os.path.join(home, 'fixtures/questionnaire.rq'), 'rb') as f:
         yield f
