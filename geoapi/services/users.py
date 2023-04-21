@@ -41,7 +41,7 @@ class UserService:
             .join(Project)\
             .filter(ProjectUser.user_id == user.id)\
             .filter(Project.tenant_id == user.tenant_id)\
-            .filter(ProjectUser.project_id == projectId).first()
+            .filter(ProjectUser.project_id == projectId).one_or_none()
         if up:
             return True
         return False
@@ -52,7 +52,7 @@ class UserService:
             .join(Project) \
             .filter(ProjectUser.user_id == user.id) \
             .filter(Project.tenant_id == user.tenant_id) \
-            .filter(ProjectUser.project_id == projectId).first()
+            .filter(ProjectUser.project_id == projectId).one_or_none()
         if up:
             return up.admin or up.creator
         return False

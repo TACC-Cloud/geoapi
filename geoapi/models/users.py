@@ -15,7 +15,8 @@ class User(Base):
     streetviews = relationship('Streetview', cascade="all, delete-orphan")
     projects = relationship('Project',
                             secondary='projects_users',
-                            back_populates='users', lazy="joined")
+                            back_populates='users', lazy="joined",
+                            overlaps="project,project_users")
 
     def __repr__(self):
         return '<User(uname={}, id={})>'.format(self.username, self.id)

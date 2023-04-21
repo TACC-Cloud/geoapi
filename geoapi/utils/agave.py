@@ -308,9 +308,8 @@ def get_system_users(tenant_id, jwt, system_id: str) -> List[SystemUser]:
     :return: list of users with admin status
     """
 
-    if tenant_id in custom_system_user_retrieval:
-        return custom_system_user_retrieval[tenant_id](tenant_id, jwt, system_id)
-
+    if tenant_id.upper() in custom_system_user_retrieval:
+        return custom_system_user_retrieval[tenant_id.upper()](tenant_id, jwt, system_id)
     return get_default_system_users(tenant_id, jwt, system_id)
 
 

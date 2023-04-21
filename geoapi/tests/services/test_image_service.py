@@ -1,5 +1,7 @@
 from geoapi.services.images import ImageService, get_exif_location
+from geoapi.exceptions import InvalidEXIFData
 from PIL import Image, ImageChops
+import pytest
 
 
 def test_image_service_rotations(flipped_image_fixture, corrected_image_fixture):
@@ -28,6 +30,16 @@ def test_get_exif_location(image_file_fixture):
     assert coordinates == (-80.78037499999999, 32.61850555555556)
 
 
+def test_get_exif_location_missing(image_file_no_location_fixture):
+    with pytest.raises(InvalidEXIFData):
+        get_exif_location(image_file_no_location_fixture)
+
+
 def test_process_image(image_file_fixture):
     imdata = ImageService.processImage(image_file_fixture)
     assert imdata.coordinates == (-80.78037499999999, 32.61850555555556)
+
+
+def test_process_image_location_missing(image_file_no_location_fixture):
+    with pytest.raises(InvalidEXIFData):
+        ImageService.processImage(image_file_no_location_fixture)
