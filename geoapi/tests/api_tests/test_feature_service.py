@@ -214,5 +214,4 @@ def test_create_questionnaire_feature(projects_fixture, questionnaire_file_fixtu
     assert db_session.query(Feature).count() == 1
     assert db_session.query(FeatureAsset).count() == 1
     assert len(os.listdir(get_project_asset_dir(feature.project_id))) == 1
-    os.path.isfile(get_asset_path(feature.assets[0].path + '/questionnaire.rq'))
-    os.path.isfile(os.path.join(get_project_asset_dir(projects_fixture.id), str(feature.assets[0].uuid) + "/questionnaire.rq"))
+    assert os.path.isfile(os.path.join(get_project_asset_dir(projects_fixture.id), str(feature.assets[0].uuid) + "/questionnaire.rq"))
