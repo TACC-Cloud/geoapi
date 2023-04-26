@@ -337,7 +337,6 @@ def shapefile_first_element_geometry():
     yield wkt
 
 
-
 @pytest.fixture(scope="function")
 def feature_properties_file_fixture():
     home = os.path.dirname(__file__)
