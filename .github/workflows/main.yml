@@ -19,7 +19,7 @@ jobs:
       - name: Run flake8
         run: flake8 geoapi
   Geoapi_Unit_Tests:
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-latest
     env:
       APP_ENV: testing
       DB_HOST: localhost
@@ -60,7 +60,7 @@ jobs:
     - name: Run server-side unit tests
       run: poetry run pytest
   Workers_Unit_Tests:
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-latest
     services:
       postgres:
         image: mdillon/postgis:11-alpine

@@ -18,3 +18,7 @@ def test_get_system_users(requests_mock, project_response):
     users = get_system_users(tenant_id="DESIGNSAFE", jwt="dummy", system_id=f"project-{uuid}")
     users_as_list_of_dict = [{u.username: u.admin} for u in users]
     assert users_as_list_of_dict == [{'user_pi': True}, {'user_copi': True}, {'user3': False}, {'user4': False}]
+
+    users = get_system_users(tenant_id="designsafe", jwt="dummy", system_id=f"project-{uuid}")
+    users_as_list_of_dict = [{u.username: u.admin} for u in users]
+    assert users_as_list_of_dict == [{'user_pi': True}, {'user_copi': True}, {'user3': False}, {'user4': False}]

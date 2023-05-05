@@ -1,4 +1,3 @@
-import shutil
 from pathlib import Path
 from typing import List, Optional
 
@@ -9,9 +8,9 @@ from sqlalchemy.sql import select, text
 from sqlalchemy.exc import IntegrityError
 from geoapi.services.users import UserService
 from geoapi.utils.agave import AgaveUtils, get_system_users
-from geoapi.utils.assets import get_project_asset_dir
 from geoapi.utils.users import is_anonymous
 from geoapi.tasks.external_data import import_from_agave
+from geoapi.tasks.projects import remove_project_assets
 from geoapi.log import logger
 from geoapi.exceptions import ApiException, ObservableProjectAlreadyExists
 
@@ -49,7 +48,7 @@ class ProjectsService:
         project.project_users[0].creator = True
         db_session.add(project)
         db_session.commit()
-
+        setattr(project, 'deletable', True)
         return project
 
     @staticmethod
@@ -101,11 +100,8 @@ class ProjectsService:
         :param user: User
         :return: List[Project]
         """
-
         projects_and_project_user = db_session.query(Project, ProjectUser) \
             .join(ProjectUser) \
-            .filter(User.username == user.username) \
-            .filter(User.tenant_id == user.tenant_id) \
             .filter(ProjectUser.user_id == user.id) \
             .order_by(desc(Project.created)) \
             .all()
@@ -131,8 +127,11 @@ class ProjectsService:
             raise ValueError("project_id or uid is required")
 
         if project and user and not is_anonymous(user):
-            project_user = db_session.query(ProjectUser).filter(Project.id == project.id).filter(User.id == user.id).first()
-            setattr(project, 'deletable', project_user.admin or project_user.creator)
+            project_user = db_session.query(ProjectUser)\
+                .filter(ProjectUser.project_id == project.id)\
+                .filter(ProjectUser.user_id == user.id).one_or_none()
+            if project_user:
+                setattr(project, 'deletable', project_user.admin or project_user.creator)
         return project
 
     @staticmethod
@@ -274,11 +273,8 @@ class ProjectsService:
         db_session.query(Project).filter(Project.id == projectId).delete()
         db_session.commit()
 
-        assets_folder = get_project_asset_dir(projectId)
-        try:
-            shutil.rmtree(assets_folder)
-        except FileNotFoundError:
-            pass
+        remove_project_assets.apply_async(args=[projectId])
+
         return {"status": "ok"}
 
     @staticmethod
@@ -296,8 +292,9 @@ class ProjectsService:
         proj.users.append(user)
         db_session.commit()
 
-        project_user = db_session.query(ProjectUser).filter(Project.id == projectId)\
-            .filter(User.id == user.id).first()
+        project_user = db_session.query(ProjectUser)\
+            .filter(ProjectUser.project_id == projectId)\
+            .filter(ProjectUser.user_id == user.id).one()
         project_user.admin = admin
         db_session.commit()
 

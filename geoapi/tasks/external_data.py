@@ -10,7 +10,7 @@ from celery import uuid as celery_uuid
 
 from geoapi.celery_app import app
 from geoapi.exceptions import InvalidCoordinateReferenceSystem, MissingServiceAccount
-from geoapi.models import User, Project, ProjectUser, ObservableDataProject, Task
+from geoapi.models import User, ProjectUser, ObservableDataProject, Task
 from geoapi.utils.agave import (AgaveUtils, SystemUser, get_system_users, get_metadata_using_service_account,
                                 AgaveFileGetError, AgaveListingError)
 from geoapi.log import logger
@@ -101,8 +101,13 @@ def get_additional_files(systemId: str, path: str, client, available_files=None)
     return additional_files
 
 
-@app.task(rate_limit="1/s")
+@app.task(rate_limit="10/s")
 def import_file_from_agave(userId: int, systemId: str, path: str, projectId: int):
+    """
+    Import file from TAPIS system
+
+    Note: all geolocation information is expected to be embedded in the imported file.
+    """
     user = db_session.query(User).get(userId)
     client = AgaveUtils(user.jwt)
     try:
@@ -219,6 +224,20 @@ def import_point_clouds_from_agave(userId: int, files, pointCloudId: int):
 
 @app.task(rate_limit="5/s")
 def import_from_agave(tenant_id: str, userId: int, systemId: str, path: str, projectId: int):
+    """
+    Recursively import files from a system/path.
+
+    If file has already been imported (i.e. during a previously call), we don't re-import it. Likewise,
+    if we have previously failed at importing a file, we do not retry to import the file (unless it was an error like
+    file-access where it makes sense to retry at a later time).
+
+    Files located in /Rapp folder (i.e. created by the RAPP app) are handled differently as their location data is not
+    contained in specific-file-format meta data (e.g. exif for images) but instead the location is stored in Tapis
+    metadata.
+
+    This method is called by refresh_observable_projects()
+    """
+
     user = db_session.query(User).get(userId)
     client = AgaveUtils(user.jwt)
     logger.info("Importing for project:{} directory:{}/{} for user:{}".format(projectId,
@@ -344,7 +363,9 @@ def refresh_observable_projects():
             current_users = set([SystemUser(username=u.user.username, admin=u.admin) for u in o.project.project_users])
             updated_users = set(get_system_users(o.project.tenant_id, importing_user.jwt, o.system_id))
 
-            current_creator = db_session.query(ProjectUser).filter(Project.id == o.id).filter(ProjectUser.creator is True).one_or_none()
+            current_creator = db_session.query(ProjectUser)\
+                .filter(ProjectUser.project_id == o.id)\
+                .filter(ProjectUser.creator is True).one_or_none()
 
             if current_users != updated_users:
                 logger.info("Updating users from:{} to:{}".format(current_users, updated_users))
@@ -362,9 +383,9 @@ def refresh_observable_projects():
                 db_session.commit()
 
                 if current_creator:
-                    # reset the creator
+                    # reset the creator by finding that updated user again and updating it.
                     current_creator = db_session.query(ProjectUser)\
-                        .filter(Project.id == o.id)\
+                        .filter(ProjectUser.project_id == o.id)\
                         .filter(ProjectUser.user_id == current_creator.user_id)\
                         .one_or_none()
                     if current_creator:
