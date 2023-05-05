@@ -101,8 +101,13 @@ def get_additional_files(systemId: str, path: str, client, available_files=None)
     return additional_files
 
 
-@app.task(rate_limit="1/s")
+@app.task(rate_limit="10/s")
 def import_file_from_agave(userId: int, systemId: str, path: str, projectId: int):
+    """
+    Import file from TAPIS system
+
+    Note: all geolocation information is expected to be embedded in the imported file.
+    """
     user = db_session.query(User).get(userId)
     client = AgaveUtils(user.jwt)
     try:
@@ -219,6 +224,20 @@ def import_point_clouds_from_agave(userId: int, files, pointCloudId: int):
 
 @app.task(rate_limit="5/s")
 def import_from_agave(tenant_id: str, userId: int, systemId: str, path: str, projectId: int):
+    """
+    Recursively import files from a system/path.
+
+    If file has already been imported (i.e. during a previously call), we don't re-import it. Likewise,
+    if we have previously failed at importing a file, we do not retry to import the file (unless it was an error like
+    file-access where it makes sense to retry at a later time).
+
+    Files located in /Rapp folder (i.e. created by the RAPP app) are handled differently as their location data is not
+    contained in specific-file-format meta data (e.g. exif for images) but instead the location is stored in Tapis
+    metadata.
+
+    This method is called by refresh_observable_projects()
+    """
+
     user = db_session.query(User).get(userId)
     client = AgaveUtils(user.jwt)
     logger.info("Importing for project:{} directory:{}/{} for user:{}".format(projectId,

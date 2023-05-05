@@ -2,6 +2,20 @@
 
 ## [Unreleased]
 
+## [2.12] - 2023-04-11
+
+### Fixed
+- DES-2420: fix handling of missing image geolocation
+
+## [2.11] - 2023-03-02
+
+### Fixed
+- DES-2381: fix errors related to determining if a user can delete a project (#111)
+
+### Changed
+- Move project asset directory deletion work to celery task (#118)
+- Add status endpoint (#117)
+
 ## [2.10] - 2023-01-04
 
 ### Fixed
@@ -111,8 +125,8 @@
 - DES-1687: Add rollingback to worker tasks (#30)
 - DES-1663: Fix image rotations (#36)
 
-[unreleased]: https://github.com/TACC-Cloud/geoapi/compare/v2.10...HEAD
-[2.10]: https://github.com/TACC-Cloud/geoapi/releases/tag/v2.10
+[unreleased]: https://github.com/TACC-Cloud/geoapi/compare/v2.11...HEAD
+[2.11]: https://github.com/TACC-Cloud/geoapi/releases/tag/v2.11
 [2.9]: https://github.com/TACC-Cloud/geoapi/releases/tag/v2.9
 [2.8]: https://github.com/TACC-Cloud/geoapi/releases/tag/v2.8
 [2.7]: https://github.com/TACC-Cloud/geoapi/releases/tag/v2.7
