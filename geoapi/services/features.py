@@ -50,6 +50,10 @@ class FeaturesService:
         'shp',
     )
 
+    RAPP_FILE_EXTENSIONS = (
+        'rq',
+    )
+
     ALLOWED_GEOSPATIAL_FEATURE_ASSET_EXTENSIONS = IMAGE_FILE_EXTENSIONS + VIDEO_FILE_EXTENSIONS
 
     INI_FILE_EXTENSIONS = (
@@ -57,10 +61,10 @@ class FeaturesService:
     )
 
     ALLOWED_GEOSPATIAL_EXTENSIONS = IMAGE_FILE_EXTENSIONS + GPX_FILE_EXTENSIONS + GEOJSON_FILE_EXTENSIONS\
-        + SHAPEFILE_FILE_EXTENSIONS
+        + SHAPEFILE_FILE_EXTENSIONS + RAPP_FILE_EXTENSIONS
 
     ALLOWED_EXTENSIONS = IMAGE_FILE_EXTENSIONS + VIDEO_FILE_EXTENSIONS + AUDIO_FILE_EXTENSIONS + GPX_FILE_EXTENSIONS\
-        + GEOJSON_FILE_EXTENSIONS + SHAPEFILE_FILE_EXTENSIONS + INI_FILE_EXTENSIONS
+        + GEOJSON_FILE_EXTENSIONS + SHAPEFILE_FILE_EXTENSIONS + INI_FILE_EXTENSIONS + RAPP_FILE_EXTENSIONS
 
     @staticmethod
     def get(featureId: int) -> Feature:
@@ -235,6 +239,48 @@ class FeaturesService:
         return features
 
     @staticmethod
+    def fromRAPP(projectId: int, fileObj: IO, metadata: Dict, original_path: str = None) -> Feature:
+        """
+
+        :param projectId: int
+        :param fileObj: file descriptor
+        :param metadata: Dict of <key, val> pairs
+        :param original_path: str path of original file location
+        :return: Feature
+        """
+        data = json.loads(fileObj.read())
+
+        lng = data.get('geolocation')[0].get('longitude')
+        lat = data.get('geolocation')[0].get('latitude')
+        point = Point(lng, lat)
+        feat = Feature()
+        feat.project_id = projectId
+        feat.the_geom = from_shape(point, srid=4326)
+
+        asset_uuid = uuid.uuid4()
+        base_filepath = make_project_asset_dir(projectId)
+        questionnaire_path = os.path.join(base_filepath, str(asset_uuid))
+        pathlib.Path(questionnaire_path).mkdir(parents=True, exist_ok=True)
+        asset_path = os.path.join(questionnaire_path, 'questionnaire.rq')
+
+        with open(asset_path, 'w') as tmp:
+            tmp.write(json.dumps(data))
+
+        fa = FeatureAsset(
+            uuid=asset_uuid,
+            asset_type="questionnaire",
+            original_path=original_path,
+            display_path=original_path,
+            path=get_asset_relative_path(questionnaire_path),
+            feature=feat,
+        )
+        feat.assets.append(fa)
+
+        db_session.add(feat)
+        db_session.commit()
+        return feat
+
+    @staticmethod
     def fromINI(projectId: int, fileObj: IO, metadata: Dict, original_path: str = None) -> TileServer:
         """
 
@@ -296,6 +342,8 @@ class FeaturesService:
             return FeaturesService.fromShapefile(projectId, fileObj, {}, additional_files, original_path)
         elif ext in FeaturesService.INI_FILE_EXTENSIONS:
             return FeaturesService.fromINI(projectId, fileObj, {}, original_path)
+        elif ext in FeaturesService.RAPP_FILE_EXTENSIONS:
+            return FeaturesService.fromRAPP(projectId, fileObj, {}, original_path)
         else:
             raise ApiException("Filetype not supported for direct upload. Create a feature and attach as an asset?")
 

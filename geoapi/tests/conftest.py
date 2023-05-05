@@ -475,3 +475,10 @@ def tile_server_ini_file_fixture():
     home = os.path.dirname(__file__)
     with open(os.path.join(home, 'fixtures/metadata.ini'), 'rb') as f:
         yield f
+
+
+@pytest.fixture(scope="function")
+def questionnaire_file_fixture():
+    home = os.path.dirname(__file__)
+    with open(os.path.join(home, 'fixtures/questionnaire.rq'), 'rb') as f:
+        yield f
