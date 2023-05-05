@@ -35,9 +35,3 @@ try:
         print(results)
 except ApiException as e:
     print("Exception: %s\n" % e)
-
-
-
-
-
-
