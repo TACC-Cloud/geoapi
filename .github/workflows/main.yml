@@ -9,9 +9,9 @@ jobs:
   Linting:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - name: Setup Python
-        uses: actions/setup-python@v1
+        uses: actions/setup-python@v4
         with:
           python-version: 3.9
       - name: Install flake8
@@ -38,9 +38,9 @@ jobs:
           --health-timeout 5s
           --health-retries 5
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
     - name: Setup Python
-      uses: actions/setup-python@v1
+      uses: actions/setup-python@v4
       with:
         python-version: 3.9
     - name: Install ffmpeg
@@ -48,7 +48,7 @@ jobs:
     - name: Setup Poetry
       uses: abatilo/actions-poetry@v2.0.0
       with:
-        poetry-version: 1.1.13
+        poetry-version: 1.4.2
     - uses: actions/cache@v1
       with:
         path: ~/.cache/pypoetry/virtualenvs
@@ -76,7 +76,7 @@ jobs:
           --health-timeout 5s
           --health-retries 5
     steps:
-    - uses: actions/checkout@v1
+    - uses: actions/checkout@v3
     - uses: docker/login-action@v1
       with:
         password: ${{ secrets.DOCKER_PASSWORD }}
