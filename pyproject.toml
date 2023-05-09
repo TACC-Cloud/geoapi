@@ -26,7 +26,7 @@ Flask = "^2.1.2"
 Werkzeug = "2.1.2"
 flask-restx = "^0.5.1"
 psycopg2 = "^2.9.3"
-requests = "^2.28.0"
+requests = "^2.29.0"
 laspy = "1.6.0"
 configparser = "^5.2.0"
 cryptography = "^37.0.2"
@@ -34,6 +34,7 @@ mapillary-tools = { git = "https://github.com/mapillary/mapillary_tools.git", re
 requests-mock = "^1.10.0"
 ExifRead = "^2.3.2"
 flake8 = "^5.0.4"
+urllib3 = "<2"
 
 [tool.poetry.dev-dependencies]
 
