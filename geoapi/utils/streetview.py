@@ -88,7 +88,7 @@ class MapillaryUtils:
             return
 
         command = [
-            '/usr/local/bin/mapillary_tools',
+            'mapillary_tools',
             'authenticate',
             '--user_name',
             service_user,
