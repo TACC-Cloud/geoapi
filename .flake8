@@ -7,6 +7,5 @@ exclude =
     geoapi/schemas/__init__.py
     # Files below are tied with https://jira.tacc.utexas.edu/browse/DES-2267
     geoapi/initdb.py
-    geoapi/tasks/streetview.py  
     geoapi/utils/streetview.py
     geoapi/services/streetview.py
