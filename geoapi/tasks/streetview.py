@@ -108,7 +108,7 @@ def _from_tapis(user: User, task_uuid: UUID, systemId: str, path: str, organizat
         try:
             img_name = os.path.join(str(base_filepath), Path(item.path).name)
             img_list.append(img_name)
-            client.getRawFileToPath(systemId, item.path, img_name)
+            client.get_file_to_path(systemId, item.path, img_name)
 
             done_files += 1
 

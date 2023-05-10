@@ -1,4 +1,6 @@
 import pytest
+import os
+import tempfile
 from unittest.mock import patch, call
 from geoapi.exceptions import MissingServiceAccount
 from geoapi.utils.agave import service_account_client, AgaveUtils, AgaveFileGetError
@@ -31,6 +33,21 @@ def test_get_file(requests_mock, retry_sleep_seconds_mock, image_file_fixture):
                       body=image_file_fixture)
     agave_utils = AgaveUtils()
     agave_utils.getFile(system, path)
+
+
+def test_get_file_to_path(requests_mock, projects_fixture, retry_sleep_seconds_mock, image_file_fixture):
+    system = "system"
+    path = "path"
+    requests_mock.get(AgaveUtils.BASE_URL + f"/files/media/system/{system}/{path}",
+                      status_code=200,
+                      body=image_file_fixture)
+
+    with tempfile.TemporaryDirectory() as temp_dir:
+        to_path = os.path.join(temp_dir, "test.jpg")
+
+        agave_utils = AgaveUtils()
+        agave_utils.get_file_to_path(system, path, to_path)
+        assert os.path.isfile(to_path)
 
 
 def test_get_file_retry_after_first_attempt(requests_mock, retry_sleep_seconds_mock, image_file_fixture):
