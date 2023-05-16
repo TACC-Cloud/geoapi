@@ -377,6 +377,6 @@ def convert_streetview_sequence_to_feature(self, projectId, sequenceId, token):
     try:
         db_session.add(feature)
         db_session.commit()
-    except:
+    except Exception:
         db_session.rollback()
         raise
