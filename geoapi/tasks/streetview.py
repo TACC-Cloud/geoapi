@@ -129,7 +129,7 @@ def _from_tapis(user: User, task_uuid: UUID, systemId: str, path: str):
             done_files -= 1
             error_message = "Could not import file from agave: {} :: {}, {}" \
                 .format(systemId, path, e)
-            logger.error(error_message)
+            logger.exception(error_message)
             raise Exception(error_message)
 
     if len(img_list) == 0:
