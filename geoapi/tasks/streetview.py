@@ -107,6 +107,7 @@ def _from_tapis(user: User, task_uuid: UUID, systemId: str, path: str):
     done_files = 0
     files_length = len(files_in_directory)
 
+    # TODO https://jira.tacc.utexas.edu/browse/WG-94 get multiple files at the same time
     for item in files_in_directory:
         if item.type == "dir":
             continue
