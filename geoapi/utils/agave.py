@@ -228,11 +228,9 @@ class AgaveUtils:
         logger.exception(msg)
         raise AgaveFileGetError(msg)
 
-
     def get_file_context_manager(self, system_id: str, path: str) -> IO:
         tmpFile = self.getFile(system_id, path)
         return closing(tmpFile)
-
 
     def get_file_to_path(self, system_id: str, path: str, destination_path: str):
         """
