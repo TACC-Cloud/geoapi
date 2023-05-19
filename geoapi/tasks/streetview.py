@@ -84,6 +84,13 @@ def clean_session(streetview_instance: StreetviewInstance,
 
 
 def _from_tapis(user: User, task_uuid: UUID, systemId: str, path: str):
+    """
+    Get files from tapis and place in a temporary streetview directory
+    :param user: User
+    :param task_uuid: UUID
+    :param systemId: str
+    :param path: str
+    """
     client = AgaveUtils(user.jwt)
     listing = client.listing(systemId, path)
     files_in_directory = listing[1:]
