@@ -44,6 +44,7 @@ class TestingConfig(Config):
     DB_PASSWD = 'dev'
     DB_HOST = os.environ.get('DB_HOST', 'postgres')
     TESTING = True
+    STREETVIEW_DIR = os.environ.get('STREETVIEW_DIR', '/tmp/streetview')
     ASSETS_BASE_DIR = '/tmp'
     TENANT = "{\"DESIGNSAFE\": {\"service_account_token\": \"ABCDEFG12344\"}," \
              " \"TEST\": {\"service_account_token\": \"ABCDEFG12344\"}  }"
