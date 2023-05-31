@@ -115,7 +115,7 @@ class MapillaryUtils:
     @staticmethod
     def upload(userId: int, task_uuid: UUID, service_user: str, organization_key: str):
         command = [
-            '/usr/local/bin/mapillary_tools',
+            'mapillary_tools',
             'process_and_upload',
             get_project_streetview_dir(userId, task_uuid),
             '--user_name',
