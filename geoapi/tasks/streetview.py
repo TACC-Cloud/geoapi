@@ -227,7 +227,7 @@ def from_tapis_to_streetview(user_id: int,
 
     # Get from tapis
     try:
-        _from_tapis(user, task_uuid, system_id, path, organization_key)
+        _from_tapis(user, task_uuid, system_id, path)
     # TODO: Handle
     except Exception as e:
         error_message = "Error during getting files from tapis system:{} path:{} \
