@@ -5,7 +5,7 @@ import re
 import json
 import subprocess
 import datetime
-from typing import Dict, List
+from typing import List
 from uuid import UUID
 
 from geoapi.services.notifications import NotificationsService
@@ -88,7 +88,7 @@ class MapillaryUtils:
             return
 
         command = [
-            'mapillary_tools',
+            '/opt/conda/bin/mapillary_tools',
             'authenticate',
             '--user_name',
             service_user,
@@ -104,7 +104,7 @@ class MapillaryUtils:
                                'MAPILLARY_CONFIG_PATH': MapillaryUtils.get_auth_file(userId)
                            })
         except subprocess.CalledProcessError as e:
-            error_message = "Errors occured during Mapillary authentication for user with userId: {}. {}"\
+            error_message = "Errors occurred during Mapillary authentication for user with userId: {}. {}"\
                 .format(userId, e)
             raise ApiException(error_message)
 
@@ -115,7 +115,7 @@ class MapillaryUtils:
     @staticmethod
     def upload(userId: int, task_uuid: UUID, service_user: str, organization_key: str):
         command = [
-            'mapillary_tools',
+            '/opt/conda/bin/mapillary_tools',
             'process_and_upload',
             get_project_streetview_dir(userId, task_uuid),
             '--user_name',
@@ -153,7 +153,7 @@ class MapillaryUtils:
                                                         "Processing upload...")
 
         except Exception as e:
-            error_message = "Error occured mapillary_tools upload task for user with id: {} \n {}"\
+            error_message = "Error occurred mapillary_tools upload task for user with id: {} \n {}"\
                           .format(userId, str(e))
             logger.error(error_message)
             raise Exception(error_message)
