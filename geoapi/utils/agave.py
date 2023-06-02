@@ -16,6 +16,7 @@ from geoapi.settings import settings
 from geoapi.utils.tenants import get_api_server, get_service_accounts
 from geoapi.exceptions import MissingServiceAccount
 from geoapi.custom import custom_system_user_retrieval
+from contextlib import closing
 
 logger = logging.getLogger(__name__)
 
@@ -201,6 +202,8 @@ class AgaveUtils:
         where tapis hits an ssh limits and then we get a a 500 or a file with 0 bytes). Eventually
         we will raise AgaveFileGetError if we can't get the file.
 
+        User needs to ensure they call `close()` on the returned temp file
+
         :raises
             AgaveFileGetError: Raised if unable to get file via tapis.
 
@@ -225,18 +228,25 @@ class AgaveUtils:
         logger.exception(msg)
         raise AgaveFileGetError(msg)
 
-    def getRawFileToPath(self, systemId: str, fromPath: str, toPath: str):
-        url = quote('/files/media/system/{}/{}'.format(systemId, fromPath))
-        try:
-            with self.client.get(self.base_url + url, stream=True) as r:
-                if r.status_code > 400:
-                    raise ValueError("Could not fetch file: {}".format(r.status_code))
-                with open(toPath, 'wb') as out_file:
-                    r.raw.decode_content = True
-                    shutil.copyfileobj(r.raw, out_file)
-        except Exception as e:
-            logger.error(e)
-            raise e
+    def get_file_context_manager(self, system_id: str, path: str) -> IO:
+        tmpFile = self.getFile(system_id, path)
+        return closing(tmpFile)
+
+    def get_file_to_path(self, system_id: str, path: str, destination_path: str):
+        """
+          Download a file from tapis
+
+          This method differs from getFile as here we write to non-temporary file
+
+          :param system_id: str
+          :param path: str
+          :param destination_path: str desired location of file
+
+          :return: temporary file
+        """
+        with self.get_file_context_manager(system_id, path) as file_obj:
+            with open(destination_path, 'wb+') as target_file:
+                shutil.copyfileobj(file_obj, target_file)
 
 
 def service_account_client(tenant_id):

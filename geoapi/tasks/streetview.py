@@ -14,8 +14,7 @@ from geoalchemy2.shape import from_shape
 from shapely.geometry import Point, LineString
 
 from geoapi.celery_app import app
-from geoapi.exceptions import (ApiException,
-                               StreetviewAuthException,
+from geoapi.exceptions import (StreetviewAuthException,
                                StreetviewLimitException,
                                StreetviewExistsException)
 from geoapi.models import User, StreetviewInstance, StreetviewSequence, Task
@@ -32,8 +31,8 @@ from geoapi.db import db_session
 
 logger = logging.getLogger(__file__)
 
-def publish(user: User, params: Dict):
 
+def publish(user: User, params: Dict):
     service = params['service']
     system_id = params['system_id']
     path = params['path']
@@ -41,10 +40,8 @@ def publish(user: User, params: Dict):
 
     streetview_service = StreetviewService.getByService(user, service)
 
-    if (not streetview_service.token or not streetview_service.service_user):
-        logger.error('Not authenticated to {} for user: {}'\
-            .format(params['service'],
-                    user.username))
+    if not streetview_service.token or not streetview_service.service_user:
+        logger.error('Not authenticated to {} for user: {}'.format(params['service'], user.username))
         raise StreetviewAuthException('Not authenticated to {}!'.format(service))
 
     # TODO: Find better solution for limiting uploads.
@@ -60,30 +57,40 @@ def publish(user: User, params: Dict):
                                    path,
                                    organization_key)
 
+
 def progress_error(user: User,
-                 task_uuid: UUID,
-                 status: str=None,
-                 message: str=None,
-                 logItem: Dict=None):
-  logger.error(message)
-  message = 'Error occurred'
-  NotificationsService.create(user, status, message)
-  NotificationsService.updateProgress(task_uuid=task_uuid,
-                                      status=status,
-                                      message=message,
-                                      logItem=logItem)
+                   task_uuid: UUID,
+                   status: str = None,
+                   message: str = None,
+                   logItem: Dict = None):
+    logger.error(message)
+    message = 'Error occurred'
+    NotificationsService.create(user, status, message)
+    NotificationsService.updateProgress(task_uuid=task_uuid,
+                                        status=status,
+                                        message=message,
+                                        logItem=logItem)
+
 
 def clean_session(streetview_instance: StreetviewInstance,
                   user: User,
                   task_uuid: UUID,
-                  status: str=None,
-                  message: str=None,
-                  logItem: dict=None):
+                  status: str = None,
+                  message: str = None,
+                  logItem: dict = None):
     StreetviewService.deleteInstance(streetview_instance.id)
     progress_error(user, task_uuid, status, message, logItem)
     remove_project_streetview_dir(user.id, task_uuid)
 
-def _from_tapis(user: User, task_uuid: UUID, systemId: str, path: str, organization_key: str):
+
+def _from_tapis(user: User, task_uuid: UUID, systemId: str, path: str):
+    """
+    Get files from tapis and place in a temporary streetview directory
+    :param user: User
+    :param task_uuid: UUID
+    :param systemId: str
+    :param path: str
+    """
     client = AgaveUtils(user.jwt)
     listing = client.listing(systemId, path)
     files_in_directory = listing[1:]
@@ -100,6 +107,7 @@ def _from_tapis(user: User, task_uuid: UUID, systemId: str, path: str, organizat
     done_files = 0
     files_length = len(files_in_directory)
 
+    # TODO https://jira.tacc.utexas.edu/browse/WG-94 get multiple files at the same time
     for item in files_in_directory:
         if item.type == "dir":
             continue
@@ -108,7 +116,7 @@ def _from_tapis(user: User, task_uuid: UUID, systemId: str, path: str, organizat
         try:
             img_name = os.path.join(str(base_filepath), Path(item.path).name)
             img_list.append(img_name)
-            client.getRawFileToPath(systemId, item.path, img_name)
+            client.get_file_to_path(systemId, item.path, img_name)
 
             done_files += 1
 
@@ -122,7 +130,7 @@ def _from_tapis(user: User, task_uuid: UUID, systemId: str, path: str, organizat
             done_files -= 1
             error_message = "Could not import file from agave: {} :: {}, {}" \
                 .format(systemId, path, e)
-            logger.error(error_message)
+            logger.exception(error_message)
             raise Exception(error_message)
 
     if len(img_list) == 0:
@@ -143,8 +151,8 @@ def _to_mapillary(user: User, streetview_instance: StreetviewInstance, task_uuid
         MapillaryUtils.authenticate(user.id, token, service_user)
         MapillaryUtils.upload(user.id, task_uuid, service_user, organization_key)
     except Exception as e:
-        raise Exception("Errors during mapillary upload task {} for user {}: Error: {}" \
-                      .format(task_uuid, user.username, e))
+        raise Exception("Errors during mapillary upload task {} for user {}: Error: {}".format(task_uuid, user.username, e))
+
 
 # NOTE: At the time of writing, Mapillary's api does not return the sequence
 #       key(s) of the uploaded images. However, they do support searching
@@ -175,8 +183,8 @@ def _mapillary_finalize(user: User, streetview_instance: StreetviewInstance, tas
 def check_existing_upload(user, streetview_service, task_uuid, system_id, path):
     existing_progress = NotificationsService.getProgressUUID(task_uuid)
     existing_instance = StreetviewService.getInstanceFromSystemPath(streetview_service.id,
-                                                                   system_id,
-                                                                   path)
+                                                                    system_id,
+                                                                    path)
     # TODO: Handle existing progress
     if existing_progress or existing_instance:
         raise StreetviewExistsException("Path {f} is already in progress or uploaded."
@@ -190,7 +198,7 @@ def from_tapis_to_streetview(user_id: int,
                              system_id: str,
                              path: str,
                              organization_key: str):
-    user = UserService.get(user_id);
+    user = UserService.get(user_id)
     streetview_service = StreetviewService.get(streetview_service_id)
 
     task_uuid = uuid.uuid3(uuid.NAMESPACE_URL, system_id + path)
@@ -200,7 +208,6 @@ def from_tapis_to_streetview(user_id: int,
     except StreetviewExistsException as e:
         NotificationsService.create(user, 'warning', str(e))
         return
-
 
     # Initialize progress notification and streetview object
     NotificationsService.createProgress(user,
@@ -220,7 +227,7 @@ def from_tapis_to_streetview(user_id: int,
 
     # Get from tapis
     try:
-      _from_tapis(user, task_uuid, system_id, path, organization_key)
+        _from_tapis(user, task_uuid, system_id, path)
     # TODO: Handle
     except Exception as e:
         error_message = "Error during getting files from tapis system:{} path:{} \
@@ -270,32 +277,32 @@ def from_tapis_to_streetview(user_id: int,
 
 
 def process_streetview_sequences(projectId, sequenceId, token) -> Task:
-        """
-        Process streetview files
+    """
+    Process streetview files
 
-        :param projectId: int
-        :param sequenceId: int
-        :param token: str
-        :return: processingTask: Task
-        """
-        streetview_sequence = db_session.query(StreetviewSequence).get(sequenceId)
+    :param projectId: int
+    :param sequenceId: int
+    :param token: str
+    :return: processingTask: Task
+    """
+    streetview_sequence = db_session.query(StreetviewSequence).get(sequenceId)
 
-        celery_task_id = celery_uuid()
-        task = Task()
-        task.process_id = celery_task_id
-        task.status = "RUNNING"
-        task.description = "Processing streetview sequence #{}".format(sequenceId)
+    celery_task_id = celery_uuid()
+    task = Task()
+    task.process_id = celery_task_id
+    task.status = "RUNNING"
+    task.description = "Processing streetview sequence #{}".format(sequenceId)
 
-        streetview_sequence.task = task
+    streetview_sequence.task = task
 
-        db_session.add(task)
-        db_session.commit()
+    db_session.add(task)
+    db_session.commit()
 
-        logger.info("Starting streetview sequence processing task for sequence (#{}).".format(sequenceId))
+    logger.info("Starting streetview sequence processing task for sequence (#{}).".format(sequenceId))
 
-        convert_streetview_sequence_to_feature.apply_async(args=[projectId, sequenceId, token], task_id=celery_task_id)
+    convert_streetview_sequence_to_feature.apply_async(args=[projectId, sequenceId, token], task_id=celery_task_id)
 
-        return task
+    return task
 
 
 class StreetviewSequenceProcessingTask(celery.Task):
@@ -378,7 +385,6 @@ def convert_streetview_sequence_to_feature(self, projectId, sequenceId, token):
     try:
         db_session.add(feature)
         db_session.commit()
-    except:
+    except Exception:
         db_session.rollback()
         raise
-
