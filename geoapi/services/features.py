@@ -62,11 +62,11 @@ class FeaturesService:
 
     ALLOWED_GEOSPATIAL_EXTENSIONS = IMAGE_FILE_EXTENSIONS + GPX_FILE_EXTENSIONS + GEOJSON_FILE_EXTENSIONS\
         + SHAPEFILE_FILE_EXTENSIONS
-    # RAPP_FILE_EXTENSIONS to be added for https://jira.tacc.utexas.edu/browse/DES-2462
+    # RAPP_FILE_EXTENSIONS to be added in https://jira.tacc.utexas.edu/browse/DES-2462
 
     ALLOWED_EXTENSIONS = IMAGE_FILE_EXTENSIONS + VIDEO_FILE_EXTENSIONS + AUDIO_FILE_EXTENSIONS + GPX_FILE_EXTENSIONS\
         + GEOJSON_FILE_EXTENSIONS + SHAPEFILE_FILE_EXTENSIONS + INI_FILE_EXTENSIONS
-    # RAPP_FILE_EXTENSIONS to be added for https://jira.tacc.utexas.edu/browse/DES-2462
+    # RAPP_FILE_EXTENSIONS to be added in https://jira.tacc.utexas.edu/browse/DES-2462
 
     @staticmethod
     def get(featureId: int) -> Feature:
