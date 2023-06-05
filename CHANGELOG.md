@@ -2,6 +2,21 @@
 
 ## [Unreleased]
 
+## [2.13] - 2023-06-05
+
+### Added
+
+- WG-13 update python-client and add example used in load testing (#125)
+
+### Changed
+
+- Use ubuntu-latest in CI testing (#124)
+
+### Fixed
+
+- WG-66 and WG-36: fix path to mapillary tools and refactor error handling for streetview files (#126)
+
+
 ## [2.12] - 2023-04-11
 
 ### Fixed
@@ -125,7 +140,9 @@
 - DES-1687: Add rollingback to worker tasks (#30)
 - DES-1663: Fix image rotations (#36)
 
-[unreleased]: https://github.com/TACC-Cloud/geoapi/compare/v2.11...HEAD
+[unreleased]: https://github.com/TACC-Cloud/geoapi/compare/v2.13...HEAD
+[2.13]: https://github.com/TACC-Cloud/geoapi/releases/tag/v2.13
+[2.12]: https://github.com/TACC-Cloud/geoapi/releases/tag/v2.12
 [2.11]: https://github.com/TACC-Cloud/geoapi/releases/tag/v2.11
 [2.9]: https://github.com/TACC-Cloud/geoapi/releases/tag/v2.9
 [2.8]: https://github.com/TACC-Cloud/geoapi/releases/tag/v2.8
