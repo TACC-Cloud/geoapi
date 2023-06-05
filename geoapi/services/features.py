@@ -344,7 +344,7 @@ class FeaturesService:
             return FeaturesService.fromShapefile(projectId, fileObj, {}, additional_files, original_path)
         elif ext in FeaturesService.INI_FILE_EXTENSIONS:
             return FeaturesService.fromINI(projectId, fileObj, {}, original_path)
-        elif False and ext in FeaturesService.RAPP_FILE_EXTENSIONS: # Activate for https://jira.tacc.utexas.edu/browse/DES-2462
+        elif False and ext in FeaturesService.RAPP_FILE_EXTENSIONS:  # Activate for https://jira.tacc.utexas.edu/browse/DES-2462
             return FeaturesService.fromRAPP(projectId, fileObj, {}, original_path)
         else:
             raise ApiException("Filetype not supported for direct upload. Create a feature and attach as an asset?")
