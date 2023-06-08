@@ -1,5 +1,6 @@
 FROM python:3.9-slim
 RUN apt-get update -q && apt-get install -q -y \
+  build-essential \
   software-properties-common \
   libgdal-dev \
   ffmpeg \
