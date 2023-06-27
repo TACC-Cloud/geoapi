@@ -8,7 +8,7 @@ class Streetview(Base):
 
     id = Column(Integer, primary_key=True)
     user_id = Column(ForeignKey('users.id', ondelete="CASCADE", onupdate="CASCADE"), index=True)
-    user = relationship('User')
+    user = relationship('User', overlaps='streetviews')
     token = Column(String())
     service = Column(String())
     service_user = Column(String())
@@ -24,7 +24,7 @@ class StreetviewOrganization(Base):
 
     id = Column(Integer, primary_key=True)
     streetview_id = Column(ForeignKey('streetview.id', ondelete="CASCADE", onupdate="CASCADE"), index=True)
-    streetview = relationship('Streetview')
+    streetview = relationship('Streetview', overlaps="organizations")
     key = Column(String())
     name = Column(String())
     slug = Column(String())
@@ -39,7 +39,7 @@ class StreetviewInstance(Base):
     id = Column(Integer, primary_key=True)
 
     streetview_id = Column(ForeignKey('streetview.id', ondelete="CASCADE", onupdate="CASCADE"), index=True)
-    streetview = relationship('Streetview')
+    streetview = relationship('Streetview', overlaps="instances")
     system_id = Column(String(), nullable=True, index=True)
     path = Column(String(), nullable=True, index=True)
     sequences = relationship('StreetviewSequence', cascade="all, delete-orphan")
@@ -60,7 +60,7 @@ class StreetviewSequence(Base):
     start_date = Column(DateTime(timezone=True))
     end_date = Column(DateTime(timezone=True))
     bbox = Column(String(), index=True)
-    streetview_instance = relationship('StreetviewInstance')
+    streetview_instance = relationship('StreetviewInstance', overlaps="sequences")
     feature = relationship("Feature", lazy="joined")
     task = relationship("Task", lazy="joined")
 
