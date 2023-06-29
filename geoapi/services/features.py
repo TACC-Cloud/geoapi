@@ -4,6 +4,7 @@ import uuid
 import json
 import tempfile
 import configparser
+import re
 from typing import List, IO, Dict
 
 from geoapi.services.videos import VideoService
@@ -299,6 +300,8 @@ class FeaturesService:
 
 
         if additional_files_properties:
+            # Sort the list of dictionaries based on 'QX' value and then 'PhotoX' value
+            additional_files_properties.sort(key=lambda x: tuple(map(int, re.findall(r'\d+', x['filename']))))
             # add info about assets to properties (i.e. coordinates of asset) for quick retrieval
             feat.properties = {"_hazmapper": {"questionnaire": {"assets": additional_files_properties}}}
 
