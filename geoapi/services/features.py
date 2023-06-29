@@ -239,12 +239,17 @@ class FeaturesService:
         return features
 
     @staticmethod
-    def fromRAPP(projectId: int, fileObj: IO, metadata: Dict, original_path: str = None) -> Feature:
+    def from_rapp_questionnaire(projectId: int, fileObj: IO, additional_files: List[IO], original_path: str = None) -> Feature:
         """
+        Import RAPP questionnaire
+
+        RAPP questionnaire is imported along with any asset images that it
+        refers to. The asset images are assumed to reside in the same directory
+        as the questionnaire .rq file.
 
         :param projectId: int
-        :param fileObj: file descriptor
-        :param metadata: Dict of <key, val> pairs
+        :param fileObj: file
+        :param additional_files: list of file objs
         :param original_path: str path of original file location
         :return: Feature
         """
@@ -263,8 +268,16 @@ class FeaturesService:
         pathlib.Path(questionnaire_path).mkdir(parents=True, exist_ok=True)
         asset_path = os.path.join(questionnaire_path, 'questionnaire.rq')
 
+        # write questionnaire file (rq)
         with open(asset_path, 'w') as tmp:
             tmp.write(json.dumps(data))
+
+        # write all asset files (i.e jpgs)
+        if additional_files is not None:
+            for file_obj in additional_files:
+                image_asset_path = os.path.join(questionnaire_path, pathlib.Path(file_obj.name).name)
+                with open(image_asset_path, 'wb') as image_asset:
+                    image_asset.write(file_obj.read())
 
         fa = FeatureAsset(
             uuid=asset_uuid,
@@ -343,7 +356,7 @@ class FeaturesService:
         elif ext in FeaturesService.INI_FILE_EXTENSIONS:
             return FeaturesService.fromINI(projectId, fileObj, {}, original_path)
         elif ext in FeaturesService.RAPP_FILE_EXTENSIONS:
-            return FeaturesService.fromRAPP(projectId, fileObj, {}, original_path)
+            return FeaturesService.from_rapp_questionnaire(projectId, fileObj, additional_files, original_path)
         else:
             raise ApiException("Filetype not supported for direct upload. Create a feature and attach as an asset?")
 

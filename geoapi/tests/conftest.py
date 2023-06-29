@@ -162,6 +162,7 @@ def gpx_file_fixture():
 def image_file_fixture():
     home = os.path.dirname(__file__)
     with open(os.path.join(home, 'fixtures/image.jpg'), 'rb') as f:
+        f.filename = 'image.jpg'
         yield f
 
 
@@ -480,5 +481,15 @@ def tile_server_ini_file_fixture():
 @pytest.fixture(scope="function")
 def questionnaire_file_fixture():
     home = os.path.dirname(__file__)
-    with open(os.path.join(home, 'fixtures/questionnaire.rq'), 'rb') as f:
+    filename = 'fixtures/questionnaire.rq'
+    with open(os.path.join(home, filename), 'rb') as f:
+        f.filename = filename
+        yield f
+
+@pytest.fixture(scope="function")
+def questionnaire_file_with_assets_fixture():
+    home = os.path.dirname(__file__)
+    filename = 'fixtures/questionnaire_with_assets.rqa/questionnaire_with_assets.rq'
+    with open(os.path.join(home, filename ), 'rb') as f:
+        f.filename = filename
         yield f
