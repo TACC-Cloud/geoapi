@@ -248,11 +248,12 @@ class FeaturesService:
         as the questionnaire .rq file.
 
         :param projectId: int
-        :param fileObj: file
+        :param fileObj: questionnaire file
         :param additional_files: list of file objs
         :param original_path: str path of original file location
         :return: Feature
         """
+        logger.info(f"Processing f{original_path}")
         data = json.loads(fileObj.read())
 
         lng = data.get('geolocation')[0].get('longitude')
@@ -272,12 +273,34 @@ class FeaturesService:
         with open(asset_path, 'w') as tmp:
             tmp.write(json.dumps(data))
 
+        additional_files_properties = []
+
         # write all asset files (i.e jpgs)
         if additional_files is not None:
-            for file_obj in additional_files:
-                image_asset_path = os.path.join(questionnaire_path, pathlib.Path(file_obj.name).name)
+            logger.info(f"Processing {len(additional_files)} assets for {original_path}")
+            for asset_file_obj in additional_files:
+                base_filename = os.path.basename(asset_file_obj.filename)
+                image_asset_path = os.path.join(questionnaire_path, base_filename)
+
+                # save original jpg (i.e. Q1-Photo-001.jpg)
                 with open(image_asset_path, 'wb') as image_asset:
-                    image_asset.write(file_obj.read())
+                    image_asset.write(asset_file_obj.read())
+
+                # create preview image (i.e. Q1-Photo-001.preview.jpg)
+                processed_asset_image = ImageService.processImage(asset_file_obj)
+                path = pathlib.Path(image_asset_path)
+                processed_asset_image.resized.save(path.with_suffix('.preview' + path.suffix), "JPEG")
+
+                # gather coordinates information for this asset
+                logger.debug(f"{asset_file_obj.filename} has the geospatial coordinates of {processed_asset_image.coordinates}")
+                additional_files_properties.append({"filename": base_filename,
+                                                    "coordinates": processed_asset_image.coordinates})
+                asset_file_obj.close()
+
+
+        if additional_files_properties:
+            # add info about assets to properties (i.e. coordinates of asset) for quick retrieval
+            feat.properties = {"_hazmapper": {"questionnaire": {"assets": additional_files_properties}}}
 
         fa = FeatureAsset(
             uuid=asset_uuid,

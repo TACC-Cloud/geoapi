@@ -214,6 +214,7 @@ class AgaveUtils:
         allowed_attempts = 5
         while allowed_attempts > 0:
             try:
+                logger.debug(f"Getting file {systemId}/{path}")
                 return self._get_file(systemId, path)
             except RetryableTapisFileError:
                 allowed_attempts = allowed_attempts - 1

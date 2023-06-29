@@ -226,6 +226,7 @@ def test_create_questionnaire_feature_with_assets(projects_fixture, questionnair
     assert db_session.query(Feature).count() == 1
     assert db_session.query(FeatureAsset).count() == 1
     assert len(os.listdir(get_project_asset_dir(feature.project_id))) == 1
-    assert len(os.listdir(get_asset_path(feature.assets[0].path))) == 2
+    assert len(os.listdir(get_asset_path(feature.assets[0].path))) == 3
     assert os.path.isfile(get_asset_path(feature.assets[0].path, "questionnaire.rq"))
+    assert os.path.isfile(get_asset_path(feature.assets[0].path, "image.preview.jpg"))
     assert os.path.isfile(get_asset_path(feature.assets[0].path, "image.jpg"))

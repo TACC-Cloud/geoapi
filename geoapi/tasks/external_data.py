@@ -130,6 +130,7 @@ def get_additional_files(current_file, system_id: str, path: str, client, availa
                              f'agave: {system_id} :: {additional_file_path}   ---- error: {error}')
 
                 continue
+            logger.debug(f'Finished getting {file_suffix}-related file: ({system_id}/{additional_file_path}')
             result_file.filename = Path(additional_file_path).name
             additional_files_result.append(result_file)
     return additional_files_result
