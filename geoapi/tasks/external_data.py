@@ -66,8 +66,6 @@ def get_file(client, system_id, path, required):
     return system_id, path, required, result_file, error
 
 
-
-
 def get_additional_files(current_file, system_id: str, path: str, client, available_files=None):
     """
     Get any additional files needed for processing the current file being imported
@@ -112,7 +110,6 @@ def get_additional_files(current_file, system_id: str, path: str, client, availa
         current_file.seek(0)
     else:
         return None
-
 
     # Try to get all additional files.
     additional_files_result = []

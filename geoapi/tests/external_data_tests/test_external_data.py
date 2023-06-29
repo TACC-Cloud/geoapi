@@ -493,6 +493,7 @@ def test_get_additional_files_rapid_questionnaire(questionnaire_file_with_assets
                                  agave_utils_with_geojson_file)
     assert len(files) == 1
 
+
 def test_get_additional_files_rapid_questionnaire_no_assets(questionnaire_file_fixture, agave_utils_with_geojson_file):
     files = get_additional_files(questionnaire_file_fixture,
                                  "testSystem",

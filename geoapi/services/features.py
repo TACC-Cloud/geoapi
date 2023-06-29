@@ -298,7 +298,6 @@ class FeaturesService:
                                                     "coordinates": processed_asset_image.coordinates})
                 asset_file_obj.close()
 
-
         if additional_files_properties:
             # Sort the list of dictionaries based on 'QX' value and then 'PhotoX' value
             additional_files_properties.sort(key=lambda x: tuple(map(int, re.findall(r'\d+', x['filename']))))

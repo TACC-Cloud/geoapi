@@ -486,10 +486,11 @@ def questionnaire_file_fixture():
         f.filename = filename
         yield f
 
+
 @pytest.fixture(scope="function")
 def questionnaire_file_with_assets_fixture():
     home = os.path.dirname(__file__)
     filename = 'fixtures/questionnaire_with_assets.rqa/questionnaire_with_assets.rq'
-    with open(os.path.join(home, filename ), 'rb') as f:
+    with open(os.path.join(home, filename), 'rb') as f:
         f.filename = filename
         yield f
