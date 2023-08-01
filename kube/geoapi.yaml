@@ -331,7 +331,7 @@ spec:
               secretKeyRef:
                 name: rabbitmq
                 key: password
-          - name: DB_USER
+          - name: DB_USERNAME
             valueFrom:
               secretKeyRef:
                 name: postgres-vm
@@ -409,7 +409,7 @@ spec:
               secretKeyRef:
                 name: rabbitmq
                 key: password
-          - name: DB_USER
+          - name: DB_USERNAME
             valueFrom:
               secretKeyRef:
                 name: postgres-vm
@@ -477,7 +477,7 @@ spec:
               secretKeyRef:
                 name: rabbitmq
                 key: password
-          - name: DB_USER
+          - name: DB_USERNAME
             valueFrom:
               secretKeyRef:
                 name: postgres-vm
