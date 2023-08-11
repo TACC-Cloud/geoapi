@@ -1,0 +1,14 @@
+version: "3"
+services:
+  postgres:
+    image: postgis/postgis:11-3.3
+    env_file: ../../secret.env # username/password
+    volumes:
+      - ./postgresql.conf:/var/lib/postgresql/data/postgresql.conf:ro
+      - /database:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    stdin_open: true
+    tty: true
+    restart: always
+    container_name: geoapi_postgres
