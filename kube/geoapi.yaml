@@ -482,7 +482,7 @@ spec:
               secretKeyRef:
                 name: postgres-vm
                 key: user
-          - name: DB_PASSWD_vm
+          - name: DB_PASSWD
             valueFrom:
               secretKeyRef:
                 name: postgres-vm
