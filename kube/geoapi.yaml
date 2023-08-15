@@ -265,11 +265,26 @@ spec:
               secretKeyRef:
                 name: rabbitmq
                 key: password
+          - name: DB_USERNAME
+            valueFrom:
+              secretKeyRef:
+                name: postgres-vm
+                key: user
           - name: DB_PASSWD
             valueFrom:
               secretKeyRef:
-                name: postgres
+                name: postgres-vm
                 key: password
+          - name: DB_NAME
+            valueFrom:
+              secretKeyRef:
+                name: postgres-vm
+                key: name
+          - name: DB_HOST
+            valueFrom:
+              secretKeyRef:
+                name: postgres-vm
+                key: host
           - name: TENANT
             valueFrom:
               secretKeyRef:
