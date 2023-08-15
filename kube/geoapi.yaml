@@ -70,9 +70,6 @@ data:
   # These are for the default creds for the rabbitmq container
   RABBITMQ_DEFAULT_USER: geoapi
   RABBITMQ_DEFAULT_VHOST: geoapi
-  # These are for the postgres container itself
-  POSTGRES_DB: geoapi
-  POSTGRES_USER: geoapi
 
 
   ASSETS_BASE_DIR: /assets/
@@ -84,23 +81,6 @@ data:
   RABBITMQ_HOSTNAME: geoapi-rabbitmq
   RABBITMQ_VHOST: geoapi
   RABBITMQ_USERNAME: geoapi
-  DB_USERNAME: geoapi
-  DB_HOST: geoapi-postgres
-  DB_NAME: geoapi
----
-apiVersion: v1
-kind: PersistentVolumeClaim
-metadata:
-  labels:
-    app: ${PGDATA_PVC}
-  name: ${PGDATA_PVC}
-spec:
-  accessModes:
-  - ReadWriteOnce
-  storageClassName: rbd-new
-  resources:
-    requests:
-      storage: ${PGDATA_PVC_SIZE}
 ---
 apiVersion: v1
 kind: Service
@@ -295,11 +275,26 @@ spec:
               secretKeyRef:
                 name: rabbitmq
                 key: password
+          - name: DB_USERNAME
+            valueFrom:
+              secretKeyRef:
+                name: postgres-vm
+                key: user
           - name: DB_PASSWD
             valueFrom:
               secretKeyRef:
-                name: postgres
+                name: postgres-vm
                 key: password
+          - name: DB_NAME
+            valueFrom:
+              secretKeyRef:
+                name: postgres-vm
+                key: name
+          - name: DB_HOST
+            valueFrom:
+              secretKeyRef:
+                name: postgres-vm
+                key: host
           - name: TENANT
             valueFrom:
               secretKeyRef:
@@ -361,11 +356,26 @@ spec:
               secretKeyRef:
                 name: rabbitmq
                 key: password
+          - name: DB_USERNAME
+            valueFrom:
+              secretKeyRef:
+                name: postgres-vm
+                key: user
           - name: DB_PASSWD
             valueFrom:
               secretKeyRef:
-                name: postgres
+                name: postgres-vm
                 key: password
+          - name: DB_NAME
+            valueFrom:
+              secretKeyRef:
+                name: postgres-vm
+                key: name
+          - name: DB_HOST
+            valueFrom:
+              secretKeyRef:
+                name: postgres-vm
+                key: host
           - name: TENANT
             valueFrom:
               secretKeyRef:
@@ -381,60 +391,6 @@ spec:
             memory: '1G'
       hostname: geoapi-celerybeat
       restartPolicy: Always
----
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  annotations:
-    kompose.cmd: kompose convert
-    kompose.version: 1.16.0 (0c01309)
-  labels:
-    app: geoapi-postgres
-  name: geoapi-postgres
-spec:
-  replicas: 1
-  selector:
-    matchLabels:
-      app: geoapi-postgres
-  strategy:
-    type: Recreate
-  template:
-    metadata:
-      labels:
-        app: geoapi-postgres
-    spec:
-      containers:
-      - env:
-        - name: POSTGRES_PASSWORD
-          valueFrom:
-            secretKeyRef:
-              name: postgres
-              key: password
-        - name: PGDATA
-          value: /var/lib/postgresql/data/
-        envFrom:
-          - configMapRef:
-              name: geoapi-environment-vars
-        image: mdillon/postgis:11
-        name: geoapi-postgres
-        ports:
-        - containerPort: 5432
-        resources:
-          requests:
-            memory: '4G'
-          limits:
-            memory: '8G'
-        volumeMounts:
-        - mountPath: /var/lib/postgresql/data
-          name: pgdata
-          subPath: postgres
-      hostname: geoapi-postgres
-      restartPolicy: Always
-      volumes:
-      - name: pgdata
-        persistentVolumeClaim:
-          claimName: ${PGDATA_PVC}
-
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -478,11 +434,26 @@ spec:
               secretKeyRef:
                 name: rabbitmq
                 key: password
+          - name: DB_USERNAME
+            valueFrom:
+              secretKeyRef:
+                name: postgres-vm
+                key: user
           - name: DB_PASSWD
             valueFrom:
               secretKeyRef:
-                name: postgres
+                name: postgres-vm
                 key: password
+          - name: DB_NAME
+            valueFrom:
+              secretKeyRef:
+                name: postgres-vm
+                key: name
+          - name: DB_HOST
+            valueFrom:
+              secretKeyRef:
+                name: postgres-vm
+                key: host
           - name: TENANT
             valueFrom:
               secretKeyRef:
@@ -531,11 +502,26 @@ spec:
               secretKeyRef:
                 name: rabbitmq
                 key: password
+          - name: DB_USERNAME
+            valueFrom:
+              secretKeyRef:
+                name: postgres-vm
+                key: user
           - name: DB_PASSWD
             valueFrom:
               secretKeyRef:
-                name: postgres
+                name: postgres-vm
                 key: password
+          - name: DB_NAME
+            valueFrom:
+              secretKeyRef:
+                name: postgres-vm
+                key: name
+          - name: DB_HOST
+            valueFrom:
+              secretKeyRef:
+                name: postgres-vm
+                key: host
         image: taccaci/geoapi:${GEOAPI_TAG}
         command: ["alembic", "upgrade", "head"]
       restartPolicy: Never
