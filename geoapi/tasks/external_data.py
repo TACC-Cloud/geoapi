@@ -382,59 +382,66 @@ def import_from_agave(tenant_id: str, userId: int, systemId: str, path: str, pro
 @app.task()
 def refresh_observable_projects():
     start_time = time.time()
-    obs = db_session.query(ObservableDataProject).all()
-    for i, o in enumerate(obs):
-        try:
-            # we need a user with a jwt for importing
-            importing_user = next((u for u in o.project.users if u.jwt))
-            logger.info(f"Refreshing observable project ({i}/{len(obs)}): observer:{importing_user} "
-                        f"system:{o.system_id} path:{o.path} project:{o.project.id}")
+    try:
+        logger.info("Starting to refresh all observable projects")
+        obs = db_session.query(ObservableDataProject).all()
+        for i, o in enumerate(obs):
+            try:
+                # we need a user with a jwt for importing
+                importing_user = next((u for u in o.project.users if u.jwt))
+                logger.info(f"Refreshing observable project ({i}/{len(obs)}): observer:{importing_user} "
+                            f"system:{o.system_id} path:{o.path} project:{o.project.id}")
 
-            # we need to add any users who have been added to the project/system or update if their admin-status
-            # has changed
-            current_users = set([SystemUser(username=u.user.username, admin=u.admin) for u in o.project.project_users])
-            updated_users = set(get_system_users(o.project.tenant_id, importing_user.jwt, o.system_id))
+                # we need to add any users who have been added to the project/system or update if their admin-status
+                # has changed
+                current_users = set([SystemUser(username=u.user.username, admin=u.admin) for u in o.project.project_users])
+                updated_users = set(get_system_users(o.project.tenant_id, importing_user.jwt, o.system_id))
 
-            current_creator = db_session.query(ProjectUser)\
-                .filter(ProjectUser.project_id == o.id)\
-                .filter(ProjectUser.creator is True).one_or_none()
+                current_creator = db_session.query(ProjectUser)\
+                    .filter(ProjectUser.project_id == o.id)\
+                    .filter(ProjectUser.creator is True).one_or_none()
 
-            if current_users != updated_users:
-                logger.info("Updating users from:{} to:{}".format(current_users, updated_users))
+                if current_users != updated_users:
+                    logger.info("Updating users from:{} to:{}".format(current_users, updated_users))
 
-                # set project users
-                o.project.users = [UserService.getOrCreateUser(u.username, tenant=o.project.tenant_id) for u in updated_users]
-                db_session.add(o)
-                db_session.commit()
+                    # set project users
+                    o.project.users = [UserService.getOrCreateUser(u.username, tenant=o.project.tenant_id) for u in updated_users]
+                    db_session.add(o)
+                    db_session.commit()
 
-                updated_users_to_admin_status = {u.username: u for u in updated_users}
-                logger.info("current_users_to_admin_status:{}".format(updated_users_to_admin_status))
-                for u in o.project.project_users:
-                    u.admin = updated_users_to_admin_status[u.user.username].admin
-                    db_session.add(u)
-                db_session.commit()
+                    updated_users_to_admin_status = {u.username: u for u in updated_users}
+                    logger.info("current_users_to_admin_status:{}".format(updated_users_to_admin_status))
+                    for u in o.project.project_users:
+                        u.admin = updated_users_to_admin_status[u.user.username].admin
+                        db_session.add(u)
+                    db_session.commit()
 
-                if current_creator:
-                    # reset the creator by finding that updated user again and updating it.
-                    current_creator = db_session.query(ProjectUser)\
-                        .filter(ProjectUser.project_id == o.id)\
-                        .filter(ProjectUser.user_id == current_creator.user_id)\
-                        .one_or_none()
                     if current_creator:
-                        current_creator.creator = True
-                        db_session.add(current_creator)
-                        db_session.commit()
+                        # reset the creator by finding that updated user again and updating it.
+                        current_creator = db_session.query(ProjectUser)\
+                            .filter(ProjectUser.project_id == o.id)\
+                            .filter(ProjectUser.user_id == current_creator.user_id)\
+                            .one_or_none()
+                        if current_creator:
+                            current_creator.creator = True
+                            db_session.add(current_creator)
+                            db_session.commit()
 
-            # perform the importing
-            if o.watch_content:
-                import_from_agave(o.project.tenant_id, importing_user.id, o.system_id, o.path, o.project.id)
-        except Exception:  # noqa: E722
-            logger.exception(f"Unhandled exception when importing observable project:{o.project.id}")
-            db_session.rollback()
+                # perform the importing
+                if o.watch_content:
+                    import_from_agave(o.project.tenant_id, importing_user.id, o.system_id, o.path, o.project.id)
+            except Exception:  # noqa: E722
+                logger.exception(f"Unhandled exception when importing observable project:{o.project.id}")
+                db_session.rollback()
 
-    total_time = time.time() - start_time
-    logger.info("refresh_observable_projects completed. "
-                "Elapsed time {}".format(datetime.timedelta(seconds=total_time)))
+        total_time = time.time() - start_time
+        logger.info("refresh_observable_projects completed. "
+                    "Elapsed time {}".format(datetime.timedelta(seconds=total_time)))
+    except Exception:  # noqa: E722
+        logger.error("Error when trying to get list of observable projects; this is unexpected and should be reported"
+                     "(i.e. https://jira.tacc.utexas.edu/browse/WG-131).")
+        db_session.rollback()
+        raise
 
 
 if __name__ == "__main__":
