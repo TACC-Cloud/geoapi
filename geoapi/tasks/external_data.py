@@ -351,7 +351,7 @@ def import_from_agave(tenant_id: str, userId: int, systemId: str, path: str, pro
 def refresh_observable_projects():
     start_time = time.time()
     try:
-        logger.info(f"Starting to refresh all observable projects")
+        logger.info("Starting to refresh all observable projects")
         obs = db_session.query(ObservableDataProject).all()
         for i, o in enumerate(obs):
             try:
