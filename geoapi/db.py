@@ -9,7 +9,10 @@ CONNECTION_STRING = 'postgresql://{}:{}@{}/{}'.format(
     settings.DB_HOST,
     settings.DB_NAME
 )
-engine = create_engine(CONNECTION_STRING, echo=False)
+engine = create_engine(CONNECTION_STRING,
+                       echo=False,  # default value
+                       pool_pre_ping=True,
+                       pool_reset_on_return=True)
 
 db_session = scoped_session(sessionmaker(autocommit=False,
                                          autoflush=False,
