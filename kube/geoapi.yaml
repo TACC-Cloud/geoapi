@@ -95,22 +95,6 @@ metadata:
     kompose.cmd: kompose convert
     kompose.version: 1.16.0 (0c01309)
   labels:
-    app: geoapi-postgres
-  name: geoapi-postgres
-spec:
-  ports:
-  - port: 5432
-    targetPort: 5432
-  selector:
-    app: geoapi-postgres
----
-apiVersion: v1
-kind: Service
-metadata:
-  annotations:
-    kompose.cmd: kompose convert
-    kompose.version: 1.16.0 (0c01309)
-  labels:
     app: geoapi-nginx
   name: geoapi-nginx
 spec:
