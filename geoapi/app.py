@@ -62,6 +62,7 @@ def handle_streetview_auth_exception(error: Exception):
 def handle_streetview_limit_exception(error: Exception):
     return {'message': 'Exceed concurrent streetview publish limit'}, 403
 
+
 # ensure SQLAlchemy sessions are properly closed at the end of each request.
 @app.teardown_appcontext
 def shutdown_session(exception=None):

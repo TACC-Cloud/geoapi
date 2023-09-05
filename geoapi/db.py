@@ -13,6 +13,7 @@ CONNECTION_STRING = 'postgresql://{}:{}@{}/{}'.format(
     settings.DB_NAME
 )
 
+
 def create_engine_for_context():
     context = os.environ.get('APP_CONTEXT', 'flask')  # Default to 'flask' if not provided
     if context == "celery":
@@ -27,6 +28,7 @@ def create_engine_for_context():
                                pool_pre_ping=True,
                                pool_reset_on_return=True)
     return engine
+
 
 engine = create_engine_for_context()
 

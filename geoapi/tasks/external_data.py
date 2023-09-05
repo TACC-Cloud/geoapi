@@ -227,12 +227,12 @@ def import_from_agave(tenant_id: str, userId: int, systemId: str, path: str, pro
     """
     Recursively import files from a system/path.
 
-    If file has already been imported (i.e. during a previously call), we don't re-import it. Likewise,
+    If file has already been imported (i.e. during a previous call), we don't re-import it. Likewise,
     if we have previously failed at importing a file, we do not retry to import the file (unless it was an error like
     file-access where it makes sense to retry at a later time).
 
     Files located in /Rapp folder (i.e. created by the RAPP app) are handled differently as their location data is not
-    contained in specific-file-format meta data (e.g. exif for images) but instead the location is stored in Tapis
+    contained in specific-file-format metadata (e.g. exif for images) but instead the location is stored in Tapis
     metadata.
 
     This method is called by refresh_observable_projects()
