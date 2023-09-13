@@ -550,25 +550,7 @@ class ProjectPointCloudResource(Resource):
     def get(self, projectId: int, pointCloudId: int):
         return PointCloudService.get(db_session, pointCloudId)
 
-    @api.doc(id="uploadPointCloud",
-             description='Add a file to a point cloud. Current allowed file types are las and laz.')
-    @api.expect(file_upload_parser)
-    @api.marshal_with(task)
-    @project_permissions
-    @project_point_cloud_exists
-    @project_point_cloud_not_processing
-    def post(self, projectId: int, pointCloudId: int):
-        """
-        :raises InvalidCoordinateReferenceSystem: in case  file missing coordinate reference system
-        """
-        f = request.files['file']
-        file_name = secure_filename(f.filename)
-        logger.info("Add a file to a point cloud:{} in project:{} for user:{}: {}".format(
-            pointCloudId, projectId, request.current_user.username, file_name))
-        pc_task = PointCloudService.fromFileObj(pointCloudId, f, file_name)
-        return pc_task
-
-    @api.doc(id="updatePointCLoud",
+    @api.doc(id="updatePointCloud",
              description="Update point cloud")
     @api.marshal_with(point_cloud)
     @api.expect(point_cloud)

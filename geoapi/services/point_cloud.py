@@ -132,43 +132,6 @@ class PointCloudService:
         return file_path
 
     @staticmethod
-    def fromFileObj(pointCloudId: int, fileObj: IO, fileName: str):
-        """
-        Add a point cloud file
-
-        When point cloud file has been processed, a feature will be created/updated with feature
-        asset containing processed point cloud
-
-        Different processing steps are applied asynchronously by default.
-
-        :param pointCloudId: int
-        :param fileObj: IO
-        :param fileName: str
-        :return: processingTask: Task
-        """
-        PointCloudService.check_file_extension(fileName)
-
-        point_cloud = PointCloudService.get(pointCloudId)
-
-        file_path = PointCloudService.putPointCloudInOriginalsFileDir(point_cloud.path, fileObj, fileName)
-
-        try:
-            result = check_point_cloud.apply_async(args=[file_path])
-            result.get()
-        except InvalidCoordinateReferenceSystem as e:
-            os.remove(file_path)
-            logger.error("Point cloud file ({}) missing required coordinate reference system".format(file_path))
-            raise e
-
-        result = get_point_cloud_info.apply_async(args=[pointCloudId])
-        point_cloud.files_info = json.dumps(result.get())
-
-        db_session.add(point_cloud)
-        db_session.commit()
-
-        return PointCloudService._process_point_clouds(pointCloudId)
-
-    @staticmethod
     def _process_point_clouds(database_session, pointCloudId: int) -> Task:
         """
         Process point cloud files
