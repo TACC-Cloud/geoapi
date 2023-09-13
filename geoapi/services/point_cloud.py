@@ -2,17 +2,15 @@ import os
 import pathlib
 import shutil
 import uuid
-import json
 from typing import List, IO
 
 from celery import uuid as celery_uuid
 
-from geoapi.exceptions import ApiException, InvalidCoordinateReferenceSystem
+from geoapi.exceptions import ApiException
 
 from geoapi.models import PointCloud, Project, User, Task
-from geoapi.db import db_session
 from geoapi.log import logging
-from geoapi.tasks.lidar import convert_to_potree, check_point_cloud, get_point_cloud_info
+from geoapi.tasks.lidar import convert_to_potree
 from geoapi.utils.assets import make_project_asset_dir, delete_assets, get_asset_relative_path, get_asset_path
 
 logger = logging.getLogger(__name__)
@@ -27,27 +25,27 @@ class PointCloudService:
     PROCESSED_DIR = "point_cloud"
 
     @staticmethod
-    def get(pointCloudId: int) -> PointCloud:
+    def get(database_session, pointCloudId: int) -> PointCloud:
         """
         Retrieve a single PointCloud
         :param pointCloudId: int
         :return: PointCloud
         """
-        point_cloud = db_session.query(PointCloud).get(pointCloudId)
+        point_cloud = database_session.query(PointCloud).get(pointCloudId)
         return point_cloud
 
     @staticmethod
-    def list(projectId: int) -> List[PointCloud]:
+    def list(database_session, projectId: int) -> List[PointCloud]:
         """
         Retrieve all point clouds
         :param projectId: int
         :return: list[PointCloud]
         """
-        project = db_session.query(Project).get(projectId)
+        project = database_session.query(Project).get(projectId)
         return project.point_clouds
 
     @staticmethod
-    def create(projectId: int, data: dict, user: User) -> PointCloud:
+    def create(database_session, projectId: int, data: dict, user: User) -> PointCloud:
         """
         Create a PointCloud for a user.
         :param projectId: int
@@ -67,41 +65,41 @@ class PointCloudService:
         point_cloud.uuid = point_cloud_uid
         point_cloud.path = get_asset_relative_path(point_cloud_path)
 
-        db_session.add(point_cloud)
-        db_session.commit()
+        database_session.add(point_cloud)
+        database_session.commit()
         return point_cloud
 
     @staticmethod
-    def update(pointCloudId: int, data: dict) -> PointCloud:
+    def update(database_session, pointCloudId: int, data: dict) -> PointCloud:
         """
         Update a PointCloud
         :param pointCloudId: int
         :param data: dict
         :return: Project
         """
-        point_cloud = PointCloudService.get(pointCloudId)
+        point_cloud = PointCloudService.get(database_session, pointCloudId)
 
         previous_conversion_parameters = point_cloud.conversion_parameters
         for key, value in data.items():
             setattr(point_cloud, key, value)
-        db_session.commit()
+        database_session.commit()
 
         if 'conversion_parameters' in data and previous_conversion_parameters != data['conversion_parameters']:
-            PointCloudService._process_point_clouds(pointCloudId)
+            PointCloudService._process_point_clouds(database_session, pointCloudId)
 
         return point_cloud
 
     @staticmethod
-    def delete(pointCloudId: int) -> None:
+    def delete(database_session, pointCloudId: int) -> None:
         """
         Delete a PointCloud
         :param pointCloudId: int
         :return: None
         """
-        point_cloud = PointCloudService.get(pointCloudId)
+        point_cloud = PointCloudService.get(database_session, pointCloudId)
         delete_assets(projectId=point_cloud.project_id, uuid=point_cloud.uuid)
-        db_session.delete(point_cloud)
-        db_session.commit()
+        database_session.delete(point_cloud)
+        database_session.commit()
 
     @staticmethod
     def check_file_extension(file_name):
@@ -171,14 +169,14 @@ class PointCloudService:
         return PointCloudService._process_point_clouds(pointCloudId)
 
     @staticmethod
-    def _process_point_clouds(pointCloudId: int) -> Task:
+    def _process_point_clouds(database_session, pointCloudId: int) -> Task:
         """
         Process point cloud files
 
         :param pointCloudId: int
         :return: processingTask: Task
         """
-        point_cloud = PointCloudService.get(pointCloudId)
+        point_cloud = PointCloudService.get(database_session, pointCloudId)
 
         celery_task_id = celery_uuid()
         task = Task()
@@ -188,9 +186,9 @@ class PointCloudService:
 
         point_cloud.task = task
 
-        db_session.add(task)
-        db_session.add(point_cloud)
-        db_session.commit()
+        database_session.add(task)
+        database_session.add(point_cloud)
+        database_session.commit()
 
         logger.info("Starting potree processing task (#{}:  '{}') for point cloud (#{}).".format(
             task.id, celery_task_id, pointCloudId))

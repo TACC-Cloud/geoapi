@@ -20,4 +20,3 @@ app.conf.beat_schedule = {
         'schedule': crontab(hour='*', minute='0')
     }
 }
-

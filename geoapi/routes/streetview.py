@@ -2,6 +2,7 @@ from geoapi.services.streetview import StreetviewService
 from geoapi.tasks import streetview
 from geoapi.log import logging
 from geoapi.utils.decorators import jwt_decoder
+from geoapi.db import db_session
 from flask_restx import Namespace, Resource, fields
 from flask_restx.marshalling import marshal_with
 from flask import request
@@ -77,7 +78,7 @@ class StreetviewServiceResources(Resource):
     def get(self):
         u = request.current_user
         logger.info("Get all streetview objects user:{}".format(u.username))
-        return StreetviewService.list(u)
+        return StreetviewService.list(db_session, u)
 
     @api.doc(id="createStreetviewServiceResource",
              description="Create streetview service object for a user")
@@ -87,7 +88,7 @@ class StreetviewServiceResources(Resource):
         u = request.current_user
         service = api.payload.get('service')
         logger.info("Create streetview object for user:{} and service:{}".format(u.username, service))
-        return StreetviewService.create(u, api.payload)
+        return StreetviewService.create(db_session, u, api.payload)
 
 
 @api.route('/services/<service>/')
@@ -98,14 +99,14 @@ class StreetviewServiceResource(Resource):
     def get(self, service: str):
         u = request.current_user
         logger.info("Get streetview service object for service:{} for user:{}".format(service, u.username))
-        return StreetviewService.getByService(u, service)
+        return StreetviewService.getByService(db_session, u, service)
 
     @api.doc(id="deleteStreetviewServiceResource",
              description="Delete a streetview service resource by service name")
     def delete(self, service: str):
         u = request.current_user
         logger.info("Delete streetview object for service:{} for user:{}".format(service, u.username))
-        return StreetviewService.deleteByService(u, service)
+        return StreetviewService.deleteByService(db_session, u, service)
 
     @api.doc(id="updateStreetviewServiceResource",
              description="Update streetview service resource for a user by service name")
@@ -114,7 +115,7 @@ class StreetviewServiceResource(Resource):
     def put(self, service: str):
         u = request.current_user
         logger.info("Update streetview service resource for service:{} user:{}".format(service, u.username))
-        return StreetviewService.updateByService(u, service, api.payload)
+        return StreetviewService.updateByService(db_session, u, service, api.payload)
 
 
 @api.route('/services/<service>/organization/')
@@ -126,7 +127,7 @@ class StreetviewOrganizationsResource(Resource):
         u = request.current_user
         logger.info("Get streetview organizations from streetview service resource for user:{}"
                     .format(u.username))
-        return StreetviewService.getAllOrganizations(u, service)
+        return StreetviewService.getAllOrganizations(db_session, u, service)
 
     @api.doc(id="createStreetviewOrganizations",
              description="Create organizations for a streetview object")
@@ -136,7 +137,7 @@ class StreetviewOrganizationsResource(Resource):
         u = request.current_user
         logger.info("Create streetview organization for a streetview service resource for user:{}"
                     .format(u.username))
-        return StreetviewService.createOrganization(u, service, api.payload)
+        return StreetviewService.createOrganization(db_session, u, service, api.payload)
 
 
 @api.route('/services/<service>/organization/<organization_id>/')
@@ -147,7 +148,7 @@ class StreetviewOrganizationResource(Resource):
         u = request.current_user
         logger.info("Delete streetview organization from streetview service resource for user:{} and streetview service: {}"
                     .format(u.username, service))
-        StreetviewService.deleteOrganization(organization_id)
+        StreetviewService.deleteOrganization(db_session, organization_id)
 
     @api.doc(id="updateStreetviewOrganization",
              description="Update organization from streetview service resource")
@@ -156,7 +157,7 @@ class StreetviewOrganizationResource(Resource):
         u = request.current_user
         logger.info("Update streetview organization in streetview service resource for user:{} and streetview servicde: {}"
                     .format(u.username, service))
-        return StreetviewService.updateOrganization(organization_id, api.payload)
+        return StreetviewService.updateOrganization(db_session, organization_id, api.payload)
 
 
 @api.route('/instances/<instance_id>/')
@@ -167,7 +168,7 @@ class StreetviewInstanceResource(Resource):
         u = request.current_user
         logger.info("Delete streetview instance for user:{}"
                     .format(u.username))
-        StreetviewService.deleteInstance(instance_id)
+        StreetviewService.deleteInstance(db_session, instance_id)
 
 
 @api.route('/sequences/')
@@ -179,7 +180,7 @@ class StreetviewSequencesResource(Resource):
         payload = request.json
         logger.info("Add streetview sequence to streetview instance for user:{}"
                     .format(u.username))
-        StreetviewService.addSequenceToInstance(u, payload)
+        StreetviewService.addSequenceToInstance(db_session, u, payload)
 
 
 @api.route('/sequences/<sequence_id>/')
@@ -190,14 +191,14 @@ class StreetviewSequenceResource(Resource):
     def get(self, sequence_id: str):
         u = request.current_user
         logger.info("Get streetview sequence of id:{} for user:{}".format(sequence_id, u.username))
-        return StreetviewService.getSequenceFromId(sequence_id)
+        return StreetviewService.getSequenceFromId(db_session, sequence_id)
 
     @api.doc(id="deleteStreetviewSequence",
              description="Delete a streetview service's sequence")
     def delete(self, sequence_id: int):
         u = request.current_user
         logger.info("Delete streetview sequence of id:{} for user:{}".format(sequence_id, u.username))
-        StreetviewService.deleteSequence(sequence_id)
+        StreetviewService.deleteSequence(db_session, sequence_id)
 
     @api.doc(id="updateStreetviewSequence",
              description="Update a streetview service's sequence")
@@ -206,7 +207,7 @@ class StreetviewSequenceResource(Resource):
     def put(self, sequence_id: int):
         u = request.current_user
         logger.info("Update streetview sequence of id:{} for user:{}".format(sequence_id, u.username))
-        return StreetviewService.updateSequence(sequence_id, api.payload)
+        return StreetviewService.updateSequence(db_session, db_session, sequence_id, api.payload)
 
 
 @api.route('/publish/')
@@ -221,5 +222,5 @@ class StreetviewPublishFilesResource(Resource):
     def post(self):
         u = request.current_user
         logger.info("Publish images to streetview for user:{}".format(u.username))
-        streetview.publish(u, api.payload)
+        streetview.publish(db_session, u, api.payload)
         return {"message": "accepted"}

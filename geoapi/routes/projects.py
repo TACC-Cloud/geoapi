@@ -1,7 +1,6 @@
 from flask import request, abort
 from flask_restx import Resource, Namespace, fields, inputs
 from werkzeug.datastructures import FileStorage
-from werkzeug.utils import secure_filename
 from geoapi.log import logger
 from geoapi.schemas import FeatureSchema
 from geoapi.services.features import FeaturesService
@@ -9,6 +8,8 @@ from geoapi.services.streetview import StreetviewService
 from geoapi.services.point_cloud import PointCloudService
 from geoapi.services.projects import ProjectsService
 from geoapi.tasks import external_data, streetview
+from geoapi.db import db_session
+from geoapi.models import Task
 from geoapi.utils.decorators import (jwt_decoder, project_permissions_allow_public, project_permissions,
                                      project_feature_exists,  project_point_cloud_exists,
                                      project_point_cloud_not_processing, check_access_and_get_project, is_anonymous,
@@ -176,7 +177,7 @@ class ProjectsListing(Resource):
             if is_anonymous(u):
                 abort(403, "Access denied")
             logger.info("Get all projects for user:{}".format(u.username))
-            return ProjectsService.list(u)
+            return ProjectsService.list(db_session, u)
 
     @api.doc(id="createProject",
              description='Create a new project')
@@ -187,7 +188,7 @@ class ProjectsListing(Resource):
         u = request.current_user
         logger.info("Create project for user:{} : {}".format(u.username,
                                                              api.payload))
-        return ProjectsService.create(api.payload, u)
+        return ProjectsService.create(db_session, api.payload, u)
 
 
 @api.route('/<int:projectId>/')
@@ -200,7 +201,7 @@ class ProjectResource(Resource):
     def get(self, projectId: int):
         u = request.current_user
         logger.info("Get metadata project:{} for user:{}".format(projectId, u.username))
-        return ProjectsService.get(project_id=projectId, user=u)
+        return ProjectsService.get(db_session, project_id=projectId, user=u)
 
     @api.doc(id="deleteProject",
              description="Delete a project, all associated features and metadata. THIS CANNOT BE UNDONE")
@@ -209,7 +210,7 @@ class ProjectResource(Resource):
         u = request.current_user
         logger.info("Delete project:{} for user:{}".format(projectId,
                                                            u.username))
-        return ProjectsService.delete(u, projectId)
+        return ProjectsService.delete(db_session, u, projectId)
 
     @api.doc(id="updateProject",
              description="Update metadata about a project")
@@ -219,7 +220,8 @@ class ProjectResource(Resource):
         u = request.current_user
         logger.info("Update project:{} for user:{}".format(projectId,
                                                            u.username))
-        return ProjectsService.update(user=u,
+        return ProjectsService.update(db_session,
+                                      user=u,
                                       projectId=projectId,
                                       data=api.payload)
 
@@ -229,7 +231,7 @@ class ProjectUsersResource(Resource):
     @api.marshal_with(user, as_list=True)
     @project_permissions
     def get(self, projectId: int):
-        return ProjectsService.getUsers(projectId)
+        return ProjectsService.getUsers(db_session, projectId)
 
     @api.doc(id="addUser",
              description="Add a user to the project. If `admin` is True then user has full access to the project, "
@@ -244,7 +246,7 @@ class ProjectUsersResource(Resource):
             username,
             projectId,
             request.current_user.username))
-        ProjectsService.addUserToProject(projectId, username, admin)
+        ProjectsService.addUserToProject(db_session, projectId, username, admin)
         return "ok"
 
 
@@ -258,7 +260,8 @@ class ProjectUserResource(Resource):
             username,
             projectId,
             request.current_user.username))
-        return ProjectsService.removeUserFromProject(projectId,
+        return ProjectsService.removeUserFromProject(db_session,
+                                                     projectId,
                                                      username)
 
 
@@ -288,7 +291,7 @@ class ProjectFeaturesResource(Resource):
         logger.info("Get features of project:{} for user:{}".format(
             projectId, request.current_user.username))
         query = self.parser.parse_args()
-        return ProjectsService.getFeatures(projectId, query)
+        return ProjectsService.getFeatures(db_session, projectId, query)
 
     @api.doc(id="addGeoJSONFeature",
              description="Add a GeoJSON feature to a project")
@@ -298,7 +301,7 @@ class ProjectFeaturesResource(Resource):
     def post(self, projectId: int):
         logger.info("Add GeoJSON feature to project:{} for user:{}".format(
             projectId, request.current_user.username))
-        return FeaturesService.addGeoJSON(projectId, request.json)
+        return FeaturesService.addGeoJSON(db_session, projectId, request.json)
 
 
 @api.route('/<int:projectId>/features/<int:featureId>/')
@@ -308,7 +311,7 @@ class ProjectFeatureResource(Resource):
     @api.marshal_with(api_feature)
     @project_permissions_allow_public
     def get(self, projectId: int, featureId: int):
-        return FeaturesService.get(featureId)
+        return FeaturesService.get(db_session, featureId)
 
     @api.doc(id="deleteFeature",
              description="GET a feature of a project as GeoJSON")
@@ -317,7 +320,7 @@ class ProjectFeatureResource(Resource):
     def delete(self, projectId: int, featureId: int):
         logger.info("Delete feature:{} from project:{} for user:{}".format(
             featureId, projectId, request.current_user.username))
-        return FeaturesService.delete(featureId)
+        return FeaturesService.delete(db_session, featureId)
 
 
 @api.route('/<int:projectId>/features/<int:featureId>/properties/')
@@ -330,7 +333,7 @@ class ProjectFeaturePropertiesResource(Resource):
     @project_permissions
     @project_feature_exists
     def post(self, projectId: int, featureId: int):
-        return FeaturesService.setProperties(featureId, request.json)
+        return FeaturesService.setProperties(db_session, featureId, request.json)
 
 
 @api.route('/<int:projectId>/features/<int:featureId>/styles/')
@@ -343,7 +346,7 @@ class ProjectFeatureStylesResource(Resource):
     @project_permissions
     @project_feature_exists
     def post(self, projectId: int, featureId: int):
-        return FeaturesService.setStyles(featureId, request.json)
+        return FeaturesService.setStyles(db_session, featureId, request.json)
 
 
 @api.route('/<int:projectId>/features/<int:featureId>/assets/')
@@ -361,7 +364,7 @@ class ProjectFeaturesCollectionResource(Resource):
         u = request.current_user
         logger.info("Add feature asset to project:{} for user:{}: {}/{}".format(
             projectId, u.username, systemId, path))
-        return FeaturesService.createFeatureAssetFromTapis(u, projectId, featureId, systemId, path)
+        return FeaturesService.createFeatureAssetFromTapis(db_session, u, projectId, featureId, systemId, path)
 
 
 @api.route('/<int:projectId>/features/files/')
@@ -381,7 +384,7 @@ class ProjectFeaturesFilesResource(Resource):
             projectId, request.current_user.username, file.filename))
         formData = request.form
         metadata = formData.to_dict()
-        features = FeaturesService.fromFileObj(projectId, file, metadata)
+        features = FeaturesService.fromFileObj(db_session, projectId, file, metadata)
         return features
 
 
@@ -414,7 +417,7 @@ class ProjectFeaturesClustersResource(Resource):
     @api.marshal_with(feature_collection_model)
     @project_permissions
     def get(self, projectId: int, numClusters: int):
-        clusters = FeaturesService.clusterKMeans(projectId, numClusters)
+        clusters = FeaturesService.clusterKMeans(db_session, projectId, numClusters)
         return clusters
 
 
@@ -439,7 +442,7 @@ class ProjectOverlaysResource(Resource):
             formData['maxLat']
         ]
         label = formData['label']
-        ov = FeaturesService.addOverlay(projectId, file, bounds, label)
+        ov = FeaturesService.addOverlay(db_session, projectId, file, bounds, label)
         return ov
 
     @api.doc(id="getOverlays",
@@ -447,7 +450,7 @@ class ProjectOverlaysResource(Resource):
     @api.marshal_with(overlay, as_list=True)
     @project_permissions_allow_public
     def get(self, projectId: int):
-        ovs = FeaturesService.getOverlays(projectId)
+        ovs = FeaturesService.getOverlays(db_session, projectId)
         return ovs
 
 
@@ -471,7 +474,7 @@ class ProjectOverlaysImportResource(Resource):
             request.json['maxLon'],
             request.json['maxLat']
         ]
-        ov = FeaturesService.addOverlayFromTapis(u, projectId, systemId, path, bounds, label)
+        ov = FeaturesService.addOverlayFromTapis(db_session, u, projectId, systemId, path, bounds, label)
         return ov
 
 
@@ -484,7 +487,7 @@ class ProjectOverlayResource(Resource):
     def delete(self, projectId: int, overlayId: int) -> str:
         logger.info("Delete overlay:{} in project:{} for user:{}".format(
             overlayId, projectId, request.current_user.username))
-        FeaturesService.deleteOverlay(projectId, overlayId)
+        FeaturesService.deleteOverlay(db_session, projectId, overlayId)
         return "Overlay {id} deleted".format(id=overlayId)
 
 
@@ -499,7 +502,7 @@ class ProjectStreetviewResource(Resource):
             projectId, request.current_user.username))
         sequenceId = api.payload['sequenceId']
         token = api.payload['token']['token']
-        return streetview.process_streetview_sequences(projectId, sequenceId, token)
+        return streetview.process_streetview_sequences(db_session, projectId, sequenceId, token)
 
 
 @api.route('/<int:projectId>/streetview/<int:featureId>/')
@@ -510,7 +513,7 @@ class ProjectStreetviewFeatureResource(Resource):
     def get(self, projectId: int, featureId: int):
         logger.info("Get streetview sequence from project features:{} for user:{}".format(
             projectId, request.current_user.username))
-        return StreetviewService.sequenceFromFeature(featureId)
+        return StreetviewService.sequenceFromFeature(db_session, featureId)
 
 
 @api.route('/<int:projectId>/point-cloud/')
@@ -521,7 +524,7 @@ class ProjectPointCloudsResource(Resource):
     @api.marshal_with(point_cloud, as_list=True)
     @project_permissions_allow_public
     def get(self, projectId: int):
-        return PointCloudService.list(projectId)
+        return PointCloudService.list(db_session, projectId)
 
     @api.doc(id="addPointCloud",
              description="Add a point cloud to a project")
@@ -531,7 +534,8 @@ class ProjectPointCloudsResource(Resource):
     def post(self, projectId: int):
         logger.info("Add point cloud to project:{} for user:{}".format(
             projectId, request.current_user.username))
-        return PointCloudService.create(projectId=projectId,
+        return PointCloudService.create(database_session=db_session,
+                                        projectId=projectId,
                                         user=request.current_user,
                                         data=api.payload)
 
@@ -544,7 +548,7 @@ class ProjectPointCloudResource(Resource):
     @api.marshal_with(point_cloud)
     @project_permissions_allow_public
     def get(self, projectId: int, pointCloudId: int):
-        return PointCloudService.get(pointCloudId)
+        return PointCloudService.get(db_session, pointCloudId)
 
     @api.doc(id="uploadPointCloud",
              description='Add a file to a point cloud. Current allowed file types are las and laz.')
@@ -573,7 +577,8 @@ class ProjectPointCloudResource(Resource):
     @project_point_cloud_not_processing
     def put(self, projectId: int, pointCloudId: int):
         # TODO consider adding status to point cloud as we aren't returning task
-        return PointCloudService.update(pointCloudId=pointCloudId,
+        return PointCloudService.update(database_session=db_session,
+                                        pointCloudId=pointCloudId,
                                         data=api.payload)
 
     @api.doc(id="deletePointCloud",
@@ -586,7 +591,7 @@ class ProjectPointCloudResource(Resource):
     def delete(self, projectId: int, pointCloudId: int):
         logger.info("Delete point cloud:{} in project:{} for user:{}".format(
             pointCloudId, projectId, request.current_user.username))
-        return PointCloudService.delete(pointCloudId)
+        return PointCloudService.delete(db_session, pointCloudId)
 
 
 @api.route('/<int:projectId>/point-cloud/<int:pointCloudId>/import/')
@@ -622,8 +627,6 @@ class ProjectTasksResource(Resource):
     @api.marshal_with(task, as_list=True)
     @project_permissions
     def get(self, projectId: int):
-        from geoapi.db import db_session
-        from geoapi.models import Task
         return db_session.query(Task).all()
 
 
@@ -638,7 +641,7 @@ class ProjectTileServersResource(Resource):
         logger.info("Add tile server to project:{} for user:{}".format(
             projectId, request.current_user.username))
 
-        ts = FeaturesService.addTileServer(projectId, api.payload)
+        ts = FeaturesService.addTileServer(db_session, projectId, api.payload)
         return ts
 
     @api.doc(id="getTileServers",
@@ -646,7 +649,7 @@ class ProjectTileServersResource(Resource):
     @api.marshal_with(tile_server, as_list=True)
     @project_permissions_allow_public
     def get(self, projectId: int):
-        tsv = FeaturesService.getTileServers(projectId)
+        tsv = FeaturesService.getTileServers(db_session, projectId)
         return tsv
 
     @api.doc(id="updateTileServers",
@@ -658,7 +661,7 @@ class ProjectTileServersResource(Resource):
         logger.info("Update project:{} for user:{}".format(projectId,
                                                            u.username))
 
-        ts = FeaturesService.updateTileServers(dataList=api.payload)
+        ts = FeaturesService.updateTileServers(database_session=db_session, dataList=api.payload)
         return ts
 
 
@@ -671,7 +674,7 @@ class ProjectTileServerResource(Resource):
     def delete(self, projectId: int, tileServerId: int) -> str:
         logger.info("Delete tile server:{} in project:{} for user:{}".format(
             tileServerId, projectId, request.current_user.username))
-        FeaturesService.deleteTileServer(tileServerId)
+        FeaturesService.deleteTileServer(db_session, tileServerId)
         return "Tile Server {id} deleted".format(id=tileServerId)
 
     @api.doc(id="updateTileServer",
@@ -683,5 +686,6 @@ class ProjectTileServerResource(Resource):
         logger.info("Update project:{} for user:{}".format(projectId,
                                                            u.username))
 
-        return FeaturesService.updateTileServer(tileServerId=tileServerId,
+        return FeaturesService.updateTileServer(database_session=db_session,
+                                                tileServerId=tileServerId,
                                                 data=api.payload)

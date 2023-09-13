@@ -1,10 +1,8 @@
 from sqlalchemy import create_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import scoped_session, sessionmaker
-from sqlalchemy.pool import NullPool
 from geoapi.settings import settings
 from contextlib import contextmanager
-import os
 from geoapi.log import logger
 
 
@@ -17,19 +15,10 @@ CONNECTION_STRING = 'postgresql://{}:{}@{}/{}'.format(
 
 
 def create_engine_for_context(context=None):
-    context = os.environ.get('APP_CONTEXT', 'flask')  # Default to 'flask' if not provided
-    logger.debug(f"Creating database engine for {context} context.")
-    if context == "celery":
-        # celery to disable pool (i.e. NullPool) due to https://jira.tacc.utexas.edu/browse/WG-141 and
-        # https://jira.tacc.utexas.edu/browse/WG-131
-        engine = create_engine(CONNECTION_STRING,
-                               echo=False,  # default value
-                               poolclass=NullPool)
-    else:
-        engine = create_engine(CONNECTION_STRING,
-                               echo=False,  # default value
-                               pool_pre_ping=True,
-                               pool_reset_on_return=True)
+    engine = create_engine(CONNECTION_STRING,
+                           echo=False,  # default value
+                           pool_pre_ping=True,
+                           pool_reset_on_return=True)
     return engine
 
 
@@ -53,7 +42,7 @@ def create_task_session():
     session = Session()
     try:
         yield session
-    except:
+    except:  # noqa: E722
         logger.exception("Error occurred. Performing rollback of current database transaction")
         session.rollback()
         raise
