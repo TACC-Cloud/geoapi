@@ -27,13 +27,13 @@ checkfortag:
 .PHONY: create
 create: checkforcontext checkfortag
 	@echo "Creating geoapi deployment/services/migration-job in '$(KUBE_CONTEXT)' context"
-	source ${ENV_FILE} && cat geoapi.yaml | envsubst '$${GEOAPI_TAG} $${NODEPORT} $${NSFSHARE_CLUSTER_IP} $${PGDATA_PVC} $${PGDATA_PVC_SIZE} $${MAPILLARY_CLIENT_TOKEN} $${MAPILLARY_CLIENT_ID}' | kubectl apply --context $(KUBE_CONTEXT) -f -
+	source ${ENV_FILE} && cat geoapi.yaml | envsubst '$${GEOAPI_TAG} $${NODEPORT} $${NSFSHARE_CLUSTER_IP} $${MAPILLARY_CLIENT_TOKEN} $${MAPILLARY_CLIENT_ID}' | kubectl apply --context $(KUBE_CONTEXT) -f -
 
 .PHONY: delete
 delete: checkforcontext
 	@echo "Deleting geoapi deployment/services/migration-job in '$(KUBE_CONTEXT)' context"
-	kubectl delete --context $(KUBE_CONTEXT) --ignore-not-found=true  deployment geoapi geoapi-workers geoapi-celerybeat geoapi-nginx geoapi-postgres geoapi-rabbitmq
-	kubectl delete --context $(KUBE_CONTEXT) --ignore-not-found=true service geoapi geoapi-nginx geoapi-postgres geoapi-rabbitmq
+	kubectl delete --context $(KUBE_CONTEXT) --ignore-not-found=true  deployment geoapi geoapi-workers geoapi-celerybeat geoapi-nginx geoapi-rabbitmq
+	kubectl delete --context $(KUBE_CONTEXT) --ignore-not-found=true service geoapi geoapi-nginx geoapi-rabbitmq
 	kubectl delete --context $(KUBE_CONTEXT) --ignore-not-found=true job/geoapi-migrations
 
 .PHONY: delete-staging

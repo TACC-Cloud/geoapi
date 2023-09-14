@@ -265,9 +265,9 @@ def shapefile_fixture():
 @pytest.fixture(scope="function")
 def shapefile_additional_files_fixture():
     home = os.path.dirname(__file__)
-    with open(os.path.join(home, 'fixtures/shapefile.cpg'), 'rb') as cpg,\
-            open(os.path.join(home, 'fixtures/shapefile.dbf'), 'rb') as dbf,\
-            open(os.path.join(home, 'fixtures/shapefile.prj'), 'rb') as prj,\
+    with open(os.path.join(home, 'fixtures/shapefile.cpg'), 'rb') as cpg, \
+            open(os.path.join(home, 'fixtures/shapefile.dbf'), 'rb') as dbf, \
+            open(os.path.join(home, 'fixtures/shapefile.prj'), 'rb') as prj, \
             open(os.path.join(home, 'fixtures/shapefile.shx'), 'rb') as shx:
         yield [FileStorage(cpg), FileStorage(dbf), FileStorage(prj), FileStorage(shx)]
 
