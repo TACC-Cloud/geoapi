@@ -6,6 +6,7 @@ from enum import Enum
 import time
 import datetime
 from celery import uuid as celery_uuid
+import json
 
 from geoapi.celery_app import app
 from geoapi.exceptions import InvalidCoordinateReferenceSystem, MissingServiceAccount
@@ -359,7 +360,7 @@ def import_from_files_from_path(session, tenant_id: str, userId: int, systemId: 
                     logger.info("importing:{} for user:{}".format(item_system_path, user.username))
                     tmp_file = client.getFile(systemId, item.path)
                     tmp_file.filename = Path(item.path).name
-                    additional_files = get_additional_files(tmpFile, systemId, item.path, client, available_files=filenames_in_directory)
+                    additional_files = get_additional_files(tmp_file, systemId, item.path, client, available_files=filenames_in_directory)
                     FeaturesService.fromFileObj(session, projectId, tmp_file, {},
                                                 original_path=item_system_path, additional_files=additional_files)
                     NotificationsService.create(session, user, "success", "Imported {f}".format(f=item_system_path))
