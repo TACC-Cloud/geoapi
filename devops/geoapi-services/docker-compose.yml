@@ -1,0 +1,96 @@
+---
+version: "3"
+
+networks:
+  geoapi:
+
+services:
+
+  rabbitmq:
+    image: rabbitmq
+    networks:
+      - geoapi
+    environment:
+      - RABBITMQ_DEFAULT_USER=${RABBITMQ_DEFAULT_USER}
+      - RABBITMQ_DEFAULT_PASS=${RABBITMQ_DEFAULT_PASS}
+      - RABBITMQ_DEFAULT_VHOST=${RABBITMQ_DEFAULT_VHOST}
+
+  nginx:
+    image: nginx
+    ports:
+      - 8888:80
+    volumes:
+      - /assets:/assets
+      - ./conf/nginx.conf:/etc/nginx/nginx.conf
+    networks:
+      - geoapi
+
+
+  workers:
+    build:
+      context: .
+      dockerfile: ./Dockerfile.potree
+    networks:
+      - geoapi
+    volumes:
+      - .:/app
+      - /assets:/assets
+    environment:
+      - MAPILLARY_CLIENT_TOKEN=4866220476802272
+      - FLASK_APP=/app/geoapi/app.py
+      - APP_ENV=development
+      - ASSETS_BASE_DIR=/assets
+      - TENANT
+    stdin_open: true
+    tty: true
+    container_name: geoapiworkers
+    hostname: geoapiworkers
+    command: "celery -A geoapi.celery_app worker -l info"
+
+  celerybeat:
+    build:
+      context: .
+      dockerfile: ./Dockerfile.potree
+    networks:
+      - geoapi
+    volumes:
+      - .:/app
+      - assets:/assets
+    environment:
+      - MAPILLARY_CLIENT_TOKEN=4866220476802272
+      - FLASK_APP=/app/geoapi/app.py
+      - APP_ENV=development
+      - ASSETS_BASE_DIR=/assets
+    stdin_open: true
+    tty: true
+    container_name: geoapicelerybeat
+    hostname: geoapicelerybeat
+    command: "celery -A geoapi.celery_app beat -l info"
+
+  api:
+    build:
+      context: .
+      dockerfile: ./Dockerfile
+    networks:
+      - geoapi
+    volumes:
+      - .:/app
+      - assets:/assets
+    ports:
+      - 8000:8000
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
+    environment:
+      - MAPILLARY_CLIENT_TOKEN=4866220476802272
+      - FLASK_APP=/app/geoapi/app.py
+      - APP_ENV=development
+      - ASSETS_BASE_DIR=/assets
+      - TENANT
+    stdin_open: true
+    tty: true
+    container_name: geoapi
+    hostname: geoapi
+    command: "gunicorn -w 4 -b 0.0.0.0:8000 geoapi.app:app -k gevent --reload --timeout 300"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
