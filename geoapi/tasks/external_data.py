@@ -146,7 +146,7 @@ def import_file_from_agave(userId: int, systemId: str, path: str, projectId: int
 
             temp_file = client.getFile(systemId, path)
             temp_file.filename = Path(path).name
-            additional_files = get_additional_files(systemId, path, client)
+            additional_files = get_additional_files(temp_file, systemId, path, client)
             FeaturesService.fromFileObj(session, projectId, temp_file, {},
                                         original_path=path, additional_files=additional_files)
             NotificationsService.create(session, user, "success", "Imported {f}".format(f=path))
