@@ -24,7 +24,7 @@ information. An .env file for developers can be found on [UT Stache](https://sta
 The API is built with flask and flask-restplus. It is running in its own container
 under gunicorn on port 8000
 
-`docker-compose up`
+`make start`
 
 ###### Initialize the database
 

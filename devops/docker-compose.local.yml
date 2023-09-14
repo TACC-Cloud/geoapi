@@ -53,11 +53,11 @@ services:
       - .:/app
       - assets:/assets
     environment:
-      - MAPILLARY_CLIENT_TOKEN=4866220476802272
+      - MAPILLARY_CLIENT_TOKEN=${MAPILLARY_CLIENT_TOKEN}
       - FLASK_APP=/app/geoapi/app.py
       - APP_ENV=development
       - ASSETS_BASE_DIR=/assets
-      - TENANT
+      - TENANT=${TENANT}
     stdin_open: true
     tty: true
     container_name: geoapiworkers
@@ -99,11 +99,11 @@ services:
       - 8.8.8.8
       - 8.8.4.4
     environment:
-      - MAPILLARY_CLIENT_TOKEN=4866220476802272
+      - MAPILLARY_CLIENT_TOKEN=${MAPILLARY_CLIENT_TOKEN}
       - FLASK_APP=/app/geoapi/app.py
       - APP_ENV=development
       - ASSETS_BASE_DIR=/assets
-      - TENANT
+      - TENANT=${TENANT}
     stdin_open: true
     tty: true
     container_name: geoapi

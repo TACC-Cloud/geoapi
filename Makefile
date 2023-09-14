@@ -2,6 +2,14 @@ TAG := $(shell git log --format=%h -1)
 GEOAPI_IMAGE=taccaci/geoapi
 GEOAPI_WORKERS=taccaci/geoapi-workers
 
+.PHONY: start
+start:
+	docker-compose -f devops/docker-compose.local.yml --env-file .env up
+
+.PHONY: stop
+stop:
+	docker-compose -f devops/docker-compose.local.yml --env-file .env down
+
 .PHONY: geoapi
 geoapi:
 	docker build -t $(GEOAPI_IMAGE):$(TAG) -f devops/Dockerfile .
