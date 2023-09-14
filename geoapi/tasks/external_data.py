@@ -233,7 +233,7 @@ def import_from_agave(tenant_id: str, userId: int, systemId: str, path: str, pro
     Recursively import files from a system/path.
     """
     with create_task_session() as session:
-        import_from_files_from_path(session, tenant_id, userId, systemId, str, projectId)
+        import_from_files_from_path(session, tenant_id, userId, systemId, path, projectId)
 
 
 def import_from_files_from_path(session, tenant_id: str, userId: int, systemId: str, path: str, projectId: int):
