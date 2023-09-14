@@ -7,7 +7,7 @@ from unittest.mock import patch, MagicMock
 from werkzeug.datastructures import FileStorage
 import laspy
 
-from geoapi.db import Base, db_session, engine
+from geoapi.db import Base, engine, db_session
 from geoapi.models.users import User
 from geoapi.models.project import Project, ProjectUser
 from geoapi.models.observable_data import ObservableDataProject
@@ -63,7 +63,7 @@ def user2(userdata):
 
 @pytest.fixture(scope="function")
 def projects_fixture():
-    """ Project with 1 users and test1 is an admin"""
+    """ Project with 1 user and test1 is an admin"""
     proj = Project(name="test", description="description")
     u1 = db_session.query(User).filter(User.username == "test1").first()
     proj.users.append(u1)
@@ -139,7 +139,7 @@ def observable_projects_fixture():
 def point_cloud_fixture():
     u1 = db_session.query(User).filter(User.username == "test1").first()
     data = {"description": "description"}
-    point_cloud = PointCloudService.create(projectId=1, data=data, user=u1)
+    point_cloud = PointCloudService.create(db_session, projectId=1, data=data, user=u1)
     yield point_cloud
 
 
@@ -358,7 +358,7 @@ def feature_fixture(projects_fixture):
 
 @pytest.fixture(scope="function")
 def image_feature_fixture(image_file_fixture):
-    yield FeaturesService.fromImage(1, image_file_fixture, metadata={})
+    yield FeaturesService.fromImage(db_session, 1, image_file_fixture, metadata={})
 
 
 @pytest.fixture(scope="function")
@@ -386,19 +386,14 @@ def convert_to_potree_mock():
 @pytest.fixture(scope="function")
 def check_point_cloud_mock():
     with patch('geoapi.services.point_cloud.check_point_cloud') as mock_check_point_cloud_mock:
-        class FakeAsyncResult:
-            def get(self):
-                return None
-        mock_check_point_cloud_mock.apply_async.return_value = FakeAsyncResult()
+        mock_check_point_cloud_mock.return_value = None
         yield mock_check_point_cloud_mock
 
 
 @pytest.fixture(scope="function")
 def check_point_cloud_mock_missing_crs():
     with patch('geoapi.services.point_cloud.check_point_cloud') as mock_check_point_cloud_mock:
-        mock_result = MagicMock()
-        mock_result.get.side_effect = InvalidCoordinateReferenceSystem()
-        mock_check_point_cloud_mock.apply_async.return_value = mock_result
+        mock_check_point_cloud_mock.side_effect = InvalidCoordinateReferenceSystem()
         yield mock_check_point_cloud_mock
 
 
@@ -408,7 +403,7 @@ def get_point_cloud_info_mock():
         mock_result = MagicMock()
         mock_result.get.return_value = [{'name': 'test.las'}]
 
-        mock_get_point_cloud_info.apply_async.return_value = mock_result
+        mock_get_point_cloud_info.return_value = mock_result
         yield mock_get_point_cloud_info
 
 

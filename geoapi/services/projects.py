@@ -3,7 +3,6 @@ from typing import List, Optional
 
 from sqlalchemy import desc
 from geoapi.models import Project, ProjectUser, User, ObservableDataProject
-from geoapi.db import db_session
 from sqlalchemy.sql import select, text
 from sqlalchemy.exc import IntegrityError
 from geoapi.services.users import UserService
@@ -21,7 +20,7 @@ class ProjectsService:
     """
 
     @staticmethod
-    def create(data: dict, user: User) -> Project:
+    def create(database_session, data: dict, user: User) -> Project:
         """
         Create a new map project for a user.
         :param data: dict
@@ -35,24 +34,26 @@ class ProjectsService:
 
         if data.get('observable', False):
             try:
-                ProjectsService.makeObservable(project,
+                ProjectsService.makeObservable(database_session,
+                                               project,
                                                user,
                                                data.get('watch_content', False))
             except Exception as e:
                 logger.exception("{}".format(e))
                 raise e
 
-        db_session.add(project)
-        db_session.commit()
+        database_session.add(project)
+        database_session.commit()
 
         project.project_users[0].creator = True
-        db_session.add(project)
-        db_session.commit()
+        database_session.add(project)
+        database_session.commit()
         setattr(project, 'deletable', True)
         return project
 
     @staticmethod
-    def makeObservable(proj: Project,
+    def makeObservable(database_session,
+                       proj: Project,
                        user: User,
                        watch_content: bool):
         """
@@ -77,16 +78,16 @@ class ProjectsService:
 
         users = get_system_users(proj.tenant_id, user.jwt, proj.system_id)
         logger.info("Updating project:{} to have the following users: {}".format(name, users))
-        project_users = [UserService.getOrCreateUser(u.username, tenant=proj.tenant_id) for u in users]
+        project_users = [UserService.getOrCreateUser(database_session, u.username, tenant=proj.tenant_id) for u in users]
         proj.users = project_users
 
         obs.project = proj
 
         try:
-            db_session.add(obs)
-            db_session.commit()
+            database_session.add(obs)
+            database_session.commit()
         except IntegrityError:
-            db_session.rollback()
+            database_session.rollback()
             logger.exception("User:{} tried to create an observable project that already exists: '{}'".format(user.username, name))
             raise ObservableProjectAlreadyExists("'{}' project already exists".format(name))
 
@@ -94,13 +95,13 @@ class ProjectsService:
             import_from_agave.apply_async(args=[obs.project.tenant_id, user.id, obs.system_id, obs.path, obs.project_id])
 
     @staticmethod
-    def list(user: User) -> List[Project]:
+    def list(database_session, user: User) -> List[Project]:
         """
         List a users projects
         :param user: User
         :return: List[Project]
         """
-        projects_and_project_user = db_session.query(Project, ProjectUser) \
+        projects_and_project_user = database_session.query(Project, ProjectUser) \
             .join(ProjectUser) \
             .filter(ProjectUser.user_id == user.id) \
             .order_by(desc(Project.created)) \
@@ -112,7 +113,7 @@ class ProjectsService:
         return [p for p, _ in projects_and_project_user]
 
     @staticmethod
-    def get(project_id: Optional[int] = None, uuid: Optional[str] = None, user: User = None) -> Project:
+    def get(database_session, project_id: Optional[int] = None, uuid: Optional[str] = None, user: User = None) -> Project:
         """
         Get the metadata associated with a project
         :param project_id: int
@@ -120,14 +121,14 @@ class ProjectsService:
         :return: Project
         """
         if project_id is not None:
-            project = db_session.query(Project).get(project_id)
+            project = database_session.query(Project).get(project_id)
         elif uuid is not None:
-            project = db_session.query(Project).filter(Project.uuid == uuid).first()
+            project = database_session.query(Project).filter(Project.uuid == uuid).first()
         else:
             raise ValueError("project_id or uid is required")
 
         if project and user and not is_anonymous(user):
-            project_user = db_session.query(ProjectUser)\
+            project_user = database_session.query(ProjectUser)\
                 .filter(ProjectUser.project_id == project.id)\
                 .filter(ProjectUser.user_id == user.id).one_or_none()
             if project_user:
@@ -135,7 +136,7 @@ class ProjectsService:
         return project
 
     @staticmethod
-    def getFeatures(projectId: int, query: dict = None) -> object:
+    def getFeatures(database_session, projectId: int, query: dict = None) -> object:
         """
         Returns a GeoJSON FeatureCollection of all assets in a project
 
@@ -240,45 +241,45 @@ class ProjectsService:
 
         sub_select = sub_select.group_by(text("feat.id")).alias("tmp")
         s = select([select_stmt]).select_from(sub_select)
-        result = db_session.execute(s, params)
+        result = database_session.execute(s, params)
         out = result.fetchone()
         return out.geojson
 
     @staticmethod
-    def update(user: User, projectId: int, data: dict) -> Project:
+    def update(database_session, user: User, projectId: int, data: dict) -> Project:
         """
         Update the metadata associated with a project
         :param projectId: int
         :param data: dict
         :return: Project
         """
-        proj = ProjectsService.get(project_id=projectId)
+        proj = ProjectsService.get(database_session=database_session, project_id=projectId)
         proj_data = data.get('project', {})
 
         proj.name = proj_data.get('name', proj.name)
         proj.description = proj_data.get('description', proj.description)
         proj.public = proj_data.get('public', proj.public)
 
-        db_session.commit()
+        database_session.commit()
 
         return proj
 
     @staticmethod
-    def delete(user: User, projectId: int) -> dict:
+    def delete(database_session, user: User, projectId: int) -> dict:
         """
         Delete a project and all its Features and assets
         :param projectId: int
         :return:
         """
-        db_session.query(Project).filter(Project.id == projectId).delete()
-        db_session.commit()
+        database_session.query(Project).filter(Project.id == projectId).delete()
+        database_session.commit()
 
         remove_project_assets.apply_async(args=[projectId])
 
         return {"status": "ok"}
 
     @staticmethod
-    def addUserToProject(projectId: int, username: str, admin: bool) -> None:
+    def addUserToProject(database_session, projectId: int, username: str, admin: bool) -> None:
         """
         Add a user to a project
         :param projectId: int
@@ -287,39 +288,39 @@ class ProjectsService:
         :return:
         """
 
-        proj = db_session.query(Project).get(projectId)
-        user = UserService.getOrCreateUser(username, proj.tenant_id)
+        proj = database_session.query(Project).get(projectId)
+        user = UserService.getOrCreateUser(database_session, username, proj.tenant_id)
         proj.users.append(user)
-        db_session.commit()
+        database_session.commit()
 
-        project_user = db_session.query(ProjectUser)\
+        project_user = database_session.query(ProjectUser)\
             .filter(ProjectUser.project_id == projectId)\
             .filter(ProjectUser.user_id == user.id).one()
         project_user.admin = admin
-        db_session.commit()
+        database_session.commit()
 
     @staticmethod
-    def getUsers(projectId: int) -> List[User]:
-        proj = db_session.query(Project).get(projectId)
+    def getUsers(database_session, projectId: int) -> List[User]:
+        proj = database_session.query(Project).get(projectId)
         return proj.users
 
     @staticmethod
-    def getUser(projectId: int, username: str) -> User:
-        proj = ProjectsService.get(projectId)
-        user = UserService.getUser(username, proj.tenant_id)
+    def getUser(database_session, projectId: int, username: str) -> User:
+        proj = ProjectsService.get(database_session, projectId)
+        user = UserService.getUser(database_session, username, proj.tenant_id)
         return user
 
     @staticmethod
-    def removeUserFromProject(projectId: int, username: str) -> None:
+    def removeUserFromProject(database_session, projectId: int, username: str) -> None:
         """
         Remove a user from a Project.
         :param projectId: int
         :param username: str
         :return: None
         """
-        proj = db_session.query(Project).get(projectId)
-        user = db_session.query(User).filter(User.username == username).first()
-        observable_project = db_session.query(ObservableDataProject) \
+        proj = database_session.query(Project).get(projectId)
+        user = database_session.query(User).filter(User.username == username).first()
+        observable_project = database_session.query(ObservableDataProject) \
             .filter(ObservableDataProject.id == projectId).first()
 
         if user not in proj.users:
@@ -334,4 +335,4 @@ class ProjectsService:
                 raise ApiException("Unable to remove last user of observable project who can observe file system")
 
         proj.users.remove(user)
-        db_session.commit()
+        database_session.commit()

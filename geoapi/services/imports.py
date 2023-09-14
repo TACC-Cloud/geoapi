@@ -1,6 +1,5 @@
 from datetime import datetime
 
-from geoapi.db import db_session
 from geoapi.models import ImportedFile
 from geoapi.log import logging
 
@@ -10,8 +9,8 @@ logger = logging.getLogger(__name__)
 class ImportsService():
 
     @staticmethod
-    def getImport(projectId: int, systemId: str, path: str) -> ImportedFile:
-        return db_session.query(ImportedFile)\
+    def getImport(database_session, projectId: int, systemId: str, path: str) -> ImportedFile:
+        return database_session.query(ImportedFile)\
             .filter(ImportedFile.project_id == projectId) \
             .filter(ImportedFile.system_id == systemId) \
             .filter(ImportedFile.path == path)\

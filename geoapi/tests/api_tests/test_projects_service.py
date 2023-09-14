@@ -16,7 +16,7 @@ def test_create_project():
             'description': "test description",
         },
     }
-    proj = ProjectsService.create(data, user)
+    proj = ProjectsService.create(db_session, data, user)
     assert proj.id is not None
     assert len(proj.users) == 1
     assert proj.name == "test name"
@@ -25,7 +25,7 @@ def test_create_project():
 
 
 def test_delete_project(projects_fixture, remove_project_assets_mock, user1):
-    ProjectsService.delete(user1, projects_fixture.id)
+    ProjectsService.delete(db_session, user1, projects_fixture.id)
     projects = db_session.query(Project).all()
     assert projects == []
 
@@ -47,7 +47,7 @@ def test_create_observable_project(userdata,
         'watch_content': True
     }
 
-    proj = ProjectsService.create(data, user)
+    proj = ProjectsService.create(db_session, data, user)
     assert len(proj.users) == 2
 
 
@@ -69,41 +69,41 @@ def test_create_observable_project_already_exists(observable_projects_fixture,
     }
 
     with pytest.raises(ObservableProjectAlreadyExists):
-        ProjectsService.create(data, user)
+        ProjectsService.create(db_session, data, user)
 
 
 def test_get_with_project_id(projects_fixture):
-    project = ProjectsService.get(project_id=projects_fixture.id)
+    project = ProjectsService.get(database_session=db_session, project_id=projects_fixture.id)
     assert project.id == projects_fixture.id
 
 
 def test_get_with_uid(projects_fixture):
-    project = ProjectsService.get(uuid=projects_fixture.uuid)
+    project = ProjectsService.get(database_session=db_session, uuid=projects_fixture.uuid)
     assert project.uuid == projects_fixture.uuid
 
 
 def test_get_missing_argument(projects_fixture):
     with pytest.raises(ValueError):
-        ProjectsService.get()
+        ProjectsService.get(db_session)
 
 
 def test_get_features(projects_fixture, feature_fixture):
-    project_features = ProjectsService.getFeatures(projects_fixture.id)
+    project_features = ProjectsService.getFeatures(db_session, projects_fixture.id)
     assert len(project_features['features']) == 1
 
 
 def test_get_features_filter_type(projects_fixture,
                                   feature_fixture,
                                   image_feature_fixture):
-    project_features = ProjectsService.getFeatures(projects_fixture.id)
+    project_features = ProjectsService.getFeatures(db_session, projects_fixture.id)
     assert len(project_features['features']) == 2
 
     query = {'assetType': 'image'}
-    project_features = ProjectsService.getFeatures(projects_fixture.id, query)
+    project_features = ProjectsService.getFeatures(db_session, projects_fixture.id, query)
     assert len(project_features['features']) == 1
 
     query = {'assetType': 'video'}
-    project_features = ProjectsService.getFeatures(projects_fixture.id, query)
+    project_features = ProjectsService.getFeatures(db_session, projects_fixture.id, query)
     assert len(project_features['features']) == 0
 
 
@@ -115,6 +115,6 @@ def test_update_project(projects_fixture):
             'description': 'new description',
         },
     }
-    proj = ProjectsService.update(user, projects_fixture.id, data)
+    proj = ProjectsService.update(db_session, user, projects_fixture.id, data)
     assert proj.name == "new name"
     assert proj.description == "new description"

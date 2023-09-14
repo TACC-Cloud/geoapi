@@ -254,8 +254,6 @@ spec:
           - configMapRef:
               name: geoapi-environment-vars
         env:
-          - name: APP_CONTEXT
-            value: "celery"
           - name: RABBITMQ_PASSWD
             valueFrom:
               secretKeyRef:
