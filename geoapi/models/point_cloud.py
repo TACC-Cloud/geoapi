@@ -24,7 +24,7 @@ class PointCloud(Base):
     tenant_id = Column(String, nullable=False)
     created = Column(DateTime(timezone=True), server_default=func.now())
     updated = Column(DateTime(timezone=True), onupdate=func.now())
-    project = relationship("Project")
+    project = relationship("Project", overlaps="point_clouds")
     feature = relationship("Feature", lazy="joined")
     task = relationship("Task", lazy="joined")
 
