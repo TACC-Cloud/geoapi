@@ -1,6 +1,7 @@
 from flask import request
 from flask_restx import Resource, Namespace, fields
 
+from geoapi.db import db_session
 from geoapi.log import logging
 from geoapi.utils.decorators import jwt_decoder, not_anonymous
 from geoapi.services.notifications import NotificationsService
@@ -53,7 +54,7 @@ class Notifications(Resource):
     def get(self):
         query = self.parser.parse_args()
         u = request.current_user
-        return NotificationsService.get(u, query)
+        return NotificationsService.get(db_session, u, query)
 
 
 @api.route("/progress")
@@ -63,13 +64,13 @@ class ProgressNotifications(Resource):
     @api.marshal_with(progress_notification_response, as_list=True)
     def get(self):
         u = request.current_user
-        return NotificationsService.getProgress(u)
+        return NotificationsService.getProgress(db_session, u)
 
     @api.doc(id="delete",
              description='Delete all done progress notifications')
     @api.marshal_with(progress_notification_response, as_list=True)
     def delete(self):
-        return NotificationsService.deleteAllDoneProgress()
+        return NotificationsService.deleteAllDoneProgress(db_session)
 
 
 @api.route("/progress/<string:progressUUID>")
@@ -78,10 +79,10 @@ class ProgressNotificationResource(Resource):
              description='Get a specific progress notification')
     @api.marshal_with(progress_notification_response)
     def get(self, progressUUID):
-        return NotificationsService.getProgressUUID(progressUUID)
+        return NotificationsService.getProgressUUID(db_session, progressUUID)
 
     @api.doc(id="delete",
              description='Delete a specific progress notification')
     @api.marshal_with(ok_response)
     def delete(self, progressUUID):
-        return NotificationsService.deleteProgress(progressUUID)
+        return NotificationsService.deleteProgress(db_session, progressUUID)

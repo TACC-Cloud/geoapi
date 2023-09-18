@@ -27,27 +27,27 @@ from geoapi.log import logging
 import geoapi.services.features as features
 from geoapi.services.streetview import StreetviewService
 from geoapi.services.notifications import NotificationsService
-from geoapi.db import db_session
+from geoapi.db import create_task_session
 
 logger = logging.getLogger(__file__)
 
 
-def publish(user: User, params: Dict):
+def publish(database_session, user: User, params: Dict):
     service = params['service']
     system_id = params['system_id']
     path = params['path']
     organization_key = params['organization_key']
 
-    streetview_service = StreetviewService.getByService(user, service)
+    streetview_service = StreetviewService.getByService(database_session, user, service)
 
     if not streetview_service.token or not streetview_service.service_user:
         logger.error('Not authenticated to {} for user: {}'.format(params['service'], user.username))
         raise StreetviewAuthException('Not authenticated to {}!'.format(service))
 
     # TODO: Find better solution for limiting uploads.
-    if len(NotificationsService.getProgressStatus('in_progress')) > 5:
+    if len(NotificationsService.getProgressStatus(database_session, 'in_progress')) > 5:
         message = 'Maximum number of uploads in progress!'
-        NotificationsService.create(user, 'warning', message)
+        NotificationsService.create(database_session, user, 'warning', message)
         raise StreetviewLimitException(message)
 
     # TODO: Implement retry
@@ -58,32 +58,34 @@ def publish(user: User, params: Dict):
                                    organization_key)
 
 
-def progress_error(user: User,
+def progress_error(database_session,
+                   user: User,
                    task_uuid: UUID,
                    status: str = None,
                    message: str = None,
                    logItem: Dict = None):
     logger.error(message)
     message = 'Error occurred'
-    NotificationsService.create(user, status, message)
-    NotificationsService.updateProgress(task_uuid=task_uuid,
+    NotificationsService.create(database_session, user, status, message)
+    NotificationsService.updateProgress(database_session, task_uuid=task_uuid,
                                         status=status,
                                         message=message,
                                         logItem=logItem)
 
 
-def clean_session(streetview_instance: StreetviewInstance,
+def clean_session(database_session,
+                  streetview_instance: StreetviewInstance,
                   user: User,
                   task_uuid: UUID,
                   status: str = None,
                   message: str = None,
                   logItem: dict = None):
-    StreetviewService.deleteInstance(streetview_instance.id)
-    progress_error(user, task_uuid, status, message, logItem)
+    StreetviewService.deleteInstance(database_session, streetview_instance.id)
+    progress_error(database_session, user, task_uuid, status, message, logItem)
     remove_project_streetview_dir(user.id, task_uuid)
 
 
-def _from_tapis(user: User, task_uuid: UUID, systemId: str, path: str):
+def _from_tapis(database_session, user: User, task_uuid: UUID, systemId: str, path: str):
     """
     Get files from tapis and place in a temporary streetview directory
     :param user: User
@@ -120,7 +122,8 @@ def _from_tapis(user: User, task_uuid: UUID, systemId: str, path: str):
 
             done_files += 1
 
-            NotificationsService.updateProgress(task_uuid=task_uuid,
+            NotificationsService.updateProgress(database_session,
+                                                task_uuid=task_uuid,
                                                 status="in_progress",
                                                 message="Collecting files from DesignSafe",
                                                 progress=int(done_files / files_length * 100),
@@ -137,14 +140,15 @@ def _from_tapis(user: User, task_uuid: UUID, systemId: str, path: str):
         raise Exception("No images have been uploaded to geoapi!")
 
 
-def _to_mapillary(user: User, streetview_instance: StreetviewInstance, task_uuid: UUID, organization_key: str):
+def _to_mapillary(database_session, user: User, streetview_instance: StreetviewInstance, task_uuid: UUID, organization_key: str):
     streetview_service = streetview_instance.streetview
     token = streetview_service.token
 
     service_user = streetview_service.service_user
 
     try:
-        NotificationsService.updateProgress(task_uuid,
+        NotificationsService.updateProgress(database_session,
+                                            task_uuid,
                                             "created",
                                             "Uploading to Mapillary")
 
@@ -163,7 +167,7 @@ def _to_mapillary(user: User, streetview_instance: StreetviewInstance, task_uuid
 #       start/end dates using some utility functions that mapillary_tools provides.
 #
 #       Relative documentation here: https://www.mapillary.com/developer/api-documentation
-def _mapillary_finalize(user: User, streetview_instance: StreetviewInstance, task_uuid: UUID, organization_key: str):
+def _mapillary_finalize(database_session, user: User, streetview_instance: StreetviewInstance, task_uuid: UUID, organization_key: str):
     uploaded_sequences = MapillaryUtils.extract_uploaded_sequences(user, task_uuid)
 
     if len(uploaded_sequences) == 0:
@@ -171,7 +175,8 @@ def _mapillary_finalize(user: User, streetview_instance: StreetviewInstance, tas
         raise Exception(error_message)
     else:
         for seq in uploaded_sequences:
-            StreetviewService.createSequence(streetview_instance=streetview_instance,
+            StreetviewService.createSequence(database_session=database_session,
+                                             streetview_instance=streetview_instance,
                                              start_date=seq['start_date'],
                                              end_date=seq['end_date'],
                                              bbox='{}, {}, {}, {}'.format(seq['lon_min'], seq['lat_min'], seq['lon_max'], seq['lat_max']),
@@ -180,9 +185,10 @@ def _mapillary_finalize(user: User, streetview_instance: StreetviewInstance, tas
 
 
 # TODO: Handle retry (deleteprogress) and different progress statuses and resuming
-def check_existing_upload(user, streetview_service, task_uuid, system_id, path):
-    existing_progress = NotificationsService.getProgressUUID(task_uuid)
-    existing_instance = StreetviewService.getInstanceFromSystemPath(streetview_service.id,
+def check_existing_upload(session, user, streetview_service, task_uuid, system_id, path):
+    existing_progress = NotificationsService.getProgressUUID(session, task_uuid)
+    existing_instance = StreetviewService.getInstanceFromSystemPath(session,
+                                                                    streetview_service.id,
                                                                     system_id,
                                                                     path)
     # TODO: Handle existing progress
@@ -198,57 +204,47 @@ def from_tapis_to_streetview(user_id: int,
                              system_id: str,
                              path: str,
                              organization_key: str):
-    user = UserService.get(user_id)
-    streetview_service = StreetviewService.get(streetview_service_id)
+    with create_task_session() as session:
 
-    task_uuid = uuid.uuid3(uuid.NAMESPACE_URL, system_id + path)
+        user = UserService.get(session, user_id)
+        streetview_service = StreetviewService.get(session, streetview_service_id)
 
-    try:
-        check_existing_upload(user, streetview_service, task_uuid, system_id, path)
-    except StreetviewExistsException as e:
-        NotificationsService.create(user, 'warning', str(e))
-        return
+        task_uuid = uuid.uuid3(uuid.NAMESPACE_URL, system_id + path)
 
-    # Initialize progress notification and streetview object
-    NotificationsService.createProgress(user,
-                                        "created",
-                                        "Preparing upload process...",
-                                        task_uuid,
-                                        {
-                                            "publishInfo": {
-                                                "system": system_id,
-                                                "path": path,
-                                                "service": streetview_service.service
-                                            }
-                                        })
-    streetview_instance = StreetviewService.createInstance(streetview_service.id,
-                                                           system_id,
-                                                           path)
-
-    # Get from tapis
-    try:
-        _from_tapis(user, task_uuid, system_id, path)
-    # TODO: Handle
-    except Exception as e:
-        error_message = "Error during getting files from tapis system:{} path:{} \
-        for streetview upload task: {} for user: {}. Error Message: {}" \
-              .format(system_id, path, task_uuid, user.username, e)
-        clean_session(streetview_instance,
-                      user,
-                      task_uuid,
-                      'error',
-                      error_message,
-                      logItem={'errorMessage': error_message})
-        return
-
-    if streetview_service.service == 'mapillary':
         try:
-            _to_mapillary(user, streetview_instance, task_uuid, organization_key)
+            check_existing_upload(session, user, streetview_service, task_uuid, system_id, path)
+        except StreetviewExistsException as e:
+            NotificationsService.create(session, user, 'warning', str(e))
+            return
+
+        # Initialize progress notification and streetview object
+        NotificationsService.createProgress(session,
+                                            user,
+                                            "created",
+                                            "Preparing upload process...",
+                                            task_uuid,
+                                            {
+                                                "publishInfo": {
+                                                    "system": system_id,
+                                                    "path": path,
+                                                    "service": streetview_service.service
+                                                }
+                                            })
+        streetview_instance = StreetviewService.createInstance(session,
+                                                               streetview_service.id,
+                                                               system_id,
+                                                               path)
+
+        # Get from tapis
+        try:
+            _from_tapis(session, user, task_uuid, system_id, path)
+        # TODO: Handle
         except Exception as e:
-            error_message = "Error during uploading to mapillary for streetview task: {} \
-              for user: {}. Error message: {}" \
-              .format(task_uuid, user.username, e)
-            clean_session(streetview_instance,
+            error_message = "Error during getting files from tapis system:{} path:{} \
+            for streetview upload task: {} for user: {}. Error Message: {}" \
+                  .format(system_id, path, task_uuid, user.username, e)
+            clean_session(session,
+                          streetview_instance,
                           user,
                           task_uuid,
                           'error',
@@ -256,27 +252,44 @@ def from_tapis_to_streetview(user_id: int,
                           logItem={'errorMessage': error_message})
             return
 
-        try:
-            _mapillary_finalize(user, streetview_instance, task_uuid, organization_key)
-        except Exception as e:
-            error_message = "Error during finalization of mapillary upload for streetview task: {} \
-            for user: {}. Error message: {}" \
+        if streetview_service.service == 'mapillary':
+            try:
+                _to_mapillary(session, user, streetview_instance, task_uuid, organization_key)
+            except Exception as e:
+                error_message = "Error during uploading to mapillary for streetview task: {} \
+                  for user: {}. Error message: {}" \
                   .format(task_uuid, user.username, e)
-            clean_session(streetview_instance,
-                          user,
-                          task_uuid,
-                          'error',
-                          error_message)
-            return
+                clean_session(session,
+                              streetview_instance,
+                              user,
+                              task_uuid,
+                              'error',
+                              error_message,
+                              logItem={'errorMessage': error_message})
+                return
 
-    NotificationsService.updateProgress(task_uuid,
-                                        "success",
-                                        "Finished Upload")
+            try:
+                _mapillary_finalize(session, user, streetview_instance, task_uuid, organization_key)
+            except Exception as e:
+                error_message = "Error during finalization of mapillary upload for streetview task: {} \
+                for user: {}. Error message: {}" \
+                      .format(task_uuid, user.username, e)
+                clean_session(streetview_instance,
+                              user,
+                              task_uuid,
+                              'error',
+                              error_message)
+                return
 
-    remove_project_streetview_dir(user.id, task_uuid)
+        NotificationsService.updateProgress(session,
+                                            task_uuid,
+                                            "success",
+                                            "Finished Upload")
+
+        remove_project_streetview_dir(user.id, task_uuid)
 
 
-def process_streetview_sequences(projectId, sequenceId, token) -> Task:
+def process_streetview_sequences(database_session, projectId, sequenceId, token) -> Task:
     """
     Process streetview files
 
@@ -285,7 +298,7 @@ def process_streetview_sequences(projectId, sequenceId, token) -> Task:
     :param token: str
     :return: processingTask: Task
     """
-    streetview_sequence = db_session.query(StreetviewSequence).get(sequenceId)
+    streetview_sequence = database_session.query(StreetviewSequence).get(sequenceId)
 
     celery_task_id = celery_uuid()
     task = Task()
@@ -295,8 +308,8 @@ def process_streetview_sequences(projectId, sequenceId, token) -> Task:
 
     streetview_sequence.task = task
 
-    db_session.add(task)
-    db_session.commit()
+    database_session.add(task)
+    database_session.commit()
 
     logger.info("Starting streetview sequence processing task for sequence (#{}).".format(sequenceId))
 
@@ -308,11 +321,12 @@ def process_streetview_sequences(projectId, sequenceId, token) -> Task:
 class StreetviewSequenceProcessingTask(celery.Task):
     def on_failure(self, exc, task_id, args, kwargs, einfo):
         logger.info("Task ({}, streetview sequence {}) failed: {}".format(task_id, args, exc))
-        failed_task = db_session.query(Task).filter(Task.process_id == task_id).first()
-        failed_task.status = "FAILED"
-        failed_task.description = ""
-        db_session.add(failed_task)
-        db_session.commit()
+        with create_task_session() as session:
+            failed_task = session.query(Task).filter(Task.process_id == task_id).first()
+            failed_task.status = "FAILED"
+            failed_task.description = ""
+            session.add(failed_task)
+            session.commit()
 
 
 @app.task(bind=True, base=StreetviewSequenceProcessingTask)
@@ -324,67 +338,65 @@ def convert_streetview_sequence_to_feature(self, projectId, sequenceId, token):
     :param seuqenceId: int
     :param token: str
     """
-    feature = Feature()
-    streetview_sequence = db_session.query(StreetviewSequence).get(sequenceId)
+    with create_task_session() as session:
 
-    sequence_id = streetview_sequence.sequence_id
-    original_dir = streetview_sequence.streetview_instance.path
-    display_path = original_dir + '/' + sequence_id
+        feature = Feature()
+        streetview_sequence = session.query(StreetviewSequence).get(sequenceId)
 
-    mapillary_api_url = 'https://graph.mapillary.com'
+        sequence_id = streetview_sequence.sequence_id
+        original_dir = streetview_sequence.streetview_instance.path
+        display_path = original_dir + '/' + sequence_id
 
-    api_call_headers = {
-        'Authorization': 'OAuth ' + token
-    }
+        mapillary_api_url = 'https://graph.mapillary.com'
 
-    sequence_response = requests.get(f"{mapillary_api_url}/image_ids?sequence_id={sequence_id}", headers=api_call_headers)
+        api_call_headers = {
+            'Authorization': 'OAuth ' + token
+        }
 
-    jsonResp = json.loads(sequence_response.content).get('data')
+        sequence_response = requests.get(f"{mapillary_api_url}/image_ids?sequence_id={sequence_id}", headers=api_call_headers)
 
-    point_features = []
+        jsonResp = json.loads(sequence_response.content).get('data')
 
-    image_url = ''
-    image_id = 0
+        point_features = []
 
-    if len(jsonResp) != 0:
-        image_id = str(jsonResp[0]['id'])
-        image_response = requests.get(f"{mapillary_api_url}/{image_id}?fields=thumb_1024_url", headers=api_call_headers)
-        image_url = json.loads(image_response.content).get('thumb_1024_url')
+        image_url = ''
+        image_id = 0
 
-    for img in jsonResp:
-        image_response = requests.get(f"{mapillary_api_url}/{img['id']}?fields=computed_geometry", headers=api_call_headers)
-        image_coordinates = json.loads(image_response.content) \
-            .get('computed_geometry') \
-            .get('coordinates')
-        point_features.append(Point(image_coordinates))
+        if len(jsonResp) != 0:
+            image_id = str(jsonResp[0]['id'])
+            image_response = requests.get(f"{mapillary_api_url}/{image_id}?fields=thumb_1024_url", headers=api_call_headers)
+            image_url = json.loads(image_response.content).get('thumb_1024_url')
 
-    asset_uuid = uuid.uuid4()
+        for img in jsonResp:
+            image_response = requests.get(f"{mapillary_api_url}/{img['id']}?fields=computed_geometry", headers=api_call_headers)
+            image_coordinates = json.loads(image_response.content) \
+                .get('computed_geometry') \
+                .get('coordinates')
+            point_features.append(Point(image_coordinates))
 
-    fa = FeatureAsset(
-        uuid=asset_uuid,
-        asset_type="streetview",
-        path=image_url,
-        display_path=display_path,
-        original_path=original_dir,
-        original_name=image_id,
-        feature=feature
-    )
+        asset_uuid = uuid.uuid4()
 
-    feature.assets.append(fa)
-    streetview_sequence.feature = feature
-    streetview_sequence.feature_id = feature.id
-    feature.project_id = projectId
+        fa = FeatureAsset(
+            uuid=asset_uuid,
+            asset_type="streetview",
+            path=image_url,
+            display_path=display_path,
+            original_path=original_dir,
+            original_name=image_id,
+            feature=feature
+        )
 
-    feature.the_geom = from_shape(LineString(point_features), srid=4326)
+        feature.assets.append(fa)
+        streetview_sequence.feature = feature
+        streetview_sequence.feature_id = feature.id
+        feature.project_id = projectId
 
-    streetview_sequence.task.status = "FINISHED"
-    streetview_sequence.task.description = ""
+        feature.the_geom = from_shape(LineString(point_features), srid=4326)
 
-    logger.info("Finished streetview sequence processing task for sequence (#{}).".format(sequenceId))
+        streetview_sequence.task.status = "FINISHED"
+        streetview_sequence.task.description = ""
 
-    try:
-        db_session.add(feature)
-        db_session.commit()
-    except Exception:
-        db_session.rollback()
-        raise
+        logger.info("Finished streetview sequence processing task for sequence (#{}).".format(sequenceId))
+
+        session.add(feature)
+        session.commit()
