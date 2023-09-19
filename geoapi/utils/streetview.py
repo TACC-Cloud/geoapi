@@ -100,7 +100,7 @@ class MapillaryUtils:
             subprocess.run(command,
                            check=True,
                            env={
-                               'MAPILLARY_CLIENT_TOKEN': settings.MAPILLARY_CLIENT_ID,
+                               'MAPILLARY_CLIENT_TOKEN': settings.MAPILLARY_CLIENT_TOKEN,
                                'MAPILLARY_CONFIG_PATH': MapillaryUtils.get_auth_file(userId)
                            })
         except subprocess.CalledProcessError as e:
