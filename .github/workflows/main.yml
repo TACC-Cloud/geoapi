@@ -62,7 +62,9 @@ jobs:
         cd devops
         poetry install
     - name: Run server-side unit tests
-      run: poetry run pytest
+      run: |
+        cd devops
+        poetry run pytest
   Workers_Unit_Tests:
     runs-on: ubuntu-latest
     services:
