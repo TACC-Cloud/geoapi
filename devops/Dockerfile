@@ -12,7 +12,7 @@ ENV POETRY_HOME=/opt/poetry
 ENV PATH="$POETRY_HOME/bin:$PATH"
 RUN curl -sSL https://install.python-poetry.org | python3 -
 RUN poetry config virtualenvs.create false
-COPY pyproject.toml poetry.lock ./
+COPY devops/pyproject.toml devops/poetry.lock ./
 RUN poetry install
 
 RUN mkdir /app
