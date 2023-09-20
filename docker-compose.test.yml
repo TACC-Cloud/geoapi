@@ -11,7 +11,7 @@ networks:
 services:
 
   postgres_test:
-    image: mdillon/postgis:11-alpine
+    image: mdillon/postgis
     volumes:
       - pgdata:/var/lib/postgresql/data
     ports:
@@ -30,7 +30,7 @@ services:
   workers:
     build:
       context: .
-      dockerfile: ./Dockerfile.potree
+      dockerfile: ./devops/Dockerfile.potree
       cache_from:
         - taccaci/geoapi-workers:latest
     volumes:
@@ -54,7 +54,7 @@ services:
   api:
     build:
       context: .
-      dockerfile: ./Dockerfile
+      dockerfile: ./devops/Dockerfile
       cache_from:
         - taccaci/geoapi:latest
     volumes:
