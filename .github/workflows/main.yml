@@ -58,13 +58,9 @@ jobs:
         restore-keys: |
           ${{ runner.os }}-poetry-
     - name: Install Python Packages
-      run: |
-        cd devops
-        poetry install
+      run: poetry install --path devops
     - name: Run server-side unit tests
-      run: |
-        cd devops
-        poetry run pytest
+      run: poetry run pytest
   Workers_Unit_Tests:
     runs-on: ubuntu-latest
     services:
