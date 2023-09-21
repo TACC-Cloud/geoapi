@@ -44,9 +44,7 @@ services:
 
 
   workers:
-    build:
-      context: .
-      dockerfile: ./Dockerfile.potree
+    image: taccaci/geoapi-workers:local
     networks:
       - geoapi
     volumes:
@@ -65,13 +63,11 @@ services:
     command: "celery -A geoapi.celery_app worker -l info"
 
   celerybeat:
-    build:
-      context: .
-      dockerfile: ./Dockerfile.potree
+    image: taccaci/geoapi-workers:local
     networks:
       - geoapi
     volumes:
-      - .:/app
+      - ../:/app
       - assets:/assets
     environment:
       - MAPILLARY_CLIENT_TOKEN=4866220476802272
@@ -85,9 +81,7 @@ services:
     command: "celery -A geoapi.celery_app beat -l info"
 
   api:
-    build:
-      context: .
-      dockerfile: ./Dockerfile
+    image: taccaci/geoapi:local
     networks:
       - geoapi
     volumes:

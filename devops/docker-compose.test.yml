@@ -8,8 +8,8 @@ volumes:
 networks:
   geoapi:
     driver: bridge
-services:
 
+services:
   postgres_test:
     image: mdillon/postgis
     volumes:
@@ -28,13 +28,9 @@ services:
       - POSTGRES_DB=test
 
   workers:
-    build:
-      context: .
-      dockerfile: ./devops/Dockerfile.potree
-      cache_from:
-        - taccaci/geoapi-workers:latest
+    image: taccaci/geoapi-workers:local
     volumes:
-      - .:/app
+      - ..:/app
       - assets:/assets
     environment:
       - MAPILLARY_CLIENT_TOKEN=4866220476802272
@@ -52,13 +48,9 @@ services:
     hostname: geoapiworkers
 
   api:
-    build:
-      context: .
-      dockerfile: ./devops/Dockerfile
-      cache_from:
-        - taccaci/geoapi:latest
+    image: taccaci/geoapi-workers:local
     volumes:
-      - .:/app
+      - ..:/app
       - assets:/assets
     ports:
       - 8000:8000

@@ -5,15 +5,11 @@ networks:
   geoapi:
 
 services:
-
   rabbitmq:
-    image: rabbitmq
+    image: rabbitmq:3.8.18
     networks:
       - geoapi
-    environment:
-      - RABBITMQ_DEFAULT_USER=${RABBITMQ_DEFAULT_USER}
-      - RABBITMQ_DEFAULT_PASS=${RABBITMQ_DEFAULT_PASS}
-      - RABBITMQ_DEFAULT_VHOST=${RABBITMQ_DEFAULT_VHOST}
+    env_file: ./secrets.env
 
   nginx:
     image: nginx
@@ -25,22 +21,16 @@ services:
     networks:
       - geoapi
 
-
   workers:
-    build:
-      context: .
-      dockerfile: ../Dockerfile.potree
+    image: taccaci/geoapi-workers:${GEOAPI_TAG}
     networks:
       - geoapi
     volumes:
-      - .:/app
       - /assets:/assets
+    env_file: ./secrets.env
     environment:
-      - MAPILLARY_CLIENT_TOKEN=${MAPILLARY_CLIENT_TOKEN}
       - FLASK_APP=/app/geoapi/app.py
-      - APP_ENV=development
       - ASSETS_BASE_DIR=/assets
-      - TENANT=${TENANT}
     stdin_open: true
     tty: true
     container_name: geoapiworkers
@@ -48,18 +38,14 @@ services:
     command: "celery -A geoapi.celery_app worker -l info"
 
   celerybeat:
-    build:
-      context: .
-      dockerfile: ../Dockerfile.potree
+    image: taccaci/geoapi-workers:${GEOAPI_TAG}
     networks:
       - geoapi
     volumes:
-      - .:/app
-      - assets:/assets
+      - /assets:/assets
+    env_file: ./secrets.env
     environment:
-      - MAPILLARY_CLIENT_TOKEN=${MAPILLARY_CLIENT_TOKEN}
       - FLASK_APP=/app/geoapi/app.py
-      - APP_ENV=development
       - ASSETS_BASE_DIR=/assets
     stdin_open: true
     tty: true
@@ -68,25 +54,21 @@ services:
     command: "celery -A geoapi.celery_app beat -l info"
 
   api:
-    build:
-      context: .
-      dockerfile: ../Dockerfile
+    image: taccaci/geoapi:${GEOAPI_TAG}
     networks:
       - geoapi
     volumes:
-      - .:/app
-      - assets:/assets
+      - /assets:/assets
     ports:
       - 8000:8000
     dns:
       - 8.8.8.8
       - 8.8.4.4
+    env_file: ./secrets.env
     environment:
-      - MAPILLARY_CLIENT_TOKEN=${MAPILLARY_CLIENT_TOKEN}
       - FLASK_APP=/app/geoapi/app.py
-      - APP_ENV=development
       - ASSETS_BASE_DIR=/assets
-      - TENANT=${TENANT}
+
     stdin_open: true
     tty: true
     container_name: geoapi

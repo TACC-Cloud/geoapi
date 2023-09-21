@@ -14,11 +14,13 @@ stop:
 geoapi:
 	docker build -t $(GEOAPI_IMAGE):$(TAG) -f devops/Dockerfile .
 	docker tag $(GEOAPI_IMAGE):$(TAG) $(GEOAPI_IMAGE):latest
+	docker tag $(GEOAPI_IMAGE):$(TAG) $(GEOAPI_IMAGE):local
 
 .PHONY: workers
 workers:
 	docker build -t $(GEOAPI_WORKERS):$(TAG) -f devops/Dockerfile.potree .
 	docker tag $(GEOAPI_WORKERS):$(TAG) $(GEOAPI_WORKERS):latest
+	docker tag $(GEOAPI_WORKERS):$(TAG) $(GEOAPI_WORKERS):local
 
 .PHONY: deploy-geoapi
 deploy-geoapi:

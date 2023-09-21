@@ -12,10 +12,10 @@ ENV POETRY_HOME=/opt/poetry
 ENV PATH="$POETRY_HOME/bin:$PATH"
 RUN curl -sSL https://install.python-poetry.org | python3 -
 RUN poetry config virtualenvs.create false
-COPY devops/pyproject.toml devops/poetry.lock ./
+COPY ../pyproject.toml ../poetry.lock ./
 RUN poetry install
 
 RUN mkdir /app
-COPY ./geoapi /app/geoapi
+COPY ../geoapi /app/geoapi
 ENV PYTHONPATH "${PYTHONPATH}:/app"
 WORKDIR /app/geoapi
