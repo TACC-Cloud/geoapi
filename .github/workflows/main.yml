@@ -58,7 +58,7 @@ jobs:
         restore-keys: |
           ${{ runner.os }}-poetry-
     - name: Install Python Packages
-      run: poetry install --path devops
+      run: poetry install
     - name: Run server-side unit tests
       run: poetry run pytest
   Workers_Unit_Tests:
