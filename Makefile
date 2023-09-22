@@ -18,7 +18,7 @@ geoapi:
 
 .PHONY: workers
 workers:
-	docker build -t $(GEOAPI_WORKERS):$(TAG) -f devops/Dockerfile.potree .
+	docker build -t $(GEOAPI_WORKERS):$(TAG) -f devops/Dockerfile.worker .
 	docker tag $(GEOAPI_WORKERS):$(TAG) $(GEOAPI_WORKERS):latest
 	docker tag $(GEOAPI_WORKERS):$(TAG) $(GEOAPI_WORKERS):local
 
