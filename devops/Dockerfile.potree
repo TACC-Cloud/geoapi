@@ -44,5 +44,5 @@ RUN conda install geos -y -n base
 
 WORKDIR /
 RUN mkdir app
-COPY ../geoapi /app/geoapi
+COPY geoapi /app/geoapi
 WORKDIR /app/geoapi

@@ -19,6 +19,6 @@ WORKDIR /app
 COPY devops/poetry.lock devops/pyproject.toml ./
 RUN poetry install
 
-COPY ../geoapi /app/geoapi
+COPY geoapi /app/geoapi
 ENV PYTHONPATH "${PYTHONPATH}:/app"
 WORKDIR /app/geoapi
