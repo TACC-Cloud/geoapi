@@ -9,7 +9,7 @@ services:
     image: rabbitmq:3.8.18
     networks:
       - geoapi
-    env_file: ./secrets.env
+    env_file: /opt/portal/conf/secrets.env
 
   nginx:
     image: nginx
@@ -27,7 +27,7 @@ services:
       - geoapi
     volumes:
       - /assets:/assets
-    env_file: ./secrets.env
+    env_file: /opt/portal/conf/secrets.env
     environment:
       - FLASK_APP=/app/geoapi/app.py
       - ASSETS_BASE_DIR=/assets
@@ -43,7 +43,7 @@ services:
       - geoapi
     volumes:
       - /assets:/assets
-    env_file: ./secrets.env
+    env_file: /opt/portal/conf/secrets.env
     environment:
       - FLASK_APP=/app/geoapi/app.py
       - ASSETS_BASE_DIR=/assets
@@ -64,7 +64,7 @@ services:
     dns:
       - 8.8.8.8
       - 8.8.4.4
-    env_file: ./secrets.env
+    env_file: /opt/portal/conf/secrets.env
     environment:
       - FLASK_APP=/app/geoapi/app.py
       - ASSETS_BASE_DIR=/assets
