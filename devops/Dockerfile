@@ -16,8 +16,7 @@ RUN poetry config virtualenvs.create false
 RUN mkdir /app
 WORKDIR /app
 
-COPY poetry.lock ./
-COPY pyproject.toml ./
+COPY devops/poetry.lock devops/pyproject.toml ./
 RUN poetry install
 
 COPY ../geoapi /app/geoapi
