@@ -1,7 +1,7 @@
 
 .PHONY: start
 start:
-	echo "starting (GEOAPI_TAG=$GEOAPI_TAG)"
+	echo "starting (GEOAPI_TAG=${GEOAPI_TAG})"
 	docker compose -f docker-compose.yml up -d
 
 .PHONY: stop
