@@ -1,6 +1,7 @@
 
 .PHONY: start
 start:
+	echo "starting (GEOAPI_TAG=$GEOAPI_TAG)
 	docker compose -f docker-compose.yml up -d
 
 .PHONY: stop
@@ -9,4 +10,4 @@ stop:
 
 .PHONY: pull
 pull:
-    docker pull api workers nginx rabbitmq
+	docker compose pull api workers nginx rabbitmq
