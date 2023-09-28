@@ -9,7 +9,7 @@ __pycache__/
 
 # Secret env file
 .env
-*secret.env
+*secrets.env
 
 # C extensions
 *.so
