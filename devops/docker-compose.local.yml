@@ -11,7 +11,7 @@ networks:
 services:
 
   rabbitmq:
-    image: rabbitmq
+    image: rabbitmq:3.12.6
     networks:
       - geoapi
     environment:

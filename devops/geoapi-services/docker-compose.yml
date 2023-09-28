@@ -6,7 +6,7 @@ networks:
 
 services:
   rabbitmq:
-    image: rabbitmq:3.8.18
+    image: rabbitmq:3.12.6
     networks:
       - geoapi
     env_file: /opt/portal/conf/secrets.env
