@@ -3,8 +3,6 @@ version: "3"
 services:
   workers:
     image: taccaci/geoapi-workers:${GEOAPI_TAG}
-    networks:
-      - geoapi
     volumes:
       - /assets:/assets
     env_file: /opt/portal/conf/secrets.env
