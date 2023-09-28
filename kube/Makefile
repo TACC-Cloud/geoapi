@@ -32,8 +32,8 @@ create: checkforcontext checkfortag
 .PHONY: delete
 delete: checkforcontext
 	@echo "Deleting geoapi deployment/services/migration-job in '$(KUBE_CONTEXT)' context"
-	kubectl delete --context $(KUBE_CONTEXT) --ignore-not-found=true  deployment geoapi geoapi-workers geoapi-celerybeat geoapi-nginx geoapi-postgres geoapi-rabbitmq
-	kubectl delete --context $(KUBE_CONTEXT) --ignore-not-found=true service geoapi geoapi-nginx geoapi-postgres geoapi-rabbitmq
+	kubectl delete --context $(KUBE_CONTEXT) --ignore-not-found=true  deployment geoapi geoapi-workers geoapi-celerybeat geoapi-nginx geoapi-rabbitmq
+	kubectl delete --context $(KUBE_CONTEXT) --ignore-not-found=true service geoapi geoapi-nginx geoapi-rabbitmq
 	kubectl delete --context $(KUBE_CONTEXT) --ignore-not-found=true job/geoapi-migrations
 
 .PHONY: delete-staging

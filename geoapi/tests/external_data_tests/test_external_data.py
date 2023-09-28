@@ -2,8 +2,9 @@ from unittest.mock import patch
 import pytest
 import os
 
+
 from geoapi.models import User, Feature, ImportedFile
-from geoapi.db import db_session
+from geoapi.db import db_session, create_task_session
 from geoapi.tasks.external_data import (import_from_agave,
                                         import_point_clouds_from_agave,
                                         refresh_observable_projects,
@@ -25,15 +26,17 @@ def get_system_users_mock(userdata):
 
 
 @pytest.fixture(scope="function")
-def rollback_side_effect():
-    with patch('geoapi.db.db_session.rollback', side_effect=db_session.rollback) as rollback:
-        yield rollback
+def task_session_commit_throws_exception():
+    # Create a real session object
+    real_session = create_task_session().__enter__()
 
-
-@pytest.fixture(scope="function")
-def db_session_commit_throws_exception():
-    with patch('geoapi.db.db_session.commit', side_effect=Exception) as commit:
-        yield commit
+    with patch('geoapi.db.sessionmaker') as mock_create_task_session:
+        # Patch the commit method of the real session
+        with patch.object(real_session, 'commit') as mock_commit:
+            mock_create_task_session.return_value.return_value = real_session
+            mock_commit.side_effect = Exception("Session commit failed")
+            yield real_session
+    real_session.__exit__(None, None, None)  # Ensure __exit__ is called
 
 
 @pytest.fixture(scope="function")
@@ -249,6 +252,7 @@ def test_external_data_no_files_except_for_trash(userdata, projects_fixture, aga
     u1 = db_session.query(User).filter(User.username == "test1").first()
 
     import_from_agave(projects_fixture.tenant_id, u1.id, "testSystem", "/", projects_fixture.id)
+
     features = db_session.query(Feature).all()
     # just a .Trash dir so nothing to import and only top level listing should occur
     assert len(features) == 0
@@ -293,6 +297,7 @@ def test_import_point_clouds_from_agave(MockAgaveUtils,
     files = [{"system": "designsafe.storage.default", "path": "file1.las"}]
     import_point_clouds_from_agave(u1.id, files, point_cloud_fixture.id)
 
+    db_session.refresh(point_cloud_fixture)
     point_cloud = point_cloud_fixture
     assert point_cloud.task.status == "FINISHED"
     assert point_cloud.task.description == ""
@@ -300,6 +305,11 @@ def test_import_point_clouds_from_agave(MockAgaveUtils,
     assert len(os.listdir(
         get_asset_path(point_cloud.feature.assets[0].path))) == 5  # index.html, preview.html, pointclouds, libs, logo
     assert len(os.listdir(get_asset_path(point_cloud_fixture.path, PointCloudService.ORIGINAL_FILES_DIR))) == 1
+    assert os.path.isfile(os.path.join(get_asset_path(point_cloud.feature.assets[0].path), "preview.html"))
+    with open(os.path.join(get_asset_path(point_cloud.feature.assets[0].path), "preview.html"), 'r+') as f:
+        preview = f.read()
+        assert "nsf_logo" not in preview
+        assert "$('.potree_menu_toggle').hide()" in preview
 
 
 @pytest.mark.worker
@@ -311,16 +321,17 @@ def test_import_point_clouds_from_agave_check_point_cloud_missing_crs(MockAgaveU
                                                                       point_cloud_fixture,
                                                                       lidar_las1pt2_file_fixture):
     MockAgaveUtils().getFile.return_value = lidar_las1pt2_file_fixture
-    check_mock.apply.side_effect = InvalidCoordinateReferenceSystem()
+    check_mock.side_effect = InvalidCoordinateReferenceSystem()
 
     u1 = db_session.query(User).get(1)
     files = [{"system": "designsafe.storage.default", "path": "file1.las"}]
     import_point_clouds_from_agave(u1.id, files, point_cloud_fixture.id)
 
+    db_session.refresh(point_cloud_fixture)
     point_cloud = point_cloud_fixture
     assert point_cloud.task.status == "FAILED"
     assert point_cloud.task.description == "Error importing file1.las: missing coordinate reference system"
-    assert len(os.listdir(get_asset_path(point_cloud_fixture.path, PointCloudService.ORIGINAL_FILES_DIR))) == 0
+    assert len(os.listdir(get_asset_path(point_cloud.path, PointCloudService.ORIGINAL_FILES_DIR))) == 0
 
 
 @pytest.mark.worker
@@ -332,12 +343,13 @@ def test_import_point_clouds_from_agave_check_point_cloud_unknown(MockAgaveUtils
                                                                   point_cloud_fixture,
                                                                   lidar_las1pt2_file_fixture):
     MockAgaveUtils().getFile.return_value = lidar_las1pt2_file_fixture
-    check_mock.apply.side_effect = Exception("dummy")
+    check_mock.side_effect = Exception("dummy")
 
     u1 = db_session.query(User).get(1)
     files = [{"system": "designsafe.storage.default", "path": "file1.las"}]
     import_point_clouds_from_agave(u1.id, files, point_cloud_fixture.id)
 
+    db_session.refresh(point_cloud_fixture)
     point_cloud = point_cloud_fixture
     assert point_cloud.task.status == "FAILED"
     assert point_cloud.task.description == "Unknown error importing designsafe.storage.default:file1.las"
@@ -353,12 +365,13 @@ def test_import_point_clouds_from_agave_conversion_error(MockAgaveUtils,
                                                          point_cloud_fixture,
                                                          lidar_las1pt2_file_fixture):
     MockAgaveUtils().getFile.return_value = lidar_las1pt2_file_fixture
-    convert_mock.apply.side_effect = Exception("dummy")
+    convert_mock.side_effect = Exception("dummy")
 
     u1 = db_session.query(User).get(1)
     files = [{"system": "designsafe.storage.default", "path": "file1.las"}]
     import_point_clouds_from_agave(u1.id, files, point_cloud_fixture.id)
 
+    db_session.refresh(point_cloud_fixture)
     point_cloud = point_cloud_fixture
     assert point_cloud.task.status == "FAILED"
     assert point_cloud.task.description == ""
@@ -371,8 +384,8 @@ def test_import_point_clouds_failed_dbsession_rollback(MockAgaveUtils,
                                                        projects_fixture,
                                                        point_cloud_fixture,
                                                        lidar_las1pt2_file_fixture,
-                                                       db_session_commit_throws_exception,
-                                                       rollback_side_effect):
+                                                       task_session_commit_throws_exception,
+                                                       caplog):
     MockAgaveUtils().getFile.return_value = lidar_las1pt2_file_fixture
 
     u1 = db_session.query(User).get(1)
@@ -381,19 +394,18 @@ def test_import_point_clouds_failed_dbsession_rollback(MockAgaveUtils,
     with pytest.raises(Exception):
         import_point_clouds_from_agave(u1.id, files, point_cloud_fixture.id)
 
-    rollback_side_effect.assert_called_once()
+    assert "rollback" in caplog.text
 
 
 @pytest.mark.worker
 def test_import_from_agave_failed_dbsession_rollback(agave_utils_with_geojson_file,
                                                      userdata,
                                                      projects_fixture,
-                                                     db_session_commit_throws_exception,
-                                                     rollback_side_effect):
+                                                     task_session_commit_throws_exception,
+                                                     caplog):
     with pytest.raises(Exception):
         import_from_agave(projects_fixture.tenant_id, userdata.id, "testSystem", "/testPath", projects_fixture.id)
-
-    rollback_side_effect.assert_called()
+    assert "rollback" in caplog.text
 
 
 @pytest.mark.worker
@@ -402,14 +414,17 @@ def test_refresh_observable_projects(user1,
                                      agave_utils_with_image_file_from_rapp_folder,
                                      observable_projects_fixture,
                                      get_system_users_mock,
-                                     rollback_side_effect):
+                                     caplog):
     assert len(observable_projects_fixture.project.project_users) == 1
     # single user with no admin but is creator
     assert [(user1.username, False, True)] == [(u.user.username, u.admin, u.creator)
                                                for u in observable_projects_fixture.project.project_users]
 
     refresh_observable_projects()
-    rollback_side_effect.assert_not_called()
+
+    db_session.refresh(observable_projects_fixture.project)
+
+    assert "rollback" not in caplog.text
     assert len(os.listdir(get_project_asset_dir(observable_projects_fixture.project_id))) == 2
     # now two users with one being the admin and creator
     assert [(user1.username, True, True), (user2.username, False, False)] == [(u.user.username, u.admin, u.creator)
@@ -420,10 +435,10 @@ def test_refresh_observable_projects(user1,
 def test_refresh_observable_projects_dbsession_rollback(agave_utils_with_geojson_file,
                                                         observable_projects_fixture,
                                                         get_system_users_mock,
-                                                        db_session_commit_throws_exception,
-                                                        rollback_side_effect):
+                                                        task_session_commit_throws_exception,
+                                                        caplog):
     refresh_observable_projects()
-    rollback_side_effect.assert_called()
+    assert "rollback" in caplog.text
 
 
 def test_is_member_of_rapp_project_folder():

@@ -9,7 +9,7 @@ from geoapi.models import User
 @pytest.mark.skip(reason="Update needed; https://jira.tacc.utexas.edu/browse/DES-2264")
 def test_create_streetview_token():
     user = db_session.query(User).get(1)
-    StreetviewService.setToken(user, 'mapillary', 'test token')
+    StreetviewService.setToken(db_session, user, 'mapillary', 'test token')
     assert user.mapillary_jwt == 'test token'
 
 
@@ -17,14 +17,14 @@ def test_create_streetview_token():
 def test_get_streetview_token():
     user = db_session.query(User).get(1)
     StreetviewService.setToken(user, 'mapillary', 'test token')
-    tok = StreetviewService.getToken(user, 'mapillary')
+    tok = StreetviewService.getToken(db_session, user, 'mapillary')
     assert user.mapillary_jwt == tok
 
 
 @pytest.mark.skip(reason="Update needed; https://jira.tacc.utexas.edu/browse/DES-2264")
 def test_create_streetview():
     user = db_session.query(User).get(1)
-    streetview = StreetviewService.create(user.id, 'test system', 'test path')
+    streetview = StreetviewService.create(db_session, user.id, 'test system', 'test path')
     assert streetview.id is not None
 
 
@@ -33,7 +33,7 @@ def test_get_user_streetview():
     user = db_session.query(User).get(1)
     StreetviewService.create(user.id, 'test system', 'test path')
     StreetviewService.create(user.id, 'test system 2', 'test path 2')
-    streetview_list = StreetviewService.getAll(user)
+    streetview_list = StreetviewService.getAll(db_session, user)
     assert len(streetview_list) == 2
 
 
@@ -52,7 +52,7 @@ def test_get_streetview_system_path():
 def test_create_sequence():
     user = db_session.query(User).get(1)
     streetview = StreetviewService.create(user.id, 'test system', 'test path')
-    sequence = StreetviewService.createSequence(streetview_id=streetview.id)
+    sequence = StreetviewService.createSequence(database_session=db_session, streetview_id=streetview.id)
     assert len(streetview.sequences) == 1
     assert sequence.streetview_id == 1
 
@@ -61,7 +61,7 @@ def test_create_sequence():
 def test_update_sequence():
     user = db_session.query(User).get(1)
     streetview = StreetviewService.create(user.id, 'test system', 'test path')
-    sequence = StreetviewService.createSequence(streetview.id, service='service', sequence_key='test sequence key')
+    sequence = StreetviewService.createSequence(db_session, streetview.id, service='service', sequence_key='test sequence key')
     data = {
         'sequence_key': 'new sequence key',
     }
@@ -73,7 +73,7 @@ def test_update_sequence():
 @pytest.mark.skip(reason="Update needed; https://jira.tacc.utexas.edu/browse/DES-2264")
 def test_add_sequence_to_path():
     user = db_session.query(User).get(1)
-    streetview = StreetviewService.create(user.id, 'test system', 'test path')
+    streetview = StreetviewService.create(db_session, user.id, 'test system', 'test path')
     data = {
         'dir': {
             'path': 'test path',
@@ -84,5 +84,5 @@ def test_add_sequence_to_path():
         'service': 'mapillary',
         'organizationId': '12345678'
     }
-    StreetviewService.addSequenceToStreetview(user, data)
+    StreetviewService.addSequenceToStreetview(db_session, user, data)
     assert len(streetview.sequences) == 4

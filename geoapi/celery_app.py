@@ -20,8 +20,3 @@ app.conf.beat_schedule = {
         'schedule': crontab(hour='*', minute='0')
     }
 }
-
-
-@app.task
-def hello():
-    return "Hello World"
