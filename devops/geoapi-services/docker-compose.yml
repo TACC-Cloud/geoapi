@@ -82,3 +82,9 @@ services:
     command: "gunicorn -w 4 -b 0.0.0.0:8000 geoapi.app:app -k gevent --reload --timeout 300"
     extra_hosts:
       - "host.docker.internal:host-gateway"
+
+  hazmapper:
+    image: taccaci/hazmapper:${HAZMAPPER_TAG}
+    ports:
+      - 80:80
+    container_name: hazmapper
