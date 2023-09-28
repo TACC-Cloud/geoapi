@@ -239,7 +239,8 @@ class FeaturesService:
         return features
 
     @staticmethod
-    def from_rapp_questionnaire(database_session, projectId: int, fileObj: IO, additional_files: List[IO], original_path: str = None) -> Feature:
+    def from_rapp_questionnaire(database_session, projectId: int, fileObj: IO,
+                                additional_files: List[IO], original_path: str = None) -> Feature:
         """
         Import RAPP questionnaire
 

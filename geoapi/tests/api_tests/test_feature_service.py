@@ -225,7 +225,8 @@ def test_create_questionnaire_feature(projects_fixture, questionnaire_file_fixtu
 
 def test_create_questionnaire_feature_with_assets(projects_fixture, questionnaire_file_with_assets_fixture, image_file_fixture):
     assets = [image_file_fixture]
-    feature = FeaturesService.from_rapp_questionnaire(db_session, projects_fixture.id, questionnaire_file_with_assets_fixture, additional_files=assets)
+    feature = FeaturesService.from_rapp_questionnaire(db_session, projects_fixture.id,
+                                                      questionnaire_file_with_assets_fixture, additional_files=assets)
     assert feature.project_id == projects_fixture.id
     assert len(feature.assets) == 1
     assert db_session.query(Feature).count() == 1
