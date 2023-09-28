@@ -9,6 +9,8 @@ services:
     image: rabbitmq:3.12.6
     networks:
       - geoapi
+    ports:
+      - "5672:5672"
     env_file: /opt/portal/conf/secrets.env
     environment:
       - FLASK_APP=/app/geoapi/app.py
