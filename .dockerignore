@@ -1,4 +1,6 @@
 **.pyc
 .git
 **/__pycache__
-
+# Secret env file
+.env
+*secrets.env

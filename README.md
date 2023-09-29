@@ -24,7 +24,8 @@ information. An .env file for developers can be found on [UT Stache](https://sta
 The API is built with flask and flask-restplus. It is running in its own container
 under gunicorn on port 8000
 
-`docker-compose up`
+`make build`
+`make start`
 
 ###### Initialize the database
 
@@ -87,17 +88,17 @@ alembic revision --autogenerate
 
 Run route/service tests on the `api` container
 ```
-docker-compose -f docker-compose.test.yml -p geoapi_test run api pytest
+docker-compose -f devops/docker-compose.test.yml -p geoapi_test run api pytest
 ```
 
 Run worker-related tasks on the `workers` container
 ```
-docker-compose -f docker-compose.test.yml -p geoapi_test run workers pytest -m "worker"
+docker-compose -f devops/docker-compose.test.yml -p geoapi_test run workers pytest -m "worker"
 ```
 
 Note that images need to be rebuilt before running tests if they have been updated (e.g. packages):
 ```
-docker-compose -f docker-compose.test.yml build
+make build
 ```
 ## Kubernetes (Production/Staging)
 

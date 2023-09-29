@@ -21,7 +21,7 @@ RUN git clone -b develop https://github.com/potree/PotreeConverter.git && cd Pot
 mkdir build && cd build && \
 cmake -DCMAKE_BUILD_TYPE=Release -DLASZIP_INCLUDE_DIRS=/opt/LAStools/LASzip/dll/ -DLASZIP_LIBRARY=/usr/local/lib/liblaszip.so .. && \
 make && make install && cp -r /opt/PotreeConverter/PotreeConverter/resources /resources
-ADD misc/potree/page_template /resources/page_template
+ADD devops/misc/potree/page_template /resources/page_template
 
 RUN update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.8 2
 
@@ -32,16 +32,17 @@ ENV POETRY_HOME=/opt/poetry
 ENV PATH="$POETRY_HOME/bin:$PATH"
 RUN curl -sSL https://install.python-poetry.org | python3 -
 RUN poetry config virtualenvs.create false
-COPY pyproject.toml poetry.lock ./
+COPY devops/pyproject.toml devops/poetry.lock ./
+
 RUN poetry install
 
 ENV PYTHONPATH "${PYTHONPATH}:/app"
 
-# isntall geos into condo the base pdal image is using
+# install geos into condo the base pdal image is using
 RUN conda install geos -y -n base
 
 
 WORKDIR /
 RUN mkdir app
-COPY ./geoapi /app/geoapi
+COPY geoapi /app/geoapi
 WORKDIR /app/geoapi
