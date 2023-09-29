@@ -38,10 +38,8 @@ class LocalDevelopmentConfig(Config):
     MAPILLARY_CLIENT_ID = os.environ.get('MAPILLARY_CLIENT_ID', 'MLY|4866220476802272|cedfb10deac752ca3ddf83997cef60a4')
 
 
-class UnitTestingConfig(Config):
-    DB_USERNAME = 'dev'
+class UnitTestingConfig(LocalDevelopmentConfig):
     DB_NAME = 'test'
-    DB_PASSWD = 'dev'
     DB_HOST = os.environ.get('DB_HOST', 'postgres')
     TESTING = True
     STREETVIEW_DIR = os.environ.get('STREETVIEW_DIR', '/tmp/streetview')
