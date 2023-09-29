@@ -63,6 +63,8 @@ jobs:
         poetry install
     - name: Run server-side unit tests
       run: |
+        cp poetry.lock  ../
+        cp poetry.toml  ../
         poetry run pytest ../geoapi
   Workers_Unit_Tests:
     runs-on: ubuntu-latest
