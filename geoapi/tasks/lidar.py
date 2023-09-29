@@ -11,7 +11,7 @@ from geoapi.log import logging
 from geoapi.utils.lidar import getProj4, get_bounding_box_2d
 from geoapi.utils import geometries
 from geoapi.celery_app import app
-from geoapi.db import db_session
+from geoapi.db import create_task_session
 from geoapi.models import Task
 from geoapi.utils.assets import make_project_asset_dir, get_asset_path, get_asset_relative_path
 
@@ -30,7 +30,6 @@ def get_point_cloud_files(path):
     return input_files
 
 
-@app.task()
 def check_point_cloud(file_path: str) -> None:
     """
     Check point cloud file that it has required info
@@ -42,8 +41,7 @@ def check_point_cloud(file_path: str) -> None:
     getProj4(file_path)
 
 
-@app.task()
-def get_point_cloud_info(pointCloudId: int) -> dict:
+def get_point_cloud_info(database_session, pointCloudId: int) -> dict:
     """
     Get info on las files
     :param pointCloudId: int
@@ -51,7 +49,7 @@ def get_point_cloud_info(pointCloudId: int) -> dict:
     """
     from geoapi.services.point_cloud import PointCloudService
 
-    point_cloud = PointCloudService.get(pointCloudId)
+    point_cloud = PointCloudService.get(database_session, pointCloudId)
     path_to_original_point_clouds = get_asset_path(point_cloud.path, PointCloudService.ORIGINAL_FILES_DIR)
     input_files = get_point_cloud_files(path_to_original_point_clouds)
 
@@ -61,11 +59,12 @@ def get_point_cloud_info(pointCloudId: int) -> dict:
 class PointCloudProcessingTask(celery.Task):
     def on_failure(self, exc, task_id, args, kwargs, einfo):
         logger.info("Task ({}, point cloud {}) failed: {}".format(task_id, args, exc))
-        failed_task = db_session.query(Task).filter(Task.process_id == task_id).first()
-        failed_task.status = "FAILED"
-        failed_task.description = ""
-        db_session.add(failed_task)
-        db_session.commit()
+        with create_task_session() as session:
+            failed_task = session.query(Task).filter(Task.process_id == task_id).first()
+            failed_task.status = "FAILED"
+            failed_task.description = ""
+            session.add(failed_task)
+            session.commit()
 
 
 @app.task(bind=True, base=PointCloudProcessingTask)
@@ -78,72 +77,68 @@ def convert_to_potree(self, pointCloudId: int) -> None:
     from geoapi.models import Feature, FeatureAsset
     from geoapi.services.point_cloud import PointCloudService
 
-    point_cloud = PointCloudService.get(pointCloudId)
+    with create_task_session() as session:
+        point_cloud = PointCloudService.get(session, pointCloudId)
 
-    path_to_original_point_clouds = get_asset_path(point_cloud.path, PointCloudService.ORIGINAL_FILES_DIR)
-    path_temp_processed_point_cloud_path = get_asset_path(point_cloud.path, PointCloudService.PROCESSED_DIR)
+        path_to_original_point_clouds = get_asset_path(point_cloud.path, PointCloudService.ORIGINAL_FILES_DIR)
+        path_temp_processed_point_cloud_path = get_asset_path(point_cloud.path, PointCloudService.PROCESSED_DIR)
 
-    input_files = [get_asset_path(path_to_original_point_clouds, file)
-                   for file in os.listdir(path_to_original_point_clouds)
-                   if pathlib.Path(file).suffix.lstrip('.').lower() in PointCloudService.LIDAR_FILE_EXTENSIONS]
+        input_files = [get_asset_path(path_to_original_point_clouds, file)
+                       for file in os.listdir(path_to_original_point_clouds)
+                       if pathlib.Path(file).suffix.lstrip('.').lower() in PointCloudService.LIDAR_FILE_EXTENSIONS]
 
-    outline = get_bounding_box_2d(input_files)
+        outline = get_bounding_box_2d(input_files)
 
-    command = [
-        "PotreeConverter",
-        "--verbose",
-        "-i",
-        path_to_original_point_clouds,
-        "-o",
-        path_temp_processed_point_cloud_path,
-        "--overwrite",
-        "--generate-page",
-        "index"
-    ]
-    if point_cloud.conversion_parameters:
-        command.extend(point_cloud.conversion_parameters.split())
-    logger.info("Processing point cloud (#{}):  {}".format(pointCloudId, " ".join(command)))
-    subprocess.run(command, check=True, capture_output=True, text=True)
+        command = [
+            "PotreeConverter",
+            "--verbose",
+            "-i",
+            path_to_original_point_clouds,
+            "-o",
+            path_temp_processed_point_cloud_path,
+            "--overwrite",
+            "--generate-page",
+            "index"
+        ]
+        if point_cloud.conversion_parameters:
+            command.extend(point_cloud.conversion_parameters.split())
+        logger.info("Processing point cloud (#{}):  {}".format(pointCloudId, " ".join(command)))
+        subprocess.run(command, check=True, capture_output=True, text=True)
 
-    # Create preview viewer html (with no menu and now nsf logo)
-    with open(os.path.join(path_temp_processed_point_cloud_path, "preview.html"), 'w+') as preview:
-        with open(os.path.join(path_temp_processed_point_cloud_path, "index.html"), 'r') as viewer:
-            content = viewer.read()
-            content = re.sub(r"<div class=\"nsf_logo\"(.+?)</div>", '', content, flags=re.DOTALL)
-            content = content.replace("viewer.toggleSidebar()", "$('.potree_menu_toggle').hide()")
-            preview.write(content)
+        # Create preview viewer html (with no menu and now nsf logo)
+        with open(os.path.join(path_temp_processed_point_cloud_path, "preview.html"), 'w+') as preview:
+            with open(os.path.join(path_temp_processed_point_cloud_path, "index.html"), 'r') as viewer:
+                content = viewer.read()
+                content = re.sub(r"<div class=\"nsf_logo\"(.+?)</div>", '', content, flags=re.DOTALL)
+                content = content.replace("viewer.toggleSidebar()", "$('.potree_menu_toggle').hide()")
+                preview.write(content)
 
-    if point_cloud.feature_id:
-        feature = point_cloud.feature
-    else:
-        feature = Feature()
-        feature.project_id = point_cloud.project_id
+        if point_cloud.feature_id:
+            feature = point_cloud.feature
+        else:
+            feature = Feature()
+            feature.project_id = point_cloud.project_id
 
-        asset_uuid = uuid.uuid4()
-        base_filepath = make_project_asset_dir(point_cloud.project_id)
-        asset_path = os.path.join(base_filepath, str(asset_uuid))
-        fa = FeatureAsset(
-            uuid=asset_uuid,
-            asset_type="point_cloud",
-            path=get_asset_relative_path(asset_path),
-            display_path=point_cloud.description,
-            feature=feature
-        )
-        feature.assets.append(fa)
-        point_cloud.feature = feature
+            asset_uuid = uuid.uuid4()
+            base_filepath = make_project_asset_dir(point_cloud.project_id)
+            asset_path = os.path.join(base_filepath, str(asset_uuid))
+            fa = FeatureAsset(
+                uuid=asset_uuid,
+                asset_type="point_cloud",
+                path=get_asset_relative_path(asset_path),
+                display_path=point_cloud.description,
+                feature=feature
+            )
+            feature.assets.append(fa)
+            point_cloud.feature = feature
 
-    feature.the_geom = from_shape(geometries.convert_3D_2D(outline), srid=4326)
-    point_cloud.task.status = "FINISHED"
-    point_cloud.task.description = ""
+        feature.the_geom = from_shape(geometries.convert_3D_2D(outline), srid=4326)
+        point_cloud.task.status = "FINISHED"
+        point_cloud.task.description = ""
 
-    point_cloud_asset_path = get_asset_path(feature.assets[0].path)
-    shutil.rmtree(point_cloud_asset_path, ignore_errors=True)
-    shutil.move(path_temp_processed_point_cloud_path, point_cloud_asset_path)
-
-    try:
-        db_session.add(point_cloud)
-        db_session.add(feature)
-        db_session.commit()
-    except:  # noqa: E722
-        db_session.rollback()
-        raise
+        point_cloud_asset_path = get_asset_path(feature.assets[0].path)
+        shutil.rmtree(point_cloud_asset_path, ignore_errors=True)
+        shutil.move(path_temp_processed_point_cloud_path, point_cloud_asset_path)
+        session.add(point_cloud)
+        session.add(feature)
+        session.commit()
