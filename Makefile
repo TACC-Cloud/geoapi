@@ -26,6 +26,11 @@ workers:
 	docker tag $(GEOAPI_WORKERS):$(TAG) $(GEOAPI_WORKERS):latest
 	docker tag $(GEOAPI_WORKERS):$(TAG) $(GEOAPI_WORKERS):local
 
+
+.PHONY: deploy
+deploy:
+	make deploy-geoapi && make deploy-workers
+
 .PHONY: deploy-geoapi
 deploy-geoapi:
 	docker push $(GEOAPI_IMAGE):$(TAG)
