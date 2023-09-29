@@ -1,0 +1,107 @@
+---
+version: "3"
+
+volumes:
+  assets:
+  pgdata:
+
+networks:
+  geoapi:
+
+services:
+
+  rabbitmq:
+    image: rabbitmq:3.12.6
+    networks:
+      - geoapi
+    environment:
+      - RABBITMQ_DEFAULT_USER=dev
+      - RABBITMQ_DEFAULT_PASS=dev
+      - RABBITMQ_DEFAULT_VHOST=dev
+
+  postgres:
+    image: mdillon/postgis:11-alpine
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    networks:
+      - geoapi
+    container_name: geoapi_postgres
+    hostname: geoapi_postgres
+    environment:
+      - POSTGRES_PASSWORD=dev
+      - POSTGRES_USER=dev
+      - POSTGRES_DB=dev
+
+  nginx:
+    image: nginx
+    ports:
+      - 8888:80
+    volumes:
+      - assets:/assets
+      - ./local_conf/nginx.conf:/etc/nginx/nginx.conf
+    networks:
+      - geoapi
+
+
+  workers:
+    image: taccaci/geoapi-workers:local
+    networks:
+      - geoapi
+    volumes:
+      - ../:/app
+      - assets:/assets
+    environment:
+      - MAPILLARY_CLIENT_TOKEN=${MAPILLARY_CLIENT_TOKEN}
+      - FLASK_APP=/app/geoapi/app.py
+      - APP_ENV=development
+      - ASSETS_BASE_DIR=/assets
+      - TENANT=${TENANT}
+    stdin_open: true
+    tty: true
+    container_name: geoapiworkers
+    hostname: geoapiworkers
+    command: "celery -A geoapi.celery_app worker -l info"
+
+  celerybeat:
+    image: taccaci/geoapi-workers:local
+    networks:
+      - geoapi
+    volumes:
+      - ../:/app
+      - assets:/assets
+    environment:
+      - MAPILLARY_CLIENT_TOKEN=4866220476802272
+      - FLASK_APP=/app/geoapi/app.py
+      - APP_ENV=development
+      - ASSETS_BASE_DIR=/assets
+    stdin_open: true
+    tty: true
+    container_name: geoapicelerybeat
+    hostname: geoapicelerybeat
+    command: "celery -A geoapi.celery_app beat -l info"
+
+  api:
+    image: taccaci/geoapi:local
+    networks:
+      - geoapi
+    volumes:
+      - ../:/app
+      - assets:/assets
+    ports:
+      - 8000:8000
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
+    environment:
+      - MAPILLARY_CLIENT_TOKEN=${MAPILLARY_CLIENT_TOKEN}
+      - FLASK_APP=/app/geoapi/app.py
+      - APP_ENV=development
+      - ASSETS_BASE_DIR=/assets
+      - TENANT=${TENANT}
+    stdin_open: true
+    tty: true
+    container_name: geoapi
+    hostname: geoapi
+    command: "gunicorn -w 4 -b 0.0.0.0:8000 geoapi.app:app -k gevent --reload --timeout 300"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
