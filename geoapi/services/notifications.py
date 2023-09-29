@@ -3,7 +3,6 @@ from typing import List, AnyStr, Dict
 from geoapi.models import Notification, ProgressNotification
 from geoapi.models import User
 from uuid import UUID
-from geoapi.db import db_session
 from geoapi.log import logging
 
 logger = logging.getLogger(__file__)
@@ -12,8 +11,8 @@ logger = logging.getLogger(__file__)
 class NotificationsService:
 
     @staticmethod
-    def getAll(user: User) -> List[Notification]:
-        return db_session.query(Notification) \
+    def getAll(database_session, user: User) -> List[Notification]:
+        return database_session.query(Notification) \
             .filter(Notification.username == user.username) \
             .filter(Notification.tenant_id == user.tenant_id) \
             .order_by(Notification.created.desc()) \
@@ -21,8 +20,8 @@ class NotificationsService:
             .all()
 
     @staticmethod
-    def get(user: User, filters: Dict) -> List[Notification]:
-        q = db_session.query(Notification) \
+    def get(database_session, user: User, filters: Dict) -> List[Notification]:
+        q = database_session.query(Notification) \
             .filter(Notification.username == user.username) \
             .filter(Notification.tenant_id == user.tenant_id)
         if filters.get("startDate"):
@@ -31,7 +30,7 @@ class NotificationsService:
             .limit(100).all()
 
     @staticmethod
-    def create(user: User, status: AnyStr, message: AnyStr) -> Notification:
+    def create(database_session, user: User, status: AnyStr, message: AnyStr) -> Notification:
         note = Notification(
             username=user.username,
             tenant_id=user.tenant_id,
@@ -39,35 +38,35 @@ class NotificationsService:
             message=message
         )
         try:
-            db_session.add(note)
-            db_session.commit()
+            database_session.add(note)
+            database_session.commit()
             return note
         except Exception:
-            db_session.rollback()
+            database_session.rollback()
             raise
 
     @staticmethod
-    def getProgress(user: User) -> List[ProgressNotification]:
-        q = db_session.query(ProgressNotification) \
+    def getProgress(database_session, user: User) -> List[ProgressNotification]:
+        q = database_session.query(ProgressNotification) \
             .filter(ProgressNotification.user_id == user.id) \
             .filter(ProgressNotification.tenant_id == user.tenant_id)
         return q.order_by(ProgressNotification.created.desc()) \
             .limit(100).all()
 
     @staticmethod
-    def getProgressUUID(task_uuid: UUID) -> ProgressNotification:
-        return db_session.query(ProgressNotification) \
+    def getProgressUUID(database_session, task_uuid: UUID) -> ProgressNotification:
+        return database_session.query(ProgressNotification) \
             .filter(ProgressNotification.uuid == task_uuid) \
             .first()
 
     @staticmethod
-    def getProgressStatus(status: str) -> List[ProgressNotification]:
-        return db_session.query(ProgressNotification) \
+    def getProgressStatus(database_session, status: str) -> List[ProgressNotification]:
+        return database_session.query(ProgressNotification) \
             .filter(ProgressNotification.status == status) \
             .all()
 
     @staticmethod
-    def createProgress(user: User, status: AnyStr, message: AnyStr, task_uuid: UUID,
+    def createProgress(database_session, user: User, status: AnyStr, message: AnyStr, task_uuid: UUID,
                        logs: List = None) -> ProgressNotification:
         note = ProgressNotification(
             user_id=user.id,
@@ -78,56 +77,40 @@ class NotificationsService:
             message=message,
             logs=logs
         )
-        try:
-            db_session.add(note)
-            db_session.commit()
-            return note
-        except Exception:
-            db_session.rollback()
-            raise
+        database_session.add(note)
+        database_session.commit()
+        return note
 
     @staticmethod
-    def updateProgress(task_uuid: UUID, status: AnyStr = None, message: AnyStr = None, progress: int = None,
+    def updateProgress(database_session, task_uuid: UUID, status: AnyStr = None, message: AnyStr = None, progress: int = None,
                        logItem: Dict = None):
-        note = db_session.query(ProgressNotification) \
+        note = database_session.query(ProgressNotification) \
             .filter(ProgressNotification.uuid == task_uuid) \
             .first()
-        try:
-            if status is not None:
-                note.status = status
-            if message is not None:
-                note.message = message
-            if progress is not None:
-                note.progress = progress
-            if logItem is not None:
-                new_log = note.logs
-                new_log.update(logItem)
-                note.extraData = new_log
-            db_session.commit()
-        except Exception:
-            db_session.rollback()
-            raise
+        if status is not None:
+            note.status = status
+        if message is not None:
+            note.message = message
+        if progress is not None:
+            note.progress = progress
+        if logItem is not None:
+            new_log = note.logs
+            new_log.update(logItem)
+            note.extraData = new_log
+        database_session.commit()
 
     @staticmethod
-    def deleteProgress(task_uuid: UUID):
-        notes = db_session.query(ProgressNotification) \
+    def deleteProgress(database_session, task_uuid: UUID):
+        notes = database_session.query(ProgressNotification) \
             .filter(ProgressNotification.uuid == task_uuid)
-        try:
-            for i in notes:
-                db_session.delete(i)
-            db_session.commit()
-        except Exception:
-            db_session.rollback()
-            raise
+        for i in notes:
+            database_session.delete(i)
+        database_session.commit()
 
     @staticmethod
-    def deleteAllDoneProgress():
-        note = db_session.query(ProgressNotification) \
+    def deleteAllDoneProgress(database_session):
+        note = database_session.query(ProgressNotification) \
             .filter(ProgressNotification.status == 'success')
-        try:
-            for pn in note:
-                db_session.delete(pn)
-            db_session.commit()
-        except Exception:
-            db_session.rollback()
-            raise
+        for pn in note:
+            database_session.delete(pn)
+        database_session.commit()

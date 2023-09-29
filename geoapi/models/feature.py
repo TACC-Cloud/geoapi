@@ -27,7 +27,7 @@ class Feature(Base):
     styles = Column(JSONB, default={})
     created_date = Column(DateTime(timezone=True), server_default=func.now())
     assets = relationship("FeatureAsset", cascade="all, delete-orphan", lazy="joined")
-    project = relationship("Project")
+    project = relationship("Project", overlaps="features")
 
     def __repr__(self):
         return '<Feature(id={})>'.format(self.id)
@@ -62,7 +62,7 @@ class FeatureAsset(Base):
     original_path = Column(String(), nullable=True, index=True)
     display_path = Column(String(), nullable=True)
     asset_type = Column(String(), nullable=False, default="image")
-    feature = relationship('Feature')
+    feature = relationship('Feature', overlaps="assets")
 
     def __repr__(self):
         return '<FeatureAsset(id={})>'.format(self.id)
