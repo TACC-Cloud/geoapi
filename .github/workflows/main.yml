@@ -63,6 +63,7 @@ jobs:
         poetry install
     - name: Run server-side unit tests
       run: |
+        cd devops
         poetry run pytest ../geoapi
   Workers_Unit_Tests:
     runs-on: ubuntu-latest

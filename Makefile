@@ -10,6 +10,10 @@ start:
 stop:
 	docker-compose -f devops/docker-compose.local.yml --env-file .env down
 
+.PHONY: build
+build:
+	make geoapi && make workers
+
 .PHONY: geoapi
 geoapi:
 	docker build -t $(GEOAPI_IMAGE):$(TAG) -f devops/Dockerfile .
@@ -21,6 +25,11 @@ workers:
 	docker build -t $(GEOAPI_WORKERS):$(TAG) -f devops/Dockerfile.worker .
 	docker tag $(GEOAPI_WORKERS):$(TAG) $(GEOAPI_WORKERS):latest
 	docker tag $(GEOAPI_WORKERS):$(TAG) $(GEOAPI_WORKERS):local
+
+
+.PHONY: deploy
+deploy:
+	make deploy-geoapi && make deploy-workers
 
 .PHONY: deploy-geoapi
 deploy-geoapi:

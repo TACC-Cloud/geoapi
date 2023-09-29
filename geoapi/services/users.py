@@ -1,11 +1,10 @@
 from geoapi.models import User, Project, ProjectUser
-from geoapi.db import db_session
 
 
 class UserService:
 
     @staticmethod
-    def create(username: str, tenant: str, jwt: str = None) -> User:
+    def create(database_session, username: str, tenant: str, jwt: str = None) -> User:
         """
 
         :rtype: User
@@ -13,31 +12,31 @@ class UserService:
         u = User(username=username, tenant_id=tenant)
         if jwt:
             u.jwt = jwt
-        db_session.add(u)
-        db_session.commit()
+        database_session.add(u)
+        database_session.commit()
         return u
 
     @staticmethod
-    def getOrCreateUser(username: str, tenant: str) -> User:
-        user = UserService.getUser(username, tenant)
+    def getOrCreateUser(database_session, username: str, tenant: str) -> User:
+        user = UserService.getUser(database_session, username, tenant)
         if not user:
-            user = UserService.create(username, tenant)
+            user = UserService.create(database_session, username, tenant)
         return user
 
     @staticmethod
-    def getUser(username: str, tenant: str) -> User:
-        return db_session.query(User)\
+    def getUser(database_session, username: str, tenant: str) -> User:
+        return database_session.query(User)\
             .filter(User.username == username)\
             .filter(User.tenant_id == tenant)\
             .first()
 
     @staticmethod
-    def get(userId: int) -> User:
-        return db_session.query(User).get(userId)
+    def get(database_session, userId: int) -> User:
+        return database_session.query(User).get(userId)
 
     @staticmethod
-    def canAccess(user: User, projectId: int) -> bool:
-        up = db_session.query(ProjectUser)\
+    def canAccess(database_session, user: User, projectId: int) -> bool:
+        up = database_session.query(ProjectUser)\
             .join(Project)\
             .filter(ProjectUser.user_id == user.id)\
             .filter(Project.tenant_id == user.tenant_id)\
@@ -47,8 +46,8 @@ class UserService:
         return False
 
     @staticmethod
-    def is_admin_or_creator(user: User, projectId: int) -> bool:
-        up = db_session.query(ProjectUser) \
+    def is_admin_or_creator(database_session, user: User, projectId: int) -> bool:
+        up = database_session.query(ProjectUser) \
             .join(Project) \
             .filter(ProjectUser.user_id == user.id) \
             .filter(Project.tenant_id == user.tenant_id) \
@@ -58,6 +57,6 @@ class UserService:
         return False
 
     @staticmethod
-    def setJWT(user: User, token: str) -> None:
+    def setJWT(database_session, user: User, token: str) -> None:
         user.jwt = token
-        db_session.commit()
+        database_session.commit()

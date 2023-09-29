@@ -1,6 +1,7 @@
 from geoapi.tasks.streetview import _from_tapis
 from geoapi.utils.agave import AgaveFileListing
 from geoapi.utils.streetview import (get_project_streetview_dir, remove_project_streetview_dir)
+from geoapi.db import db_session
 from unittest.mock import patch, MagicMock
 import os
 import pytest
@@ -49,7 +50,7 @@ def test_get_file_to_path(user1, task_fixture, mock_notifications_service, agave
     path = "path/"
     task_uuid = uuid.uuid3(uuid.NAMESPACE_URL, system_id + path)
 
-    _from_tapis(user1, task_uuid, system_id, path)
+    _from_tapis(db_session, user1, task_uuid, system_id, path)
 
     assert len(os.listdir(get_project_streetview_dir(user1.id, task_uuid))) == 1
     remove_project_streetview_dir(user1.id, task_uuid)

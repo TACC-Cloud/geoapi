@@ -10,6 +10,7 @@ from geoapi.services.point_cloud import PointCloudService
 from geoapi.settings import settings
 from geoapi.utils import jwt_utils
 from geoapi.utils.users import is_anonymous, AnonymousUser
+from geoapi.db import db_session
 from geoapi.log import logger
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import serialization
@@ -28,6 +29,7 @@ def jwt_decoder(fn):
     def wrapper(*args, **kwargs):
         pub_key = get_pub_key()
         user = None
+        token = None
         try:
             jwt_header_name, token, tenant = jwt_utils.jwt_tenant(request.headers)
         except ValueError:
@@ -46,11 +48,11 @@ def jwt_decoder(fn):
                 logger.exception(e)
                 abort(400, 'could not decode JWT')
 
-            user = UserService.getUser(username, tenant)
+            user = UserService.getUser(db_session, username, tenant)
             if not user:
-                user = UserService.create(username=username, jwt=token, tenant=tenant)
+                user = UserService.create(db_session, username=username, jwt=token, tenant=tenant)
             # In case the JWT was updated for some reason, reset the jwt
-            UserService.setJWT(user, token)
+            UserService.setJWT(db_session, user, token)
         request.current_user = user
         return fn(*args, **kwargs)
     return wrapper
@@ -65,12 +67,12 @@ def check_access_and_get_project(current_user, allow_public_use=False, project_i
     :param allow_public_use: boolean
     :return: project: Project
     """
-    proj = ProjectsService.get(user=current_user, project_id=project_id) if project_id \
-        else ProjectsService.get(user=current_user, uuid=uuid)
+    proj = ProjectsService.get(db_session, user=current_user, project_id=project_id) if project_id \
+        else ProjectsService.get(db_session, user=current_user, uuid=uuid)
     if not proj:
         abort(404, "No project found")
     if not allow_public_use or not proj.public:
-        access = False if is_anonymous(current_user) else UserService.canAccess(current_user, proj.id)
+        access = False if is_anonymous(current_user) else UserService.canAccess(db_session, current_user, proj.id)
         if not access:
             abort(403, "Access denied")
     return proj
@@ -111,7 +113,7 @@ def project_admin_or_creator_permissions(fn):
     def wrapper(*args, **kwargs):
         projectId = kwargs.get("projectId")
         check_access_and_get_project(request.current_user, project_id=projectId, allow_public_use=False)
-        if not UserService.is_admin_or_creator(request.current_user, projectId):
+        if not UserService.is_admin_or_creator(db_session, request.current_user, projectId):
             abort(403, "Access denied")
         return fn(*args, **kwargs)
     return wrapper
@@ -121,11 +123,11 @@ def project_feature_exists(fn):
     @wraps(fn)
     def wrapper(*args, **kwargs):
         projectId = kwargs.get("projectId")
-        proj = ProjectsService.get(projectId)
+        proj = ProjectsService.get(db_session, projectId)
         if not proj:
             abort(404, "No project found")
         featureId = kwargs.get("featureId")
-        feature = FeaturesService.get(featureId)
+        feature = FeaturesService.get(db_session, featureId)
         if not feature:
             abort(404, "No feature found!")
         if feature.project_id != projectId:
@@ -138,11 +140,11 @@ def project_point_cloud_exists(fn):
     @wraps(fn)
     def wrapper(*args, **kwargs):
         projectId = kwargs.get("projectId")
-        proj = ProjectsService.get(projectId)
+        proj = ProjectsService.get(db_session, projectId)
         if not proj:
             abort(404, "No project found")
         pointCloudId = kwargs.get("pointCloudId")
-        point_cloud = PointCloudService.get(pointCloudId)
+        point_cloud = PointCloudService.get(db_session, pointCloudId)
         if not point_cloud:
             abort(404, "No point cloud found!")
         if point_cloud.project_id != projectId:
@@ -155,7 +157,7 @@ def project_point_cloud_not_processing(fn):
     @wraps(fn)
     def wrapper(*args, **kwargs):
         point_cloud_id = kwargs.get("pointCloudId")
-        point_cloud = PointCloudService.get(point_cloud_id)
+        point_cloud = PointCloudService.get(db_session, point_cloud_id)
         if point_cloud.task \
                 and point_cloud.task.status not in ["FINISHED", "FAILED"]:
             logger.info("point cloud:{} is not in terminal state".format(

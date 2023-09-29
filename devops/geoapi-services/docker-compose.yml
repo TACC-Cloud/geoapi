@@ -27,6 +27,23 @@ services:
     networks:
       - geoapi
 
+  workers:
+    image: taccaci/geoapi-workers:${GEOAPI_TAG}
+    networks:
+      - geoapi
+    volumes:
+      - /assets:/assets
+    env_file: /opt/portal/conf/secrets.env
+    environment:
+      - FLASK_APP=/app/geoapi/app.py
+      - ASSETS_BASE_DIR=/assets
+      - GEOAPI_TAG=ENV_GEOAPI_TAG
+    stdin_open: true
+    tty: true
+    container_name: geoapiworkers
+    hostname: geoapiworkers
+    command: "celery -A geoapi.celery_app worker -l info"
+
   celerybeat:
     image: taccaci/geoapi-workers:${GEOAPI_TAG}
     networks:

@@ -21,7 +21,6 @@ def test_add_tile_server(test_client, projects_fixture):
                             json=_get_tile_server_data(),
                             headers={'x-jwt-assertion-test': u1.jwt})
     data = resp.get_json()
-    resp.status_code
     assert resp.status_code == 200
     assert data["name"] == "Test"
     assert data["type"] == "tms"

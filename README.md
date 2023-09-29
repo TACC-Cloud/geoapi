@@ -24,8 +24,7 @@ information. An .env file for developers can be found on [UT Stache](https://sta
 The API is built with flask and flask-restplus. It is running in its own container
 under gunicorn on port 8000
 
-`make geoapi`
-`make workers`
+`make build`
 `make start`
 
 ###### Initialize the database
@@ -99,8 +98,7 @@ docker-compose -f devops/docker-compose.test.yml -p geoapi_test run workers pyte
 
 Note that images need to be rebuilt before running tests if they have been updated (e.g. packages):
 ```
-make workers
-make geoapi
+make build
 ```
 ## Kubernetes (Production/Staging)
 

@@ -11,16 +11,16 @@ test_uuid2 = uuid.uuid4()
 @pytest.fixture
 def notifications(userdata):
     u1 = db_session.query(User).filter(User.username == "test1").first()
-    NotificationsService.create(u1, "error", "test error")
-    NotificationsService.create(u1, "success", "test success")
+    NotificationsService.create(db_session, u1, "error", "test error")
+    NotificationsService.create(db_session, u1, "success", "test success")
 
 
 @pytest.fixture
 def progress_notifications(userdata):
     u1 = db_session.query(User).filter(User.username == "test1").first()
     u2 = db_session.query(User).filter(User.username == "test2").first()
-    error = NotificationsService.createProgress(u1, "error", "test error", test_uuid1)
-    success = NotificationsService.createProgress(u2, "success", "test success", test_uuid2)
+    error = NotificationsService.createProgress(db_session, u1, "error", "test error", test_uuid1)
+    success = NotificationsService.createProgress(db_session, u2, "success", "test success", test_uuid2)
     yield [error, success]
 
 
