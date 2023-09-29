@@ -63,8 +63,6 @@ jobs:
         poetry install
     - name: Run server-side unit tests
       run: |
-        # cp devops/poetry.lock  ../
-        # cp devops/pyproject.toml  ../
         cd devops
         poetry run pytest ../geoapi
   Workers_Unit_Tests:
