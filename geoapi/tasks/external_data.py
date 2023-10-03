@@ -218,6 +218,7 @@ def import_point_clouds_from_agave(userId: int, files, pointCloudId: int):
         convert_to_potree(pointCloudId)
         with create_task_session() as database_session:
             user = session.query(User).get(userId)
+            logger.info(f"point cloud:{pointCloudId} conversion completed for user:{user.username} and files:{files}")
             NotificationsService.create(database_session,
                                         user,
                                         "success",
@@ -225,7 +226,7 @@ def import_point_clouds_from_agave(userId: int, files, pointCloudId: int):
     except:  # noqa: E722
         with create_task_session() as database_session:
             user = session.query(User).get(userId)
-            logger.exception("point cloud:{} conversion failed for user:{}".format(pointCloudId, user.username))
+            logger.exception(f"point cloud:{pointCloudId} conversion failed for user:{user.username} and files:{files}")
             _update_point_cloud_task(database_session, pointCloudId, description="", status="FAILED")
             NotificationsService.create(database_session, user, "error", "Processing failed for point cloud ({})!".format(pointCloudId))
         return
