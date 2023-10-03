@@ -82,31 +82,32 @@ def convert_to_potree(self, pointCloudId: int) -> None:
 
     with create_task_session() as session:
         point_cloud = PointCloudService.get(session, pointCloudId)
-
+        conversion_parameters = point_cloud.conversion_parameters
         path_to_original_point_clouds = get_asset_path(point_cloud.path, PointCloudService.ORIGINAL_FILES_DIR)
         path_temp_processed_point_cloud_path = get_asset_path(point_cloud.path, PointCloudService.PROCESSED_DIR)
 
-        input_files = [get_asset_path(path_to_original_point_clouds, file)
-                       for file in os.listdir(path_to_original_point_clouds)
-                       if pathlib.Path(file).suffix.lstrip('.').lower() in PointCloudService.LIDAR_FILE_EXTENSIONS]
+    input_files = [get_asset_path(path_to_original_point_clouds, file)
+                   for file in os.listdir(path_to_original_point_clouds)
+                   if pathlib.Path(file).suffix.lstrip('.').lower() in PointCloudService.LIDAR_FILE_EXTENSIONS]
 
-        outline = get_bounding_box_2d(input_files)
+    outline = get_bounding_box_2d(input_files)
 
-        command = [
-            "PotreeConverter",
-            "--verbose",
-            "-i",
-            path_to_original_point_clouds,
-            "-o",
-            path_temp_processed_point_cloud_path,
-            "--overwrite",
-            "--generate-page",
-            "index"
-        ]
-        if point_cloud.conversion_parameters:
-            command.extend(point_cloud.conversion_parameters.split())
-        logger.info("Processing point cloud (#{}):  {}".format(pointCloudId, " ".join(command)))
-        subprocess.run(command, check=True, capture_output=True, text=True)
+    command = [
+        "PotreeConverter",
+        "--verbose",
+        "-i",
+        path_to_original_point_clouds,
+        "-o",
+        path_temp_processed_point_cloud_path,
+        "--overwrite",
+        "--generate-page",
+        "index"
+    ]
+    if conversion_parameters:
+        command.extend(conversion_parameters.split())
+    logger.info("Processing point cloud (#{}):  {}".format(pointCloudId, " ".join(command)))
+
+    subprocess.run(command, check=True, capture_output=True, text=True)
 
     with create_task_session() as session:
         point_cloud = PointCloudService.get(session, pointCloudId)
