@@ -212,17 +212,23 @@ def import_point_clouds_from_agave(userId: int, files, pointCloudId: int):
                                     "success",
                                     "Running potree converter (for point cloud {}).".format(pointCloudId))
 
-        try:
-            convert_to_potree(pointCloudId)
-            NotificationsService.create(session,
+    try:
+        # use potree converter to convert las to web-friendly format
+        # this operation is memory-intensive and time-consuming.
+        convert_to_potree(pointCloudId)
+        with create_task_session() as database_session:
+            user = session.query(User).get(userId)
+            NotificationsService.create(database_session,
                                         user,
                                         "success",
                                         "Completed potree converter (for point cloud {}).".format(pointCloudId))
-        except:  # noqa: E722
+    except:  # noqa: E722
+        with create_task_session() as database_session:
+            user = session.query(User).get(userId)
             logger.exception("point cloud:{} conversion failed for user:{}".format(pointCloudId, user.username))
-            _update_point_cloud_task(session, pointCloudId, description="", status="FAILED")
-            NotificationsService.create(session, user, "error", "Processing failed for point cloud ({})!".format(pointCloudId))
-            return
+            _update_point_cloud_task(database_session, pointCloudId, description="", status="FAILED")
+            NotificationsService.create(database_session, user, "error", "Processing failed for point cloud ({})!".format(pointCloudId))
+        return
 
 
 @app.task(rate_limit="5/s")

@@ -71,6 +71,9 @@ class PointCloudProcessingTask(celery.Task):
 def convert_to_potree(self, pointCloudId: int) -> None:
     """
     Use the potree converter to convert a LAS/LAZ file to potree format
+
+    Note: this operation is memory-intensive and time-consuming.  Large LAS files (>8 Gb) can use >50gb of memory.
+
     :param pointCloudId: int
     :return: None
     """
@@ -105,6 +108,8 @@ def convert_to_potree(self, pointCloudId: int) -> None:
         logger.info("Processing point cloud (#{}):  {}".format(pointCloudId, " ".join(command)))
         subprocess.run(command, check=True, capture_output=True, text=True)
 
+    with create_task_session() as session:
+        point_cloud = PointCloudService.get(session, pointCloudId)
         # Create preview viewer html (with no menu and now nsf logo)
         with open(os.path.join(path_temp_processed_point_cloud_path, "preview.html"), 'w+') as preview:
             with open(os.path.join(path_temp_processed_point_cloud_path, "index.html"), 'r') as viewer:
@@ -113,32 +118,33 @@ def convert_to_potree(self, pointCloudId: int) -> None:
                 content = content.replace("viewer.toggleSidebar()", "$('.potree_menu_toggle').hide()")
                 preview.write(content)
 
-        if point_cloud.feature_id:
-            feature = point_cloud.feature
-        else:
-            feature = Feature()
-            feature.project_id = point_cloud.project_id
+            if point_cloud.feature_id:
+                feature = point_cloud.feature
+            else:
+                feature = Feature()
+                feature.project_id = point_cloud.project_id
 
-            asset_uuid = uuid.uuid4()
-            base_filepath = make_project_asset_dir(point_cloud.project_id)
-            asset_path = os.path.join(base_filepath, str(asset_uuid))
-            fa = FeatureAsset(
-                uuid=asset_uuid,
-                asset_type="point_cloud",
-                path=get_asset_relative_path(asset_path),
-                display_path=point_cloud.description,
-                feature=feature
-            )
-            feature.assets.append(fa)
-            point_cloud.feature = feature
+                asset_uuid = uuid.uuid4()
+                base_filepath = make_project_asset_dir(point_cloud.project_id)
+                asset_path = os.path.join(base_filepath, str(asset_uuid))
+                fa = FeatureAsset(
+                    uuid=asset_uuid,
+                    asset_type="point_cloud",
+                    path=get_asset_relative_path(asset_path),
+                    display_path=point_cloud.description,
+                    feature=feature
+                )
+                feature.assets.append(fa)
+                point_cloud.feature = feature
 
-        feature.the_geom = from_shape(geometries.convert_3D_2D(outline), srid=4326)
-        point_cloud.task.status = "FINISHED"
-        point_cloud.task.description = ""
+            feature.the_geom = from_shape(geometries.convert_3D_2D(outline), srid=4326)
+            point_cloud.task.status = "FINISHED"
+            point_cloud.task.description = ""
 
-        point_cloud_asset_path = get_asset_path(feature.assets[0].path)
-        shutil.rmtree(point_cloud_asset_path, ignore_errors=True)
-        shutil.move(path_temp_processed_point_cloud_path, point_cloud_asset_path)
-        session.add(point_cloud)
-        session.add(feature)
-        session.commit()
+            point_cloud_asset_path = get_asset_path(feature.assets[0].path)
+            session.add(point_cloud)
+            session.add(feature)
+            session.commit()
+
+            shutil.rmtree(point_cloud_asset_path, ignore_errors=True)
+            shutil.move(path_temp_processed_point_cloud_path, point_cloud_asset_path)
