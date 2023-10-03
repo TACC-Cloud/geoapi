@@ -154,9 +154,7 @@ def import_point_clouds_from_agave(userId: int, files, pointCloudId: int):
         point_cloud.task = task
         session.add(point_cloud)
         session.add(task)
-        logger.error("committing")
         session.commit()
-        logger.error("done committing")
 
         new_asset_files = []
         failed_message = None
