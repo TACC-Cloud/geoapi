@@ -10,4 +10,4 @@ stop:
 
 .PHONY: pull
 pull:
-	docker compose pull api workers nginx rabbitmq
+	docker compose pull api workers nginx rabbitmq hazmapper taggit

@@ -73,3 +73,9 @@ services:
     ports:
       - 80:80
     container_name: hazmapper
+
+  taggit:
+    image: taccaci/taggit:${TAGGIT_TAG}
+    ports:
+      - 81:80
+    container_name: taggit
