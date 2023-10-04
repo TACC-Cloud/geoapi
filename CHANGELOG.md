@@ -2,6 +2,22 @@
 
 ## [Unreleased]
 
+
+## [2.14] - 2023-10-03
+
+### Changed
+
+- Migrate database from kubernetes service to dedicated host (#139, #132, #133)
+- Migrate services from kubernetes to dedicated hosts (#142, #143, #134)
+
+### Fixed
+
+- Support building on apple silicon (#129)
+- WG-34: Remove DB warnings related to model overlaps (#130)
+- WG-141: Fix db connections for celery workers (#140, #138)
+- WG-156: Improve session handling in long running tasks (#144)
+- WG-130: Add missing rollback in case of failed database connections (#136)
+
 ## [2.13] - 2023-06-05
 
 ### Added
@@ -140,7 +156,8 @@
 - DES-1687: Add rollingback to worker tasks (#30)
 - DES-1663: Fix image rotations (#36)
 
-[unreleased]: https://github.com/TACC-Cloud/geoapi/compare/v2.13...HEAD
+[unreleased]: https://github.com/TACC-Cloud/geoapi/compare/v2.14...HEAD
+[2.14]: https://github.com/TACC-Cloud/geoapi/releases/tag/v2.14
 [2.13]: https://github.com/TACC-Cloud/geoapi/releases/tag/v2.13
 [2.12]: https://github.com/TACC-Cloud/geoapi/releases/tag/v2.12
 [2.11]: https://github.com/TACC-Cloud/geoapi/releases/tag/v2.11
