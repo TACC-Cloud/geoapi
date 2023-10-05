@@ -186,9 +186,7 @@ def import_point_clouds_from_agave(userId: int, files, pointCloudId: int):
         point_cloud.task = task
         session.add(point_cloud)
         session.add(task)
-        logger.error("committing")
         session.commit()
-        logger.error("done committing")
 
         new_asset_files = []
         failed_message = None
@@ -246,17 +244,23 @@ def import_point_clouds_from_agave(userId: int, files, pointCloudId: int):
                                     "success",
                                     "Running potree converter (for point cloud {}).".format(pointCloudId))
 
-        try:
-            convert_to_potree(pointCloudId)
+    try:
+        # use potree converter to convert las to web-friendly format
+        # this operation is memory-intensive and time-consuming.
+        convert_to_potree(pointCloudId)
+        with create_task_session() as session:
+            user = session.query(User).get(userId)
+            logger.info(f"point cloud:{pointCloudId} conversion completed for user:{user.username} and files:{files}")
             NotificationsService.create(session,
                                         user,
                                         "success",
                                         "Completed potree converter (for point cloud {}).".format(pointCloudId))
-        except:  # noqa: E722
-            logger.exception("point cloud:{} conversion failed for user:{}".format(pointCloudId, user.username))
+    except:  # noqa: E722
+        with create_task_session() as session:
+            user = session.query(User).get(userId)
+            logger.exception(f"point cloud:{pointCloudId} conversion failed for user:{user.username} and files:{files}")
             _update_point_cloud_task(session, pointCloudId, description="", status="FAILED")
             NotificationsService.create(session, user, "error", "Processing failed for point cloud ({})!".format(pointCloudId))
-            return
 
 
 @app.task(rate_limit="5/s")
