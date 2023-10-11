@@ -16,6 +16,10 @@ services:
       - FLASK_APP=/app/geoapi/app.py
       - ASSETS_BASE_DIR=/assets
       - GEOAPI_TAG=ENV_GEOAPI_TAG
+    logging:
+      driver: syslog
+      options:
+        tag: geoapi_rabbitmq
 
   nginx:
     image: nginx
@@ -24,6 +28,10 @@ services:
     volumes:
       - /assets:/assets
       - ./nginx.conf:/etc/nginx/nginx.conf
+    logging:
+      driver: syslog
+      options:
+        tag: geoapi_nginx
     networks:
       - geoapi
 
@@ -42,6 +50,10 @@ services:
     tty: true
     container_name: geoapicelerybeat
     hostname: geoapicelerybeat
+    logging:
+      driver: syslog
+      options:
+        tag: geoapi_celerybeat
     command: "celery -A geoapi.celery_app beat -l info"
 
   api:
@@ -64,6 +76,10 @@ services:
     tty: true
     container_name: geoapi
     hostname: geoapi
+    logging:
+      driver: syslog
+      options:
+        tag: geoapi_api
     command: "gunicorn -w 4 -b 0.0.0.0:8000 geoapi.app:app -k gevent --reload --timeout 300"
     extra_hosts:
       - "host.docker.internal:host-gateway"
