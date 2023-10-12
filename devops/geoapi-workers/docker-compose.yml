@@ -14,4 +14,8 @@ services:
     tty: true
     container_name: geoapiworkers
     hostname: geoapiworkers
+    logging:
+      driver: syslog
+      options:
+        tag: geoapi_workers
     command: "celery -A geoapi.celery_app worker -l info"
