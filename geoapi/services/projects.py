@@ -86,10 +86,13 @@ class ProjectsService:
         try:
             database_session.add(obs)
             database_session.commit()
-        except IntegrityError:
+        except IntegrityError as e:
             database_session.rollback()
-            logger.exception("User:{} tried to create an observable project that already exists: '{}'".format(user.username, name))
-            raise ObservableProjectAlreadyExists("'{}' project already exists".format(name))
+            if 'unique_system_id_path' in str(e.orig):
+                logger.exception("User:{} tried to create an observable project that already exists: '{}'".format(user.username, name))
+                raise ObservableProjectAlreadyExists("'{}' project already exists".format(name))
+            else:
+                raise e
 
         if watch_content:
             import_from_agave.apply_async(args=[obs.project.tenant_id, user.id, obs.system_id, obs.path, obs.project_id])
