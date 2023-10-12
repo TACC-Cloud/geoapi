@@ -77,7 +77,7 @@ class ProjectsService:
         )
 
         users = get_system_users(proj.tenant_id, user.jwt, proj.system_id)
-        logger.info("Updating project:{} to have the following users: {}".format(name, users))
+        logger.info("Initial update of project:{} to have the following users: {}".format(name, users))
         project_users = [UserService.getOrCreateUser(database_session, u.username, tenant=proj.tenant_id) for u in users]
         proj.users = project_users
 
