@@ -85,18 +85,18 @@ def get_additional_files(current_file, system_id: str, path: str, client, availa
     current_file_path = Path(path)
     file_suffix = current_file_path.suffix.lower().lstrip('.')
     if file_suffix == "shp":
-        logger.info(f'Determining which shapefile-related files need to be downloaded for file {current_file.filename}')
+        logger.info(f"Determining which shapefile-related files need to be downloaded for file {current_file.filename}")
         for extension, required in SHAPEFILE_FILE_ADDITIONAL_FILES.items():
             additional_file_path = current_file_path.with_suffix(extension)
             if available_files and str(additional_file_path) not in available_files:
                 if required:
                     logger.error(f"Could not import required shapefile-related file: agave: {system_id}/{additional_file_path}")
-                    raise Exception(f'Required file ({system_id}/{additional_file_path}) missing')
+                    raise Exception(f"Required file ({system_id}/{additional_file_path}) missing")
                 else:
                     continue
             additional_files_to_get.append(AdditionalFile(path=additional_file_path, required=required))
     elif file_suffix == "rq":
-        logger.info(f'Parsing rq file {current_file.filename} to see what assets need to be downloaded ')
+        logger.info(f"Parsing rq file {current_file.filename} to see what assets need to be downloaded ")
         data = json.load(current_file)
         for section in data["sections"]:
             for question in section["questions"]:
@@ -104,7 +104,7 @@ def get_additional_files(current_file, system_id: str, path: str, client, availa
                     # determine full path for this asset and add to list
                     additional_file_path = current_file_path.with_name(asset["filename"])
                     additional_files_to_get.append(AdditionalFile(path=additional_file_path, required=True))
-        logger.info(f'{len(additional_files_to_get)} assets were found for rq file {current_file.filename}')
+        logger.info(f"{len(additional_files_to_get)} assets were found for rq file {current_file.filename}")
 
         # Seek back to start of file
         current_file.seek(0)
@@ -119,15 +119,15 @@ def get_additional_files(current_file, system_id: str, path: str, client, availa
         for future in concurrent.futures.as_completed(getting_files_futures):
             _, additional_file_path, required, result_file, error = future.result()
             if not result_file and required:
-                logger.error(f'Could not import a required {file_suffix}-related file: '
-                             f'agave: {system_id} :: {additional_file_path}   ---- error: {error}')
-                raise Exception(f'Required file ({system_id}/{additional_file_path}) missing')
+                logger.error(f"Could not import a required {file_suffix}-related file: "
+                             f"agave: {system_id} :: {additional_file_path}   ---- error: {error}")
+                raise Exception(f"Required file ({system_id}/{additional_file_path}) missing")
             if not result_file:
-                logger.error(f'Unable to get non-required {file_suffix}-related file: '
-                             f'agave: {system_id} :: {additional_file_path}   ---- error: {error}')
+                logger.error(f"Unable to get non-required {file_suffix}-related file: "
+                             f"agave: {system_id} :: {additional_file_path}   ---- error: {error}")
 
                 continue
-            logger.debug(f'Finished getting {file_suffix}-related file: ({system_id}/{additional_file_path}')
+            logger.debug(f"Finished getting {file_suffix}-related file: ({system_id}/{additional_file_path}")
             result_file.filename = Path(additional_file_path).name
             additional_files_result.append(result_file)
     return additional_files_result
@@ -217,12 +217,12 @@ def import_point_clouds_from_agave(userId: int, files, pointCloudId: int):
             except InvalidCoordinateReferenceSystem:
                 logger.error("Could not import point cloud file due to missing"
                              " coordinate reference system: {}:{}".format(system_id, path))
-                failed_message = 'Error importing {}: missing coordinate reference system'.format(path)
+                failed_message = "Error importing {}: missing coordinate reference system".format(path)
             except Exception as e:
                 logger.error("Could not import point cloud file for user:{} from tapis: {}/{} : {}".format(user.username,
                                                                                                            system_id,
                                                                                                            path, e))
-                failed_message = 'Unknown error importing {}:{}'.format(system_id, path)
+                failed_message = "Unknown error importing {}:{}".format(system_id, path)
 
             if failed_message:
                 for file_path in new_asset_files:
