@@ -491,7 +491,7 @@ def test_get_additional_files_shapefiles_with_available_files(shapefile_fixture,
     assert len(files) == 3
 
 
-def test_get_additional_files_shapefiles_but_missing_prj(shapefile_fixture, agave_utils_with_geojson_file):
+def test_get_additional_files_shapefiles_missing_prj(shapefile_fixture, agave_utils_with_geojson_file):
     available_files_missing_prj = ["/testPath/file.shx", "/testPath/file.dbf"]
     with pytest.raises(Exception):
         get_additional_files(shapefile_fixture,
