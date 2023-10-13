@@ -476,7 +476,7 @@ def tile_server_ini_file_fixture():
 @pytest.fixture(scope="function")
 def questionnaire_file_fixture():
     home = os.path.dirname(__file__)
-    filename = 'fixtures/questionnaire.rq'
+    filename = 'fixtures/questionnaire_without_assets.rq'
     with open(os.path.join(home, filename), 'rb') as f:
         f.filename = filename
         yield f
