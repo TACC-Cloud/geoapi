@@ -501,7 +501,7 @@ def test_get_additional_files_shapefiles_but_missing_prj(shapefile_fixture, agav
                              available_files=available_files_missing_prj)
 
 
-def test_get_additional_files_rapid_questionnaire(questionnaire_file_with_assets_fixture, agave_utils_with_geojson_file):
+def test_get_additional_files_rapid_questionnaire_with_assets(questionnaire_file_with_assets_fixture, agave_utils_with_geojson_file):
     files = get_additional_files(questionnaire_file_with_assets_fixture,
                                  "testSystem",
                                  questionnaire_file_with_assets_fixture.filename,
@@ -509,9 +509,9 @@ def test_get_additional_files_rapid_questionnaire(questionnaire_file_with_assets
     assert len(files) == 1
 
 
-def test_get_additional_files_rapid_questionnaire_no_assets(questionnaire_file_fixture, agave_utils_with_geojson_file):
-    files = get_additional_files(questionnaire_file_fixture,
+def test_get_additional_files_rapid_questionnaire_no_assets(questionnaire_file_without_assets_fixture, agave_utils_with_geojson_file):
+    files = get_additional_files(questionnaire_file_without_assets_fixture,
                                  "testSystem",
-                                 questionnaire_file_fixture.filename,
+                                 questionnaire_file_without_assets_fixture.filename,
                                  agave_utils_with_geojson_file)
     assert files == []

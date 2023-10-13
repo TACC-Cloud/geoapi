@@ -212,8 +212,10 @@ def test_create_tile_server_from_file(projects_fixture, tile_server_ini_file_fix
     assert tile_server.attribution == "OpenStreetMap contributorshttps://www.openstreetmap.org/copyright"
 
 
-def test_create_questionnaire_feature(projects_fixture, questionnaire_file_fixture):
-    feature = FeaturesService.from_rapp_questionnaire(db_session, projects_fixture.id, questionnaire_file_fixture, additional_files=None)
+def test_create_questionnaire_feature(projects_fixture, questionnaire_file_without_assets_fixture):
+    feature = FeaturesService.from_rapp_questionnaire(db_session, projects_fixture.id,
+                                                      questionnaire_file_without_assets_fixture,
+                                                      additional_files=None)
     assert feature.project_id == projects_fixture.id
     assert len(feature.assets) == 1
     assert db_session.query(Feature).count() == 1
