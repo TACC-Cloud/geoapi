@@ -20,11 +20,15 @@ def get_system_users(tenant_id, jwt, system_id: str):
     resp = client.get(quote(f'/projects/v2/{uuid}/'))
     resp.raise_for_status()
     project = resp.json()["value"]
-    users = []
+    users = {}
     if "pi" in project:
-        users.append(SystemUser(username=project["pi"], admin=True))
+        users[project["pi"]] = SystemUser(username=project["pi"], admin=True)
     for u in project["coPis"]:
-        users.append(SystemUser(username=u, admin=True))
+        # check if we have already added this user before adding it
+        if u not in users:
+            users[u] = SystemUser(username=u, admin=True)
     for u in project["teamMembers"]:
-        users.append(SystemUser(username=u, admin=False))
-    return users
+        # check if we have already added this user before adding it
+        if u not in users:
+            users[u] = SystemUser(username=u, admin=False)
+    return list(users.values())

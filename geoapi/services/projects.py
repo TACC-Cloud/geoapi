@@ -77,7 +77,7 @@ class ProjectsService:
         )
 
         users = get_system_users(proj.tenant_id, user.jwt, proj.system_id)
-        logger.info("Updating project:{} to have the following users: {}".format(name, users))
+        logger.info("Initial update of project:{} to have the following users: {}".format(name, users))
         project_users = [UserService.getOrCreateUser(database_session, u.username, tenant=proj.tenant_id) for u in users]
         proj.users = project_users
 
@@ -86,10 +86,13 @@ class ProjectsService:
         try:
             database_session.add(obs)
             database_session.commit()
-        except IntegrityError:
+        except IntegrityError as e:
             database_session.rollback()
-            logger.exception("User:{} tried to create an observable project that already exists: '{}'".format(user.username, name))
-            raise ObservableProjectAlreadyExists("'{}' project already exists".format(name))
+            if 'unique_system_id_path' in str(e.orig):
+                logger.exception("User:{} tried to create an observable project that already exists: '{}'".format(user.username, name))
+                raise ObservableProjectAlreadyExists("'{}' project already exists".format(name))
+            else:
+                raise e
 
         if watch_content:
             import_from_agave.apply_async(args=[obs.project.tenant_id, user.id, obs.system_id, obs.path, obs.project_id])
