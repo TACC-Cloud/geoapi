@@ -453,7 +453,7 @@ def test_get_additional_files_none(shapefile_fixture, agave_utils_with_geojson_f
     assert not get_additional_files(shapefile_fixture, "testSystem", "/testPath/file.jpg", agave_utils_with_geojson_file)
 
 
-def test_get_additional_shapefiles_files(shapefile_fixture, agave_utils_with_geojson_file):
+def test_get_additional_files_shapefiles(shapefile_fixture, agave_utils_with_geojson_file):
     files = get_additional_files(shapefile_fixture, "testSystem", "/testPath/file.shp", agave_utils_with_geojson_file)
     assert len(files) == 14
 
