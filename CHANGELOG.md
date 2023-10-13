@@ -7,7 +7,7 @@
 ### Fixed
 
 - WG-143: Add syslog to docker-compose to fix logging (#147)
-- WG-177: Support duplicate users in ds projects (#148)
+- WG-177: Support duplicate users in DesignSafe projects (#148)
 
 ## [2.14] - 2023-10-03
 
