@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+## [2.15] - 2023-10-13
+
+### Fixed
+
+- WG-143: Add syslog to docker-compose to fix logging (#147)
+- WG-177: Support duplicate users in ds projects (#148)
 
 ## [2.14] - 2023-10-03
 
@@ -156,7 +162,8 @@
 - DES-1687: Add rollingback to worker tasks (#30)
 - DES-1663: Fix image rotations (#36)
 
-[unreleased]: https://github.com/TACC-Cloud/geoapi/compare/v2.14...HEAD
+[unreleased]: https://github.com/TACC-Cloud/geoapi/compare/v2.15...HEAD
+[2.15]: https://github.com/TACC-Cloud/geoapi/releases/tag/v2.15
 [2.14]: https://github.com/TACC-Cloud/geoapi/releases/tag/v2.14
 [2.13]: https://github.com/TACC-Cloud/geoapi/releases/tag/v2.13
 [2.12]: https://github.com/TACC-Cloud/geoapi/releases/tag/v2.12
