@@ -249,7 +249,7 @@ class FeaturesService:
         as the questionnaire .rq file.
 
         :param projectId: int
-        :param fileObj: questionnaire file
+        :param fileObj: questionnaire rq file
         :param additional_files: list of file objs
         :param original_path: str path of original file location
         :return: Feature
@@ -270,7 +270,7 @@ class FeaturesService:
         pathlib.Path(questionnaire_path).mkdir(parents=True, exist_ok=True)
         asset_path = os.path.join(questionnaire_path, 'questionnaire.rq')
 
-        # write questionnaire file (rq)
+        # write questionnaire rq file
         with open(asset_path, 'w') as tmp:
             tmp.write(json.dumps(data))
 
