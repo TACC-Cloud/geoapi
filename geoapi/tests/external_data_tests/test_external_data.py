@@ -449,16 +449,16 @@ def test_is_member_of_rapp_project_folder():
     assert not is_member_of_rapp_project_folder("/something/test.jpg")
 
 
-def test_get_additional_files_none(agave_utils_with_geojson_file):
-    assert not get_additional_files("testSystem", "/testPath/file.jpg", agave_utils_with_geojson_file)
+def test_get_additional_files_none(shapefile_fixture, agave_utils_with_geojson_file):
+    assert not get_additional_files(shapefile_fixture, "testSystem", "/testPath/file.jpg", agave_utils_with_geojson_file)
 
 
-def test_get_additional_files(agave_utils_with_geojson_file):
-    files = get_additional_files("testSystem", "/testPath/file.shp", agave_utils_with_geojson_file)
+def test_get_additional_files_shapefiles(shapefile_fixture, agave_utils_with_geojson_file):
+    files = get_additional_files(shapefile_fixture, "testSystem", "/testPath/file.shp", agave_utils_with_geojson_file)
     assert len(files) == 14
 
 
-def test_get_additional_files_with_available_files(agave_utils_with_geojson_file):
+def test_get_additional_files_shapefiles_with_available_files(shapefile_fixture, agave_utils_with_geojson_file):
     available_files = ["/testPath/file.shx",
                        "/testPath/file.dbf",
                        "/testPath/file.sbn",
@@ -473,7 +473,8 @@ def test_get_additional_files_with_available_files(agave_utils_with_geojson_file
                        "/testPath/file.prj",
                        "/testPath/file.xml",
                        "/testPath/file.cpg"]
-    files = get_additional_files("testSystem",
+    files = get_additional_files(shapefile_fixture,
+                                 "testSystem",
                                  "/testPath/file.shp",
                                  agave_utils_with_geojson_file,
                                  available_files=available_files)
@@ -482,17 +483,35 @@ def test_get_additional_files_with_available_files(agave_utils_with_geojson_file
     available_files = ["/testPath/file.shx",
                        "/testPath/file.dbf",
                        "/testPath/file.prj"]
-    files = get_additional_files("testSystem",
+    files = get_additional_files(shapefile_fixture,
+                                 "testSystem",
                                  "/testPath/file.shp",
                                  agave_utils_with_geojson_file,
                                  available_files=available_files)
     assert len(files) == 3
 
 
-def test_get_additional_files_but_missing_prj(agave_utils_with_geojson_file):
+def test_get_additional_files_shapefiles_missing_prj(shapefile_fixture, agave_utils_with_geojson_file):
     available_files_missing_prj = ["/testPath/file.shx", "/testPath/file.dbf"]
     with pytest.raises(Exception):
-        get_additional_files("testSystem",
+        get_additional_files(shapefile_fixture,
+                             "testSystem",
                              "/testPath/file.shp",
                              agave_utils_with_geojson_file,
                              available_files=available_files_missing_prj)
+
+
+def test_get_additional_files_rapid_questionnaire_with_assets(questionnaire_file_with_assets_fixture, agave_utils_with_geojson_file):
+    files = get_additional_files(questionnaire_file_with_assets_fixture,
+                                 "testSystem",
+                                 questionnaire_file_with_assets_fixture.filename,
+                                 agave_utils_with_geojson_file)
+    assert len(files) == 1
+
+
+def test_get_additional_files_rapid_questionnaire_no_assets(questionnaire_file_without_assets_fixture, agave_utils_with_geojson_file):
+    files = get_additional_files(questionnaire_file_without_assets_fixture,
+                                 "testSystem",
+                                 questionnaire_file_without_assets_fixture.filename,
+                                 agave_utils_with_geojson_file)
+    assert files == []

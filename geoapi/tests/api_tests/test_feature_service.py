@@ -212,11 +212,29 @@ def test_create_tile_server_from_file(projects_fixture, tile_server_ini_file_fix
     assert tile_server.attribution == "OpenStreetMap contributorshttps://www.openstreetmap.org/copyright"
 
 
-def test_create_questionnaire_feature(projects_fixture, questionnaire_file_fixture):
-    feature = FeaturesService.fromRAPP(db_session, projects_fixture.id, questionnaire_file_fixture, metadata={})
+def test_create_questionnaire_feature(projects_fixture, questionnaire_file_without_assets_fixture):
+    feature = FeaturesService.from_rapp_questionnaire(db_session, projects_fixture.id,
+                                                      questionnaire_file_without_assets_fixture,
+                                                      additional_files=None)
     assert feature.project_id == projects_fixture.id
     assert len(feature.assets) == 1
     assert db_session.query(Feature).count() == 1
     assert db_session.query(FeatureAsset).count() == 1
     assert len(os.listdir(get_project_asset_dir(feature.project_id))) == 1
-    assert os.path.isfile(os.path.join(get_project_asset_dir(projects_fixture.id), str(feature.assets[0].uuid) + "/questionnaire.rq"))
+    assert len(os.listdir(get_asset_path(feature.assets[0].path))) == 1
+    assert os.path.isfile(get_asset_path(feature.assets[0].path, "questionnaire.rq"))
+
+
+def test_create_questionnaire_feature_with_assets(projects_fixture, questionnaire_file_with_assets_fixture, image_file_fixture):
+    assets = [image_file_fixture]
+    feature = FeaturesService.from_rapp_questionnaire(db_session, projects_fixture.id,
+                                                      questionnaire_file_with_assets_fixture, additional_files=assets)
+    assert feature.project_id == projects_fixture.id
+    assert len(feature.assets) == 1
+    assert db_session.query(Feature).count() == 1
+    assert db_session.query(FeatureAsset).count() == 1
+    assert len(os.listdir(get_project_asset_dir(feature.project_id))) == 1
+    assert len(os.listdir(get_asset_path(feature.assets[0].path))) == 3
+    assert os.path.isfile(get_asset_path(feature.assets[0].path, "questionnaire.rq"))
+    assert os.path.isfile(get_asset_path(feature.assets[0].path, "image.preview.jpg"))
+    assert os.path.isfile(get_asset_path(feature.assets[0].path, "image.jpg"))

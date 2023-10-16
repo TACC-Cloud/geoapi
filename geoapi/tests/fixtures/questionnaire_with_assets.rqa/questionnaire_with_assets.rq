@@ -1,0 +1,56 @@
+{
+  "editable": false,
+  "uuid": "DE99A39A-B352-4FF6-BA6B-C325BB25CDFF",
+  "access": "private",
+  "subversion": "1",
+  "allow_back": true,
+  "errors": [],
+  "geolocation": [
+    {
+      "altitude": 44.7580108642578,
+      "latitude": 12.3456789,
+      "course": -1,
+      "timestamp": 1680540248.33747,
+      "longitude": -123.456789
+    }
+  ],
+  "version": "DE99A39A-B352-4FF6-BA6B-C325BB25CDFF",
+  "end_text": "End",
+  "description": "Questionnaire with only one question",
+  "sections": [
+    {
+      "id": "D1893426-9206-4678-9589-B81B9E7042AB",
+      "label": "",
+      "questions": [
+        {
+          "decline": null,
+          "id": "7389C442-05C0-46DA-AB1E-C9AF29A29A0C",
+          "required": true,
+          "responseStrings": [
+            "5"
+          ],
+          "type": "Number",
+          "mode": "integer",
+          "heading": null,
+          "label": "Please enter an integer",
+          "assets": [
+            {
+              "rappUuid": "9378FA7A-8BDD-4947-A3EC-2D66B938C59F",
+              "filename": "Q1-Photo-001.jpg"
+            }
+          ],
+          "instructions": null,
+          "value": "please_enter_an_integer"
+        }
+      ]
+    }
+  ],
+  "owner": "adioso",
+  "questionUuidsVisited": [],
+  "asset_embedding": true,
+  "is_invalid": false,
+  "id": 1918,
+  "display_mode": "single",
+  "end_uuid": "C551C60C-AA8D-4BBD-BCE4-87A1A11120E7",
+  "name": "Single Question"
+}

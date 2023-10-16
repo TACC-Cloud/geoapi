@@ -80,13 +80,8 @@ def _fix_orientation(fileObj: IO) -> PILImage:
     im = Image.open(fileObj)
     tags = exifread.process_file(fileObj, details=False)
     if "Image Orientation" in tags.keys():
-        logger.info("yes Image Orientation")
-    else:
-        logger.info("no Image Orientation")
-
-    if "Image Orientation" in tags.keys():
         orientation = tags["Image Orientation"]
-        logger.info("Orientation: %s (%s)", orientation, orientation.values)
+        logger.debug("image orientation: %s (%s)", orientation, orientation.values)
         val = orientation.values
         if 2 in val:
             val += [4, 3]
@@ -95,16 +90,16 @@ def _fix_orientation(fileObj: IO) -> PILImage:
         if 7 in val:
             val += [4, 8]
         if 3 in val:
-            logger.info("Rotating by 180 degrees.")
+            logger.debug("Rotating by 180 degrees.")
             im = im.transpose(Image.ROTATE_180)
         if 4 in val:
-            logger.info("Mirroring horizontally.")
+            logger.debug("Mirroring horizontally.")
             im = im.transpose(Image.FLIP_TOP_BOTTOM)
         if 6 in val:
-            logger.info("Rotating by 270 degrees.")
+            logger.debug("Rotating by 270 degrees.")
             im = im.transpose(Image.ROTATE_270)
         if 8 in val:
-            logger.info("Rotating by 90 degrees.")
+            logger.debug("Rotating by 90 degrees.")
             im = im.transpose(Image.ROTATE_90)
     return im
 
