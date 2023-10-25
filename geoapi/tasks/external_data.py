@@ -357,11 +357,11 @@ def import_from_files_from_path(session, tenant_id: str, userId: int, systemId: 
                     continue
                 import_state = ImportState.SUCCESS
             except Exception as e:
-                logger.error(
-                    f"Could not import for user:{user.username} from agave:{systemId}/{item_system_path} "
-                    f"(while recursively importing files from {systemId}/{path})")
                 NotificationsService.create(session, user, "error", "Error importing {f}".format(f=item_system_path))
                 import_state = ImportState.FAILURE if e is not AgaveFileGetError else ImportState.RETRYABLE_FAILURE
+                logger.exception(
+                    f"Could not import for user:{user.username} from agave:{systemId}/{item_system_path} "
+                    f"(while recursively importing files from {systemId}/{path}). retryable={import_state == ImportState.RETRYABLE_FAILURE}")
             if import_state != ImportState.RETRYABLE_FAILURE:
                 try:
                     successful = True if import_state == ImportState.SUCCESS else False
