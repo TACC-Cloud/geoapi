@@ -24,7 +24,7 @@ from geoapi.utils.streetview import (get_project_streetview_dir,
                                      remove_project_streetview_dir,
                                      MapillaryUtils)
 from geoapi.log import logging
-import geoapi.services.features as features
+from geoapi.utils import features as features_util
 from geoapi.services.streetview import StreetviewService
 from geoapi.services.notifications import NotificationsService
 from geoapi.db import create_task_session
@@ -113,7 +113,7 @@ def _from_tapis(database_session, user: User, task_uuid: UUID, systemId: str, pa
     for item in files_in_directory:
         if item.type == "dir":
             continue
-        if item.path.suffix.lower().lstrip('.') not in features.FeaturesService.IMAGE_FILE_EXTENSIONS:
+        if item.path.suffix.lower().lstrip('.') not in features_util.IMAGE_FILE_EXTENSIONS:
             continue
         try:
             img_name = os.path.join(str(base_filepath), Path(item.path).name)
