@@ -352,6 +352,8 @@ def import_from_files_from_path(session, tenant_id: str, userId: int, systemId: 
                     NotificationsService.create(session, user, "success", "Imported {f}".format(f=item_system_path))
                     tmp_file.close()
                 else:
+                    # skipping as not supported
+                    logger.debug("{path} is unsupported; skipping.".format(path=item_system_path))
                     continue
                 import_state = ImportState.SUCCESS
             except Exception as e:
