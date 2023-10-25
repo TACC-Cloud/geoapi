@@ -1,4 +1,3 @@
-import pytest
 import geoapi.utils.features as features_util
 
 
@@ -43,6 +42,7 @@ def test_is_file_supported_for_automatic_scraping():
     assert features_util.is_file_supported_for_automatic_scraping("foo.rq")
 
     assert features_util.is_file_supported_for_automatic_scraping("foo.shp")
+
 
 def test_is_supported_for_automatic_scraping_without_metadata():
     assert not features_util.is_supported_for_automatic_scraping_without_metadata("foo")

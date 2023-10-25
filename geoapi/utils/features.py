@@ -82,7 +82,7 @@ def is_supported_for_automatic_scraping_without_metadata(path):
     path_obj = Path(path)
     file_suffix = path_obj.suffix.lower().lstrip('.')
     return (file_suffix in ALLOWED_GEOSPATIAL_EXTENSIONS_FOR_SCRAPING and
-            (not is_member_of_rqa_folder(path) or file_suffix in RAPP_QUESTIONNAIRE_FILE_EXTENSIONS)) # if in .rqa, then only .rq file
+            (not is_member_of_rqa_folder(path) or file_suffix in RAPP_QUESTIONNAIRE_FILE_EXTENSIONS))  # if in .rqa, then only .rq file
 
 
 def is_supported_file_type_in_rapp_folder_and_needs_metadata(path):

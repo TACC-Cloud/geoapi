@@ -311,7 +311,7 @@ def import_from_files_from_path(session, tenant_id: str, userId: int, systemId: 
 
                 # If it is a RApp project folder and not a questionnaire file, use the metadata from tapis meta service
                 if features_util.is_supported_file_type_in_rapp_folder_and_needs_metadata(item_system_path):
-                    logger.info("RApp: importing:{} for user:{}. Using metadata service for geolocation.".format(item_system_path, user.username))
+                    logger.info(f"RApp: importing:{item_system_path} for user:{user.username}. Using metadata service for geolocation.")
                     try:
                         meta = get_metadata_using_service_account(tenant_id, item.system, item.path)
                     except MissingServiceAccount:
@@ -361,7 +361,8 @@ def import_from_files_from_path(session, tenant_id: str, userId: int, systemId: 
                 import_state = ImportState.FAILURE if e is not AgaveFileGetError else ImportState.RETRYABLE_FAILURE
                 logger.exception(
                     f"Could not import for user:{user.username} from agave:{systemId}/{item_system_path} "
-                    f"(while recursively importing files from {systemId}/{path}). retryable={import_state == ImportState.RETRYABLE_FAILURE}")
+                    f"(while recursively importing files from {systemId}/{path}). "
+                    f"retryable={import_state == ImportState.RETRYABLE_FAILURE}")
             if import_state != ImportState.RETRYABLE_FAILURE:
                 try:
                     successful = True if import_state == ImportState.SUCCESS else False
