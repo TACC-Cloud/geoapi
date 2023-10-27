@@ -7,6 +7,7 @@ networks:
 services:
   rabbitmq:
     image: rabbitmq:3.12.6
+    restart: always
     networks:
       - geoapi
     ports:
@@ -23,6 +24,7 @@ services:
 
   nginx:
     image: nginx
+    restart: always
     ports:
       - 8888:80
     volumes:
@@ -37,6 +39,7 @@ services:
 
   celerybeat:
     image: taccaci/geoapi-workers:${GEOAPI_TAG}
+    restart: always
     networks:
       - geoapi
     volumes:
@@ -58,6 +61,7 @@ services:
 
   api:
     image: taccaci/geoapi:${GEOAPI_TAG}
+    restart: always
     networks:
       - geoapi
     volumes:
@@ -86,12 +90,14 @@ services:
 
   hazmapper:
     image: taccaci/hazmapper:${HAZMAPPER_TAG}
+    restart: always
     ports:
       - 80:80
     container_name: hazmapper
 
   taggit:
     image: taccaci/taggit:${TAGGIT_TAG}
+    restart: always
     ports:
       - 81:80
     container_name: taggit
