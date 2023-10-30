@@ -33,9 +33,8 @@ def jwt_decoder(fn):
         try:
             jwt_header_name, token, tenant = jwt_utils.jwt_tenant(request.headers)
         except ValueError:
-            # TODO consider using something else like Flask-Login
-            # if not JWT information is provided in header, then this is a guest user
-            user = AnonymousUser()
+            guest_uuid = request.headers.get('X-Guest-UUID')
+            user = AnonymousUser(guest_unique_id=guest_uuid)
         if user is None:
             try:
                 # TODO: validate token
