@@ -13,7 +13,6 @@ import fiona
 from geoalchemy2.shape import from_shape
 import geojson
 
-
 from geoapi.services.images import ImageService, ImageData
 from geoapi.services.vectors import VectorService
 from geoapi.models import Feature, FeatureAsset, Overlay, User, TileServer
