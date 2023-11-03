@@ -13,6 +13,7 @@ from geoapi.exceptions import InvalidCoordinateReferenceSystem, MissingServiceAc
 from geoapi.models import User, ProjectUser, ObservableDataProject, Task
 from geoapi.utils.agave import (AgaveUtils, SystemUser, get_system_users, get_metadata_using_service_account,
                                 AgaveFileGetError, AgaveListingError)
+from geoapi.utils import features as features_util
 from geoapi.log import logger
 from geoapi.services.features import FeaturesService
 from geoapi.services.imports import ImportsService
@@ -43,14 +44,6 @@ def _parse_rapid_geolocation(loc):
     lat = coords["latitude"]
     lon = coords["longitude"]
     return lat, lon
-
-
-def is_member_of_rapp_project_folder(path):
-    """
-    Check to see if path is contained within RApp project folder
-    :param path: str
-    """
-    return "/RApp/" in path
 
 
 def get_file(client, system_id, path, required):
@@ -305,11 +298,8 @@ def import_from_files_from_path(session, tenant_id: str, userId: int, systemId: 
     for item in files_in_directory:
         if item.type == "dir" and not str(item.path).endswith("/.Trash"):
             import_from_files_from_path(session, tenant_id, userId, systemId, item.path, projectId)
-        # skip any junk files that are not allowed
-        if item.path.suffix.lower().lstrip('.') not in FeaturesService.ALLOWED_EXTENSIONS:
-            continue
-        else:
-            item_system_path = os.path.join(item.system, str(item.path).lstrip("/"))
+        item_system_path = os.path.join(item.system, str(item.path).lstrip("/"))
+        if features_util.is_file_supported_for_automatic_scraping(item_system_path):
             try:
                 # first check if there already is a file in the DB
                 target_file = ImportsService.getImport(session, projectId, systemId, str(item.path))
@@ -319,16 +309,9 @@ def import_from_files_from_path(session, tenant_id: str, userId: int, systemId: 
                                  f"successful_import={target_file.successful_import}")
                     continue
 
-                # If it is a RApp project folder, grab the metadata from tapis meta service
-                if is_member_of_rapp_project_folder(item_system_path):
-                    logger.info("RApp: importing:{} for user:{}".format(item_system_path, user.username))
-                    if item.path.suffix.lower().lstrip(
-                            '.') not in FeaturesService.ALLOWED_GEOSPATIAL_FEATURE_ASSET_EXTENSIONS:
-                        logger.info("{path} is unsupported; skipping.".format(path=item_system_path))
-                        continue
-
-                    logger.info("{} {} {}".format(item_system_path, item.system, item.path))
-
+                # If it is a RApp project folder and not a questionnaire file, use the metadata from tapis meta service
+                if features_util.is_supported_file_type_in_rapp_folder_and_needs_metadata(item_system_path):
+                    logger.info(f"RApp: importing:{item_system_path} for user:{user.username}. Using metadata service for geolocation.")
                     try:
                         meta = get_metadata_using_service_account(tenant_id, item.system, item.path)
                     except MissingServiceAccount:
@@ -359,7 +342,7 @@ def import_from_files_from_path(session, tenant_id: str, userId: int, systemId: 
                         raise RuntimeError("Unable to create feature asset")
                     NotificationsService.create(session, user, "success", "Imported {f}".format(f=item_system_path))
                     tmp_file.close()
-                elif item.path.suffix.lower().lstrip('.') in FeaturesService.ALLOWED_GEOSPATIAL_EXTENSIONS:
+                elif features_util.is_supported_for_automatic_scraping_without_metadata(item_system_path):
                     logger.info("importing:{} for user:{}".format(item_system_path, user.username))
                     tmp_file = client.getFile(systemId, item.path)
                     tmp_file.filename = Path(item.path).name
@@ -369,14 +352,17 @@ def import_from_files_from_path(session, tenant_id: str, userId: int, systemId: 
                     NotificationsService.create(session, user, "success", "Imported {f}".format(f=item_system_path))
                     tmp_file.close()
                 else:
+                    # skipping as not supported
+                    logger.debug("{path} is unsupported; skipping.".format(path=item_system_path))
                     continue
                 import_state = ImportState.SUCCESS
             except Exception as e:
-                logger.error(
-                    f"Could not import for user:{user.username} from agave:{systemId}/{item_system_path} "
-                    f"(while recursively importing files from {systemId}/{path})")
                 NotificationsService.create(session, user, "error", "Error importing {f}".format(f=item_system_path))
                 import_state = ImportState.FAILURE if e is not AgaveFileGetError else ImportState.RETRYABLE_FAILURE
+                logger.exception(
+                    f"Could not import for user:{user.username} from agave:{systemId}/{item_system_path} "
+                    f"(while recursively importing files from {systemId}/{path}). "
+                    f"retryable={import_state == ImportState.RETRYABLE_FAILURE}")
             if import_state != ImportState.RETRYABLE_FAILURE:
                 try:
                     successful = True if import_state == ImportState.SUCCESS else False

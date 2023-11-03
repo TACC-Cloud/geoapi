@@ -8,8 +8,8 @@ from geoapi.db import db_session, create_task_session
 from geoapi.tasks.external_data import (import_from_agave,
                                         import_point_clouds_from_agave,
                                         refresh_observable_projects,
-                                        get_additional_files,
-                                        is_member_of_rapp_project_folder)
+                                        get_additional_files)
+from geoapi.utils.features import is_member_of_rapp_project_folder
 from geoapi.utils.agave import AgaveFileListing, SystemUser
 from geoapi.utils.assets import get_project_asset_dir, get_asset_path
 from geoapi.exceptions import InvalidCoordinateReferenceSystem

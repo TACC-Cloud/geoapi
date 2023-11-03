@@ -19,53 +19,14 @@ from geoapi.models import Feature, FeatureAsset, Overlay, User, TileServer
 from geoapi.exceptions import InvalidGeoJSON, ApiException
 from geoapi.utils.assets import make_project_asset_dir, delete_assets, get_asset_relative_path
 from geoapi.log import logging
-from geoapi.utils import geometries
+from geoapi.utils import (geometries,
+                          features as features_util)
 from geoapi.utils.agave import AgaveUtils
 
 logger = logging.getLogger(__name__)
 
 
 class FeaturesService:
-    GEOJSON_FILE_EXTENSIONS = (
-        'json', 'geojson'
-    )
-
-    IMAGE_FILE_EXTENSIONS = (
-        'jpeg', 'jpg',
-    )
-
-    VIDEO_FILE_EXTENSIONS = (
-        'mp4', 'mov', 'mpeg4', 'webm'
-    )
-
-    AUDIO_FILE_EXTENSIONS = (
-        'mp3', 'aac'
-    )
-
-    GPX_FILE_EXTENSIONS = (
-        'gpx',
-    )
-
-    SHAPEFILE_FILE_EXTENSIONS = (
-        'shp',
-    )
-
-    RAPP_FILE_EXTENSIONS = (
-        'rq',
-    )
-
-    ALLOWED_GEOSPATIAL_FEATURE_ASSET_EXTENSIONS = IMAGE_FILE_EXTENSIONS + VIDEO_FILE_EXTENSIONS
-
-    INI_FILE_EXTENSIONS = (
-        'ini',
-    )
-
-    ALLOWED_GEOSPATIAL_EXTENSIONS = IMAGE_FILE_EXTENSIONS + GPX_FILE_EXTENSIONS + GEOJSON_FILE_EXTENSIONS\
-        + SHAPEFILE_FILE_EXTENSIONS + RAPP_FILE_EXTENSIONS
-
-    ALLOWED_EXTENSIONS = IMAGE_FILE_EXTENSIONS + VIDEO_FILE_EXTENSIONS + AUDIO_FILE_EXTENSIONS + GPX_FILE_EXTENSIONS\
-        + GEOJSON_FILE_EXTENSIONS + SHAPEFILE_FILE_EXTENSIONS + INI_FILE_EXTENSIONS + RAPP_FILE_EXTENSIONS
-
     @staticmethod
     def get(database_session, featureId: int) -> Feature:
         """
@@ -371,17 +332,17 @@ class FeaturesService:
     def fromFileObj(database_session, projectId: int, fileObj: IO,
                     metadata: Dict, original_path: str = None, additional_files=None) -> List[Feature]:
         ext = pathlib.Path(fileObj.filename).suffix.lstrip(".").lower()
-        if ext in FeaturesService.IMAGE_FILE_EXTENSIONS:
+        if ext in features_util.IMAGE_FILE_EXTENSIONS:
             return [FeaturesService.fromImage(database_session, projectId, fileObj, metadata, original_path)]
-        elif ext in FeaturesService.GPX_FILE_EXTENSIONS:
+        elif ext in features_util.GPX_FILE_EXTENSIONS:
             return [FeaturesService.fromGPX(database_session, projectId, fileObj, metadata, original_path)]
-        elif ext in FeaturesService.GEOJSON_FILE_EXTENSIONS:
+        elif ext in features_util.GEOJSON_FILE_EXTENSIONS:
             return FeaturesService.fromGeoJSON(database_session, projectId, fileObj, {}, original_path)
-        elif ext in FeaturesService.SHAPEFILE_FILE_EXTENSIONS:
+        elif ext in features_util.SHAPEFILE_FILE_EXTENSIONS:
             return FeaturesService.fromShapefile(database_session, projectId, fileObj, {}, additional_files, original_path)
-        elif ext in FeaturesService.INI_FILE_EXTENSIONS:
+        elif ext in features_util.INI_FILE_EXTENSIONS:
             return FeaturesService.fromINI(database_session, projectId, fileObj, {}, original_path)
-        elif ext in FeaturesService.RAPP_FILE_EXTENSIONS:
+        elif ext in features_util.RAPP_QUESTIONNAIRE_FILE_EXTENSIONS:
             return FeaturesService.from_rapp_questionnaire(database_session, projectId, fileObj, additional_files, original_path)
         else:
             raise ApiException("Filetype not supported for direct upload. Create a feature and attach as an asset?")
@@ -443,9 +404,9 @@ class FeaturesService:
         """
         fpath = pathlib.Path(fileObj.filename)
         ext = fpath.suffix.lstrip('.').lower()
-        if ext in FeaturesService.IMAGE_FILE_EXTENSIONS:
+        if ext in features_util.IMAGE_FILE_EXTENSIONS:
             fa = FeaturesService.createImageFeatureAsset(projectId, fileObj, original_path=original_path)
-        elif ext in FeaturesService.VIDEO_FILE_EXTENSIONS:
+        elif ext in features_util.VIDEO_FILE_EXTENSIONS:
             fa = FeaturesService.createVideoFeatureAsset(projectId, fileObj, original_path=original_path)
         else:
             raise ApiException("Invalid format for feature assets")
