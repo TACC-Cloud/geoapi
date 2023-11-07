@@ -17,4 +17,5 @@ class Task(Base):
     updated = Column(DateTime(timezone=True), onupdate=func.now())
 
     def __repr__(self):
-        return '<Task(id={})>'.format(self.id)
+        return (f'<Task(id={self.id} process_id={self.process_id} status={self.status} '
+                f'description={self.description} updated={self.updated} )>')

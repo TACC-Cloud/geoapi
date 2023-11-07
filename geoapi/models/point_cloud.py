@@ -29,4 +29,5 @@ class PointCloud(Base):
     task = relationship("Task", lazy="joined")
 
     def __repr__(self):
-        return '<PointCloud(id={})>'.format(self.id)
+        return (f'<PointCloud(id={self.id} description={self.description}) '
+                f'project_id={self.project_id}  feature_id={self.feature_id} task={self.task_id}>')

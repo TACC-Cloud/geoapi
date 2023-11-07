@@ -10,7 +10,7 @@ from geoapi.db import Base
 class ObservableDataProject(Base):
     __tablename__ = 'observable_data_projects'
     __table_args__ = (
-        UniqueConstraint('system_id', 'path'),
+        UniqueConstraint('system_id', 'path', name="unique_system_id_path"),
     )
     id = Column(Integer, primary_key=True)
     project_id = Column(ForeignKey('projects.id', ondelete="CASCADE", onupdate="CASCADE"), index=True)

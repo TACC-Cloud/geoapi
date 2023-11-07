@@ -3,6 +3,7 @@ version: "3"
 services:
   workers:
     image: taccaci/geoapi-workers:${GEOAPI_TAG}
+    restart: always
     volumes:
       - /assets:/assets
     env_file: /opt/portal/conf/secrets.env
@@ -14,4 +15,8 @@ services:
     tty: true
     container_name: geoapiworkers
     hostname: geoapiworkers
+    logging:
+      driver: syslog
+      options:
+        tag: geoapi_workers
     command: "celery -A geoapi.celery_app worker -l info"
