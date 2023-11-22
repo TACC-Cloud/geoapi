@@ -169,14 +169,24 @@ class ProjectsListing(Resource):
         uuid_subset = query.get("uuid")
 
         if uuid_subset:
-            logger.info("Get a subset of projects for user:{} projects:{}".format(u.username, uuid_subset))
+            logger.info(f"Getting a subset of projects for user:{u.username} projects:{uuid_subset}")
+
             # Check each project and abort if user (authenticated or anonymous) can't access the project
             subset = [check_access_and_get_project(request.current_user, uuid=uuid, allow_public_use=True) for uuid in uuid_subset]
+
+            # Following log is for analytics, see https://confluence.tacc.utexas.edu/display/DES/Hazmapper+Logging
+            application = request.headers.get('X-Geoapi-Application')
+            if application is None:
+                application = "Unknown"
+            project_ids = [p.id for p in subset]
+            system_ids = [p.system_id for p in subset]
+            logger.info(f"Got a subset of projects for user:{u.username} application:{application}"
+                        f" projects:{uuid_subset} project_ids:{project_ids} tapis_system_ids:{system_ids}")
             return subset
         else:
             if is_anonymous(u):
                 abort(403, "Access denied")
-            logger.info("Get all projects for user:{}".format(u.username))
+            logger.info(f"Get all projects for user:{u.username}")
             return ProjectsService.list(db_session, u)
 
     @api.doc(id="createProject",
