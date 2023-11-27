@@ -52,7 +52,7 @@ def test_get_projects_using_uuids(test_client, projects_fixture, projects_fixtur
     assert data[1]["uuid"] == requested_uuids[1]
 
 
-def test_get_projects_using_single_uuid(test_client, projects_fixture, projects_fixture2, user1):
+def test_get_projects_using_single_uuid(test_client, projects_fixture, projects_fixture2, user1, caplog):
     resp = test_client.get('/projects/',
                            query_string='uuid={}'.format(projects_fixture2.uuid),
                            headers={'x-jwt-assertion-test': user1.jwt})
@@ -61,6 +61,23 @@ def test_get_projects_using_single_uuid(test_client, projects_fixture, projects_
     assert len(data) == 1
     assert data[0]["uuid"] == str(projects_fixture2.uuid)
     assert data[0]["deletable"] is True
+    log_statement_for_analytics = (f"Got a subset of projects for user:{user1.username} application:Unknown "
+                                   f"projects:['{projects_fixture2.uuid}'] project_ids:[2] tapis_system_ids:[None]")
+    assert log_statement_for_analytics in caplog.text
+
+
+def test_get_projects_using_single_uuid_observable_project(test_client, observable_projects_fixture, user1, caplog):
+    resp = test_client.get('/projects/',
+                           query_string='uuid={}'.format(observable_projects_fixture.project.uuid),
+                           headers={'x-jwt-assertion-test': user1.jwt})
+    data = resp.get_json()
+    assert resp.status_code == 200
+    assert len(data) == 1
+    assert data[0]["uuid"] == str(observable_projects_fixture.project.uuid)
+    log_statement_for_analytics = (f"Got a subset of projects for user:{user1.username} application:Unknown "
+                                   f"projects:['{observable_projects_fixture.project.uuid}'] project_ids:[1] "
+                                   f"tapis_system_ids:['testSystem']")
+    assert log_statement_for_analytics in caplog.text
 
 
 def test_get_projects_using_single_uuid_that_is_wrong(test_client, user1):
@@ -70,10 +87,13 @@ def test_get_projects_using_single_uuid_that_is_wrong(test_client, user1):
     assert resp.status_code == 404
 
 
-def test_get_public_project_using_single_uuid(test_client, public_projects_fixture):
+def test_get_public_project_using_single_uuid(test_client, public_projects_fixture, caplog):
     resp = test_client.get('/projects/',
                            query_string='uuid={}'.format(public_projects_fixture.uuid))
     assert resp.status_code == 200
+    log_statement_for_analytics = (f"Got a subset of projects for user:Guest_Unknown application:Unknown "
+                                   f"projects:['{public_projects_fixture.uuid}'] project_ids:[1] tapis_system_ids:[None]")
+    assert log_statement_for_analytics in caplog.text
 
 
 def test_get_project_using_single_uuid_unauthorized_guest(test_client, projects_fixture):

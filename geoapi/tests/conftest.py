@@ -113,7 +113,7 @@ def public_projects_fixture(projects_fixture):
 
 
 @pytest.fixture(scope="function")
-def observable_projects_fixture():
+def observable_projects_fixture(user1):
     u1 = db_session.query(User).filter(User.username == "test1").first()
     proj = Project(name="test_observable",
                    description="description",
@@ -123,6 +123,12 @@ def observable_projects_fixture():
         path="/testPath",
         watch_content=True
     )
+
+    # Project system_id/system_path really not used except for analytics.
+    # This could be improved; see https://jira.tacc.utexas.edu/browse/WG-185
+    proj.system_id = obs.system_id
+    proj.system_path = obs.path
+
     obs.project = proj
     proj.users.append(u1)
     db_session.add(obs)
