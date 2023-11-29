@@ -213,7 +213,7 @@ class ProjectResource(Resource):
         # Check if the project exists and log the information including the UUID
         if project:
             logger.info("Delete project:{} with UUID:{} for user:{}".format(
-            projectId, project.uuid, u.username))
+                projectId, project.uuid, u.username))
             return ProjectsService.delete(db_session, u, projectId)
         else:
             abort(404, "Project not found")
