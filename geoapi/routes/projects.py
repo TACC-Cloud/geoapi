@@ -208,9 +208,15 @@ class ProjectResource(Resource):
     @project_admin_or_creator_permissions
     def delete(self, projectId: int):
         u = request.current_user
-        logger.info("Delete project:{} for user:{}".format(projectId,
-                                                           u.username))
-        return ProjectsService.delete(db_session, u, projectId)
+        # Retrieve the project using the projectId to get its UUID
+        project = ProjectsService.get(db_session, project_id=projectId, user=u)
+        # Check if the project exists and log the information including the UUID
+        if project:
+            logger.info("Delete project:{} with UUID:{} for user:{}".format(
+            projectId, project.uuid, u.username))
+            return ProjectsService.delete(db_session, u, projectId)
+        else:
+            abort(404, "Project not found")
 
     @api.doc(id="updateProject",
              description="Update metadata about a project")
