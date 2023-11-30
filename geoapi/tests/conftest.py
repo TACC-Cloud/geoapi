@@ -113,7 +113,7 @@ def public_projects_fixture(projects_fixture):
 
 
 @pytest.fixture(scope="function")
-def observable_projects_fixture(user1):
+def observable_projects_fixture():
     u1 = db_session.query(User).filter(User.username == "test1").first()
     proj = Project(name="test_observable",
                    description="description",
