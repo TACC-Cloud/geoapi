@@ -208,8 +208,10 @@ class ProjectResource(Resource):
     @project_admin_or_creator_permissions
     def delete(self, projectId: int):
         u = request.current_user
-        logger.info("Delete project:{} for user:{}".format(projectId,
-                                                           u.username))
+        # Retrieve the project using the projectId to get its UUID
+        project = ProjectsService.get(db_session, project_id=projectId, user=u)
+        logger.info("Delete project:{} with project_uuid:{} for user:{}".format(
+                projectId, project.uuid, u.username))
         return ProjectsService.delete(db_session, u, projectId)
 
     @api.doc(id="updateProject",
