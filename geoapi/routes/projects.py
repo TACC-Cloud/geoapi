@@ -210,13 +210,9 @@ class ProjectResource(Resource):
         u = request.current_user
         # Retrieve the project using the projectId to get its UUID
         project = ProjectsService.get(db_session, project_id=projectId, user=u)
-        # Check if the project exists and log the information including the UUID
-        if project:
-            logger.info("Delete project:{} with UUID:{} for user:{}".format(
+        logger.info("Delete project:{} with project_uuid:{} for user:{}".format(
                 projectId, project.uuid, u.username))
-            return ProjectsService.delete(db_session, u, projectId)
-        else:
-            abort(404, "Project not found")
+        return ProjectsService.delete(db_session, u, projectId)
 
     @api.doc(id="updateProject",
              description="Update metadata about a project")
