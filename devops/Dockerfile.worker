@@ -11,9 +11,6 @@ unzip git wget libc6-dev gcc-multilib
 
 WORKDIR /opt
 
-RUN mkdir tools && cd tools && git clone --depth 1 https://github.com/LAStools/LAStools && cd LAStools/ && make all && make clean && rm -rf data
-ENV PATH /opt/tools/LAStools/bin/:$PATH
-
 RUN git clone --depth 1 https://github.com/m-schuetz/LAStools.git && cd LAStools/LASzip && mkdir build && cd build && \
 cmake -DCMAKE_BUILD_TYPE=Release .. && make && make install && ldconfig
 

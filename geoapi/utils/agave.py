@@ -24,9 +24,19 @@ SLEEP_SECONDS_BETWEEN_RETRY = 2
 
 
 class AgaveListingError(Exception):
-    '''' Unable to list directory from agave
+    ''' Exception raised when unable to list directory from Agave.
+    Attributes:
+        response -- response object that caused the error
+        message -- explanation of the error
     '''
-    pass
+
+    def __init__(self, response, message):
+        self.response = response
+        self.message = message
+        super().__init__(self.message)
+
+    def __str__(self):
+        return f"{self.message} | Response: {self.response}"
 
 
 class AgaveFileGetError(Exception):
@@ -97,8 +107,8 @@ class AgaveUtils:
         self.base_url = get_api_server(tenant) if tenant else self.BASE_URL
         self.client = client
 
-    def get(self, url):
-        return self.client.get(self.base_url + url)
+    def get(self, url, params=None):
+        return self.client.get(self.base_url + url, params=params)
 
     def systemsList(self):
         resp = self.get(quote('/systems/'))
@@ -121,8 +131,9 @@ class AgaveUtils:
         url = quote('/files/listings/system/{}/{}?limit=10000'.format(systemId, path))
         resp = self.get(url)
         if resp.status_code != 200:
-            raise AgaveListingError(f"Unable to perform files listing of {systemId}/{path}. "
-                                    f"Status code: {resp.status_code}")
+            e = AgaveListingError(message=f"Unable to perform files listing of {systemId}/{path}. Status code: {resp.status_code}",
+                                  response=resp)
+            raise e
         listing = resp.json()
         out = [AgaveFileListing(d) for d in listing["result"]]
         return out
