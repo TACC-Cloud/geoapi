@@ -169,7 +169,7 @@ class ProjectsListing(Resource):
         uuid_subset = query.get("uuid")
 
         if uuid_subset:
-            logger.info(f"Getting a subset of projects for user:{u.username} projects:{uuid_subset}")
+            logger.info(f"Getting a subset of projects for user:{u.username} project_uuid:{uuid_subset}")
 
             # Check each project and abort if user (authenticated or anonymous) can't access the project
             subset = [check_access_and_get_project(request.current_user, uuid=uuid, allow_public_use=True) for uuid in uuid_subset]
@@ -181,7 +181,7 @@ class ProjectsListing(Resource):
             project_ids = [p.id for p in subset]
             system_ids = [p.system_id for p in subset]
             logger.info(f"Got a subset of projects for user:{u.username} application:{application}"
-                        f" projects:{uuid_subset} project_ids:{project_ids} tapis_system_ids:{system_ids}")
+                        f" project_uuid:{uuid_subset} project:{project_ids} tapis_system_id:{system_ids}")
             return subset
         else:
             if is_anonymous(u):
