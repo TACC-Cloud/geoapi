@@ -173,15 +173,6 @@ class ProjectsListing(Resource):
 
             # Check each project and abort if user (authenticated or anonymous) can't access the project
             subset = [check_access_and_get_project(request.current_user, uuid=uuid, allow_public_use=True) for uuid in uuid_subset]
-
-            # Following log is for analytics, see https://confluence.tacc.utexas.edu/display/DES/Hazmapper+Logging
-            application = request.headers.get('X-Geoapi-Application')
-            if application is None:
-                application = "Unknown"
-            project_ids = [p.id for p in subset]
-            system_ids = [p.system_id for p in subset]
-            logger.info(f"Got a subset of projects for user:{u.username} application:{application}"
-                        f" project_uuid:{uuid_subset} project:{project_ids} tapis_system_id:{system_ids}")
             return subset
         else:
             if is_anonymous(u):
@@ -300,8 +291,14 @@ class ProjectFeaturesResource(Resource):
     @api.marshal_with(feature_collection_model, as_list=True)
     @project_permissions_allow_public
     def get(self, projectId: int):
-        logger.info("Get features of project:{} for user:{}".format(
-            projectId, request.current_user.username))
+        # Following log is for analytics, see https://confluence.tacc.utexas.edu/display/DES/Hazmapper+Logging
+        application = request.headers.get('X-Geoapi-Application')
+        if application is None:
+            application = "Unknown"
+        prj = ProjectsService.get(db_session, project_id=projectId, user=request.current_user)
+        logger.info(f"Get features of project for user:{request.current_user.username} application:{application}"
+                    f" project_uuid:{prj.uuid} project:{prj.id} tapis_system_id:{prj.system_id}")
+
         query = self.parser.parse_args()
         return ProjectsService.getFeatures(db_session, projectId, query)
 
