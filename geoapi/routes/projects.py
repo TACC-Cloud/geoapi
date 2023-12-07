@@ -294,7 +294,12 @@ class ProjectFeaturesResource(Resource):
         # Following log is for analytics, see https://confluence.tacc.utexas.edu/display/DES/Hazmapper+Logging
         application = request.headers.get('X-Geoapi-Application')
         if application is None:
-            application = "Unknown"
+            #  Check if in query parameters due to https://tacc-main.atlassian.net/browse/WG-192 and WG-191 */
+            application = request.args.get('application')
+
+            if application is None:
+                application = "Unknown"
+
         prj = ProjectsService.get(db_session, project_id=projectId, user=request.current_user)
         logger.info(f"Get features of project for user:{request.current_user.username} application:{application}"
                     f" project_uuid:{prj.uuid} project:{prj.id} tapis_system_id:{prj.system_id}")
