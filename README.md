@@ -31,21 +31,15 @@ under gunicorn on port 8000
 
 `docker exec -it geoapi python initdb.py`
 
-###### Create a JWT
+###### Obtain a JWT
 
-Copy this string to here: https://jwt.io/ 
-
-```
-eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJ3c28yLm9yZy9wcm9kdWN0cy9hbSIsImV4cCI6MjM4NDQ4MTcxMzg0MiwiaHR0cDovL3dzbzIub3JnL2NsYWltcy9zdWJzY3JpYmVyIjoiWU9VUl9VU0VSTkFNRSIsImh0dHA6Ly93c28yLm9yZy9jbGFpbXMvYXBwbGljYXRpb25pZCI6IjQ0IiwiaHR0cDovL3dzbzIub3JnL2NsYWltcy9hcHBsaWNhdGlvbm5hbWUiOiJEZWZhdWx0QXBwbGljYXRpb24iLCJodHRwOi8vd3NvMi5vcmcvY2xhaW1zL2FwcGxpY2F0aW9udGllciI6IlVubGltaXRlZCIsImh0dHA6Ly93c28yLm9yZy9jbGFpbXMvYXBpY29udGV4dCI6Ii9hcHBzIiwiaHR0cDovL3dzbzIub3JnL2NsYWltcy92ZXJzaW9uIjoiMi4wIiwiaHR0cDovL3dzbzIub3JnL2NsYWltcy90aWVyIjoiVW5saW1pdGVkIiwiaHR0cDovL3dzbzIub3JnL2NsYWltcy9rZXl0eXBlIjoiUFJPRFVDVElPTiIsImh0dHA6Ly93c28yLm9yZy9jbGFpbXMvdXNlcnR5cGUiOiJBUFBMSUNBVElPTl9VU0VSIiwiaHR0cDovL3dzbzIub3JnL2NsYWltcy9lbmR1c2VyIjoiWU9VUl9VU0VSTkFNRSIsImh0dHA6Ly93c28yLm9yZy9jbGFpbXMvZW5kdXNlclRlbmFudElkIjoiMTAiLCJodHRwOi8vd3NvMi5vcmcvY2xhaW1zL2VtYWlsYWRkcmVzcyI6InRlc3R1c2VyM0B0ZXN0LmNvbSIsImh0dHA6Ly93c28yLm9yZy9jbGFpbXMvZnVsbG5hbWUiOiJEZXYgVXNlciIsImh0dHA6Ly93c28yLm9yZy9jbGFpbXMvZ2l2ZW5uYW1lIjoiRGV2IiwiaHR0cDovL3dzbzIub3JnL2NsYWltcy9sYXN0bmFtZSI6IlVzZXIiLCJodHRwOi8vd3NvMi5vcmcvY2xhaW1zL3ByaW1hcnlDaGFsbGVuZ2VRdWVzdGlvbiI6Ik4vQSIsImh0dHA6Ly93c28yLm9yZy9jbGFpbXMvcm9sZSI6IkludGVybmFsL2V2ZXJ5b25lIiwiaHR0cDovL3dzbzIub3JnL2NsYWltcy90aXRsZSI6Ik4vQSJ9.0dIfuYvmXJwES1m1NJKKAPclynbGnaxzX3ygSz-3dqA
-```
-
-Edit the `YOUR_USERNAME`s in there for your TACC username and copy the modified string
+Refer to the confluence page or ask a colleague for assistance in obtaining a JWT.
 
 ###### Make some requests
 
 You need to add the following header for authentication:
 
-`X-JWT-Assertion` to equal the JWT created above
+`X-JWT-Assertion-designsafe` to equal the JWT obtained above
 
 ###### Create a new map project
 
