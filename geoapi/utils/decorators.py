@@ -46,7 +46,7 @@ def jwt_decoder(fn):
 
             # Exceptions
             except Exception as e:
-                logger.error(e)
+                logger.error(f'There is an issue decoding the JWT: {e}')
                 abort(400, f'There is an issue decoding the JWT: {e}')
 
             user = UserService.getUser(db_session, username, tenant)
