@@ -47,7 +47,7 @@ def jwt_decoder(fn):
                 # we get from the header anyway
                 username = username.split("@")[0]
 
-            #Possible exceptions
+            # Possible exceptions
             except jwt.ExpiredSignatureError:
                 logger.info('Token Expired')
                 abort(401, 'Token expired')
