@@ -300,9 +300,12 @@ class ProjectFeaturesResource(Resource):
             if application is None:
                 application = "Unknown"
 
+        is_public_view = any(base.__name__ == 'PublicProjectFeaturesResource' for base in self.__class__.__bases__)
+
         prj = ProjectsService.get(db_session, project_id=projectId, user=request.current_user)
         logger.info(f"Get features of project for user:{request.current_user.username} application:{application}"
-                    f" project_uuid:{prj.uuid} project:{prj.id} tapis_system_id:{prj.system_id}")
+                    f" public_view:{is_public_view} project_uuid:{prj.uuid} project:{prj.id} tapis_system_id:{prj.system_id} "
+                    f"tapis_system_path:{prj.system_path}")
 
         query = self.parser.parse_args()
         return ProjectsService.getFeatures(db_session, projectId, query)
