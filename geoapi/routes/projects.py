@@ -300,7 +300,8 @@ class ProjectFeaturesResource(Resource):
             if application is None:
                 application = "Unknown"
 
-        is_public_view = any(base.__name__ == 'PublicProjectFeaturesResource' for base in self.__class__.__bases__)
+        from geoapi.routes.public_projects import PublicProjectFeaturesResource
+        is_public_view = issubclass(self.__class__, PublicProjectFeaturesResource)
 
         prj = ProjectsService.get(db_session, project_id=projectId, user=request.current_user)
         logger.info(f"Get features of project for user:{request.current_user.username} application:{application}"
