@@ -295,6 +295,7 @@ def test_get_project_features_empty_public_access(test_client, public_projects_f
                                    f"tapis_system_id:None tapis_system_path:None")
     assert log_statement_for_analytics in caplog.text
 
+
 def test_get_project_features_analytics_with_query_params(test_client, public_projects_fixture, caplog):
     # send analytics-related params to projects endpoint only (until we use headers again
     # in https://tacc-main.atlassian.net/browse/WG-192)
