@@ -38,15 +38,28 @@ def jwt_decoder(fn):
             user = AnonymousUser(guest_unique_id=guest_uuid)
         if user is None:
             try:
-                # TODO: validate token
-                decoded = jwt.decode(token, pub_key, verify=False)
+                if settings.TESTING:
+                    decoded = jwt.decode(token, pub_key, algorithms=["RS256"], verify=False)
+                else:
+                    decoded = jwt.decode(token, pub_key, algorithms=["RS256"])
                 username = decoded["http://wso2.org/claims/enduser"]
                 # remove ant @carbon.super or other nonsense, the tenant
                 # we get from the header anyway
                 username = username.split("@")[0]
+
+            #Possible exceptions
+            except jwt.ExpiredSignatureError:
+                logger.info('Token Expired')
+                abort(401, 'Token expired')
+            except jwt.InvalidSignatureError:
+                logger.info('Invalid Signature')
+                abort(403, 'Invalid token signature')
+            except jwt.InvalidTokenError:
+                logger.info('Invalid Token')
+                abort(403, 'Invalid token')
             except Exception as e:
-                logger.exception(e)
-                abort(400, 'could not decode JWT')
+                logger.info(e)
+                abort(400, f'JWT verification error: {e}')
 
             user = UserService.getUser(db_session, username, tenant)
             if not user:
