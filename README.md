@@ -59,16 +59,17 @@ send a GET request to `localhost:8000/projects` and you should get that back.
 
 See https://github.com/TACC-Cloud/hazmapper for details.
 
-### Migrations
+### Creating migrations when updating database models
 
+These are useful steps to follow when there are changes to the database model.
 
-Applying migrations
+First, apply migrations:
 
 ```
 docker exec -it geoapi alembic upgrade head
 ```
 
-Creating migrations
+Then, create migrations:
 
 ```
 docker exec -it geoapi /bin/bash
