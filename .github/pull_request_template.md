@@ -2,7 +2,7 @@
 
 ## Related Jira tickets: ##
 
-* [WG-999](https://jira.tacc.utexas.edu/browse/WG-999)
+* [WG-XYZ](https://tacc-main.atlassian.net/browse/WG-XYZ)
 
 ## Summary of Changes: ##
 
