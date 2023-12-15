@@ -29,6 +29,8 @@ class Project(Base):
     id = Column(Integer, primary_key=True)
     uuid = Column(UUID(as_uuid=True), default=uuid.uuid4, nullable=False)
     tenant_id = Column(String, nullable=False)
+    # Project system_id/system_path really not used except for analytics.
+    # This could be improved; see https://jira.tacc.utexas.edu/browse/WG-185
     system_id = Column(String, nullable=True)
     system_path = Column(String, nullable=True)
     system_file = Column(String, nullable=True)

@@ -35,6 +35,9 @@ def jwt_decoder(fn):
         except ValueError:
             # if not JWT information is provided in header, then this is a guest user
             guest_uuid = request.headers.get('X-Guest-UUID')
+            if guest_uuid is None:
+                #  Check if in query parameters due to https://tacc-main.atlassian.net/browse/WG-192 and WG-191 */
+                guest_uuid = request.args.get('guest_uuid')
             user = AnonymousUser(guest_unique_id=guest_uuid)
         if user is None:
             try:

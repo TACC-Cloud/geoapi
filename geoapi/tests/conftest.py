@@ -123,6 +123,12 @@ def observable_projects_fixture():
         path="/testPath",
         watch_content=True
     )
+
+    # Project system_id/system_path really not used except for analytics.
+    # This could be improved; see https://jira.tacc.utexas.edu/browse/WG-185
+    proj.system_id = obs.system_id
+    proj.system_path = obs.path
+
     obs.project = proj
     proj.users.append(u1)
     db_session.add(obs)
