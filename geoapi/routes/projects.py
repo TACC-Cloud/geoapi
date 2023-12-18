@@ -169,14 +169,15 @@ class ProjectsListing(Resource):
         uuid_subset = query.get("uuid")
 
         if uuid_subset:
-            logger.info("Get a subset of projects for user:{} projects:{}".format(u.username, uuid_subset))
+            logger.info(f"Getting a subset of projects for user:{u.username} project_uuid:{uuid_subset}")
+
             # Check each project and abort if user (authenticated or anonymous) can't access the project
             subset = [check_access_and_get_project(request.current_user, uuid=uuid, allow_public_use=True) for uuid in uuid_subset]
             return subset
         else:
             if is_anonymous(u):
                 abort(403, "Access denied")
-            logger.info("Get all projects for user:{}".format(u.username))
+            logger.info(f"Get all projects for user:{u.username}")
             return ProjectsService.list(db_session, u)
 
     @api.doc(id="createProject",
@@ -290,8 +291,23 @@ class ProjectFeaturesResource(Resource):
     @api.marshal_with(feature_collection_model, as_list=True)
     @project_permissions_allow_public
     def get(self, projectId: int):
-        logger.info("Get features of project:{} for user:{}".format(
-            projectId, request.current_user.username))
+        # Following log is for analytics, see https://confluence.tacc.utexas.edu/display/DES/Hazmapper+Logging
+        application = request.headers.get('X-Geoapi-Application')
+        if application is None:
+            #  Check if in query parameters due to https://tacc-main.atlassian.net/browse/WG-192 and WG-191 */
+            application = request.args.get('application')
+
+            if application is None:
+                application = "Unknown"
+
+        from geoapi.routes.public_projects import PublicProjectFeaturesResource
+        is_public_view = issubclass(self.__class__, PublicProjectFeaturesResource)
+
+        prj = ProjectsService.get(db_session, project_id=projectId, user=request.current_user)
+        logger.info(f"Get features of project for user:{request.current_user.username} application:{application}"
+                    f" public_view:{is_public_view} project_uuid:{prj.uuid} project:{prj.id} tapis_system_id:{prj.system_id} "
+                    f"tapis_system_path:{prj.system_path}")
+
         query = self.parser.parse_args()
         return ProjectsService.getFeatures(db_session, projectId, query)
 

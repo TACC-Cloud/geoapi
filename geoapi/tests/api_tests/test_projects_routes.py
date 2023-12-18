@@ -63,6 +63,16 @@ def test_get_projects_using_single_uuid(test_client, projects_fixture, projects_
     assert data[0]["deletable"] is True
 
 
+def test_get_projects_using_single_uuid_observable_project(test_client, observable_projects_fixture, user1):
+    resp = test_client.get('/projects/',
+                           query_string='uuid={}'.format(observable_projects_fixture.project.uuid),
+                           headers={'x-jwt-assertion-test': user1.jwt})
+    data = resp.get_json()
+    assert resp.status_code == 200
+    assert len(data) == 1
+    assert data[0]["uuid"] == str(observable_projects_fixture.project.uuid)
+
+
 def test_get_projects_using_single_uuid_that_is_wrong(test_client, user1):
     resp = test_client.get('/projects/',
                            query_string='uuid={}'.format(uuid.uuid4()),
@@ -262,20 +272,39 @@ def test_get_point_cloud(test_client, projects_fixture, point_cloud_fixture, use
     assert resp.status_code == 200
 
 
-def test_get_project_features_empty(test_client, projects_fixture, user1):
+def test_get_project_features_empty(test_client, projects_fixture, user1, caplog):
     resp = test_client.get(f'/projects/{projects_fixture.id}/features/',
                            headers={'x-jwt-assertion-test': user1.jwt})
     assert resp.status_code == 200
 
     data = resp.get_json()
     assert len(data['features']) == 0
+    log_statement_for_analytics = (f"Get features of project for user:{user1.username} application:Unknown public_view:False "
+                                   f"project_uuid:{projects_fixture.uuid} project:{projects_fixture.id} "
+                                   f"tapis_system_id:None tapis_system_path:None")
+    assert log_statement_for_analytics in caplog.text
 
 
-def test_get_project_features_empty_public_access(test_client, public_projects_fixture):
-    resp = test_client.get('/projects/{}/features/'.format(public_projects_fixture.id))
+def test_get_project_features_empty_public_access(test_client, public_projects_fixture, caplog):
+    resp = test_client.get('/public-projects/{}/features/'.format(public_projects_fixture.id))
     assert resp.status_code == 200
     data = resp.get_json()
     assert len(data['features']) == 0
+    log_statement_for_analytics = (f"Get features of project for user:Guest_Unknown application:Unknown public_view:True "
+                                   f"project_uuid:{public_projects_fixture.uuid} project:{public_projects_fixture.id} "
+                                   f"tapis_system_id:None tapis_system_path:None")
+    assert log_statement_for_analytics in caplog.text
+
+
+def test_get_project_features_analytics_with_query_params(test_client, public_projects_fixture, caplog):
+    # send analytics-related params to projects endpoint only (until we use headers again
+    # in https://tacc-main.atlassian.net/browse/WG-192)
+    query = {'application': 'hazmapper', 'guest_uuid': "1234"}
+    test_client.get('/public-projects/{}/features/'.format(public_projects_fixture.id), query_string=query)
+    log_statement_for_analytics = (f"Get features of project for user:Guest_1234 application:hazmapper public_view:True "
+                                   f"project_uuid:{public_projects_fixture.uuid} project:{public_projects_fixture.id} "
+                                   f"tapis_system_id:None tapis_system_path:None")
+    assert log_statement_for_analytics in caplog.text
 
 
 def test_get_project_features_single_feature(test_client, projects_fixture, feature_fixture, user1):
