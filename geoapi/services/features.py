@@ -4,6 +4,7 @@ import uuid
 import json
 import tempfile
 import configparser
+import re
 from typing import List, IO, Dict
 
 from geoapi.services.videos import VideoService
@@ -18,55 +19,14 @@ from geoapi.models import Feature, FeatureAsset, Overlay, User, TileServer
 from geoapi.exceptions import InvalidGeoJSON, ApiException
 from geoapi.utils.assets import make_project_asset_dir, delete_assets, get_asset_relative_path
 from geoapi.log import logging
-from geoapi.utils import geometries
+from geoapi.utils import (geometries,
+                          features as features_util)
 from geoapi.utils.agave import AgaveUtils
 
 logger = logging.getLogger(__name__)
 
 
 class FeaturesService:
-    GEOJSON_FILE_EXTENSIONS = (
-        'json', 'geojson'
-    )
-
-    IMAGE_FILE_EXTENSIONS = (
-        'jpeg', 'jpg',
-    )
-
-    VIDEO_FILE_EXTENSIONS = (
-        'mp4', 'mov', 'mpeg4', 'webm'
-    )
-
-    AUDIO_FILE_EXTENSIONS = (
-        'mp3', 'aac'
-    )
-
-    GPX_FILE_EXTENSIONS = (
-        'gpx',
-    )
-
-    SHAPEFILE_FILE_EXTENSIONS = (
-        'shp',
-    )
-
-    RAPP_FILE_EXTENSIONS = (
-        'rq',
-    )
-
-    ALLOWED_GEOSPATIAL_FEATURE_ASSET_EXTENSIONS = IMAGE_FILE_EXTENSIONS + VIDEO_FILE_EXTENSIONS
-
-    INI_FILE_EXTENSIONS = (
-        'ini',
-    )
-
-    ALLOWED_GEOSPATIAL_EXTENSIONS = IMAGE_FILE_EXTENSIONS + GPX_FILE_EXTENSIONS + GEOJSON_FILE_EXTENSIONS\
-        + SHAPEFILE_FILE_EXTENSIONS
-    # RAPP_FILE_EXTENSIONS to be added in https://jira.tacc.utexas.edu/browse/DES-2462
-
-    ALLOWED_EXTENSIONS = IMAGE_FILE_EXTENSIONS + VIDEO_FILE_EXTENSIONS + AUDIO_FILE_EXTENSIONS + GPX_FILE_EXTENSIONS\
-        + GEOJSON_FILE_EXTENSIONS + SHAPEFILE_FILE_EXTENSIONS + INI_FILE_EXTENSIONS
-    # RAPP_FILE_EXTENSIONS to be added in https://jira.tacc.utexas.edu/browse/DES-2462
-
     @staticmethod
     def get(database_session, featureId: int) -> Feature:
         """
@@ -240,15 +200,22 @@ class FeaturesService:
         return features
 
     @staticmethod
-    def fromRAPP(database_session, projectId: int, fileObj: IO, metadata: Dict, original_path: str = None) -> Feature:
+    def from_rapp_questionnaire(database_session, projectId: int, fileObj: IO,
+                                additional_files: List[IO], original_path: str = None) -> Feature:
         """
+        Import RAPP questionnaire
+
+        RAPP questionnaire is imported along with any asset images that it
+        refers to. The asset images are assumed to reside in the same directory
+        as the questionnaire .rq file.
 
         :param projectId: int
-        :param fileObj: file descriptor
-        :param metadata: Dict of <key, val> pairs
+        :param fileObj: questionnaire rq file
+        :param additional_files: list of file objs
         :param original_path: str path of original file location
         :return: Feature
         """
+        logger.info(f"Processing f{original_path}")
         data = json.loads(fileObj.read())
 
         lng = data.get('geolocation')[0].get('longitude')
@@ -264,8 +231,39 @@ class FeaturesService:
         pathlib.Path(questionnaire_path).mkdir(parents=True, exist_ok=True)
         asset_path = os.path.join(questionnaire_path, 'questionnaire.rq')
 
+        # write questionnaire rq file
         with open(asset_path, 'w') as tmp:
             tmp.write(json.dumps(data))
+
+        additional_files_properties = []
+
+        # write all asset files (i.e jpgs)
+        if additional_files is not None:
+            logger.info(f"Processing {len(additional_files)} assets for {original_path}")
+            for asset_file_obj in additional_files:
+                base_filename = os.path.basename(asset_file_obj.filename)
+                image_asset_path = os.path.join(questionnaire_path, base_filename)
+
+                # save original jpg (i.e. Q1-Photo-001.jpg)
+                with open(image_asset_path, 'wb') as image_asset:
+                    image_asset.write(asset_file_obj.read())
+
+                # create preview image (i.e. Q1-Photo-001.preview.jpg)
+                processed_asset_image = ImageService.processImage(asset_file_obj)
+                path = pathlib.Path(image_asset_path)
+                processed_asset_image.resized.save(path.with_suffix('.preview' + path.suffix), "JPEG")
+
+                # gather coordinates information for this asset
+                logger.debug(f"{asset_file_obj.filename} has the geospatial coordinates of {processed_asset_image.coordinates}")
+                additional_files_properties.append({"filename": base_filename,
+                                                    "coordinates": processed_asset_image.coordinates})
+                asset_file_obj.close()
+
+        if additional_files_properties:
+            # Sort the list of dictionaries based on 'QX' value and then 'PhotoX' value
+            additional_files_properties.sort(key=lambda x: tuple(map(int, re.findall(r'\d+', x['filename']))))
+            # add info about assets to properties (i.e. coordinates of asset) for quick retrieval
+            feat.properties = {"_hazmapper": {"questionnaire": {"assets": additional_files_properties}}}
 
         fa = FeatureAsset(
             uuid=asset_uuid,
@@ -334,18 +332,18 @@ class FeaturesService:
     def fromFileObj(database_session, projectId: int, fileObj: IO,
                     metadata: Dict, original_path: str = None, additional_files=None) -> List[Feature]:
         ext = pathlib.Path(fileObj.filename).suffix.lstrip(".").lower()
-        if ext in FeaturesService.IMAGE_FILE_EXTENSIONS:
+        if ext in features_util.IMAGE_FILE_EXTENSIONS:
             return [FeaturesService.fromImage(database_session, projectId, fileObj, metadata, original_path)]
-        elif ext in FeaturesService.GPX_FILE_EXTENSIONS:
+        elif ext in features_util.GPX_FILE_EXTENSIONS:
             return [FeaturesService.fromGPX(database_session, projectId, fileObj, metadata, original_path)]
-        elif ext in FeaturesService.GEOJSON_FILE_EXTENSIONS:
+        elif ext in features_util.GEOJSON_FILE_EXTENSIONS:
             return FeaturesService.fromGeoJSON(database_session, projectId, fileObj, {}, original_path)
-        elif ext in FeaturesService.SHAPEFILE_FILE_EXTENSIONS:
+        elif ext in features_util.SHAPEFILE_FILE_EXTENSIONS:
             return FeaturesService.fromShapefile(database_session, projectId, fileObj, {}, additional_files, original_path)
-        elif ext in FeaturesService.INI_FILE_EXTENSIONS:
+        elif ext in features_util.INI_FILE_EXTENSIONS:
             return FeaturesService.fromINI(database_session, projectId, fileObj, {}, original_path)
-        elif False and ext in FeaturesService.RAPP_FILE_EXTENSIONS:  # Activate for https://jira.tacc.utexas.edu/browse/DES-2462
-            return FeaturesService.fromRAPP(database_session, projectId, fileObj, {}, original_path)
+        elif ext in features_util.RAPP_QUESTIONNAIRE_FILE_EXTENSIONS:
+            return FeaturesService.from_rapp_questionnaire(database_session, projectId, fileObj, additional_files, original_path)
         else:
             raise ApiException("Filetype not supported for direct upload. Create a feature and attach as an asset?")
 
@@ -406,9 +404,9 @@ class FeaturesService:
         """
         fpath = pathlib.Path(fileObj.filename)
         ext = fpath.suffix.lstrip('.').lower()
-        if ext in FeaturesService.IMAGE_FILE_EXTENSIONS:
+        if ext in features_util.IMAGE_FILE_EXTENSIONS:
             fa = FeaturesService.createImageFeatureAsset(projectId, fileObj, original_path=original_path)
-        elif ext in FeaturesService.VIDEO_FILE_EXTENSIONS:
+        elif ext in features_util.VIDEO_FILE_EXTENSIONS:
             fa = FeaturesService.createVideoFeatureAsset(projectId, fileObj, original_path=original_path)
         else:
             raise ApiException("Invalid format for feature assets")

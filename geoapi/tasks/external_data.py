@@ -6,12 +6,14 @@ from enum import Enum
 import time
 import datetime
 from celery import uuid as celery_uuid
+import json
 
 from geoapi.celery_app import app
 from geoapi.exceptions import InvalidCoordinateReferenceSystem, MissingServiceAccount
 from geoapi.models import User, ProjectUser, ObservableDataProject, Task
 from geoapi.utils.agave import (AgaveUtils, SystemUser, get_system_users, get_metadata_using_service_account,
                                 AgaveFileGetError, AgaveListingError)
+from geoapi.utils import features as features_util
 from geoapi.log import logger
 from geoapi.services.features import FeaturesService
 from geoapi.services.imports import ImportsService
@@ -21,6 +23,7 @@ from geoapi.tasks.lidar import convert_to_potree, check_point_cloud, get_point_c
 from geoapi.db import create_task_session
 from geoapi.services.notifications import NotificationsService
 from geoapi.services.users import UserService
+from dataclasses import dataclass
 
 
 class ImportState(Enum):
@@ -29,19 +32,18 @@ class ImportState(Enum):
     RETRYABLE_FAILURE = 3
 
 
+@dataclass
+class AdditionalFile:
+    """Represents an additional file with its path and and if its required (i.e. not optional)."""
+    path: str
+    required: bool
+
+
 def _parse_rapid_geolocation(loc):
     coords = loc[0]
     lat = coords["latitude"]
     lon = coords["longitude"]
     return lat, lon
-
-
-def is_member_of_rapp_project_folder(path):
-    """
-    Check to see if path is contained within RApp project folder
-    :param path: str
-    """
-    return "/RApp/" in path
 
 
 def get_file(client, system_id, path, required):
@@ -57,47 +59,71 @@ def get_file(client, system_id, path, required):
     return system_id, path, required, result_file, error
 
 
-def get_additional_files(systemId: str, path: str, client, available_files=None):
+def get_additional_files(current_file, system_id: str, path: str, client, available_files=None):
     """
-    Get any additional files needed for processing
-    :param systemId: str
-    :param path: str
-    :param client
+    Get any additional files needed for processing the current file being imported
+
+    Note `available_files` is optional. if provided, then it can be used to fail early if it is known
+    that a required file is missing
+
+    :param str current_file: active file that is being imported
+    :param str system_id: system of active file
+    :param path: path of active file
+    :param client:
     :param available_files: list of files that exist (optional)
     :return: list of additional files
     """
-    path = Path(path)
-    if path.suffix.lower().lstrip('.') == "shp":
-        paths_to_get = []
+    additional_files_to_get = []
+
+    current_file_path = Path(path)
+    file_suffix = current_file_path.suffix.lower().lstrip('.')
+    if file_suffix == "shp":
+        logger.info(f"Determining which shapefile-related files need to be downloaded for file {current_file.filename}")
         for extension, required in SHAPEFILE_FILE_ADDITIONAL_FILES.items():
-            additional_file_path = path.with_suffix(extension)
+            additional_file_path = current_file_path.with_suffix(extension)
             if available_files and str(additional_file_path) not in available_files:
                 if required:
-                    logger.error("Could not import required shapefile-related file: "
-                                 "agave: {} :: {}".format(systemId, additional_file_path))
-                    raise Exception("Required file ({}) missing".format(additional_file_path))
+                    logger.error(f"Could not import required shapefile-related file: agave: {system_id}/{additional_file_path}")
+                    raise Exception(f"Required file ({system_id}/{additional_file_path}) missing")
                 else:
                     continue
-            paths_to_get.append(additional_file_path)
+            additional_files_to_get.append(AdditionalFile(path=additional_file_path, required=required))
+    elif file_suffix == "rq":
+        logger.info(f"Parsing rq file {current_file.filename} to see what assets need to be downloaded ")
+        data = json.load(current_file)
+        for section in data["sections"]:
+            for question in section["questions"]:
+                for asset in question.get("assets", []):
+                    # determine full path for this asset and add to list
+                    additional_file_path = current_file_path.with_name(asset["filename"])
+                    additional_files_to_get.append(AdditionalFile(path=additional_file_path, required=True))
+        logger.info(f"{len(additional_files_to_get)} assets were found for rq file {current_file.filename}")
 
-        additional_files = []
-        with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
-            getting_files_futures = [executor.submit(get_file, client, systemId, additional_file_path, required)
-                                     for additional_file_path in paths_to_get]
-            for future in concurrent.futures.as_completed(getting_files_futures):
-                _, additional_file_path, required, result_file, error = future.result()
-                if not result_file and required:
-                    logger.error("Could not import a required shapefile-related file: "
-                                 "agave: {} :: {}   ---- error: {}".format(systemId, additional_file_path, error))
-                if not result_file:
-                    logger.debug("Unable to get non-required shapefile-related file: "
-                                 "agave: {} :: {}".format(systemId, additional_file_path))
-                    continue
-                result_file.filename = Path(additional_file_path).name
-                additional_files.append(result_file)
+        # Seek back to start of file
+        current_file.seek(0)
     else:
-        additional_files = None
-    return additional_files
+        return None
+
+    # Try to get all additional files.
+    additional_files_result = []
+    with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
+        getting_files_futures = [executor.submit(get_file, client, system_id, additional_file.path, additional_file.required)
+                                 for additional_file in additional_files_to_get]
+        for future in concurrent.futures.as_completed(getting_files_futures):
+            _, additional_file_path, required, result_file, error = future.result()
+            if not result_file and required:
+                logger.error(f"Could not import a required {file_suffix}-related file: "
+                             f"agave: {system_id} :: {additional_file_path}   ---- error: {error}")
+                raise Exception(f"Required file ({system_id}/{additional_file_path}) missing")
+            if not result_file:
+                logger.error(f"Unable to get non-required {file_suffix}-related file: "
+                             f"agave: {system_id} :: {additional_file_path}   ---- error: {error}")
+
+                continue
+            logger.debug(f"Finished getting {file_suffix}-related file: ({system_id}/{additional_file_path}")
+            result_file.filename = Path(additional_file_path).name
+            additional_files_result.append(result_file)
+    return additional_files_result
 
 
 @app.task(rate_limit="10/s")
@@ -111,10 +137,9 @@ def import_file_from_agave(userId: int, systemId: str, path: str, projectId: int
         try:
             user = session.query(User).get(userId)
             client = AgaveUtils(user.jwt)
-
             temp_file = client.getFile(systemId, path)
             temp_file.filename = Path(path).name
-            additional_files = get_additional_files(systemId, path, client)
+            additional_files = get_additional_files(temp_file, systemId, path, client)
             FeaturesService.fromFileObj(session, projectId, temp_file, {},
                                         original_path=path, additional_files=additional_files)
             NotificationsService.create(session, user, "success", "Imported {f}".format(f=path))
@@ -187,11 +212,11 @@ def import_point_clouds_from_agave(userId: int, files, pointCloudId: int):
             except InvalidCoordinateReferenceSystem:
                 logger.error(f"Could not import point cloud file ( point cloud: {pointCloudId} , "
                              f"for user:{user.username} due to missing coordinate reference system: {system_id}:{path}")
-                failed_message = 'Error importing {}: missing coordinate reference system'.format(path)
+                failed_message = "Error importing {}: missing coordinate reference system".format(path)
             except Exception as e:
                 logger.error(f"Could not import point cloud file for user:{user.username} point cloud: {pointCloudId}"
                              f"from tapis: {system_id}/{path} : {e}")
-                failed_message = 'Unknown error importing {}:{}'.format(system_id, path)
+                failed_message = "Unknown error importing {}:{}".format(system_id, path)
 
             if failed_message:
                 for file_path in new_asset_files:
@@ -274,11 +299,8 @@ def import_from_files_from_path(session, tenant_id: str, userId: int, systemId: 
     for item in files_in_directory:
         if item.type == "dir" and not str(item.path).endswith("/.Trash"):
             import_from_files_from_path(session, tenant_id, userId, systemId, item.path, projectId)
-        # skip any junk files that are not allowed
-        if item.path.suffix.lower().lstrip('.') not in FeaturesService.ALLOWED_EXTENSIONS:
-            continue
-        else:
-            item_system_path = os.path.join(item.system, str(item.path).lstrip("/"))
+        item_system_path = os.path.join(item.system, str(item.path).lstrip("/"))
+        if features_util.is_file_supported_for_automatic_scraping(item_system_path):
             try:
                 # first check if there already is a file in the DB
                 target_file = ImportsService.getImport(session, projectId, systemId, str(item.path))
@@ -288,16 +310,9 @@ def import_from_files_from_path(session, tenant_id: str, userId: int, systemId: 
                                  f"successful_import={target_file.successful_import}")
                     continue
 
-                # If it is a RApp project folder, grab the metadata from tapis meta service
-                if is_member_of_rapp_project_folder(item_system_path):
-                    logger.info("RApp: importing:{} for user:{}".format(item_system_path, user.username))
-                    if item.path.suffix.lower().lstrip(
-                            '.') not in FeaturesService.ALLOWED_GEOSPATIAL_FEATURE_ASSET_EXTENSIONS:
-                        logger.info("{path} is unsupported; skipping.".format(path=item_system_path))
-                        continue
-
-                    logger.info("{} {} {}".format(item_system_path, item.system, item.path))
-
+                # If it is a RApp project folder and not a questionnaire file, use the metadata from tapis meta service
+                if features_util.is_supported_file_type_in_rapp_folder_and_needs_metadata(item_system_path):
+                    logger.info(f"RApp: importing:{item_system_path} for user:{user.username}. Using metadata service for geolocation.")
                     try:
                         meta = get_metadata_using_service_account(tenant_id, item.system, item.path)
                     except MissingServiceAccount:
@@ -328,24 +343,27 @@ def import_from_files_from_path(session, tenant_id: str, userId: int, systemId: 
                         raise RuntimeError("Unable to create feature asset")
                     NotificationsService.create(session, user, "success", "Imported {f}".format(f=item_system_path))
                     tmp_file.close()
-                elif item.path.suffix.lower().lstrip('.') in FeaturesService.ALLOWED_GEOSPATIAL_EXTENSIONS:
+                elif features_util.is_supported_for_automatic_scraping_without_metadata(item_system_path):
                     logger.info("importing:{} for user:{}".format(item_system_path, user.username))
                     tmp_file = client.getFile(systemId, item.path)
                     tmp_file.filename = Path(item.path).name
-                    additional_files = get_additional_files(systemId, item.path, client, filenames_in_directory)
+                    additional_files = get_additional_files(tmp_file, systemId, item.path, client, available_files=filenames_in_directory)
                     FeaturesService.fromFileObj(session, projectId, tmp_file, {},
                                                 original_path=item_system_path, additional_files=additional_files)
                     NotificationsService.create(session, user, "success", "Imported {f}".format(f=item_system_path))
                     tmp_file.close()
                 else:
+                    # skipping as not supported
+                    logger.debug("{path} is unsupported; skipping.".format(path=item_system_path))
                     continue
                 import_state = ImportState.SUCCESS
             except Exception as e:
-                logger.error(
-                    f"Could not import for user:{user.username} from agave:{systemId}/{item_system_path} "
-                    f"(while recursively importing files from {systemId}/{path})")
                 NotificationsService.create(session, user, "error", "Error importing {f}".format(f=item_system_path))
                 import_state = ImportState.FAILURE if e is not AgaveFileGetError else ImportState.RETRYABLE_FAILURE
+                logger.exception(
+                    f"Could not import for user:{user.username} from agave:{systemId}/{item_system_path} "
+                    f"(while recursively importing files from {systemId}/{path}). "
+                    f"retryable={import_state == ImportState.RETRYABLE_FAILURE}")
             if import_state != ImportState.RETRYABLE_FAILURE:
                 try:
                     successful = True if import_state == ImportState.SUCCESS else False

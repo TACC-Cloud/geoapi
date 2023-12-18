@@ -153,7 +153,7 @@ class AgaveUtils:
         out = {k: v for d in results for k, v in d.items()}
         return out
 
-    def _get_file(self, systemId: str, path: str, use_service_account: bool = False) -> IO:
+    def _get_file(self, systemId: str, path: str, use_service_account: bool = False) -> NamedTemporaryFile:
         """
         Get file
 
@@ -205,7 +205,7 @@ class AgaveUtils:
                 raise RetryableTapisFileError
         return tmpFile
 
-    def getFile(self, systemId: str, path: str) -> IO:
+    def getFile(self, systemId: str, path: str) -> NamedTemporaryFile:
         """
         Download a file from tapis
 
@@ -225,6 +225,7 @@ class AgaveUtils:
         allowed_attempts = 5
         while allowed_attempts > 0:
             try:
+                logger.debug(f"Getting file {systemId}/{path}")
                 return self._get_file(systemId, path)
             except RetryableTapisFileError:
                 allowed_attempts = allowed_attempts - 1
