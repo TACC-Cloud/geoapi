@@ -7,7 +7,7 @@
 ### Added
 
 - WG-96, WG-170: Support RAPID questionnaires (#157, #131, #152, #159)
-- Improve logs for analytics (#155, #161)
+- WG-138, WG-139, WG-140: Improve logs for analytics (#155, #161)
 
 ### Changed
 
