@@ -2,6 +2,27 @@
 
 ## [Unreleased]
 
+## [2.16] - 2023-12-19
+
+### Added
+
+- WG-96, WG-170: Support RAPID questionnaires (#157, #131, #152, #159)
+- Improve logs for analytics (#155, #161)
+
+### Changed
+
+- Improve logging of point clouds operations (#153)
+- Improve README information on database migrations (#165)
+- WG-194: Update Jira links in PR template (#166)
+- WG-182: adding additional logging for project uuid upon deletion  (#163)
+- Remove LAStools building step in Dockerfile (#160)
+- Improve exception handling and logging of tapis/agave exceptions (#158)
+
+### Fixed
+
+- WG-67: Adding JWT verification (#164)
+- Add restart to docker compose (#154)
+
 ## [2.15] - 2023-10-13
 
 ### Fixed
@@ -162,7 +183,8 @@
 - DES-1687: Add rollingback to worker tasks (#30)
 - DES-1663: Fix image rotations (#36)
 
-[unreleased]: https://github.com/TACC-Cloud/geoapi/compare/v2.15...HEAD
+[unreleased]: https://github.com/TACC-Cloud/geoapi/compare/v2.16...HEAD
+[2.16]: https://github.com/TACC-Cloud/geoapi/releases/tag/v2.16
 [2.15]: https://github.com/TACC-Cloud/geoapi/releases/tag/v2.15
 [2.14]: https://github.com/TACC-Cloud/geoapi/releases/tag/v2.14
 [2.13]: https://github.com/TACC-Cloud/geoapi/releases/tag/v2.13
