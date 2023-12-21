@@ -41,7 +41,8 @@ def jwt_decoder(fn):
             user = AnonymousUser(guest_unique_id=guest_uuid)
         if user is None:
             try:
-                decoded = jwt.decode(token, pub_key, algorithms=["RS256"], verify=not settings.TESTING)
+                options = {"verify_signature": not settings.TESTING}
+                decoded = jwt.decode(token, pub_key, algorithms=["RS256"], options=options)
                 username = decoded["http://wso2.org/claims/enduser"]
                 # remove ant @carbon.super or other nonsense, the tenant
                 # we get from the header anyway
