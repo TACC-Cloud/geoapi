@@ -8,7 +8,7 @@ echo "Backing up staging"
 ssh -o StrictHostKeyChecking=no portal@staging.geoapi-services.tacc.utexas.edu "
 set -ex
 # skipping /assets/streetview as those are temp files
-tar --exclude=/assets/streetview -c -f - /assets/ | \
+tar --exclude=/assets/streetview --exclude=/assets/lost+found --exclude=/assets/bug/ -c -f - /assets/ | \
 ssh -o StrictHostKeyChecking=no tg458981@ranch.tacc.utexas.edu 'split -b 300G - /stornext/ranch_01/ranch/projects/DesignSafe-Community/geoapi_assets_backup/staging/staging_assets\\$(date +%Y-%m-%d).tar.'
 "
 
@@ -24,6 +24,6 @@ echo "Backing up production"
 ssh -o StrictHostKeyChecking=no portal@prod.geoapi-services.tacc.utexas.edu "
 set -ex
 # skipping /assets/streetview as those are temp files
-tar --exclude=/assets/streetview -c -f - /assets/ | \
+tar --exclude=/assets/streetview  --exclude=/assets/lost+found --exclude=/assets/bug/ -c -f - /assets/ | \
 ssh -o StrictHostKeyChecking=no tg458981@ranch.tacc.utexas.edu 'split -b 300G - /stornext/ranch_01/ranch/projects/DesignSafe-Community/geoapi_assets_backup/production/production_assets\\$(date +%Y-%m-%d).tar.'
 "
