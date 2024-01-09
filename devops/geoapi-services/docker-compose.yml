@@ -106,7 +106,7 @@ services:
     image: taccaci/hazmapper-react:${HAZMAPPER_TAG}
     restart: always
     ports:
-      - 81:80
+      - 82:80
     container_name: hazmapper-react
 
   watchtower:
