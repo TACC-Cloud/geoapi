@@ -103,7 +103,7 @@ services:
     container_name: taggit
 
   hazmapper-react:
-    image: taccaci/hazmapper-react:${TAGGIT_TAG}
+    image: taccaci/hazmapper-react:${HAZMAPPER_TAG}
     restart: always
     ports:
       - 81:80
