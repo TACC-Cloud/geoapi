@@ -48,7 +48,12 @@ class ProjectsService:
         database_session.add(project)
         database_session.commit()
 
-        project.project_users[0].creator = True
+        # set the user to be the creator
+        for project_user in project.project_users:
+            if project_user.user_id == user.id:
+                project_user.creator = True
+                break
+
         database_session.add(project)
         database_session.commit()
         setattr(project, 'deletable', True)
