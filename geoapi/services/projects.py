@@ -84,10 +84,10 @@ class ProjectsService:
             watch_content=watch_content
         )
 
-        users = get_system_users(proj.tenant_id, user.jwt, proj.system_id)
-        logger.info("Initial update of project:{} to have the following users: {}".format(name, users))
-        project_users = [UserService.getOrCreateUser(database_session, u.username, tenant=proj.tenant_id) for u in users]
-        proj.users = project_users
+        system_users = get_system_users(proj.tenant_id, user.jwt, proj.system_id)
+        logger.info("Initial update of project:{} to have the following users: {}".format(name, system_users))
+        users = [UserService.getOrCreateUser(database_session, u.username, tenant=proj.tenant_id) for u in system_users]
+        proj.users = users
 
         obs.project = proj
 
@@ -101,6 +101,11 @@ class ProjectsService:
                 raise ObservableProjectAlreadyExists("'{}' project already exists".format(name))
             else:
                 raise e
+
+        # Initialize the admin status
+        users_dict = {u.username: u for u in system_users}
+        for u in obs.project.project_users:
+            u.admin = users_dict[u.user.username].admin
 
         if watch_content:
             import_from_agave.apply_async(args=[obs.project.tenant_id, user.id, obs.system_id, obs.path, obs.project_id])
