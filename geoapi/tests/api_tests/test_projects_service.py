@@ -37,8 +37,8 @@ def test_create_observable_project(user1,
                                    agave_utils_with_geojson_file_mock,
                                    import_from_agave_mock):
     data = {
-        'name': 'Renamed Project',
-        'description': 'New Description',
+        'name': 'test name',
+        'description': 'test description',
         'system_id': 'system',
         'system_path': '/path',
         'system_file': 'file_name',
@@ -67,8 +67,8 @@ def test_create_observable_project_already_exists(observable_projects_fixture,
                                                   get_system_users_mock):
     user = db_session.query(User).get(1)
     data = {
-        'name': 'Renamed Project',
-        'description': 'New Description',
+        'name': 'test name',
+        'description': 'test description',
         'system_id': observable_projects_fixture.system_id,
         'system_path': observable_projects_fixture.path,
         'system_file': 'file_name',
