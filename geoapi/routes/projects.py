@@ -57,10 +57,10 @@ project_payload = api.model('Project', {
     'system_id': fields.String(),
     'system_path': fields.String(),
     'watch_content': fields.Boolean(),
-    'watch_users': fields.Boolean(),
+    'watch_users': fields.Boolean()
 })
 
-project_response = api.model('ProjectResponse', project_payload, {
+project_response = api.model('ProjectResponse', {
     'id': fields.Integer(),
     'uuid': fields.String(),
     'name': fields.String(),
