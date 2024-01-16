@@ -27,17 +27,20 @@ class ProjectsService:
         :param user: User
         :return: Project
         """
-        project = Project(**data['project'])
+        watch_content = data.pop("watch_content", False)
+        watch_users = data.pop("watch_users", False)
+
+        project = Project(**data)
 
         project.tenant_id = user.tenant_id
         project.users.append(user)
 
-        if data.get('observable', False):
+        if watch_users or watch_content:
             try:
                 ProjectsService.makeObservable(database_session,
                                                project,
                                                user,
-                                               data.get('watch_content', False))
+                                               watch_content)
             except Exception as e:
                 logger.exception("{}".format(e))
                 raise e

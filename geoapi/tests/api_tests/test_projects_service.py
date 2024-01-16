@@ -8,15 +8,12 @@ from geoapi.models.project import Project
 from geoapi.exceptions import ObservableProjectAlreadyExists
 
 
-def test_create_project():
-    user = db_session.query(User).get(1)
+def test_create_project(user1):
     data = {
-        'project': {
-            'name': "test name",
-            'description': "test description",
-        },
+        'name': "test name",
+        'description': "test description",
     }
-    proj = ProjectsService.create(db_session, data, user)
+    proj = ProjectsService.create(db_session, data, user1)
     assert proj.id is not None
     assert len(proj.users) == 1
     assert proj.name == "test name"
@@ -30,24 +27,21 @@ def test_delete_project(projects_fixture, remove_project_assets_mock, user1):
     assert projects == []
 
 
-def test_create_observable_project(userdata,
+def test_create_observable_project(user1,
                                    get_system_users_mock,
                                    agave_utils_with_geojson_file_mock,
                                    import_from_agave_mock):
-    user = db_session.query(User).get(1)
     data = {
-        'project': {
-            'name': 'Renamed Project',
-            'description': 'New Description',
-            'system_id': 'system',
-            'system_path': '/path',
-            'system_file': 'file_name'
-        },
-        'observable': True,
+        'name': 'Renamed Project',
+        'description': 'New Description',
+        'system_id': 'system',
+        'system_path': '/path',
+        'system_file': 'file_name',
+        'watch_users': True,
         'watch_content': True
     }
+    proj = ProjectsService.create(db_session, data, user1)
 
-    proj = ProjectsService.create(db_session, data, user)
     assert len(proj.users) == 2
 
 
@@ -57,14 +51,12 @@ def test_create_observable_project_already_exists(observable_projects_fixture,
                                                   get_system_users_mock):
     user = db_session.query(User).get(1)
     data = {
-        'project': {
-            'name': 'Renamed Project',
-            'description': 'New Description',
-            'system_id': observable_projects_fixture.system_id,
-            'system_path': observable_projects_fixture.path,
-            'system_file': 'file_name'
-        },
-        'observable': True,
+        'name': 'Renamed Project',
+        'description': 'New Description',
+        'system_id': observable_projects_fixture.system_id,
+        'system_path': observable_projects_fixture.path,
+        'system_file': 'file_name',
+        'watch_users': True,
         'watch_content': True
     }
 
