@@ -12,6 +12,7 @@ from geoapi.tasks.external_data import import_from_agave
 from geoapi.tasks.projects import remove_project_assets
 from geoapi.log import logger
 from geoapi.exceptions import ApiException, ObservableProjectAlreadyExists
+from geoapi.custom import custom_on_project_creation
 
 
 class ProjectsService:
@@ -56,6 +57,11 @@ class ProjectsService:
 
         database_session.add(project)
         database_session.commit()
+
+        # Run any custom on-project-creation actions
+        if user.tenant_id.upper() in custom_on_project_creation:
+            custom_on_project_creation[user.tenant_id.upper()](user, project)
+
         setattr(project, 'deletable', True)
         return project
 

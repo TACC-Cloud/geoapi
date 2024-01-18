@@ -260,6 +260,16 @@ class AgaveUtils:
             with open(destination_path, 'wb+') as target_file:
                 shutil.copyfileobj(file_obj, target_file)
 
+    def create_file(self, system_id: str, system_path: str, file_name: str, file_content: str):
+        data = {"fileType": "plain/text",
+                 "callbackUrl": "",
+                 "fileName": file_name,
+                 "urlToIngest": "",
+                 "fileToUpload": file_content
+                }
+        file_import_url = self.base_url +  quote(f"/files/v2/media/systems/{system_id}/{system_path}")
+        self.client.post(file_import_url, data=data)
+
 
 def service_account_client(tenant_id):
     try:
