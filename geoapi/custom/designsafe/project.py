@@ -2,7 +2,7 @@ import json
 
 
 def on_project_creation(user, project):
-    deployment = 'local' # TODO
+    deployment = 'local'  # TODO
     file_content = json.dumps({"uuid": str(project.uuid), "deployment": deployment})
     file_name = project.system_file + ".hazmapper"
 

@@ -262,10 +262,10 @@ class AgaveUtils:
 
     def create_file(self, system_id: str, system_path: str, file_name: str, file_content: str):
         data = {"fileType": "plain/text",
-                 "callbackUrl": "",
-                 "fileName": file_name,
-                 "urlToIngest": "",
-                 "fileToUpload": file_content
+                "callbackUrl": "",
+                "fileName": file_name,
+                "urlToIngest": "",
+                "fileToUpload": file_content
                 }
         file_import_url = self.base_url + quote(f"/files/media/system/{system_id}{system_path}")
         response = self.client.post(file_import_url, data=data)
