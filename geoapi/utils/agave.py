@@ -97,6 +97,13 @@ class AgaveUtils:
     BASE_URL = 'http://api.prod.tacc.cloud'
 
     def __init__(self, jwt=None, token=None, tenant=None):
+        """
+        Initializes the client session.
+
+        This constructor sets up a client session with headers updated for JWT or bearer token authentication.
+        If a tenant is specified, it uses the tenant's API server. Note that the BASE_URL Tapis V2 server is the
+        only tapis service using a JWT, so if a tenant is given, a token must also be provided.
+        """
         client = requests.Session()
         if jwt:
             client.headers.update({'X-JWT-Assertion-designsafe': jwt})
