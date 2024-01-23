@@ -379,11 +379,9 @@ def test_import_shapefile_tapis(test_client, projects_fixture, import_file_from_
 
 def test_update_project(test_client, projects_fixture, user1):
     data = {
-        'project': {
-            'name': "Renamed Project",
-            'description': "New Description",
-            'public': True
-        },
+        'name': "Renamed Project",
+        'description': "New Description",
+        'public': True
     }
     resp = test_client.put(
         f'/projects/{projects_fixture.id}/',
@@ -399,10 +397,9 @@ def test_update_project(test_client, projects_fixture, user1):
 
 def test_update_project_unauthorized_guest(test_client, public_projects_fixture):
     data = {
-        'project': {
-            'name': "Renamed Project",
-            'description': "New Description",
-        }
+        'name': "Renamed Project",
+        'description': "New Description",
+        'public': True
     }
     resp = test_client.put(
         f'/projects/{public_projects_fixture.id}/',

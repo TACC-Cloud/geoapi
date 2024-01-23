@@ -118,10 +118,8 @@ def test_get_features_filter_type(projects_fixture,
 def test_update_project(projects_fixture):
     user = db_session.query(User).get(1)
     data = {
-        'project': {
-            'name': 'new name',
-            'description': 'new description',
-        },
+        'name': 'new name',
+        'description': 'new description'
     }
     proj = ProjectsService.update(db_session, user, projects_fixture.id, data)
     assert proj.name == "new name"

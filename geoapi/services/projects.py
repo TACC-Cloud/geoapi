@@ -276,11 +276,10 @@ class ProjectsService:
         :return: Project
         """
         proj = ProjectsService.get(database_session=database_session, project_id=projectId)
-        proj_data = data.get('project', {})
 
-        proj.name = proj_data.get('name', proj.name)
-        proj.description = proj_data.get('description', proj.description)
-        proj.public = proj_data.get('public', proj.public)
+        proj.name = data.get('name', proj.name)
+        proj.description = data.get('description', proj.description)
+        proj.public = data.get('public', proj.public)
 
         database_session.commit()
 
