@@ -267,8 +267,9 @@ class AgaveUtils:
                  "urlToIngest": "",
                  "fileToUpload": file_content
                 }
-        file_import_url = self.base_url +  quote(f"/files/v2/media/systems/{system_id}/{system_path}")
-        self.client.post(file_import_url, data=data)
+        file_import_url = self.base_url + quote(f"/files/media/system/{system_id}{system_path}")
+        response = self.client.post(file_import_url, data=data)
+        response.raise_for_status()
 
 
 def service_account_client(tenant_id):
