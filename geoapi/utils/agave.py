@@ -1,5 +1,6 @@
 import shutil
 import os
+import io
 import time
 from tempfile import NamedTemporaryFile
 from dataclasses import dataclass
@@ -268,14 +269,23 @@ class AgaveUtils:
                 shutil.copyfileobj(file_obj, target_file)
 
     def create_file(self, system_id: str, system_path: str, file_name: str, file_content: str):
+        """
+        Create a file on a Tapis storage system.
+        """
+        file_content = file_content.encode('utf-8')
+        file_like_object = io.BytesIO(file_content)
+
+        files = {
+            'fileToUpload': (file_name, file_like_object, 'plain/text')
+        }
         data = {"fileType": "plain/text",
                 "callbackUrl": "",
                 "fileName": file_name,
                 "urlToIngest": "",
                 "fileToUpload": file_content
                 }
-        file_import_url = self.base_url + quote(f"/files/media/system/{system_id}{system_path}")
-        response = self.client.post(file_import_url, data=data)
+        file_import_url = self.base_url + quote(f"/files/media/system/{system_id}{system_path}/")
+        response = self.client.post(file_import_url, files=files, data=data)
         response.raise_for_status()
 
 
