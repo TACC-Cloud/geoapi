@@ -337,15 +337,25 @@ def get_system_users(tenant_id, jwt, system_id: str) -> List[SystemUser]:
 
 def get_metadata_using_service_account(tenant_id: str, system_id: str, path: str) -> Dict:
     """
-    Get a file's geolocation metadata using service account
+    Get a file's tapis metadata (which typically include geolocation) using service account
 
     :param tenant_id: tenant id
-    :param system_id: str
-    :param path: str
-    :return: dict
+    :param system_id: system id
+    :param path: path to file
+    :return: dictionary containing the metadata (including geolocation) of a file
     """
-    logger.debug("tenant:{}, system_id: {} , path:{}".format(tenant_id, system_id, path))
+    logger.debug("getting metadata. tenant:{}, system_id: {} , path:{}".format(tenant_id, system_id, path))
     client = service_account_client(tenant_id)
-    uuid = client.listing(system_id, path)[0].uuid
-    meta = client.getMetaAssociated(uuid)
-    return meta
+    meta_data_query = {
+            "name": "designsafe.file",
+            "value.system": system_id,
+            "value.path": os.path.join(path, '*')
+    }
+    params = {"limit": 300, "offset": 0, "q": json.dumps(meta_data_query)}
+
+    # same as Tapis v2 python client's: client.meta.listMetadata(q=json.dumps(query), limit=300, offset=0)
+    response = client.get(url=quote('/meta/v2/data/'), params=params)
+    meta_list = response.json()["result"]
+    if len(meta_list) > 0:
+        return meta_list[0]["value"]
+    return {}
