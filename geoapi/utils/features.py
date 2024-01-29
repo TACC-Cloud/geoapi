@@ -72,7 +72,9 @@ def is_file_supported_for_automatic_scraping(path):
 
 def is_supported_for_automatic_scraping_without_metadata(path):
     """
-    Check to see if file is supported for automatic importing (without metadata).
+    Check to see if file is supported for automatic importing (without required metadata*).
+
+    Asset doesn't require metadata but could use it if available.
 
     Note: assets like images inside the questionnaire archive (i.e in .rqa) should be ignored. Only the
     .rq file inside a .rqa file should be imported.

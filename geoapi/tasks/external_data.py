@@ -23,27 +23,14 @@ from geoapi.tasks.lidar import convert_to_potree, check_point_cloud, get_point_c
 from geoapi.db import create_task_session
 from geoapi.services.notifications import NotificationsService
 from geoapi.services.users import UserService
-from dataclasses import dataclass
+from geoapi.utils.additional_file import AdditionalFile
+from geoapi.utils.geo_location import parse_rapid_geolocation, get_geolocation_from_file_metadata
 
 
 class ImportState(Enum):
     SUCCESS = 1
     FAILURE = 2
     RETRYABLE_FAILURE = 3
-
-
-@dataclass
-class AdditionalFile:
-    """Represents an additional file with its path and and if its required (i.e. not optional)."""
-    path: str
-    required: bool
-
-
-def _parse_rapid_geolocation(loc):
-    coords = loc[0]
-    lat = coords["latitude"]
-    lon = coords["longitude"]
-    return lat, lon
 
 
 def get_file(client, system_id, path, required):
@@ -102,6 +89,7 @@ def get_additional_files(current_file, system_id: str, path: str, client, availa
         # Seek back to start of file
         current_file.seek(0)
     else:
+        # No additional files needed for this file type
         return None
 
     # Try to get all additional files.
@@ -131,7 +119,8 @@ def import_file_from_agave(userId: int, systemId: str, path: str, projectId: int
     """
     Import file from TAPIS system
 
-    Note: all geolocation information is expected to be embedded in the imported file.
+    Tapis metdata is checked for location information. If no Tapis metadata, then geolocation information is
+    expected to be embedded in the imported file.
     """
     with create_task_session() as session:
         try:
@@ -140,8 +129,12 @@ def import_file_from_agave(userId: int, systemId: str, path: str, projectId: int
             temp_file = client.getFile(systemId, path)
             temp_file.filename = Path(path).name
             additional_files = get_additional_files(temp_file, systemId, path, client)
+
+            optional_location_from_metadata = get_geolocation_from_file_metadata(user, system_id=systemId, path=path)
+
             FeaturesService.fromFileObj(session, projectId, temp_file, {},
-                                        original_path=path, additional_files=additional_files)
+                                        original_path=path, additional_files=additional_files,
+                                        location=optional_location_from_metadata)
             NotificationsService.create(session, user, "success", "Imported {f}".format(f=path))
             temp_file.close()
         except Exception as e:  # noqa: E722
@@ -329,9 +322,9 @@ def import_from_files_from_path(session, tenant_id: str, userId: int, systemId: 
                     if not geolocation:
                         logger.info("No geolocation for:{}; skipping".format(item_system_path))
                         continue
-                    lat, lon = _parse_rapid_geolocation(geolocation)
+                    geolocation = parse_rapid_geolocation(geolocation)
                     tmp_file = client.getFile(systemId, item.path)
-                    feat = FeaturesService.fromLatLng(session, projectId, lat, lon, {})
+                    feat = FeaturesService.fromLatLng(session, projectId, geolocation, {})
                     feat.properties = meta
                     session.add(feat)
                     tmp_file.filename = Path(item.path).name
@@ -348,8 +341,12 @@ def import_from_files_from_path(session, tenant_id: str, userId: int, systemId: 
                     tmp_file = client.getFile(systemId, item.path)
                     tmp_file.filename = Path(item.path).name
                     additional_files = get_additional_files(tmp_file, systemId, item.path, client, available_files=filenames_in_directory)
+
+                    optional_location_from_metadata = get_geolocation_from_file_metadata(user, system_id=systemId, path=path)
+
                     FeaturesService.fromFileObj(session, projectId, tmp_file, {},
-                                                original_path=item_system_path, additional_files=additional_files)
+                                                original_path=item_system_path, additional_files=additional_files,
+                                                location=optional_location_from_metadata)
                     NotificationsService.create(session, user, "success", "Imported {f}".format(f=item_system_path))
                     tmp_file.close()
                 else:
