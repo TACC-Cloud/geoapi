@@ -257,7 +257,8 @@ class FeaturesService:
                 # gather coordinates information for this asset
                 logger.debug(f"{asset_file_obj.filename} has the geospatial coordinates of {processed_asset_image.coordinates}")
                 additional_files_properties.append({"filename": base_filename,
-                                                    "coordinates": (processed_asset_image.coordinates.longitude, processed_asset_image.coordinates.latitude)})
+                                                    "coordinates": (processed_asset_image.coordinates.longitude,
+                                                                    processed_asset_image.coordinates.latitude)})
                 asset_file_obj.close()
 
         if additional_files_properties:
@@ -349,7 +350,8 @@ class FeaturesService:
             raise ApiException("Filetype not supported for direct upload. Create a feature and attach as an asset?")
 
     @staticmethod
-    def fromImage(database_session, projectId: int, fileObj: IO, metadata: Dict, original_path: str = None, location: GeoLocation = None) -> Feature:
+    def fromImage(database_session, projectId: int, fileObj: IO, metadata: Dict,
+                  original_path: str = None, location: GeoLocation = None) -> Feature:
         """
         Create a Point feature from a georeferenced image
 

@@ -6,11 +6,12 @@ from PIL import Image
 from PIL.Image import Image as PILImage
 import exifread
 
-from typing import Tuple, IO, AnyStr
+from typing import IO, AnyStr
 from dataclasses import dataclass
 from geoapi.exceptions import InvalidEXIFData
 from geoapi.log import logger
 from geoapi.utils.geo_location import GeoLocation
+
 
 @dataclass
 class ImageData:

@@ -3,8 +3,6 @@ from geoapi.utils.agave import get_metadata_using_service_account
 from geoapi.models import User
 from typing import Optional
 
-from geoapi.log import logger
-
 
 @dataclass
 class GeoLocation:
