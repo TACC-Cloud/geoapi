@@ -60,7 +60,7 @@ class ProjectsService:
 
         # Run any custom on-project-creation actions
         if user.tenant_id.upper() in custom_on_project_creation:
-            custom_on_project_creation[user.tenant_id.upper()](user, project)
+            custom_on_project_creation[user.tenant_id.upper()](database_session, user, project)
 
         setattr(project, 'deletable', True)
         return project
