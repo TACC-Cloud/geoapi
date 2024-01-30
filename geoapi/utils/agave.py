@@ -288,6 +288,14 @@ class AgaveUtils:
         response = self.client.post(file_import_url, files=files, data=data)
         response.raise_for_status()
 
+    def delete_file(self, system_id: str, file_path: str):
+        """
+        Deletes a file on a Tapis storage system.
+        """
+        file_delete_url = self.base_url + quote(f"/files/media/system/{system_id}{file_path}/")
+        response = self.client.delete(file_delete_url)
+        response.raise_for_status()
+
 
 def service_account_client(tenant_id):
     try:

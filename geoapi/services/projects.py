@@ -12,7 +12,7 @@ from geoapi.tasks.external_data import import_from_agave
 from geoapi.tasks.projects import remove_project_assets
 from geoapi.log import logger
 from geoapi.exceptions import ApiException, ObservableProjectAlreadyExists
-from geoapi.custom import custom_on_project_creation
+from geoapi.custom import custom_on_project_creation, custom_on_project_deletion
 
 
 class ProjectsService:
@@ -292,6 +292,12 @@ class ProjectsService:
         :param projectId: int
         :return:
         """
+        # Run any custom on-project-deletion actions
+        if user.tenant_id.upper() in custom_on_project_deletion:
+            project = database_session.query(Project).filter(Project.id == projectId)
+            custom_on_project_deletion[user.tenant_id.upper()](user, project)
+
+        # TODO move the database remove call to celery (https://tacc-main.atlassian.net/browse/WG-235)
         database_session.query(Project).filter(Project.id == projectId).delete()
         database_session.commit()
 
