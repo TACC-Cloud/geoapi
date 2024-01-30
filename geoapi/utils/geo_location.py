@@ -30,7 +30,6 @@ def get_geolocation_from_file_metadata(user: User, system_id: str, path: str) ->
     :return: A GeoLocation object if geolocation information is found; otherwise, None.
     """
     meta = get_metadata_using_service_account(user.tenant_id, system_id, path)
-    if meta and "geolocation" in meta and len(meta["geolocation"]) > 1:
+    if meta and "geolocation" in meta and len(meta["geolocation"]) > 0:
         return parse_rapid_geolocation(meta.get("geolocation"))
-
     return None
