@@ -21,8 +21,7 @@ default_layers = [
     "name": "Satellite",
     "type": "tms",
     "url": "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
-    "attribution":
-      "Tiles © Esri — Source: Esri, i-cubed, USDA, USGS, AEX, \
+    "attribution": "Tiles © Esri — Source: Esri, i-cubed, USDA, USGS, AEX, \
     GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community",
     "uiOptions": {
       "opacity": 1,
