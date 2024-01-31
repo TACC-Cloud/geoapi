@@ -355,6 +355,7 @@ def get_metadata_using_service_account(tenant_id: str, system_id: str, path: str
 
     # same as Tapis v2 python client's: client.meta.listMetadata(q=json.dumps(query), limit=300, offset=0)
     response = client.get(url=quote('/meta/v2/data/'), params=params)
+    response.raise_for_status()
     meta_list = response.json()["result"]
     if len(meta_list) > 0 and "value" in meta_list[0]:
         return meta_list[0]["value"]
