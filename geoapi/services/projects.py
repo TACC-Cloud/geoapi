@@ -294,7 +294,7 @@ class ProjectsService:
         """
         # Run any custom on-project-deletion actions
         if user.tenant_id.upper() in custom_on_project_deletion:
-            project = database_session.query(Project).filter(Project.id == projectId)
+            project = database_session.query(Project).filter(Project.id == projectId).one()
             custom_on_project_deletion[user.tenant_id.upper()](user, project)
 
         # TODO move the database remove call to celery (https://tacc-main.atlassian.net/browse/WG-235)
