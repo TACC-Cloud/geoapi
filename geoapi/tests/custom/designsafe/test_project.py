@@ -6,6 +6,7 @@ from urllib.parse import quote
 import json
 import os
 
+
 def test_on_project_creation(requests_mock, user1, observable_projects_fixture):
     project = observable_projects_fixture.project
     create_file_url = AgaveUtils.BASE_URL + quote(f"/files/media/system/{project.system_id}{project.system_path}/")
@@ -24,10 +25,11 @@ def test_on_project_creation(requests_mock, user1, observable_projects_fixture):
     assert len(requests_mock.request_history) == 3
     update_metadata_request = requests_mock.request_history[2]
     assert json.loads(update_metadata_request.text) == {'hazmapperMaps':
-                                                            [{"name": project.name,
-                                                              "uuid": str(project.uuid),
-                                                              "path": project.system_path,
-                                                              "deployment": os.getenv("APP_ENV")}]}
+                                                        [{"name": project.name,
+                                                          "uuid": str(project.uuid),
+                                                          "path": project.system_path,
+                                                          "deployment": os.getenv("APP_ENV")}]}
+
 
 def test_on_project_deletion(requests_mock, user1, observable_projects_fixture):
     project = observable_projects_fixture.project
