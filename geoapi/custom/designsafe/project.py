@@ -1,17 +1,17 @@
 import json
+import os
 from geoapi.log import logger
 from geoapi.custom.designsafe.default_basemap_layers import default_layers
 from geoapi.models import User, Project
+
 import requests
-
-DESIGNSAFE_URL = 'https://www.designsafe-ci.org/'  # 'https://designsafeci-dev.tacc.utexas.edu/';
-
-DEPLOYMENT = 'local'  # TODO
 
 
 def on_project_creation(database_session, user: User, project: Project):
     try:
-        deployment = DEPLOYMENT
+        logger.debug(f"Creating .hazmapper file for user:{user.username}"
+                     f" project:{project.id} project_uuid:{project.uuid} ")
+        deployment = os.getenv("APP_ENV")
         file_content = json.dumps({"uuid": str(project.uuid), "deployment": deployment})
         file_name = project.system_file + ".hazmapper"
         from geoapi.utils.agave import AgaveUtils
