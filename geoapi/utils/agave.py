@@ -290,7 +290,7 @@ class AgaveUtils:
         """
         Deletes a file on a Tapis storage system.
         """
-        file_delete_url = self.base_url + quote(f"/files/media/system/{system_id}/{file_path}")
+        file_delete_url = self.base_url + quote(f"/files/media/system/{system_id}{file_path}")
         response = self.client.delete(file_delete_url)
         response.raise_for_status()
 

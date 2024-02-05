@@ -117,9 +117,12 @@ def observable_projects_fixture():
     u1 = db_session.query(User).filter(User.username == "test1").first()
     proj = Project(name="test_observable",
                    description="description",
-                   tenant_id=u1.tenant_id)
+                   tenant_id=u1.tenant_id,
+                   system_id="project-1234",
+                   system_path="/testPath",
+                   system_file="system_file")  # system_file.hazmapper
     obs = ObservableDataProject(
-        system_id="testSystem",
+        system_id="project-1234",
         path="/testPath",
         watch_content=True
     )
