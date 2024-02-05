@@ -70,11 +70,11 @@ def on_project_deletion(user: User, project: Project):
         # remove metadata for DS projects (i.e. only when system_id starts with "project-"
         if project.system_id.startswith("project-"):
             logger.debug(f"Removing metadata for user:{user.username}"
-                         f"during deletion of project:{project.id} project_uuid:{project.uuid} ")
+                         f" during deletion of project:{project.id} project_uuid:{project.uuid} ")
             update_designsafe_project_hazmapper_metadata(user, project, add_project=False)
     except Exception:
         logger.exception(f"Problem removing metadata for user:{user.username}"
-                         f"during deletion of project:{project.id} project_uuid:{project.uuid} ")
+                         f" during deletion of project:{project.id} project_uuid:{project.uuid} ")
 
 
 def update_designsafe_project_hazmapper_metadata(user: User, project: Project, add_project: bool):
