@@ -281,8 +281,6 @@ class AgaveUtils:
         data = {"fileType": "plain/text",
                 "callbackUrl": "",
                 "fileName": file_name,
-                "urlToIngest": "",
-                "fileToUpload": file_content
                 }
         file_import_url = self.base_url + quote(f"/files/media/system/{system_id}{system_path}/")
         response = self.client.post(file_import_url, files=files, data=data)
