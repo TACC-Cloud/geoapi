@@ -91,7 +91,7 @@ def update_designsafe_project_hazmapper_metadata(user: User, project: Project, a
     logger.debug(f"Current metadata for DesignSafe_project:{designsafe_uuid}: {current_metadata}")
     if "hazmapperMaps" in current_metadata["value"]:
         # remove this project from the map list as we will update (or delete) it
-        all_maps = [e for e in current_metadata['value']['hazmapperMaps'] if e['uuid'] != project.uuid]
+        all_maps = [e for e in current_metadata['value']['hazmapperMaps'] if e['uuid'] != str(project.uuid)]
 
     if add_project:
         new_map_entry = {"name": project.name,
