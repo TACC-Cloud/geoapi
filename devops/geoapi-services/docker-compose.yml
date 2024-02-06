@@ -101,3 +101,22 @@ services:
     ports:
       - 81:80
     container_name: taggit
+
+  hazmapper-react:
+    image: taccaci/hazmapper-react:${HAZMAPPER_TAG}
+    restart: always
+    ports:
+      - 82:80
+    container_name: hazmapper-react
+
+  watchtower:
+    image: containrrr/watchtower:1.7.1
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    command: --interval 300 api celerybeat hazmapper hazmapper-react taggit
+    # Watchtower configuration for development environment. This service monitors
+    # and updates the specified containers every 5 min (300s). Staging/Production
+    # use specific commit hash tags, so updates are controlled and do not affect
+    # those environments. In Development, 'latest' tags are used, enabling
+    # Watchtower to automatically update these containers.
+    restart: always
