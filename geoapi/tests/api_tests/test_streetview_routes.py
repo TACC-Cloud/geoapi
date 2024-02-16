@@ -32,7 +32,7 @@ def organization_fixture(streetview_service_resource_fixture):
 def test_list_streetview_service_resource(test_client, streetview_service_resource_fixture):
     u1 = db_session.query(User).get(1)
     resp = test_client.get('/streetview/services/',
-                           headers={'x-jwt-assertion-test': u1.jwt})
+                           headers={'X-Tapis-Token': u1.jwt})
     assert resp.status_code == 200
     assert resp.get_json() == [{'id': 1, 'user_id': 1, 'token': 'my_token',
                                 'service': 'my_service', 'service_user': None,
@@ -48,7 +48,7 @@ def test_create_streetview_service_resource(test_client):
     }
     resp = test_client.post('/streetview/services/',
                             json=data,
-                            headers={'x-jwt-assertion-test': u1.jwt})
+                            headers={'X-Tapis-Token': u1.jwt})
     assert resp.status_code == 200
     streetview_service_object = db_session.query(Streetview).get(1)
     assert streetview_service_object.service == data["service"]
@@ -63,7 +63,7 @@ def test_get_streetview_service_resource(test_client, streetview_service_resourc
     u1 = db_session.query(User).get(1)
     resp = test_client.get(
         '/streetview/services/{}/'.format(streetview_service_resource_fixture.service),
-        headers={'x-jwt-assertion-test': u1.jwt})
+        headers={'X-Tapis-Token': u1.jwt})
     assert resp.status_code == 200
     assert resp.get_json() == {'id': 1, 'user_id': 1, 'token': 'my_token',
                                'service': 'my_service', 'service_user': None,
@@ -73,7 +73,7 @@ def test_get_streetview_service_resource(test_client, streetview_service_resourc
 def test_delete_streetview_service_resource(test_client, streetview_service_resource_fixture):
     u1 = db_session.query(User).get(1)
     resp = test_client.delete('/streetview/services/{}/'.format(streetview_service_resource_fixture.service),
-                              headers={'x-jwt-assertion-test': u1.jwt})
+                              headers={'X-Tapis-Token': u1.jwt})
     assert resp.status_code == 200
     assert db_session.query(StreetviewOrganization).first() is None
 
@@ -85,7 +85,7 @@ def test_update_streetview_service_resource(test_client, streetview_service_reso
     }
     resp = test_client.put('/streetview/services/{}/'.format(streetview_service_resource_fixture.service),
                            json=data,
-                           headers={'x-jwt-assertion-test': u1.jwt})
+                           headers={'X-Tapis-Token': u1.jwt})
     assert resp.status_code == 200
     service = db_session.query(Streetview).get(1)
     assert service.service_user == "some_different_username"
@@ -102,7 +102,7 @@ def test_create_organization(test_client, streetview_service_resource_fixture):
     resp = test_client.post(
         '/streetview/services/{}/organization/'.format(streetview_service_resource_fixture.service),
         json=data,
-        headers={'x-jwt-assertion-test': u1.jwt})
+        headers={'X-Tapis-Token': u1.jwt})
     assert resp.status_code == 200
     assert resp.get_json() == {'id': 1, 'key': 'my_key', 'name': 'my_name',
                                'slug': 'my_slug', 'streetview_id': 1}
@@ -119,7 +119,7 @@ def test_delete_organization(test_client, organization_fixture):
     resp = test_client.delete('/streetview/services/{}/organization/{}/'.format(
         organization_fixture.streetview.service,
         organization_fixture.id),
-                              headers={'x-jwt-assertion-test': u1.jwt})
+                              headers={'X-Tapis-Token': u1.jwt})
     assert resp.status_code == 200
     assert db_session.query(StreetviewOrganization).first() is None
 
@@ -136,7 +136,7 @@ def FAILING_test_post_streetview_sequences(test_client):
     }
     resp = test_client.post('/streetview/sequences/',
                             json=data,
-                            headers={'x-jwt-assertion-test': u1.jwt})
+                            headers={'X-Tapis-Token': u1.jwt})
 
     assert resp.status_code == 200
     assert len(data['sequences']) == 4
@@ -155,14 +155,14 @@ def FAILING_test_delete_streetview_sequence(test_client):
 
     resp = test_client.post('/streetview/sequences/',
                             json=data,
-                            headers={'x-jwt-assertion-test': u1.jwt})
+                            headers={'X-Tapis-Token': u1.jwt})
 
     resp = test_client.get('/streetview/',
-                           headers={'x-jwt-assertion-test': u1.jwt})
+                           headers={'X-Tapis-Token': u1.jwt})
 
     seq_id = resp.get_json()[0]['sequences'][0]['id']
 
     test_client.delete('/streetview/sequences/{}/'.format(seq_id),
-                       headers={'x-jwt-assertion-test': u1.jwt})
+                       headers={'X-Tapis-Token': u1.jwt})
 
     assert resp.status_code == 200

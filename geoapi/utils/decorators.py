@@ -31,7 +31,7 @@ def jwt_decoder(fn):
         user = None
         token = None
         try:
-            jwt_header_name, token, tenant = jwt_utils.jwt_tenant(request.headers)
+            token = jwt_utils.get_jwt(request.headers)
         except ValueError:
             # if not JWT information is provided in header, then this is a guest user
             guest_uuid = request.headers.get('X-Guest-UUID')
@@ -41,16 +41,14 @@ def jwt_decoder(fn):
             user = AnonymousUser(guest_unique_id=guest_uuid)
         if user is None:
             try:
-                options = {"verify_signature": not settings.TESTING}
+                v3_todo_validation = True  # TODO_TAPISV3 add verification
+                options = {"verify_signature": not settings.TESTING and not v3_todo_validation}
                 decoded = jwt.decode(token, pub_key, algorithms=["RS256"], options=options)
-                username = decoded["http://wso2.org/claims/enduser"]
-                # remove ant @carbon.super or other nonsense, the tenant
-                # we get from the header anyway
-                username = username.split("@")[0]
-
+                username = decoded["tapis/username"]
+                tenant = decoded["tapis/tenant_id"]
             # Exceptions
             except Exception as e:
-                logger.error(f'There is an issue decoding the JWT: {e}')
+                logger.exception(f'There is an issue decoding the JWT: {e}')
                 abort(400, f'There is an issue decoding the JWT: {e}')
 
             user = UserService.getUser(db_session, username, tenant)
