@@ -4,24 +4,26 @@ from geoapi.db import db_session
 
 from geoapi.services.projects import ProjectsService
 from geoapi.models import User
-from geoapi.models.project import Project
+from geoapi.models.project import Project, ProjectUser
+from geoapi.models.observable_data import ObservableDataProject
 from geoapi.exceptions import ObservableProjectAlreadyExists
 
 
-def test_create_project():
-    user = db_session.query(User).get(1)
+def test_create_project(user1):
     data = {
-        'project': {
-            'name': "test name",
-            'description': "test description",
-        },
+        'name': "test name",
+        'description': "test description",
     }
-    proj = ProjectsService.create(db_session, data, user)
+    proj = ProjectsService.create(db_session, data, user1)
     assert proj.id is not None
     assert len(proj.users) == 1
     assert proj.name == "test name"
     assert proj.description == "test description"
     assert proj.deletable
+
+    assert not db_session.query(ObservableDataProject).all()
+    matching_project_user = db_session.query(ProjectUser).filter(ProjectUser.user_id == user1.id).one()
+    assert matching_project_user.creator
 
 
 def test_delete_project(projects_fixture, remove_project_assets_mock, user1):
@@ -30,25 +32,33 @@ def test_delete_project(projects_fixture, remove_project_assets_mock, user1):
     assert projects == []
 
 
-def test_create_observable_project(userdata,
+def test_create_observable_project(user1,
                                    get_system_users_mock,
                                    agave_utils_with_geojson_file_mock,
                                    import_from_agave_mock):
-    user = db_session.query(User).get(1)
     data = {
-        'project': {
-            'name': 'Renamed Project',
-            'description': 'New Description',
-            'system_id': 'system',
-            'system_path': '/path',
-            'system_file': 'file_name'
-        },
-        'observable': True,
+        'name': 'test name',
+        'description': 'test description',
+        'system_id': 'system',
+        'system_path': '/path',
+        'system_file': 'file_name',
+        'watch_users': True,
         'watch_content': True
     }
+    proj = ProjectsService.create(db_session, data, user1)
 
-    proj = ProjectsService.create(db_session, data, user)
     assert len(proj.users) == 2
+    creator_user = db_session.query(ProjectUser).filter(ProjectUser.user_id == user1.id).one()
+    assert creator_user.creator
+    assert creator_user.admin
+
+    other_user = db_session.query(ProjectUser).filter(ProjectUser.user_id != user1.id).one()
+    assert not other_user.creator
+    assert not other_user.admin
+
+    observable_project = db_session.query(ObservableDataProject).one()
+    assert observable_project.project_id == proj.id
+    assert observable_project.watch_content
 
 
 def test_create_observable_project_already_exists(observable_projects_fixture,
@@ -57,14 +67,12 @@ def test_create_observable_project_already_exists(observable_projects_fixture,
                                                   get_system_users_mock):
     user = db_session.query(User).get(1)
     data = {
-        'project': {
-            'name': 'Renamed Project',
-            'description': 'New Description',
-            'system_id': observable_projects_fixture.system_id,
-            'system_path': observable_projects_fixture.path,
-            'system_file': 'file_name'
-        },
-        'observable': True,
+        'name': 'test name',
+        'description': 'test description',
+        'system_id': observable_projects_fixture.system_id,
+        'system_path': observable_projects_fixture.path,
+        'system_file': 'file_name',
+        'watch_users': True,
         'watch_content': True
     }
 
@@ -110,10 +118,8 @@ def test_get_features_filter_type(projects_fixture,
 def test_update_project(projects_fixture):
     user = db_session.query(User).get(1)
     data = {
-        'project': {
-            'name': 'new name',
-            'description': 'new description',
-        },
+        'name': 'new name',
+        'description': 'new description'
     }
     proj = ProjectsService.update(db_session, user, projects_fixture.id, data)
     assert proj.name == "new name"

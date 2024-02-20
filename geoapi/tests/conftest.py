@@ -117,9 +117,12 @@ def observable_projects_fixture():
     u1 = db_session.query(User).filter(User.username == "test1").first()
     proj = Project(name="test_observable",
                    description="description",
-                   tenant_id=u1.tenant_id)
+                   tenant_id=u1.tenant_id,
+                   system_id="project-1234",
+                   system_path="/testPath",
+                   system_file="system_file")  # system_file.hazmapper
     obs = ObservableDataProject(
-        system_id="testSystem",
+        system_id="project-1234",
         path="/testPath",
         watch_content=True
     )
@@ -453,7 +456,7 @@ def agave_utils_with_geojson_file_mock(agave_file_listings_mock, geojson_file_fi
 def get_system_users_mock(userdata):
     u1 = db_session.query(User).get(1)
     u2 = db_session.query(User).get(2)
-    users = [SystemUser(username=u1.username, admin=True), SystemUser(username=u2.username, admin=False)]
+    users = [SystemUser(username=u2.username, admin=False), SystemUser(username=u1.username, admin=True)]
     with patch('geoapi.services.projects.get_system_users', return_value=users) as get_system_users:
         yield get_system_users
 
