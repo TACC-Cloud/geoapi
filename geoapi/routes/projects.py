@@ -49,18 +49,26 @@ feature_collection_model = api.model('FeatureCollection', {
     "features": fields.Nested(api_feature)
 })
 
-project = api.model('Project', {
-    'id': fields.Integer(),
+project_payload = api.model('Project', {
     'name': fields.String(required=True),
-    'description': fields.String(required=False),
-    'public': fields.Boolean(required=False),
-    'uuid': fields.String(),
+    'description': fields.String(required=True),
+    'public': fields.Boolean(),
     'system_file': fields.String(),
     'system_id': fields.String(),
     'system_path': fields.String(),
+    'watch_content': fields.Boolean(),
+    'watch_users': fields.Boolean()
 })
 
-project_response = api.clone('Project', project, {
+project_response = api.model('ProjectResponse', {
+    'id': fields.Integer(),
+    'uuid': fields.String(),
+    'name': fields.String(),
+    'description': fields.String(),
+    'public': fields.Boolean(),
+    'system_file': fields.String(),
+    'system_id': fields.String(),
+    'system_path': fields.String(),
     'deletable': fields.Boolean()
 })
 
@@ -182,7 +190,7 @@ class ProjectsListing(Resource):
 
     @api.doc(id="createProject",
              description='Create a new project')
-    @api.expect(project)
+    @api.expect(project_payload)
     @api.marshal_with(project_response)
     @not_anonymous
     def post(self):

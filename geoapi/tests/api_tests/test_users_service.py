@@ -20,29 +20,23 @@ def test_user_create(userdata):
     assert user.jwt == "testjwt"
 
 
-def test_projects_for_user(userdata):
-    user = UserService.getUser(db_session, "test1", "test")
+def test_projects_for_user(user1):
     data = {
-        'project': {
-            'name': 'new project',
-            'description': 'test'
-        },
+        'name': 'new project',
+        'description': 'test'
     }
-    ProjectsService.create(db_session, data, user)
-    my_projects = ProjectsService.list(db_session, user)
+    ProjectsService.create(db_session, data, user1)
+    my_projects = ProjectsService.list(db_session, user1)
     assert len(my_projects) == 1
     assert my_projects[0].name == 'new project'
 
 
-def test_add_new_user_to_project(userdata):
-    user = UserService.getUser(db_session, "test1", "test")
+def test_add_new_user_to_project(user1):
     data = {
-        'project': {
-            'name': 'new project',
-            'description': 'test'
-        },
+        'name': 'new project',
+        'description': 'test'
     }
-    proj = ProjectsService.create(db_session, data, user)
+    proj = ProjectsService.create(db_session, data, user1)
     ProjectsService.addUserToProject(db_session, proj.id, "newUser", admin=False)
     proj = ProjectsService.get(database_session=db_session, project_id=proj.id)
     assert len(proj.users) == 2

@@ -7,14 +7,14 @@ from geoapi.custom.designsafe.project_users import get_system_users
 @pytest.fixture()
 def project_response():
     home = os.path.dirname(__file__)
-    with open(os.path.join(home, '../fixtures/designsafe_api_project.json'), 'rb') as f:
+    with open(os.path.join(home, '../../fixtures/designsafe_api_project.json'), 'rb') as f:
         yield json.loads(f.read())
 
 
 @pytest.fixture()
 def project_response_with_duplicate_users():
     home = os.path.dirname(__file__)
-    with open(os.path.join(home, '../fixtures/designsafe_api_project_with_duplicate_users.json'), 'rb') as f:
+    with open(os.path.join(home, '../../fixtures/designsafe_api_project_with_duplicate_users.json'), 'rb') as f:
         yield json.loads(f.read())
 
 
