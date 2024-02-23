@@ -82,7 +82,7 @@ class ProjectsService:
         name = proj.system_id + '/' + folder_name
 
         # TODO: Handle no storage system found
-        AgaveUtils(user.jwt).systemsGet(proj.system_id)
+        AgaveUtils(user).systemsGet(proj.system_id)
 
         obs = ObservableDataProject(
             system_id=proj.system_id,

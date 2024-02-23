@@ -94,25 +94,19 @@ class AgaveFileListing:
         return None
 
 
+# TODO_TAPISV# rename AgaveUtils to TapisUtils
 class AgaveUtils:
-    BASE_URL = 'http://api.prod.tacc.cloud'
-
-    def __init__(self, jwt=None, token=None, tenant=None):
+    def __init__(self, user):
         """
-        Initializes the client session.
+        Initializes the client session for a user.
 
-        This constructor sets up a client session with headers updated for JWT or bearer token authentication.
-        If a tenant is specified, it uses the tenant's API server. Note that the BASE_URL Tapis V2 server is the
-        only tapis service using a JWT, so if a tenant is given, a token must also be provided.
+        This constructor sets up a client session with headers updated for user's JWT.
         """
         client = requests.Session()
-        if jwt:
-            client.headers.update({'X-JWT-Assertion-designsafe': jwt})
-        if token:
-            client.headers.update({'Authorization': 'Bearer {}'.format(token)})
-        # Use tenant's api server (if tenant is provided) to allow for use
-        # of service account which are specific to a tenant
-        self.base_url = get_api_server(tenant) if tenant else self.BASE_URL
+
+        client.headers.update({'X-Tapis-Token': user.jwt})
+
+        self.base_url = get_api_server(user.tenant_id)
         self.client = client
 
     def get(self, url, params=None):
@@ -276,21 +270,17 @@ class AgaveUtils:
         file_like_object = io.BytesIO(file_content)
 
         files = {
-            'fileToUpload': (file_name, file_like_object, 'plain/text')
+            'file': (file_name, file_like_object, 'plain/text')
         }
-        data = {"fileType": "plain/text",
-                "callbackUrl": "",
-                "fileName": file_name,
-                }
-        file_import_url = self.base_url + quote(f"/files/media/system/{system_id}{system_path}/")
-        response = self.client.post(file_import_url, files=files, data=data)
+        file_import_url = self.base_url + quote(f"/v3/files/ops/{system_id}{system_path}{file_name}")
+        response = self.client.post(file_import_url, files=files)
         response.raise_for_status()
 
     def delete_file(self, system_id: str, file_path: str):
         """
         Deletes a file on a Tapis storage system.
         """
-        file_delete_url = self.base_url + quote(f"/files/media/system/{system_id}{file_path}")
+        file_delete_url = self.base_url + quote(f"/v3/files/ops/{system_id}{file_path}")
         response = self.client.delete(file_delete_url)
         response.raise_for_status()
 
