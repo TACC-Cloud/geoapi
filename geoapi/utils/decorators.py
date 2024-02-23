@@ -41,8 +41,7 @@ def jwt_decoder(fn):
             user = AnonymousUser(guest_unique_id=guest_uuid)
         if user is None:
             try:
-                v3_todo_validation = True  # TODO_TAPISV3 add verification
-                options = {"verify_signature": not settings.TESTING and not v3_todo_validation}
+                options = {"verify_signature": not settings.TESTING}
                 decoded = jwt.decode(token, pub_key, algorithms=["RS256"], options=options)
                 username = decoded["tapis/username"]
                 tenant = decoded["tapis/tenant_id"]
