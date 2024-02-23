@@ -296,6 +296,7 @@ def service_account_client(tenant_id):
     if tenant_secrets is None or tenant_id.upper() not in tenant_secrets:
         raise MissingServiceAccount
 
+    # TODO_TAPISV3 update service account
     client = AgaveUtils(token=tenant_secrets[tenant_id.upper()]['service_account_token'], tenant=tenant_id)
     return client
 

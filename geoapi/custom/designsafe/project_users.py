@@ -12,6 +12,7 @@ def get_system_users(tenant_id, jwt, system_id: str):
     """
     from geoapi.utils.agave import service_account_client, SystemUser, get_default_system_users
 
+    # TODO_TAPISV3 https://tacc-main.atlassian.net/browse/WG-257
     if not system_id.startswith("project-"):
         return get_default_system_users(tenant_id, jwt, system_id)
 

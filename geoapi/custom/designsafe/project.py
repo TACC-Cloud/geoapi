@@ -41,6 +41,7 @@ def on_project_creation(database_session, user: User, project: Project):
 
     try:
         # add metadata to DS projects (i.e. only when system_id starts with "project-"
+        # TODO_TAPISV3 https://tacc-main.atlassian.net/browse/WG-258
         if project.system_id.startswith("project-"):
             logger.debug(f"Adding metadata for user:{user.username}"
                          f" project:{project.id} project_uuid:{project.uuid} ")
@@ -68,6 +69,7 @@ def on_project_deletion(user: User, project: Project):
 
     try:
         # remove metadata for DS projects (i.e. only when system_id starts with "project-"
+        # TODO_TAPISV3 https://tacc-main.atlassian.net/browse/WG-258
         if project.system_id.startswith("project-"):
             logger.debug(f"Removing metadata for user:{user.username}"
                          f" during deletion of project:{project.id} project_uuid:{project.uuid} ")
