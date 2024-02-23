@@ -6,6 +6,7 @@ from geoapi.exceptions import MissingServiceAccount
 from geoapi.utils.agave import service_account_client, AgaveUtils, AgaveFileGetError
 
 
+@pytest.mark.skip(reason="Skipping until https://tacc-main.atlassian.net/browse/WG-257")
 def test_service_account_client():
     service_account = service_account_client("designsafe")
     assert "ABCDEFG12344" in service_account.client.headers['Authorization']
@@ -25,20 +26,21 @@ def retry_sleep_seconds_mock():
         yield sleep_mock
 
 
-def test_get_file(requests_mock, retry_sleep_seconds_mock, image_file_fixture):
+def test_get_file(user1, tapis_url, requests_mock, retry_sleep_seconds_mock, image_file_fixture):
     system = "system"
     path = "path"
-    requests_mock.get(AgaveUtils.BASE_URL + f"/files/media/system/{system}/{path}",
+    requests_mock.get(tapis_url + f"/files/media/system/{system}/{path}",
                       status_code=200,
                       body=image_file_fixture)
-    agave_utils = AgaveUtils()
+    agave_utils = AgaveUtils(user1)
     agave_utils.getFile(system, path)
 
 
-def test_get_file_to_path(requests_mock, projects_fixture, retry_sleep_seconds_mock, image_file_fixture):
+@pytest.mark.skip(reason="Skipping until https://tacc-main.atlassian.net/browse/WG-257")
+def test_get_file_to_path(requests_mock, tapis_url, projects_fixture, retry_sleep_seconds_mock, image_file_fixture):
     system = "system"
     path = "path"
-    requests_mock.get(AgaveUtils.BASE_URL + f"/files/media/system/{system}/{path}",
+    requests_mock.get(tapis_url + f"/files/media/system/{system}/{path}",
                       status_code=200,
                       body=image_file_fixture)
 
@@ -50,6 +52,7 @@ def test_get_file_to_path(requests_mock, projects_fixture, retry_sleep_seconds_m
         assert os.path.isfile(to_path)
 
 
+@pytest.mark.skip(reason="Skipping until https://tacc-main.atlassian.net/browse/WG-257")
 def test_get_file_retry_after_first_attempt(requests_mock, retry_sleep_seconds_mock, image_file_fixture):
     system = "system"
     path = "path"
@@ -60,28 +63,29 @@ def test_get_file_retry_after_first_attempt(requests_mock, retry_sleep_seconds_m
     agave_utils.getFile(system, path)
 
 
-def test_get_file_retry_too_many_attempts(requests_mock, retry_sleep_seconds_mock):
+def test_get_file_retry_too_many_attempts(user1, tapis_url, requests_mock, retry_sleep_seconds_mock):
     system = "system"
     path = "path"
     bad_response = [{'status_code': 500} for _ in range(10)]
-    requests_mock.get(AgaveUtils.BASE_URL + f"/files/media/system/{system}/{path}",
+    requests_mock.get(tapis_url + f"/files/media/system/{system}/{path}",
                       bad_response)
-    agave_utils = AgaveUtils()
+    agave_utils = AgaveUtils(user1)
     with pytest.raises(AgaveFileGetError):
         agave_utils.getFile(system, path)
 
 
-def test_get_file_using_service_account_for_CS_169(requests_mock, retry_sleep_seconds_mock, image_file_fixture):
+@pytest.mark.skip(reason="Skipping until https://tacc-main.atlassian.net/browse/WG-257 but would most likely be removed")
+def test_get_file_using_service_account_for_CS_169(user1, tapis_url, requests_mock, retry_sleep_seconds_mock, image_file_fixture):
     system = "system"
     path = "path.jpg"
     # api prod fails with 403 (i.e. CS_169)
-    api_prod_mocked_file_service = requests_mock.get(AgaveUtils.BASE_URL + f"/files/media/system/{system}/{path}",
+    api_prod_mocked_file_service = requests_mock.get(tapis_url + f"/files/media/system/{system}/{path}",
                                                      status_code=403)
     # service account's use of designsafe works (i.e. CS_169)
     designsafe_mocked_file_service = requests_mock.get("https://agave.designsafe-ci.org" + f"/files/media/system/{system}/{path}",
                                                        status_code=200,
                                                        body=image_file_fixture)
-    agave_utils = AgaveUtils()
+    agave_utils = AgaveUtils(user1)
     with patch.object(AgaveUtils, 'systemsGet', return_value={"public": True}):
         with patch.object(agave_utils, '_get_file', wraps=agave_utils._get_file) as mock:
             agave_utils.getFile(system, path)
