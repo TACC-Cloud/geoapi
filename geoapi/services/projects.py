@@ -12,6 +12,7 @@ from geoapi.tasks.external_data import import_from_agave
 from geoapi.tasks.projects import remove_project_assets
 from geoapi.log import logger
 from geoapi.exceptions import ApiException, ObservableProjectAlreadyExists
+from geoapi.custom import custom_on_project_creation, custom_on_project_deletion
 
 
 class ProjectsService:
@@ -27,17 +28,20 @@ class ProjectsService:
         :param user: User
         :return: Project
         """
-        project = Project(**data['project'])
+        watch_content = data.pop("watch_content", False)
+        watch_users = data.pop("watch_users", False)
+
+        project = Project(**data)
 
         project.tenant_id = user.tenant_id
         project.users.append(user)
 
-        if data.get('observable', False):
+        if watch_users or watch_content:
             try:
                 ProjectsService.makeObservable(database_session,
                                                project,
                                                user,
-                                               data.get('watch_content', False))
+                                               watch_content)
             except Exception as e:
                 logger.exception("{}".format(e))
                 raise e
@@ -45,9 +49,19 @@ class ProjectsService:
         database_session.add(project)
         database_session.commit()
 
-        project.project_users[0].creator = True
+        # set the user to be the creator
+        for project_user in project.project_users:
+            if project_user.user_id == user.id:
+                project_user.creator = True
+                break
+
         database_session.add(project)
         database_session.commit()
+
+        # Run any custom on-project-creation actions
+        if user.tenant_id.upper() in custom_on_project_creation:
+            custom_on_project_creation[user.tenant_id.upper()](database_session, user, project)
+
         setattr(project, 'deletable', True)
         return project
 
@@ -76,10 +90,10 @@ class ProjectsService:
             watch_content=watch_content
         )
 
-        users = get_system_users(proj.tenant_id, user.jwt, proj.system_id)
-        logger.info("Initial update of project:{} to have the following users: {}".format(name, users))
-        project_users = [UserService.getOrCreateUser(database_session, u.username, tenant=proj.tenant_id) for u in users]
-        proj.users = project_users
+        system_users = get_system_users(proj.tenant_id, user.jwt, proj.system_id)
+        logger.info("Initial update of project:{} to have the following users: {}".format(name, system_users))
+        users = [UserService.getOrCreateUser(database_session, u.username, tenant=proj.tenant_id) for u in system_users]
+        proj.users = users
 
         obs.project = proj
 
@@ -93,6 +107,11 @@ class ProjectsService:
                 raise ObservableProjectAlreadyExists("'{}' project already exists".format(name))
             else:
                 raise e
+
+        # Initialize the admin status
+        users_dict = {u.username: u for u in system_users}
+        for u in obs.project.project_users:
+            u.admin = users_dict[u.user.username].admin
 
         if watch_content:
             import_from_agave.apply_async(args=[obs.project.tenant_id, user.id, obs.system_id, obs.path, obs.project_id])
@@ -257,11 +276,10 @@ class ProjectsService:
         :return: Project
         """
         proj = ProjectsService.get(database_session=database_session, project_id=projectId)
-        proj_data = data.get('project', {})
 
-        proj.name = proj_data.get('name', proj.name)
-        proj.description = proj_data.get('description', proj.description)
-        proj.public = proj_data.get('public', proj.public)
+        proj.name = data.get('name', proj.name)
+        proj.description = data.get('description', proj.description)
+        proj.public = data.get('public', proj.public)
 
         database_session.commit()
 
@@ -274,6 +292,12 @@ class ProjectsService:
         :param projectId: int
         :return:
         """
+        # Run any custom on-project-deletion actions
+        if user.tenant_id.upper() in custom_on_project_deletion:
+            project = database_session.query(Project).filter(Project.id == projectId).one()
+            custom_on_project_deletion[user.tenant_id.upper()](user, project)
+
+        # TODO move the database remove call to celery (https://tacc-main.atlassian.net/browse/WG-235)
         database_session.query(Project).filter(Project.id == projectId).delete()
         database_session.commit()
 

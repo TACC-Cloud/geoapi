@@ -379,11 +379,9 @@ def test_import_shapefile_tapis(test_client, projects_fixture, import_file_from_
 
 def test_update_project(test_client, projects_fixture, user1):
     data = {
-        'project': {
-            'name': "Renamed Project",
-            'description': "New Description",
-            'public': True
-        },
+        'name': "Renamed Project",
+        'description': "New Description",
+        'public': True
     }
     resp = test_client.put(
         f'/projects/{projects_fixture.id}/',
@@ -399,10 +397,9 @@ def test_update_project(test_client, projects_fixture, user1):
 
 def test_update_project_unauthorized_guest(test_client, public_projects_fixture):
     data = {
-        'project': {
-            'name': "Renamed Project",
-            'description': "New Description",
-        }
+        'name': "Renamed Project",
+        'description': "New Description",
+        'public': True
     }
     resp = test_client.put(
         f'/projects/{public_projects_fixture.id}/',
@@ -418,16 +415,13 @@ def test_create_observable_project_already_exists(test_client,
                                                   import_from_agave_mock,
                                                   agave_utils_with_geojson_file_mock,
                                                   user1):
-
     data = {
-        'project': {
-            'name': "Renamed Project",
-            'description': "New Description",
-            'system_id': observable_projects_fixture.system_id,
-            'system_path': observable_projects_fixture.path,
-            'system_file': 'testFilename',
-        },
-        'observable': True,
+        'name': 'Observable name',
+        'description': 'Observable description',
+        'system_id': observable_projects_fixture.system_id,
+        'system_path': observable_projects_fixture.path,
+        'system_file': 'testFilename',
+        'watch_users': True,
         'watch_content': False
     }
 
@@ -446,14 +440,12 @@ def test_create_observable_project(test_client,
                                    import_from_agave_mock,
                                    agave_utils_with_geojson_file_mock, user1):
     data = {
-        'project': {
-            'name': 'Observable name',
-            'description': 'Observable description',
-            'system_id': 'testSystem',
-            'system_path': 'testPath',
-            'system_file': 'testFilename',
-        },
-        'observable': True,
+        'name': 'Observable name',
+        'description': 'Observable description',
+        'system_id': 'testSystem',
+        'system_path': 'testPath',
+        'system_file': 'testFilename',
+        'watch_users': True,
         'watch_content': False
     }
 
@@ -462,20 +454,22 @@ def test_create_observable_project(test_client,
                             headers={'X-Tapis-Token': user1.jwt})
 
     assert resp.status_code == 200
+    data = resp.get_json()
+    assert data["deletable"] is True
+    assert data["name"] == "Observable name"
+
     proj = db_session.query(Project).get(1)
     assert proj.name == "Observable name"
 
 
 def test_create_observable_project_unauthorized(test_client):
     data = {
-        'project': {
-            'name': 'Observable name',
-            'description': 'Observable description',
-            'system_id': 'testSystem',
-            'system_path': 'testPath',
-            'system_file': 'testFilename',
-        },
-        'observable': True,
+        'name': 'Observable name',
+        'description': 'Observable description',
+        'system_id': 'testSystem',
+        'system_path': 'testPath',
+        'system_file': 'testFilename',
+        'watch_users': True,
         'watch_content': False
     }
 

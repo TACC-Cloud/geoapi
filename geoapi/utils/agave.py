@@ -1,5 +1,6 @@
 import shutil
 import os
+import io
 import time
 from tempfile import NamedTemporaryFile
 from dataclasses import dataclass
@@ -97,6 +98,13 @@ class AgaveUtils:
     BASE_URL = 'http://api.prod.tacc.cloud'
 
     def __init__(self, jwt=None, token=None, tenant=None):
+        """
+        Initializes the client session.
+
+        This constructor sets up a client session with headers updated for JWT or bearer token authentication.
+        If a tenant is specified, it uses the tenant's API server. Note that the BASE_URL Tapis V2 server is the
+        only tapis service using a JWT, so if a tenant is given, a token must also be provided.
+        """
         client = requests.Session()
         if jwt:
             client.headers.update({'X-JWT-Assertion-designsafe': jwt})
@@ -259,6 +267,32 @@ class AgaveUtils:
         with self.get_file_context_manager(system_id, path) as file_obj:
             with open(destination_path, 'wb+') as target_file:
                 shutil.copyfileobj(file_obj, target_file)
+
+    def create_file(self, system_id: str, system_path: str, file_name: str, file_content: str):
+        """
+        Create a file on a Tapis storage system.
+        """
+        file_content = file_content.encode('utf-8')
+        file_like_object = io.BytesIO(file_content)
+
+        files = {
+            'fileToUpload': (file_name, file_like_object, 'plain/text')
+        }
+        data = {"fileType": "plain/text",
+                "callbackUrl": "",
+                "fileName": file_name,
+                }
+        file_import_url = self.base_url + quote(f"/files/media/system/{system_id}{system_path}/")
+        response = self.client.post(file_import_url, files=files, data=data)
+        response.raise_for_status()
+
+    def delete_file(self, system_id: str, file_path: str):
+        """
+        Deletes a file on a Tapis storage system.
+        """
+        file_delete_url = self.base_url + quote(f"/files/media/system/{system_id}{file_path}")
+        response = self.client.delete(file_delete_url)
+        response.raise_for_status()
 
 
 def service_account_client(tenant_id):

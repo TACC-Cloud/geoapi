@@ -53,7 +53,7 @@ services:
     environment:
       - MAPILLARY_CLIENT_TOKEN=${MAPILLARY_CLIENT_TOKEN}
       - FLASK_APP=/app/geoapi/app.py
-      - APP_ENV=development
+      - APP_ENV=local
       - ASSETS_BASE_DIR=/assets
       - TENANT=${TENANT}
     stdin_open: true
@@ -72,7 +72,7 @@ services:
     environment:
       - MAPILLARY_CLIENT_TOKEN=4866220476802272
       - FLASK_APP=/app/geoapi/app.py
-      - APP_ENV=development
+      - APP_ENV=local
       - ASSETS_BASE_DIR=/assets
     stdin_open: true
     tty: true
@@ -95,7 +95,7 @@ services:
     environment:
       - MAPILLARY_CLIENT_TOKEN=${MAPILLARY_CLIENT_TOKEN}
       - FLASK_APP=/app/geoapi/app.py
-      - APP_ENV=development
+      - APP_ENV=local
       - ASSETS_BASE_DIR=/assets
       - TENANT=${TENANT}
     stdin_open: true
