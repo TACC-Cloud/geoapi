@@ -17,6 +17,7 @@ from geoapi.settings import settings
 from geoapi.utils.tenants import get_api_server, get_service_accounts
 from geoapi.exceptions import MissingServiceAccount
 from geoapi.custom import custom_system_user_retrieval
+from geoapi.models import User
 from contextlib import closing
 
 logger = logging.getLogger(__name__)
@@ -125,7 +126,8 @@ class AgaveUtils:
         return listing["result"]
 
     def listing(self, systemId: str, path: str) -> List[AgaveFileListing]:
-        url = quote('/files/listings/system/{}/{}?limit=10000'.format(systemId, path))
+        # TODO_TAPIS_V3 add low priority ticket about refactoring this from such a high/arbitrary limit
+        url = quote('/v3/files/ops/{}/{}?limit=10000'.format(systemId, path))
         resp = self.get(url)
         if resp.status_code != 200:
             e = AgaveListingError(message=f"Unable to perform files listing of {systemId}/{path}. Status code: {resp.status_code}",
@@ -281,6 +283,7 @@ class AgaveUtils:
 
 
 def service_account_client(tenant_id):
+    # TODO_TAPISV3
     try:
         tenant_secrets = json.loads(settings.TENANT)
     except TypeError:
@@ -302,57 +305,17 @@ class SystemUser:
     admin: bool = False
 
 
-def get_default_system_users(tenant_id, jwt, system_id: str) -> List[SystemUser]:
-    """
-    Get systems users for a system using a user's jwt and (potentially) the tenant's service account.
-
-    Tapis provides all roles for owner of system which is why we attempt
-    to use the service account super token as well.
-
-    :param tenant_id: tenant id
-    :param jwt: jwt of a user
-    :param system_id: str
-    :return: list of users with admin status
-    """
-
-    client = AgaveUtils(jwt)
-    user_names = [entry["username"] for entry in client.systemsRolesGet(system_id)]
-
-    try:
-        client = service_account_client(tenant_id)
-        user_names_from_service_account = [entry["username"] for entry in client.systemsRolesGet(system_id)]
-        user_names = set(user_names + user_names_from_service_account)
-    except MissingServiceAccount:
-        logger.error("No service account. Unable to get system roles/users for {}".format(system_id))
-    except: # noqa
-        logger.exception("Unable to get system roles/users for {} using service account".format(system_id))
-
-    # remove any possible service accounts
-    for u in get_service_accounts(tenant_id):
-        try:
-            user_names.remove(u)
-        except (ValueError, KeyError):
-            pass  # do nothing if no service account
-
-    logger.info("System:{} has the following users: {}".format(system_id, user_names))
-    return [SystemUser(username=u, admin=False) for u in user_names]
-
-
-def get_system_users(tenant_id, jwt, system_id: str) -> List[SystemUser]:
+def get_system_users(user: User, system_id: str) -> List[SystemUser]:
     """
     Get systems users for a system and their admin status.
 
     Right now, this would always be DesignSafe.
 
-    :param tenant_id: tenant id
-    :param jwt: jwt of a user
+    :param user: User to make the query
     :param system_id: str
     :return: list of users with admin status
     """
-
-    if tenant_id.upper() in custom_system_user_retrieval:
-        return custom_system_user_retrieval[tenant_id.upper()](tenant_id, jwt, system_id)
-    return get_default_system_users(tenant_id, jwt, system_id)
+    return custom_system_user_retrieval[user.tenant_id.upper()](user, system_id)
 
 
 def get_metadata_using_service_account(tenant_id: str, system_id: str, path: str) -> Dict:

@@ -1,23 +1,25 @@
 from urllib.parse import quote
+from geoapi.exceptions import GetUsersForProjectNotSupported
 
 
-def get_system_users(tenant_id, jwt, system_id: str):
+def get_system_users(user, system_id: str):
     """
     Get systems users based on the DesignSafe project's co-pis and pis.
 
-    :param tenant_id: tenant id
-    :param jwt: jwt of a user
+    :param user: user to use when quering system/map users
     :param system_id: str
+    :raises GetUsersForProjectNotSupported if system is not a DesignSafe Project
     :return: list of users with admin status
     """
-    from geoapi.utils.agave import service_account_client, SystemUser, get_default_system_users
+    from geoapi.utils.agave import AgaveUtils, SystemUser
+
+    if not system_id.startswith("project-"):
+        raise GetUsersForProjectNotSupported(f"System:{system_id} is not a project so unable to get users")
 
     # TODO_TAPISV3 https://tacc-main.atlassian.net/browse/WG-257
-    if not system_id.startswith("project-"):
-        return get_default_system_users(tenant_id, jwt, system_id)
-
+    # TODO_TAPISV3 projects endpoint is /api/projects on designsafe portal
     uuid = system_id[len("project-"):]
-    client = service_account_client(tenant_id=tenant_id)
+    client = AgaveUtils(user)
     resp = client.get(quote(f'/projects/v2/{uuid}/'))
     resp.raise_for_status()
     project = resp.json()["value"]

@@ -402,7 +402,7 @@ def refresh_observable_projects():
                     # has changed
                     current_users = set([SystemUser(username=u.user.username, admin=u.admin)
                                          for u in o.project.project_users])
-                    updated_users = set(get_system_users(o.project.tenant_id, importing_user.jwt, o.system_id))
+                    updated_users = set(get_system_users(importing_user, o.system_id))
 
                     current_creator = session.query(ProjectUser)\
                         .filter(ProjectUser.project_id == o.id)\
