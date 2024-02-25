@@ -114,7 +114,7 @@ class AgaveUtils:
         return self.client.get(self.base_url + url, params=params)
 
     def systemsGet(self, systemId: str) -> Dict:
-        url = quote('/systems/{}'.format(systemId))
+        url = quote('/v3/systems/{}'.format(systemId))
         resp = self.get(url)
         listing = resp.json()
         return listing["result"]
