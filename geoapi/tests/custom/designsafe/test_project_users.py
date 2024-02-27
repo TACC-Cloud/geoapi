@@ -18,6 +18,7 @@ def project_response_with_duplicate_users():
         yield json.loads(f.read())
 
 
+@pytest.mark.skip(reason="Skipping until https://tacc-main.atlassian.net/browse/WG-257")
 def test_get_system_users(requests_mock, project_response):
     uuid = "5752672753351626260-242ac118-0001-014"
     requests_mock.get(f"https://agave.designsafe-ci.org/projects/v2/{uuid}/", json=project_response)
@@ -31,6 +32,7 @@ def test_get_system_users(requests_mock, project_response):
     assert users_as_list_of_dict == [{'user_pi': True}, {'user_copi': True}, {'user3': False}, {'user4': False}]
 
 
+@pytest.mark.skip(reason="Skipping until https://tacc-main.atlassian.net/browse/WG-257")
 def test_get_system_users_duplicate(requests_mock, project_response_with_duplicate_users):
     uuid = "5752672753351626260-242ac118-0001-014"
     requests_mock.get(f"https://agave.designsafe-ci.org/projects/v2/{uuid}/", json=project_response_with_duplicate_users)

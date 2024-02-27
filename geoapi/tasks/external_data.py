@@ -136,7 +136,7 @@ def import_file_from_agave(userId: int, systemId: str, path: str, projectId: int
     with create_task_session() as session:
         try:
             user = session.query(User).get(userId)
-            client = AgaveUtils(user.jwt)
+            client = AgaveUtils(user)
             temp_file = client.getFile(systemId, path)
             temp_file.filename = Path(path).name
             additional_files = get_additional_files(temp_file, systemId, path, client)
@@ -164,7 +164,7 @@ def _update_point_cloud_task(database_session, pointCloudId: int, description: s
 def import_point_clouds_from_agave(userId: int, files, pointCloudId: int):
     with create_task_session() as session:
         user = session.query(User).get(userId)
-        client = AgaveUtils(user.jwt)
+        client = AgaveUtils(user)
 
         point_cloud = pointcloud.PointCloudService.get(session, pointCloudId)
         celery_task_id = celery_uuid()
@@ -281,7 +281,7 @@ def import_from_files_from_path(session, tenant_id: str, userId: int, systemId: 
     This method is called by refresh_observable_projects()
     """
     user = session.query(User).get(userId)
-    client = AgaveUtils(user.jwt)
+    client = AgaveUtils(user)
     logger.info("Importing for project:{} directory:{}/{} for user:{}".format(projectId,
                                                                               systemId,
                                                                               path,

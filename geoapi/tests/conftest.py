@@ -18,6 +18,7 @@ from geoapi.services.features import FeaturesService
 from geoapi.app import app
 from geoapi.utils.assets import get_project_asset_dir
 from geoapi.utils.agave import AgaveFileListing, SystemUser
+from geoapi.utils.tenants import get_api_server
 from geoapi.exceptions import InvalidCoordinateReferenceSystem
 
 
@@ -47,6 +48,11 @@ def userdata(test_client):
     db_session.add_all([u1, u2, u3])
     db_session.commit()
     yield u1
+
+
+@pytest.fixture(autouse=True, scope="function")
+def tapis_url(user1):
+    yield get_api_server(user1.tenant_id)
 
 
 @pytest.fixture(scope="function")
