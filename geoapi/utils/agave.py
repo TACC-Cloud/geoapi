@@ -107,6 +107,7 @@ class AgaveUtils:
 
         client.headers.update({'X-Tapis-Token': user.jwt})
 
+        self.tenant_id = user.tenant_id
         self.base_url = get_api_server(user.tenant_id)
         self.client = client
 
@@ -165,28 +166,17 @@ class AgaveUtils:
         :parm use_service_account: if service account should be used
         :return:
         """
-        url = quote('/files/media/system/{}/{}'.format(systemId, path))
+        url = quote(f"/v3/files/content/{systemId}/{path}")
 
-        client = service_account_client("designsafe").client if use_service_account else self.client
-        base_url = service_account_client("designsafe").base_url if use_service_account else self.base_url
+        client = service_account_client(self.tenant_id).client if use_service_account else self.client
 
-        with client.get(base_url + url, stream=True) as r:
-            if r.status_code == 403 and not use_service_account:
-                # This is a workaround for bug documented in https://jira.tacc.utexas.edu/browse/CS-169
-                # and in https://jira.tacc.utexas.edu/browse/DES-2084 where sometimes a 403 is returned by tapis
-                # for some files.
-                logger.warning(f"Could not fetch file ({systemId}/{path}) due to unexpected 403. Possibly CS-169/DES-2084.")
-                systemInfo = self.systemsGet(systemId)
-                if systemInfo["public"]:
-                    logger.warning("As system is a public storage system for projects. we will use service "
-                                   "account to get file: {}/{}".format(systemId, path))
-                    return self._get_file(systemId, path, use_service_account=True)
-                else:
-                    logger.warning(f"System is not public so not trying work-around for CS-169/DES-2084: {systemId}/{path}")
+        # TODO_TAPISV3 what error code do we get if tapis is unable to get our file, but we should try again (500?)
+        logger.debug(self.base_url + url)
+        with client.get(self.base_url + url, stream=True) as r:
+
             if r.status_code > 400:
-                if r.status_code == 500:
-                    logger.warning(f"Fetch file ({systemId}/{path}) but got 500 {r}: {r.content};"
-                                   f"500 is possibly due to CS-196/DES-2236.")
+                if r.status_code != 404:
+                    logger.warning(f"Fetch file ({systemId}/{path}) but got {r.status_code}, {r}: {r.content}")
                     raise RetryableTapisFileError
 
                 raise AgaveFileGetError("Could not fetch file ({}/{}) status_code:{} content:{}".format(systemId,
@@ -198,9 +188,9 @@ class AgaveUtils:
                 tmpFile.write(chunk)
             tmpFile.seek(0)
 
+            # TODO_TAPISV3 is this still needed; this was a v2 error where empty files were sometimes returned
             if os.path.getsize(tmpFile.name) < 1:
-                logger.warning(f"Fetch file ({systemId}/{path}) but is empty. "
-                               f"Either file is really empty or possibly due to CS-196/DES-2236.")
+                logger.warning(f"Fetch file ({systemId}/{path}) but is empty. ")
                 raise RetryableTapisFileError
         return tmpFile
 
@@ -228,14 +218,14 @@ class AgaveUtils:
                 return self._get_file(systemId, path)
             except RetryableTapisFileError:
                 allowed_attempts = allowed_attempts - 1
-                logger.error(f"File fetching failed but is retryable (i.e. could be CS-196): ({systemId}/{path}) ")
+                logger.error(f"File fetching failed but is retryable: ({systemId}/{path}) ")
                 if allowed_attempts > 0:
                     time.sleep(SLEEP_SECONDS_BETWEEN_RETRY)
                 continue
             except Exception as e:
                 logger.exception(f"Could not fetch file and did not attempt to retry: ({systemId}/{path})")
                 raise e
-        msg = f"Could not fetch file and no longer retrying. (could be CS-196): ({systemId}/{path})"
+        msg = f"Could not fetch file and no longer retrying.: ({systemId}/{path})"
         logger.exception(msg)
         raise AgaveFileGetError(msg)
 
