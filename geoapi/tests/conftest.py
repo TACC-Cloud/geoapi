@@ -498,3 +498,17 @@ def questionnaire_file_with_assets_fixture():
     with open(os.path.join(home, filename), 'rb') as f:
         f.filename = filename
         yield f
+
+
+@pytest.fixture(scope="function")
+def tapis_metadata_with_geolocation():
+    home = os.path.dirname(__file__)
+    with open(os.path.join(home, 'fixtures/tapis_meta_with_geolocation.json'), 'rb') as f:
+        yield json.loads(f.read())
+
+
+@pytest.fixture(scope="function")
+def tapis_metadata_without_geolocation():
+    home = os.path.dirname(__file__)
+    with open(os.path.join(home, 'fixtures/tapis_meta_no_geolocation.json'), 'rb') as f:
+        yield json.loads(f.read())
