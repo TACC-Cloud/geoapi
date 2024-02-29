@@ -299,7 +299,7 @@ def import_from_files_from_path(session, tenant_id: str, userId: int, systemId: 
     for item in files_in_directory:
         if item.type == "dir" and not str(item.path).endswith("/.Trash"):
             import_from_files_from_path(session, tenant_id, userId, systemId, item.path, projectId)
-        item_system_path = os.path.join(item.system, str(item.path).lstrip("/"))
+        item_system_path = os.path.join(systemId, str(item.path).lstrip("/"))
         if features_util.is_file_supported_for_automatic_scraping(item_system_path):
             try:
                 # first check if there already is a file in the DB
@@ -314,10 +314,10 @@ def import_from_files_from_path(session, tenant_id: str, userId: int, systemId: 
                 if features_util.is_supported_file_type_in_rapp_folder_and_needs_metadata(item_system_path):
                     logger.info(f"RApp: importing:{item_system_path} for user:{user.username}. Using metadata service for geolocation.")
                     try:
-                        meta = get_metadata_using_service_account(tenant_id, item.system, item.path)
+                        meta = get_metadata_using_service_account(tenant_id, systemId, item.path)
                     except MissingServiceAccount:
                         logger.error(
-                            "No service account. Unable to get metadata for {}:{}".format(item.system, item.path))
+                            "No service account. Unable to get metadata for {}:{}".format(systemId, item.path))
                         return {}
 
                     logger.debug("metadata from service account for file:{} : {}".format(item_system_path, meta))
