@@ -72,25 +72,3 @@ def test_get_file_retry_too_many_attempts(user1, tapis_url, requests_mock, retry
     agave_utils = AgaveUtils(user1)
     with pytest.raises(AgaveFileGetError):
         agave_utils.getFile(system, path)
-
-
-@pytest.mark.skip(reason="Skipping until https://tacc-main.atlassian.net/browse/WG-257 but would most likely be removed")
-def test_get_file_using_service_account_for_CS_169(user1, tapis_url, requests_mock, retry_sleep_seconds_mock, image_file_fixture):
-    system = "system"
-    path = "path.jpg"
-    # api prod fails with 403 (i.e. CS_169)
-    api_prod_mocked_file_service = requests_mock.get(tapis_url + f"/files/media/system/{system}/{path}",
-                                                     status_code=403)
-    # service account's use of designsafe works (i.e. CS_169)
-    designsafe_mocked_file_service = requests_mock.get("https://agave.designsafe-ci.org" + f"/files/media/system/{system}/{path}",
-                                                       status_code=200,
-                                                       body=image_file_fixture)
-    agave_utils = AgaveUtils(user1)
-    with patch.object(AgaveUtils, 'systemsGet', return_value={"public": True}):
-        with patch.object(agave_utils, '_get_file', wraps=agave_utils._get_file) as mock:
-            agave_utils.getFile(system, path)
-
-            # assert that there is a second call to use the service account if we get a 403 on a public folder
-            mock.assert_has_calls([call(system, path), call(system, path, use_service_account=True)])
-            assert api_prod_mocked_file_service.call_count == 1
-            assert designsafe_mocked_file_service.call_count == 1
