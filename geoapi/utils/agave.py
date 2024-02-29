@@ -59,12 +59,8 @@ class RetryableTapisFileError(Exception):
 class AgaveFileListing:
 
     def __init__(self, data: Dict):
-        self._links = data["_links"]
-        self.system = data["system"]
         self.type = data["type"]
-        self.length = data["length"]
         self.path = pathlib.Path(data["path"])
-        self.mimeType = data["mimeType"]
         self.lastModified = parser.parse(data["lastModified"])
 
     def __repr__(self):
