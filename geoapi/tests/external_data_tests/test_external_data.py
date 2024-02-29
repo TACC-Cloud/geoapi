@@ -1,7 +1,7 @@
 from unittest.mock import patch
 import pytest
 import os
-
+import re
 
 from geoapi.models import User, Feature, ImportedFile
 from geoapi.db import db_session, create_task_session
@@ -87,7 +87,7 @@ def agave_utils_with_bad_image_file(image_file_no_location_fixture):
 
 
 @pytest.fixture(scope="function")
-def agave_utils_with_image_file_from_rapp_folder(image_file_fixture):
+def agave_utils_with_image_file_from_rapp_folder(requests_mock, image_file_fixture):
     filesListing = [
         AgaveFileListing({
             "path": "/RApp",
@@ -100,19 +100,27 @@ def agave_utils_with_image_file_from_rapp_folder(image_file_fixture):
             "lastModified": "2020-08-31T12:00:00Z"
         })
     ]
-    with patch('geoapi.utils.agave.AgaveUtils') as MockAgaveUtilsInUtils:
-        MockAgaveUtilsInUtils().listing.return_value = filesListing
-        MockAgaveUtilsInUtils().getFile.return_value = image_file_fixture
-        MockAgaveUtilsInUtils().getMetaAssociated.return_value = {"geolocation": [{"longitude": 20, "latitude": 30}]}
-        with patch('geoapi.tasks.external_data.AgaveUtils') as MockAgaveUtils:
-            MockAgaveUtils().listing.return_value = filesListing
-            MockAgaveUtils().getFile.return_value = image_file_fixture
-            MockAgaveUtils().getMetaAssociated.return_value = {"geolocation": [{"longitude": 20, "latitude": 30}]}
 
-            class MockAgave:
-                client_in_utils = MockAgaveUtilsInUtils()
-                client_in_external_data = MockAgaveUtils()
-            yield MockAgave
+    METADATA_ROUTE = re.compile(r'http://.*/meta/v2/data')
+    response = {"result": [{"value": {"geolocation": [{"longitude": 20, "latitude": 30}]}}]}
+    requests_mock.get(METADATA_ROUTE, json=response)
+
+    with patch('geoapi.utils.agave.AgaveUtils.listing') as mock_listing_utils, \
+            patch('geoapi.utils.agave.AgaveUtils.getFile') as mock_get_file_utils, \
+            patch('geoapi.tasks.external_data.AgaveUtils.listing') as mock_listing_external_data, \
+            patch('geoapi.tasks.external_data.AgaveUtils.getFile') as mock_get_file_external_data:
+        mock_listing_utils.return_value = filesListing
+        mock_get_file_utils.return_value = image_file_fixture
+        mock_listing_external_data.return_value = filesListing
+        mock_get_file_external_data.return_value = image_file_fixture
+
+        class MockAgave:
+            listing_utils = mock_listing_utils
+            get_file_utils = mock_get_file_utils
+            listing_external_data = mock_listing_external_data
+            get_file_external_data = mock_get_file_external_data
+
+        yield MockAgave
 
 
 @pytest.fixture(scope="function")
@@ -162,7 +170,11 @@ def agave_utils_listing_with_single_trash_folder_of_image(image_file_fixture):
 
 
 @pytest.mark.worker
-def test_external_data_good_files(userdata, projects_fixture, agave_utils_with_geojson_file):
+def test_external_data_good_files(requests_mock, userdata, projects_fixture, agave_utils_with_geojson_file):
+    METADATA_ROUTE = re.compile(r'http://.*/meta/v2/data')
+    response = {"result": [{"value": {"geolocation": [{"longitude": 20, "latitude": 30}]}}]}
+    requests_mock.get(METADATA_ROUTE, json=response)
+
     u1 = db_session.query(User).filter(User.username == "test1").first()
 
     import_from_agave(projects_fixture.tenant_id, u1.id, "testSystem", "/testPath", projects_fixture.id)
@@ -186,7 +198,11 @@ def test_external_data_good_files(userdata, projects_fixture, agave_utils_with_g
 
 
 @pytest.mark.worker
-def test_external_data_bad_files(userdata, projects_fixture, agave_utils_with_bad_image_file):
+def test_external_data_bad_files(requests_mock, userdata, projects_fixture, agave_utils_with_bad_image_file):
+    METADATA_ROUTE = re.compile(r'http://.*/meta/v2/data')
+    response = {"result": [{"value": {"geolocation": [{"longitude": 20, "latitude": 30}]}}]}
+    requests_mock.get(METADATA_ROUTE, json=response)
+
     u1 = db_session.query(User).filter(User.username == "test1").first()
 
     import_from_agave(projects_fixture.tenant_id, u1.id, "testSystem", "/testPath", projects_fixture.id)
@@ -233,12 +249,16 @@ def test_external_data_rapp(userdata, projects_fixture,
     assert len(features[0].assets) == 1
     assert len(os.listdir(get_project_asset_dir(features[0].project_id))) == 2  # processed image + thumbnail
     # This should only have been called once, since there is only one FILE in the listing
-    agave_utils_with_image_file_from_rapp_folder.client_in_external_data.getFile.assert_called_once()
+    agave_utils_with_image_file_from_rapp_folder.get_file_external_data.assert_called_once()
 
 
 @pytest.mark.worker
-def test_external_data_rapp_missing_geospatial_metadata(userdata, projects_fixture, agave_utils_with_image_file_from_rapp_folder):
-    agave_utils_with_image_file_from_rapp_folder.client_in_utils.getMetaAssociated.return_value = {}
+def test_external_data_rapp_missing_geospatial_metadata(userdata, projects_fixture,
+                                                        agave_utils_with_image_file_from_rapp_folder, requests_mock):
+    METADATA_ROUTE = re.compile(r'http://.*/meta/v2/data')
+    response = {"result": [{"value": {"geolocation": []}}]}
+    requests_mock.get(METADATA_ROUTE, json=response)
+
     u1 = db_session.query(User).filter(User.username == "test1").first()
     import_from_agave(projects_fixture.tenant_id, u1.id, "testSystem", "/Rapp", projects_fixture.id)
     features = db_session.query(Feature).all()

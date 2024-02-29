@@ -1,0 +1,62 @@
+{
+  "result": [
+    {
+      "uuid": "8846490921293573650-242ac117-0001-012",
+      "owner": "ds_admin",
+      "schemaId": null,
+      "internalUsername": null,
+      "associationIds": [],
+      "lastUpdated": "2024-01-20T07:05:01.333-06:00",
+      "name": "designsafe.file",
+      "value": {
+        "_author": "Test User",
+        "geolocation": [
+          {
+            "longitude": -122.30701480072206,
+            "timestamp": 1690399239.996102,
+            "latitude": 47.65349416532335,
+            "course": 305.5078125,
+            "heading": 318.62109375,
+            "altitude": 37.63900375366211
+          }
+        ],
+        "instrument_manufacturer_and_model": "",
+        "title": "Photo 1690399237478",
+        "_timestamp": 1690399240.36766,
+        "_rapp_parent_collection_uuid": "CA16655D-A422-444D-A078-546BC5CF1C67",
+        "geoid_model": "",
+        "misc_notes": "",
+        "instrument_type": "other",
+        "coord_system_epoch": "",
+        "path": "/Photo 1690399237478.jpg",
+        "system": "project-4193535358505521646-242ac117-0001-012",
+        "geodetic_datum": "",
+        "coord_ref_system": "",
+        "geodetic_datum_realization": "",
+        "basePath": "/",
+        "vertical_datum": "",
+        "format": "jpg",
+        "_rapp_asset_uuid": "8C9E6B10-0A00-4F0B-BDD8-E443BDE64519",
+        "units": "",
+        "data_type": "image",
+        "referenced_data_links": [],
+        "coord_system": "",
+        "data_hazard_type": "other",
+        "description": ""
+      },
+      "created": "2024-01-20T07:05:01.333-06:00",
+      "_links": {
+        "self": {
+          "href": "https://agave.designsafe-ci.org/meta/v2/data/8846490921293573650-242ac117-0001-012"
+        },
+        "permissions": {
+          "href": "https://agave.designsafe-ci.org/meta/v2/data/8846490921293573650-242ac117-0001-012/pems"
+        },
+        "owner": {
+          "href": "https://agave.designsafe-ci.org/profiles/v2/ds_admin"
+        },
+        "associationIds": []
+      }
+    }
+  ]
+}

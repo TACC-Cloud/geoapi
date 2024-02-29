@@ -16,12 +16,14 @@ import geojson
 from geoapi.services.images import ImageService, ImageData
 from geoapi.services.vectors import VectorService
 from geoapi.models import Feature, FeatureAsset, Overlay, User, TileServer
-from geoapi.exceptions import InvalidGeoJSON, ApiException
+from geoapi.exceptions import InvalidGeoJSON, ApiException, InvalidEXIFData, InvalidCoordinateReferenceSystem
 from geoapi.utils.assets import make_project_asset_dir, delete_assets, get_asset_relative_path
 from geoapi.log import logging
 from geoapi.utils import (geometries,
                           features as features_util)
 from geoapi.utils.agave import AgaveUtils
+from geoapi.utils.geo_location import GeoLocation, parse_rapid_geolocation
+
 
 logger = logging.getLogger(__name__)
 
@@ -134,8 +136,8 @@ class FeaturesService:
         return feat
 
     @staticmethod
-    def fromLatLng(database_session, projectId: int, lat: float, lng: float, metadata: Dict) -> Feature:
-        point = Point(lng, lat)
+    def fromLatLng(database_session, projectId: int, location: GeoLocation, metadata: Dict) -> Feature:
+        point = Point(location.longitude, location.latitude)
         f = Feature()
         f.project_id = projectId
         f.the_geom = from_shape(point, srid=4326)
@@ -218,9 +220,8 @@ class FeaturesService:
         logger.info(f"Processing f{original_path}")
         data = json.loads(fileObj.read())
 
-        lng = data.get('geolocation')[0].get('longitude')
-        lat = data.get('geolocation')[0].get('latitude')
-        point = Point(lng, lat)
+        location = parse_rapid_geolocation(data.get('geolocation'))
+        point = Point(location.longitude, location.latitude)
         feat = Feature()
         feat.project_id = projectId
         feat.the_geom = from_shape(point, srid=4326)
@@ -256,7 +257,8 @@ class FeaturesService:
                 # gather coordinates information for this asset
                 logger.debug(f"{asset_file_obj.filename} has the geospatial coordinates of {processed_asset_image.coordinates}")
                 additional_files_properties.append({"filename": base_filename,
-                                                    "coordinates": processed_asset_image.coordinates})
+                                                    "coordinates": (processed_asset_image.coordinates.longitude,
+                                                                    processed_asset_image.coordinates.latitude)})
                 asset_file_obj.close()
 
         if additional_files_properties:
@@ -330,10 +332,10 @@ class FeaturesService:
 
     @staticmethod
     def fromFileObj(database_session, projectId: int, fileObj: IO,
-                    metadata: Dict, original_path: str = None, additional_files=None) -> List[Feature]:
+                    metadata: Dict, original_path: str = None, additional_files=None, location: GeoLocation = None) -> List[Feature]:
         ext = pathlib.Path(fileObj.filename).suffix.lstrip(".").lower()
         if ext in features_util.IMAGE_FILE_EXTENSIONS:
-            return [FeaturesService.fromImage(database_session, projectId, fileObj, metadata, original_path)]
+            return [FeaturesService.fromImage(database_session, projectId, fileObj, metadata, original_path, location)]
         elif ext in features_util.GPX_FILE_EXTENSIONS:
             return [FeaturesService.fromGPX(database_session, projectId, fileObj, metadata, original_path)]
         elif ext in features_util.GEOJSON_FILE_EXTENSIONS:
@@ -348,16 +350,25 @@ class FeaturesService:
             raise ApiException("Filetype not supported for direct upload. Create a feature and attach as an asset?")
 
     @staticmethod
-    def fromImage(database_session, projectId: int, fileObj: IO, metadata: Dict, original_path: str = None) -> Feature:
+    def fromImage(database_session, projectId: int, fileObj: IO, metadata: Dict,
+                  original_path: str = None, location: GeoLocation = None) -> Feature:
         """
         Create a Point feature from a georeferenced image
-        :param projectId: int
+
+        :param projectId: id of project
         :param fileObj: file
-        :param metadata: dict
+        :param metadata: dict of metadata information
+        :param original_path: original path of image
+        :param location: optional location to use instead of the files exif
         :return: None
         """
-        imdata = ImageService.processImage(fileObj)
-        point = Point(imdata.coordinates)
+        try:
+            logger.debug(f"processing image {original_path} known_geolocation:{location} using_exif_geolocation:{location is None}")
+            imdata = ImageService.processImage(fileObj, exif_geolocation=location is None)
+            coordinates = location if location else imdata.coordinates
+        except InvalidEXIFData:
+            raise InvalidCoordinateReferenceSystem
+        point = Point(coordinates.longitude, coordinates.latitude)
         f = Feature()
         f.project_id = projectId
         f.the_geom = from_shape(point, srid=4326)

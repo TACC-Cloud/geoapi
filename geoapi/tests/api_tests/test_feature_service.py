@@ -5,10 +5,11 @@ from geoapi.db import db_session
 from geoapi.services.features import FeaturesService
 from geoapi.models import Feature, FeatureAsset, TileServer
 from geoapi.utils.assets import get_project_asset_dir, get_asset_path
+from geoapi.utils.geo_location import GeoLocation
 
 
 def test_create_feature_fromLatLng(projects_fixture):
-    feature = FeaturesService.fromLatLng(db_session, projects_fixture.id, 10, 20, metadata={})
+    feature = FeaturesService.fromLatLng(db_session, projects_fixture.id, GeoLocation(latitude=10, longitude=20), metadata={})
     assert len(feature.assets) == 0
     assert feature.id is not None
 

@@ -6,17 +6,18 @@ from PIL import Image
 from PIL.Image import Image as PILImage
 import exifread
 
-from typing import Tuple, IO, AnyStr
+from typing import IO, AnyStr
 from dataclasses import dataclass
 from geoapi.exceptions import InvalidEXIFData
 from geoapi.log import logger
+from geoapi.utils.geo_location import GeoLocation
 
 
 @dataclass
 class ImageData:
     thumb: PILImage
     resized: PILImage
-    coordinates: Tuple[float, float]
+    coordinates: GeoLocation
 
 
 @dataclass
@@ -41,19 +42,23 @@ class ImageService:
         return imdata
 
     @staticmethod
-    def processImage(fileObj: IO) -> ImageData:
+    def processImage(fileObj: IO, exif_geolocation: bool = True) -> ImageData:
         """
-        Resize and get the EXIF GeoLocation from an image
+        Resize and possibly attempt to get the EXIF GeoLocation from an image
 
-        Image need geolocation information. If missing, then
-        get_exif_location raises InvalidEXIFData.
+        Image needs exif embedded geolocation information if `exif_geolocation` is true. If the
+        location is missing when 'exif_geolocation' is true, then InvalidEXIFData is raised
 
         :param fileObj:
+        :param exif_geolocation: if exif data should be read to get image coordinates
         :return:
         """
         imdata = ImageService.resizeImage(fileObj)
-        exif_loc = get_exif_location(fileObj)
-        imdata.coordinates = exif_loc
+        if exif_geolocation:
+            logger.debug("Getting exif geolocation")
+            imdata.coordinates = get_exif_location(fileObj)
+        else:
+            imdata.coordinates = None
         return imdata
 
     @staticmethod
@@ -147,7 +152,7 @@ def _convert_to_degress(value):
     return d + (m / 60.0) + (s / 3600.0)
 
 
-def get_exif_location(image):
+def get_exif_location(image) -> GeoLocation:
     """
     Returns the latitude and longitude, if available, from the provided exif_data (obtained through get_exif_data above)
 
@@ -174,4 +179,4 @@ def get_exif_location(image):
 
     if not lat or not lon:
         raise InvalidEXIFData
-    return lon, lat
+    return GeoLocation(longitude=lon, latitude=lat)
