@@ -103,16 +103,29 @@ class AgaveUtils:
         return listing["result"]
 
     def listing(self, systemId: str, path: str) -> List[AgaveFileListing]:
-        # TODO_TAPIS_V3 add low priority ticket about refactoring this from such a high/arbitrary limit
-        url = quote('/v3/files/ops/{}/{}?limit=10000'.format(systemId, path))
-        resp = self.get(url)
-        if resp.status_code != 200:
-            e = AgaveListingError(message=f"Unable to perform files listing of {systemId}/{path}. Status code: {resp.status_code}",
-                                  response=resp)
-            raise e
-        listing = resp.json()
-        out = [AgaveFileListing(d) for d in listing["result"]]
-        return out
+        listings = []
+        offset = 0
+        limit = 1000  # Set the limit for each request
+        total_fetched = 0
+
+        while True:
+            url = quote(f"/v3/files/ops/{systemId}/{path}")
+            resp = self.get(url, params={"offset": offset, "limit": limit})
+            if resp.status_code != 200:
+                e = AgaveListingError(
+                    message=f"Unable to perform files listing of {systemId}/{path}. Status code: {resp.status_code}",
+                    response=resp)
+                raise e
+
+            listing = resp.json()
+            fetched_listings = [AgaveFileListing(d) for d in listing["result"]]
+            listings.extend(fetched_listings)
+            total_fetched += len(fetched_listings)
+
+            if len(fetched_listings) < limit:
+                break
+            offset += limit
+        return listings
 
     def getMetaAssociated(self, uuid: str) -> Dict:
         """
