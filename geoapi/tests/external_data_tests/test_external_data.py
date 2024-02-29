@@ -238,6 +238,7 @@ def test_external_data_no_files_except_for_trash(userdata, projects_fixture, aga
 
 
 @pytest.mark.worker
+@pytest.mark.skip(reason="TODO_TAPISV3 See https://tacc-main.atlassian.net/browse/WG-254")
 def test_external_data_rapp(userdata, projects_fixture,
                             agave_utils_with_image_file_from_rapp_folder):
     u1 = db_session.query(User).filter(User.username == "test1").first()
@@ -389,6 +390,7 @@ def test_import_from_agave_failed_dbsession_rollback(agave_utils_with_geojson_fi
 
 
 @pytest.mark.worker
+@pytest.mark.skip(reason="TODO_TAPISV3 See https://tacc-main.atlassian.net/browse/WG-254")
 def test_refresh_observable_projects(user1,
                                      user2,
                                      agave_utils_with_image_file_from_rapp_folder,
