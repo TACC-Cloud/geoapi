@@ -9,7 +9,7 @@ from celery import uuid as celery_uuid
 import json
 
 from geoapi.celery_app import app
-from geoapi.exceptions import InvalidCoordinateReferenceSystem, MissingServiceAccount
+from geoapi.exceptions import InvalidCoordinateReferenceSystem, MissingServiceAccount, GetUsersForProjectNotSupported
 from geoapi.models import User, ProjectUser, ObservableDataProject, Task
 from geoapi.utils.agave import (AgaveUtils, SystemUser, get_system_users, get_metadata_using_service_account,
                                 AgaveFileGetError, AgaveListingError)
@@ -392,48 +392,54 @@ def refresh_observable_projects():
             logger.info("Starting to refresh all observable projects")
             obs = session.query(ObservableDataProject).all()
             for i, o in enumerate(obs):
+                # TODO_TAPISv3 can this be refactored into a command that is used here and by ProjectService or can this be put into its own method for clarity
                 try:
-                    # we need a user with a jwt for importing
-                    importing_user = next((u for u in o.project.users if u.jwt))
-                    logger.info(f"Refreshing observable project ({i}/{len(obs)}): observer:{importing_user} "
-                                f"system:{o.system_id} path:{o.path} project:{o.project.id}")
+                    try:
+                        # we need a user with a jwt for importing
+                        importing_user = next((u for u in o.project.users if u.jwt))
+                        logger.info(f"Refreshing observable project ({i}/{len(obs)}): observer:{importing_user} "
+                                    f"system:{o.system_id} path:{o.path} project:{o.project.id}")
 
-                    # we need to add any users who have been added to the project/system or update if their admin-status
-                    # has changed
-                    current_users = set([SystemUser(username=u.user.username, admin=u.admin)
-                                         for u in o.project.project_users])
-                    updated_users = set(get_system_users(importing_user, o.system_id))
+                        # we need to add any users who have been added to the project/system or update if their admin-status
+                        # has changed
+                        current_users = set([SystemUser(username=u.user.username, admin=u.admin)
+                                             for u in o.project.project_users])
+                        updated_users = set(get_system_users(importing_user, o.system_id))
 
-                    current_creator = session.query(ProjectUser)\
-                        .filter(ProjectUser.project_id == o.id)\
-                        .filter(ProjectUser.creator is True).one_or_none()
+                        current_creator = session.query(ProjectUser)\
+                            .filter(ProjectUser.project_id == o.id)\
+                            .filter(ProjectUser.creator is True).one_or_none()
 
-                    if current_users != updated_users:
-                        logger.info("Updating users from:{} to:{}".format(current_users, updated_users))
+                        if current_users != updated_users:
+                            logger.info("Updating users from:{} to:{}".format(current_users, updated_users))
 
-                        # set project users
-                        o.project.users = [UserService.getOrCreateUser(session, u.username, tenant=o.project.tenant_id)
-                                           for u in updated_users]
-                        session.add(o)
-                        session.commit()
+                            # set project users
+                            o.project.users = [UserService.getOrCreateUser(session, u.username, tenant=o.project.tenant_id)
+                                               for u in updated_users]
+                            session.add(o)
+                            session.commit()
 
-                        updated_users_to_admin_status = {u.username: u for u in updated_users}
-                        logger.info("current_users_to_admin_status:{}".format(updated_users_to_admin_status))
-                        for u in o.project.project_users:
-                            u.admin = updated_users_to_admin_status[u.user.username].admin
-                            session.add(u)
-                        session.commit()
+                            updated_users_to_admin_status = {u.username: u for u in updated_users}
+                            logger.info("current_users_to_admin_status:{}".format(updated_users_to_admin_status))
+                            for u in o.project.project_users:
+                                u.admin = updated_users_to_admin_status[u.user.username].admin
+                                session.add(u)
+                            session.commit()
 
-                        if current_creator:
-                            # reset the creator by finding that updated user again and updating it.
-                            current_creator = session.query(ProjectUser)\
-                                .filter(ProjectUser.project_id == o.id)\
-                                .filter(ProjectUser.user_id == current_creator.user_id)\
-                                .one_or_none()
                             if current_creator:
-                                current_creator.creator = True
-                                session.add(current_creator)
-                                session.commit()
+                                # reset the creator by finding that updated user again and updating it.
+                                current_creator = session.query(ProjectUser)\
+                                    .filter(ProjectUser.project_id == o.id)\
+                                    .filter(ProjectUser.user_id == current_creator.user_id)\
+                                    .one_or_none()
+                                if current_creator:
+                                    current_creator.creator = True
+                                    session.add(current_creator)
+                                    session.commit()
+                    except GetUsersForProjectNotSupported:
+                        logger.info(f"Not updating users for project:{o.project.id} system_id:{o.system_id}")
+                        pass
+
 
                     # perform the importing
                     if o.watch_content:
