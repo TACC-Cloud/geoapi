@@ -70,26 +70,6 @@ class AgaveFileListing:
     def ext(self):
         return self.path.suffix.lstrip('.').lower()
 
-    @property
-    def uuid(self):
-        """
-        In the files `_links` is an href to metadata via associationIds. The
-        `associationId` is the UUID of this file. Use urlparse to parse the URL and then
-        the query. The `q` query parameter is a JSON string in the form::
-
-            {"assocationIds": "{{ uuid }}"}
-
-        :return: string: the UUID for the file
-        """
-        if 'metadata' in self._links:
-            assoc_meta_href = self._links['metadata']['href']
-            parsed_href = urlparse(assoc_meta_href)
-            query_dict = parse_qs(parsed_href.query)
-            if 'q' in query_dict:
-                meta_q = json.loads(query_dict['q'][0])
-                return meta_q.get('associationIds')
-        return None
-
 
 # TODO_TAPISV# rename AgaveUtils to TapisUtils
 class AgaveUtils:
@@ -314,7 +294,8 @@ def get_metadata_using_service_account(tenant_id: str, system_id: str, path: str
     :return: dict
     """
     logger.debug("tenant:{}, system_id: {} , path:{}".format(tenant_id, system_id, path))
-    client = service_account_client(tenant_id)
-    uuid = client.listing(system_id, path)[0].uuid
-    meta = client.getMetaAssociated(uuid)
+    # client = service_account_client(tenant_id)
+    #uuid = client.listing(system_id, path)[0].uuid
+    # TODO_TAPISV3 See https://tacc-main.atlassian.net/browse/WG-254
+    meta = {} # client.getMetaAssociated(uuid)
     return meta
