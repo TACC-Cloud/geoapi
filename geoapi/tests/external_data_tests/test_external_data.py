@@ -44,21 +44,13 @@ def agave_utils_with_geojson_file(geojson_file_fixture):
     with patch('geoapi.tasks.external_data.AgaveUtils') as MockAgaveUtils:
         filesListing = [
             AgaveFileListing({
-                "system": "testSystem",
                 "path": "/testPath",
                 "type": "dir",
-                "length": 4,
-                "_links": "links",
-                "mimeType": "folder",
                 "lastModified": "2020-08-31T12:00:00Z"
             }),
             AgaveFileListing({
-                "system": "testSystem",
                 "type": "file",
-                "length": 4096,
                 "path": "/testPath/file.json",
-                "_links": "links",
-                "mimeType": "application/json",
                 "lastModified": "2020-08-31T12:00:00Z"
             })
         ]
@@ -73,21 +65,13 @@ def agave_utils_with_bad_image_file(image_file_no_location_fixture):
         with patch('geoapi.utils.agave.AgaveUtils') as MockAgaveUtilsInUtils:
             filesListing = [
                     AgaveFileListing({
-                        "system": "testSystem",
                         "path": "/testPath",
                         "type": "dir",
-                        "length": 4,
-                        "_links": "links",
-                        "mimeType": "folder",
                         "lastModified": "2020-08-31T12:00:00Z"
                     }),
                     AgaveFileListing({
-                        "system": "testSystem",
                         "type": "file",
-                        "length": 4096,
                         "path": "/testPath/file_no_location_data.jpg",
-                        "_links": "links",
-                        "mimeType": "application/json",
                         "lastModified": "2020-08-31T12:00:00Z"
                     })
                 ]
@@ -106,21 +90,13 @@ def agave_utils_with_bad_image_file(image_file_no_location_fixture):
 def agave_utils_with_image_file_from_rapp_folder(image_file_fixture):
     filesListing = [
         AgaveFileListing({
-            "system": "testSystem",
             "path": "/RApp",
             "type": "dir",
-            "length": 4,
-            "_links": "links",
-            "mimeType": "folder",
             "lastModified": "2020-08-31T12:00:00Z"
         }),
         AgaveFileListing({
-            "system": "testSystem",
             "type": "file",
-            "length": 4096,
             "path": "/RApp/file.jpg",
-            "_links": "links",
-            "mimeType": "application/jpg",
             "lastModified": "2020-08-31T12:00:00Z"
         })
     ]
@@ -150,41 +126,25 @@ def agave_utils_listing_with_single_trash_folder_of_image(image_file_fixture):
 
     top_level_file_listing = [
         AgaveFileListing({
-            "system": "testSystem",
             "path": "/",
             "type": "dir",
-            "length": 4,
-            "_links": "links",
-            "mimeType": "folder",
             "lastModified": "2020-08-31T12:00:00Z"
         }),
         AgaveFileListing({
-            "system": "testSystem",
             "path": "/.Trash",
             "type": "dir",
-            "length": 4,
-            "_links": "links",
-            "mimeType": "folder",
             "lastModified": "2020-08-31T12:00:00Z"
         })
     ]
     subfolder_file_listing = [
         AgaveFileListing({
-            "system": "testSystem",
             "path": "/.Trash",
             "type": "dir",
-            "length": 4,
-            "_links": "links",
-            "mimeType": "folder",
             "lastModified": "2020-08-31T12:00:00Z"
         }),
         AgaveFileListing({
-            "system": "testSystem",
             "type": "file",
-            "length": 4096,
             "path": "/.Trash/file.jpg",
-            "_links": "links",
-            "mimeType": "application/jpg",
             "lastModified": "2020-08-31T12:00:00Z"
         })
     ]
