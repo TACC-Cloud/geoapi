@@ -1,6 +1,7 @@
 from geoapi.services.images import ImageService, get_exif_location
 from geoapi.exceptions import InvalidEXIFData
 from PIL import Image, ImageChops
+from geoapi.utils.geo_location import GeoLocation
 import pytest
 
 
@@ -21,13 +22,13 @@ def test_image_service_rotations(flipped_image_fixture, corrected_image_fixture)
     # check lat long
     true_long = -81.64792777777778
     true_lat = 24.596927777777776
-    assert imdata.coordinates[0] - true_long < 0.0001
-    assert imdata.coordinates[1] - true_lat < 0.0001
+    assert imdata.coordinates.longitude - true_long < 0.0001
+    assert imdata.coordinates.latitude - true_lat < 0.0001
 
 
 def test_get_exif_location(image_file_fixture):
     coordinates = get_exif_location(image_file_fixture)
-    assert coordinates == (-80.78037499999999, 32.61850555555556)
+    assert coordinates == GeoLocation(longitude=-80.78037499999999, latitude=32.61850555555556)
 
 
 def test_get_exif_location_missing(image_file_no_location_fixture):
@@ -37,9 +38,12 @@ def test_get_exif_location_missing(image_file_no_location_fixture):
 
 def test_process_image(image_file_fixture):
     imdata = ImageService.processImage(image_file_fixture)
-    assert imdata.coordinates == (-80.78037499999999, 32.61850555555556)
+    assert imdata.coordinates == GeoLocation(longitude=-80.78037499999999, latitude=32.61850555555556)
 
 
 def test_process_image_location_missing(image_file_no_location_fixture):
     with pytest.raises(InvalidEXIFData):
         ImageService.processImage(image_file_no_location_fixture)
+
+    imdata = ImageService.processImage(image_file_no_location_fixture, exif_geolocation=False)
+    assert imdata.coordinates is None
