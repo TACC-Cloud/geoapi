@@ -8,13 +8,13 @@ from dataclasses import dataclass
 import requests
 import pathlib
 from typing import List, Dict, IO
-from urllib.parse import quote, urlparse, parse_qs
+from urllib.parse import quote
 import json
 from geoapi.log import logging
 from dateutil import parser
 
 from geoapi.settings import settings
-from geoapi.utils.tenants import get_api_server, get_service_accounts
+from geoapi.utils.tenants import get_api_server
 from geoapi.exceptions import MissingServiceAccount
 from geoapi.custom import custom_system_user_retrieval
 from geoapi.models import User
@@ -307,10 +307,10 @@ def get_metadata_using_service_account(tenant_id: str, system_id: str, path: str
     :return: dictionary containing the metadata (including geolocation) of a file
     """
     logger.debug("getting metadata. tenant:{}, system_id: {} , path:{}".format(tenant_id, system_id, path))
-    
+
     # TODO_TAPISV3 See https://tacc-main.atlassian.net/browse/WG-254
     return {}
-    
+
     client = service_account_client(tenant_id)
     meta_data_query = {
             "name": "designsafe.file",

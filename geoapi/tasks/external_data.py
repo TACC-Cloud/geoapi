@@ -389,7 +389,7 @@ def refresh_observable_projects():
             logger.info("Starting to refresh all observable projects")
             obs = session.query(ObservableDataProject).all()
             for i, o in enumerate(obs):
-                # TODO_TAPISv3 can this be refactored into a command that is used here and by ProjectService or can this be put into its own method for clarity
+                # TODO_TAPISv3 refactored into a command (used here and by ProjectService) or just put into its own method for clarity?
                 try:
                     try:
                         # we need a user with a jwt for importing
@@ -436,7 +436,6 @@ def refresh_observable_projects():
                     except GetUsersForProjectNotSupported:
                         logger.info(f"Not updating users for project:{o.project.id} system_id:{o.system_id}")
                         pass
-
 
                     # perform the importing
                     if o.watch_content:

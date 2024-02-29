@@ -1,7 +1,7 @@
 import pytest
 import os
 import tempfile
-from unittest.mock import patch, call
+from unittest.mock import patch
 from geoapi.exceptions import MissingServiceAccount
 from geoapi.utils.agave import service_account_client, AgaveUtils, AgaveFileGetError
 
