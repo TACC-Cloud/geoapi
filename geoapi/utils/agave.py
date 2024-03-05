@@ -248,7 +248,7 @@ class AgaveUtils:
         files = {
             'file': (file_name, file_like_object, 'plain/text')
         }
-        file_import_url = self.base_url + quote(f"/v3/files/ops/{system_id}{system_path}{file_name}")
+        file_import_url = self.base_url + quote(f"/v3/files/ops/{system_id}/{system_path}/{file_name}")
         response = self.client.post(file_import_url, files=files)
         response.raise_for_status()
 
@@ -256,7 +256,7 @@ class AgaveUtils:
         """
         Deletes a file on a Tapis storage system.
         """
-        file_delete_url = self.base_url + quote(f"/v3/files/ops/{system_id}{file_path}")
+        file_delete_url = self.base_url + quote(f"/v3/files/ops/{system_id}/{file_path}")
         response = self.client.delete(file_delete_url)
         response.raise_for_status()
 
