@@ -286,10 +286,8 @@ def import_from_files_from_path(session, tenant_id: str, userId: int, systemId: 
         NotificationsService.create(session, user, "error", f"Error importing as unable to access {systemId}/{path}")
         return
 
-    # First item is always a reference to self
-    files_in_directory = listing[1:]
-    filenames_in_directory = [str(f.path) for f in files_in_directory]
-    for item in files_in_directory:
+    filenames_in_directory = [str(f.path) for f in listing]
+    for item in listing:
         if item.type == "dir" and not str(item.path).endswith("/.Trash"):
             import_from_files_from_path(session, tenant_id, userId, systemId, item.path, projectId)
         item_system_path = os.path.join(systemId, str(item.path).lstrip("/"))
