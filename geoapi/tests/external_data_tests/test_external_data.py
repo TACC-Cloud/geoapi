@@ -44,11 +44,6 @@ def agave_utils_with_geojson_file(geojson_file_fixture):
     with patch('geoapi.tasks.external_data.AgaveUtils') as MockAgaveUtils:
         filesListing = [
             AgaveFileListing({
-                "path": "/testPath",
-                "type": "dir",
-                "lastModified": "2020-08-31T12:00:00Z"
-            }),
-            AgaveFileListing({
                 "type": "file",
                 "path": "/testPath/file.json",
                 "lastModified": "2020-08-31T12:00:00Z"
@@ -64,11 +59,6 @@ def agave_utils_with_bad_image_file(image_file_no_location_fixture):
     with patch('geoapi.tasks.external_data.AgaveUtils') as MockAgaveUtils:
         with patch('geoapi.utils.agave.AgaveUtils') as MockAgaveUtilsInUtils:
             filesListing = [
-                    AgaveFileListing({
-                        "path": "/testPath",
-                        "type": "dir",
-                        "lastModified": "2020-08-31T12:00:00Z"
-                    }),
                     AgaveFileListing({
                         "type": "file",
                         "path": "/testPath/file_no_location_data.jpg",
@@ -89,11 +79,6 @@ def agave_utils_with_bad_image_file(image_file_no_location_fixture):
 @pytest.fixture(scope="function")
 def agave_utils_with_image_file_from_rapp_folder(requests_mock, image_file_fixture):
     filesListing = [
-        AgaveFileListing({
-            "path": "/RApp",
-            "type": "dir",
-            "lastModified": "2020-08-31T12:00:00Z"
-        }),
         AgaveFileListing({
             "type": "file",
             "path": "/RApp/file.jpg",
@@ -134,22 +119,12 @@ def agave_utils_listing_with_single_trash_folder_of_image(image_file_fixture):
 
     top_level_file_listing = [
         AgaveFileListing({
-            "path": "/",
-            "type": "dir",
-            "lastModified": "2020-08-31T12:00:00Z"
-        }),
-        AgaveFileListing({
             "path": "/.Trash",
             "type": "dir",
             "lastModified": "2020-08-31T12:00:00Z"
         })
     ]
     subfolder_file_listing = [
-        AgaveFileListing({
-            "path": "/.Trash",
-            "type": "dir",
-            "lastModified": "2020-08-31T12:00:00Z"
-        }),
         AgaveFileListing({
             "type": "file",
             "path": "/.Trash/file.jpg",
