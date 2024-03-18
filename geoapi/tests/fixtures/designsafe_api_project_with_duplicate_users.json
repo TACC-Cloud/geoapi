@@ -20,22 +20,46 @@
         "associationIds": []
     },
     "value": {
-        "teamMembers": [
-            "user4",
-            "user5",
-            "user_pi",
-            "user_copi_1",
-            "user_copi_2"
+        "users": [
+            {
+                "role": 'pi',
+                "username": 'user_pi'
+            },
+            {
+                "role": 'co_pi',
+                "username": 'user_copi_1'
+            },
+            {
+                "role": 'co_pi',
+                "username": 'user_copi_2'
+            },
+            {
+                "role": 'team_member',
+                "username": 'user4'
+            },
+            {
+                "role": 'team_member',
+                "username": 'user5'
+            },
+            {
+                "role": 'team_member',
+                "username": 'user_copi_1'
+            },
+            {
+                "role": 'team_member',
+                "username": 'user_copi_2'
+            },
+            {
+                "role": 'team_member',
+                "username": 'user_pi'
+            }
         ],
-        "guestMembers": [],
-        "coPis": ["user_copi_1","user_copi_2"],
         "projectType": "None",
         "dataType": "",
         "teamOrder": [],
         "projectId": "PRJ-1234",
         "description": "",
         "title": "Some project",
-        "pi": "user_pi",
         "awardNumber": [
             "[",
             "{",
