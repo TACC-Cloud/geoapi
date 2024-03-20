@@ -45,7 +45,7 @@ def get_system_users(user, system_id: str):
 
     users = {}
     for u in project["users"]:
-        is_admin = user["role"] in ("pi", "co_pi")
+        is_admin = u["role"] in ("pi", "co_pi")
         if u["username"] not in users:
             users[u["username"]] = SystemUser(username=u["username"], admin=is_admin)
         else:
