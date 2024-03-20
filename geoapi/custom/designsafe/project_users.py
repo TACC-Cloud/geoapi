@@ -1,20 +1,12 @@
 from geoapi.exceptions import GetUsersForProjectNotSupported
+from geoapi.log import logger
 
 
-def get_system_users(user, system_id: str):
+def get_project_data(system_id: str) -> dict:
     """
-    Get systems users based on the DesignSafe project's co-pis and pis.
-
-    :param user: user to use when quering system/map users
-    :param system_id: str
-    :raises GetUsersForProjectNotSupported if system is not a DesignSafe Project
-    :return: list of users with admin status
+    Get project data for a certain system
     """
-
-    from geoapi.utils.agave import SystemUser
-
-    if not system_id.startswith("project-"):
-        raise GetUsersForProjectNotSupported(f"System:{system_id} is not a project so unable to get users")
+    logger.debug(f"Getting project metadata for system:{system_id}")
 
     # TODO_TAPISV3 https://tacc-main.atlassian.net/browse/WG-257
     # TODO_TAPISV3 projects endpoint is /api/projects on designsafe portal
@@ -27,9 +19,29 @@ def get_system_users(user, system_id: str):
 
     import os
     import json
+
     home = os.path.dirname(__file__)
     with open(os.path.join(home, '../../tests/fixtures/designsafe_api_project_hazmapper_designsafe_v3.json'), 'rb') as f:
         project = json.loads(f.read())
+        return project
+
+
+def get_system_users(user, system_id: str):
+    """
+    Get systems users based on the DesignSafe project's co-pis and pis.
+
+    :param user: user to use when querying system/map users
+    :param system_id: str
+    :raises GetUsersForProjectNotSupported if system is not a DesignSafe Project
+    :return: A list of SystemUser instances, each with a username and an admin status
+    """
+
+    from geoapi.utils.agave import SystemUser
+
+    if not system_id.startswith("project-"):
+        raise GetUsersForProjectNotSupported(f"System:{system_id} is not a project so unable to get users")
+
+    project = get_project_data(system_id)
 
     users = {}
     for u in project["users"]:
