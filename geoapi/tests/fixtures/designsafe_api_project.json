@@ -22,19 +22,19 @@
     "value": {
         "users": [
             {
-                "role": 'pi',
+                "role": "pi",
                 "username": "user_pi"
             },
             {
-                "role": 'co_pi',
+                "role": "co_pi",
                 "username": "user_copi"
             },
             {
-                "role": 'team_member',
+                "role": "team_member",
                 "username": "user3"
             },
                         {
-                "role": 'team_member',
+                "role": "team_member",
                 "username": "user4"
             }
 
@@ -49,7 +49,7 @@
             "[",
             "{",
             "u",
-            "'",
+            "",
             "n",
             "a",
             "m",

@@ -22,36 +22,40 @@
     "value": {
         "users": [
             {
-                "role": 'pi',
-                "username": 'user_pi'
+                "role": "pi",
+                "username": "user_pi"
             },
             {
-                "role": 'co_pi',
-                "username": 'user_copi_1'
+                "role": "co_pi",
+                "username": "user_copi_1"
             },
             {
-                "role": 'co_pi',
-                "username": 'user_copi_2'
+                "role": "co_pi",
+                "username": "user_copi_2"
             },
             {
-                "role": 'team_member',
-                "username": 'user4'
+                "role": "team_member",
+                "username": "user4"
             },
             {
-                "role": 'team_member',
-                "username": 'user5'
+                "role": "team_member",
+                "username": "user5"
             },
             {
-                "role": 'team_member',
-                "username": 'user_copi_1'
+                "role": "team_member",
+                "username": "user_copi_1"
             },
             {
-                "role": 'team_member',
-                "username": 'user_copi_2'
+                "role": "team_member",
+                "username": "user_copi_2"
             },
             {
-                "role": 'team_member',
-                "username": 'user_pi'
+                "role": "team_member",
+                "username": "user_pi"
+            },
+            {
+                "role": "co_pi",
+                "username": "user5"
             }
         ],
         "projectType": "None",
@@ -64,7 +68,7 @@
             "[",
             "{",
             "u",
-            "'",
+            "",
             "n",
             "a",
             "m",
