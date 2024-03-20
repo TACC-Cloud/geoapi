@@ -45,13 +45,11 @@ def get_system_users(user, system_id: str):
 
     users = {}
     for u in project["users"]:
-        admin = False
-        if u["role"] in ["pi", "co_pi"]:
-            admin = True
+        is_admin = user["role"] in ("pi", "co_pi")
         if u["username"] not in users:
-            users[u["username"]] = SystemUser(username=u["username"], admin=admin)
+            users[u["username"]] = SystemUser(username=u["username"], admin=is_admin)
         else:
-            # there can be duplicates (seen in v2) so we want to ensure we have the "admin" version of a duplicate
+            # there can be duplicates (seen in v2) so we want to ensure we have the "admin=True" version of a duplicate
             if users[u["username"]].admin:
-                users[u["username"]] = SystemUser(username=u["username"], admin=admin)
+                users[u["username"]] = SystemUser(username=u["username"], admin=is_admin)
     return list(users.values())
