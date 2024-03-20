@@ -50,6 +50,6 @@ def get_system_users(user, system_id: str):
             users[u["username"]] = SystemUser(username=u["username"], admin=is_admin)
         else:
             # there can be duplicates (seen in v2) so we want to ensure we have the "admin=True" version of a duplicate
-            if users[u["username"]].admin:
+            if is_admin:
                 users[u["username"]] = SystemUser(username=u["username"], admin=is_admin)
     return list(users.values())
