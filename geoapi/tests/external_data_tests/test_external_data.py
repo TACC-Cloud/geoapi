@@ -40,16 +40,19 @@ def task_session_commit_throws_exception():
 @pytest.fixture(scope="function")
 def agave_utils_with_geojson_file(geojson_file_fixture):
     with patch('geoapi.tasks.external_data.AgaveUtils') as MockAgaveUtils:
-        filesListing = [
-            AgaveFileListing({
-                "type": "file",
-                "path": "/testPath/file.json",
-                "lastModified": "2020-08-31T12:00:00Z"
-            })
-        ]
-        MockAgaveUtils().listing.return_value = filesListing
-        MockAgaveUtils().getFile.return_value = geojson_file_fixture
-        yield MockAgaveUtils()
+        with patch('geoapi.utils.agave.AgaveUtils') as MockAgaveUtilsInUtils:
+            filesListing = [
+                AgaveFileListing({
+                    "type": "file",
+                    "path": "/testPath/file.json",
+                    "lastModified": "2020-08-31T12:00:00Z"
+                })
+            ]
+            MockAgaveUtils().listing.return_value = filesListing
+            MockAgaveUtils().getFile.return_value = geojson_file_fixture
+            MockAgaveUtilsInUtils().listing.return_value = filesListing
+            MockAgaveUtilsInUtils().getFile.return_value = geojson_file_fixture
+            yield MockAgaveUtils()
 
 
 @pytest.fixture(scope="function")
@@ -354,10 +357,9 @@ def test_import_from_agave_failed_dbsession_rollback(agave_utils_with_geojson_fi
 
 
 @pytest.mark.worker
-@pytest.mark.skip(reason="TODO_TAPISV3 See https://tacc-main.atlassian.net/browse/WG-254")
 def test_refresh_observable_projects(user1,
                                      user2,
-                                     agave_utils_with_image_file_from_rapp_folder,
+                                     agave_utils_with_geojson_file,
                                      observable_projects_fixture,
                                      get_system_users_mock,
                                      caplog):
@@ -371,7 +373,9 @@ def test_refresh_observable_projects(user1,
     db_session.refresh(observable_projects_fixture.project)
 
     assert "rollback" not in caplog.text
-    assert len(os.listdir(get_project_asset_dir(observable_projects_fixture.project_id))) == 2
+    features = db_session.query(Feature).all()
+    # the test geojson has 3 features in it
+    assert len(features) == 3
     # now two users with one being the admin and creator
     assert [(user1.username, True, True), (user2.username, False, False)] == [(u.user.username, u.admin, u.creator)
                                                                               for u in observable_projects_fixture.project.project_users]

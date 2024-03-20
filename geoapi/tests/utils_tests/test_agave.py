@@ -36,8 +36,7 @@ def test_get_file(user1, tapis_url, requests_mock, retry_sleep_seconds_mock, ima
     agave_utils.getFile(system, path)
 
 
-@pytest.mark.skip(reason="Skipping until https://tacc-main.atlassian.net/browse/WG-257")
-def test_get_file_to_path(requests_mock, tapis_url, projects_fixture, retry_sleep_seconds_mock, image_file_fixture):
+def test_get_file_to_path(user1, requests_mock, tapis_url, projects_fixture, retry_sleep_seconds_mock, image_file_fixture):
     system = "system"
     path = "path"
     requests_mock.get(tapis_url + f"/v3/files/content/{system}/{path}",
@@ -47,19 +46,18 @@ def test_get_file_to_path(requests_mock, tapis_url, projects_fixture, retry_slee
     with tempfile.TemporaryDirectory() as temp_dir:
         to_path = os.path.join(temp_dir, "test.jpg")
 
-        agave_utils = AgaveUtils()
+        agave_utils = AgaveUtils(user1)
         agave_utils.get_file_to_path(system, path, to_path)
         assert os.path.isfile(to_path)
 
 
-@pytest.mark.skip(reason="Skipping until https://tacc-main.atlassian.net/browse/WG-257")
-def test_get_file_retry_after_first_attempt(requests_mock, retry_sleep_seconds_mock, image_file_fixture):
+def test_get_file_retry_after_first_attempt(user1, tapis_url, requests_mock, retry_sleep_seconds_mock, image_file_fixture):
     system = "system"
     path = "path"
     responses = [{'status_code': 500} for _ in range(2)]
     responses.append({"status_code": 200, "body": image_file_fixture})
-    requests_mock.get(AgaveUtils.BASE_URL + f"/v3/files/content/{system}/{path}", responses)
-    agave_utils = AgaveUtils()
+    requests_mock.get(tapis_url + f"/v3/files/content/{system}/{path}", responses)
+    agave_utils = AgaveUtils(user1)
     agave_utils.getFile(system, path)
 
 

@@ -23,7 +23,7 @@ def test_metadata_but_no_geolocation(requests_mock, user1, tapis_metadata_withou
     assert get_geolocation_from_file_metadata(user1, system_id=SYSTEM, path=PATH) is None
 
 
-@pytest.mark.skip(reason="Skipping until https://tacc-main.atlassian.net/browse/WG-257")
+@pytest.mark.skip(reason="Skipping until https://tacc-main.atlassian.net/browse/WG-254")
 def test_metadata_with_geolocation(requests_mock, user1, tapis_metadata_with_geolocation):
     requests_mock.get(METADATA_ROUTE, json=tapis_metadata_with_geolocation)
 
