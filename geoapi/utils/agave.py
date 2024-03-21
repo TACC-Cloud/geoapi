@@ -161,7 +161,6 @@ class AgaveUtils:
         client = service_account_client(self.tenant_id).client if use_service_account else self.client
 
         # TODO_TAPISV3 what error code do we get if tapis is unable to get our file, but we should try again (500?)
-        logger.debug(self.base_url + url)
         with client.get(self.base_url + url, stream=True) as r:
 
             if r.status_code > 400:
