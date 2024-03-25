@@ -35,6 +35,7 @@ requests-mock = "^1.10.0"
 ExifRead = "^2.3.2"
 flake8 = "^5.0.4"
 urllib3 = "<2"
+pytest-mock = "^3.12.0"
 
 [tool.poetry.dev-dependencies]
 

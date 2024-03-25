@@ -9,7 +9,7 @@ from celery import uuid as celery_uuid
 import json
 
 from geoapi.celery_app import app
-from geoapi.exceptions import InvalidCoordinateReferenceSystem, MissingServiceAccount
+from geoapi.exceptions import InvalidCoordinateReferenceSystem, MissingServiceAccount, GetUsersForProjectNotSupported
 from geoapi.models import User, ProjectUser, ObservableDataProject, Task
 from geoapi.utils.agave import (AgaveUtils, SystemUser, get_system_users, get_metadata_using_service_account,
                                 AgaveFileGetError, AgaveListingError)
@@ -286,13 +286,11 @@ def import_from_files_from_path(session, tenant_id: str, userId: int, systemId: 
         NotificationsService.create(session, user, "error", f"Error importing as unable to access {systemId}/{path}")
         return
 
-    # First item is always a reference to self
-    files_in_directory = listing[1:]
-    filenames_in_directory = [str(f.path) for f in files_in_directory]
-    for item in files_in_directory:
+    filenames_in_directory = [str(f.path) for f in listing]
+    for item in listing:
         if item.type == "dir" and not str(item.path).endswith("/.Trash"):
             import_from_files_from_path(session, tenant_id, userId, systemId, item.path, projectId)
-        item_system_path = os.path.join(item.system, str(item.path).lstrip("/"))
+        item_system_path = os.path.join(systemId, str(item.path).lstrip("/"))
         if features_util.is_file_supported_for_automatic_scraping(item_system_path):
             try:
                 # first check if there already is a file in the DB
@@ -307,10 +305,10 @@ def import_from_files_from_path(session, tenant_id: str, userId: int, systemId: 
                 if features_util.is_supported_file_type_in_rapp_folder_and_needs_metadata(item_system_path):
                     logger.info(f"RApp: importing:{item_system_path} for user:{user.username}. Using metadata service for geolocation.")
                     try:
-                        meta = get_metadata_using_service_account(tenant_id, item.system, item.path)
+                        meta = get_metadata_using_service_account(tenant_id, systemId, item.path)
                     except MissingServiceAccount:
                         logger.error(
-                            "No service account. Unable to get metadata for {}:{}".format(item.system, item.path))
+                            "No service account. Unable to get metadata for {}:{}".format(systemId, item.path))
                         return {}
 
                     logger.debug("metadata from service account for file:{} : {}".format(item_system_path, meta))
@@ -389,48 +387,53 @@ def refresh_observable_projects():
             logger.info("Starting to refresh all observable projects")
             obs = session.query(ObservableDataProject).all()
             for i, o in enumerate(obs):
+                # TODO_TAPISv3 refactored into a command (used here and by ProjectService) or just put into its own method for clarity?
                 try:
-                    # we need a user with a jwt for importing
-                    importing_user = next((u for u in o.project.users if u.jwt))
-                    logger.info(f"Refreshing observable project ({i}/{len(obs)}): observer:{importing_user} "
-                                f"system:{o.system_id} path:{o.path} project:{o.project.id}")
+                    try:
+                        # we need a user with a jwt for importing
+                        importing_user = next((u for u in o.project.users if u.jwt))
+                        logger.info(f"Refreshing observable project ({i}/{len(obs)}): observer:{importing_user} "
+                                    f"system:{o.system_id} path:{o.path} project:{o.project.id}")
 
-                    # we need to add any users who have been added to the project/system or update if their admin-status
-                    # has changed
-                    current_users = set([SystemUser(username=u.user.username, admin=u.admin)
-                                         for u in o.project.project_users])
-                    updated_users = set(get_system_users(o.project.tenant_id, importing_user.jwt, o.system_id))
+                        # we need to add any users who have been added to the project/system or update if their admin-status
+                        # has changed
+                        current_users = set([SystemUser(username=u.user.username, admin=u.admin)
+                                             for u in o.project.project_users])
+                        updated_users = set(get_system_users(importing_user, o.system_id))
 
-                    current_creator = session.query(ProjectUser)\
-                        .filter(ProjectUser.project_id == o.id)\
-                        .filter(ProjectUser.creator is True).one_or_none()
+                        current_creator = session.query(ProjectUser)\
+                            .filter(ProjectUser.project_id == o.id)\
+                            .filter(ProjectUser.creator is True).one_or_none()
 
-                    if current_users != updated_users:
-                        logger.info("Updating users from:{} to:{}".format(current_users, updated_users))
+                        if current_users != updated_users:
+                            logger.info("Updating users from:{} to:{}".format(current_users, updated_users))
 
-                        # set project users
-                        o.project.users = [UserService.getOrCreateUser(session, u.username, tenant=o.project.tenant_id)
-                                           for u in updated_users]
-                        session.add(o)
-                        session.commit()
+                            # set project users
+                            o.project.users = [UserService.getOrCreateUser(session, u.username, tenant=o.project.tenant_id)
+                                               for u in updated_users]
+                            session.add(o)
+                            session.commit()
 
-                        updated_users_to_admin_status = {u.username: u for u in updated_users}
-                        logger.info("current_users_to_admin_status:{}".format(updated_users_to_admin_status))
-                        for u in o.project.project_users:
-                            u.admin = updated_users_to_admin_status[u.user.username].admin
-                            session.add(u)
-                        session.commit()
+                            updated_users_to_admin_status = {u.username: u for u in updated_users}
+                            logger.info("current_users_to_admin_status:{}".format(updated_users_to_admin_status))
+                            for u in o.project.project_users:
+                                u.admin = updated_users_to_admin_status[u.user.username].admin
+                                session.add(u)
+                            session.commit()
 
-                        if current_creator:
-                            # reset the creator by finding that updated user again and updating it.
-                            current_creator = session.query(ProjectUser)\
-                                .filter(ProjectUser.project_id == o.id)\
-                                .filter(ProjectUser.user_id == current_creator.user_id)\
-                                .one_or_none()
                             if current_creator:
-                                current_creator.creator = True
-                                session.add(current_creator)
-                                session.commit()
+                                # reset the creator by finding that updated user again and updating it.
+                                current_creator = session.query(ProjectUser)\
+                                    .filter(ProjectUser.project_id == o.id)\
+                                    .filter(ProjectUser.user_id == current_creator.user_id)\
+                                    .one_or_none()
+                                if current_creator:
+                                    current_creator.creator = True
+                                    session.add(current_creator)
+                                    session.commit()
+                    except GetUsersForProjectNotSupported:
+                        logger.info(f"Not updating users for project:{o.project.id} system_id:{o.system_id}")
+                        pass
 
                     # perform the importing
                     if o.watch_content:

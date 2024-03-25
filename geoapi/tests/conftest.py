@@ -424,21 +424,13 @@ def get_point_cloud_info_mock():
 def agave_file_listings_mock():
     filesListing = [
         AgaveFileListing({
-            "system": "testSystem",
             "path": "/testPath",
             "type": "dir",
-            "length": 4,
-            "_links": "links",
-            "mimeType": "folder",
             "lastModified": "2020-08-31T12:00:00Z"
         }),
         AgaveFileListing({
-            "system": "testSystem",
             "type": "file",
-            "length": 4096,
             "path": "/testPath/file.json",
-            "_links": "links",
-            "mimeType": "application/json",
             "lastModified": "2020-08-31T12:00:00Z"
         })
     ]

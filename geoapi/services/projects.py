@@ -11,7 +11,7 @@ from geoapi.utils.users import is_anonymous
 from geoapi.tasks.external_data import import_from_agave
 from geoapi.tasks.projects import remove_project_assets
 from geoapi.log import logger
-from geoapi.exceptions import ApiException, ObservableProjectAlreadyExists
+from geoapi.exceptions import ApiException, ObservableProjectAlreadyExists, GetUsersForProjectNotSupported
 from geoapi.custom import custom_on_project_creation, custom_on_project_deletion
 
 
@@ -90,10 +90,14 @@ class ProjectsService:
             watch_content=watch_content
         )
 
-        system_users = get_system_users(proj.tenant_id, user.jwt, proj.system_id)
-        logger.info("Initial update of project:{} to have the following users: {}".format(name, system_users))
-        users = [UserService.getOrCreateUser(database_session, u.username, tenant=proj.tenant_id) for u in system_users]
-        proj.users = users
+        system_users = None
+        try:
+            system_users = get_system_users(user, proj.system_id)
+            logger.info("Initial update of project:{} to have the following users: {}".format(name, system_users))
+            users = [UserService.getOrCreateUser(database_session, u.username, tenant=proj.tenant_id) for u in system_users]
+            proj.users = users
+        except GetUsersForProjectNotSupported:
+            logger.info("Not getting users for system:{proj.system_id}")
 
         obs.project = proj
 
@@ -108,10 +112,11 @@ class ProjectsService:
             else:
                 raise e
 
-        # Initialize the admin status
-        users_dict = {u.username: u for u in system_users}
-        for u in obs.project.project_users:
-            u.admin = users_dict[u.user.username].admin
+        if system_users:
+            # Initialize the admin status
+            users_dict = {u.username: u for u in system_users}
+            for u in obs.project.project_users:
+                u.admin = users_dict[u.user.username].admin
 
         if watch_content:
             import_from_agave.apply_async(args=[obs.project.tenant_id, user.id, obs.system_id, obs.path, obs.project_id])
