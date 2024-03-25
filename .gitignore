@@ -130,3 +130,6 @@ dmypy.json
 geoapi_client/
 swagger.json
 client/swagger-codegen/
+
+# celerybeat schedule files
+celerybeat-schedule.*

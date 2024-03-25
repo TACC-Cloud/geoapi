@@ -17,7 +17,7 @@ def on_project_creation(database_session, user: User, project: Project):
         file_content = json.dumps({"uuid": str(project.uuid), "deployment": deployment})
         file_name = f"{project.system_file}.hazmapper"
         from geoapi.utils.agave import AgaveUtils
-        tapis = AgaveUtils(jwt=user.jwt)
+        tapis = AgaveUtils(user)
         tapis.create_file(system_id=project.system_id,
                           system_path=project.system_path,
                           file_name=file_name,
@@ -41,6 +41,7 @@ def on_project_creation(database_session, user: User, project: Project):
 
     try:
         # add metadata to DS projects (i.e. only when system_id starts with "project-"
+        # TODO_TAPISV3 https://tacc-main.atlassian.net/browse/WG-258
         if project.system_id.startswith("project-"):
             logger.debug(f"Adding metadata for user:{user.username}"
                          f" project:{project.id} project_uuid:{project.uuid} ")
@@ -58,7 +59,7 @@ def on_project_deletion(user: User, project: Project):
                      f" during deletion of project:{project.id} project_uuid:{project.uuid}"
                      f"system_id:{project.system_id} file_path:{file_path}")
         from geoapi.utils.agave import AgaveUtils
-        tapis = AgaveUtils(jwt=user.jwt)
+        tapis = AgaveUtils(user)
         tapis.delete_file(system_id=project.system_id,
                           file_path=file_path)
     except Exception:
@@ -68,6 +69,7 @@ def on_project_deletion(user: User, project: Project):
 
     try:
         # remove metadata for DS projects (i.e. only when system_id starts with "project-"
+        # TODO_TAPISV3 https://tacc-main.atlassian.net/browse/WG-258
         if project.system_id.startswith("project-"):
             logger.debug(f"Removing metadata for user:{user.username}"
                          f" during deletion of project:{project.id} project_uuid:{project.uuid} ")

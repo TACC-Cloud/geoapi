@@ -4,17 +4,14 @@ from geoapi.log import logging
 logger = logging.getLogger(__name__)
 
 
-def jwt_tenant(headers: Dict) -> (str, str, str):
+def get_jwt(headers: Dict) -> str:
     """
-    Extract the tenant info from the headers
+    Extract the jwt from the header
+
     :param headers: Dict
-    :return: (jwt_header_name: str, jwt_header: str, tenant_name: str
+    :return: jwt
     """
-    for k, v in headers.items():
-        if k.lower().startswith('x-jwt-assertion-'):
-            tenant_name = k.lower().split('x-jwt-assertion-')[1]
-            jwt_header_name = k
-            jwt = v
-            return jwt_header_name, jwt, tenant_name
+    if "X-Tapis-Token" in headers:
+        return headers["X-Tapis-Token"]
     else:
         raise ValueError("No JWT could be found")

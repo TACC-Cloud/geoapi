@@ -20,24 +20,36 @@
         "associationIds": []
     },
     "value": {
-        "teamMembers": [
-            "user3",
-            "user4"
+        "users": [
+            {
+                "role": "pi",
+                "username": "user_pi"
+            },
+            {
+                "role": "co_pi",
+                "username": "user_copi"
+            },
+            {
+                "role": "team_member",
+                "username": "user3"
+            },
+                        {
+                "role": "team_member",
+                "username": "user4"
+            }
+
         ],
-        "guestMembers": [],
-        "coPis": ["user_copi"],
         "projectType": "None",
         "dataType": "",
         "teamOrder": [],
         "projectId": "PRJ-1234",
         "description": "",
         "title": "Some project",
-        "pi": "user_pi",
         "awardNumber": [
             "[",
             "{",
             "u",
-            "'",
+            "",
             "n",
             "a",
             "m",
