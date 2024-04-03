@@ -1,5 +1,6 @@
 
 from flask import Flask
+from flask_socketio import SocketIO
 from geoapi.routes import api
 from geoapi.settings import settings as app_settings
 from geoapi.db import db_session
@@ -13,8 +14,21 @@ logging.basicConfig(format='%(asctime)s %(message)s', level=logging.INFO)
 
 
 app = Flask(__name__)
-api.init_app(app)
 app.config.from_object(app_settings)
+socketio = SocketIO(app)
+api.init_app(app)
+
+@socketio.on('connect')
+def handle_connect():
+    print('Client connected')
+
+@socketio.on('clientMessage')
+def handle_client_message(message):
+    print('Received message from client:', message)
+
+@socketio.on('disconnect')
+def handle_disconnect():
+    print('Client disconnected')
 
 
 @api.errorhandler(InvalidGeoJSON)
@@ -67,3 +81,6 @@ def handle_streetview_limit_exception(error: Exception):
 @app.teardown_appcontext
 def shutdown_session(exception=None):
     db_session.remove()
+
+if __name__ == '__main__':
+    socketio.run(app, port=8000, debug=True)
