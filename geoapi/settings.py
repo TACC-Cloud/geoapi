@@ -49,7 +49,7 @@ class UnitTestingConfig(LocalDevelopmentConfig):
 
 
 APP_ENV = os.environ.get('APP_ENV', '').lower()
-if APP_ENV == 'production' or APP_ENV == 'staging' or APP_ENV == 'dev':
+if APP_ENV == 'production' or APP_ENV == 'staging' or APP_ENV == 'dev' or APP_ENV == "experimental":
     settings = DeployedConfig
 elif APP_ENV == 'testing':
     settings = UnitTestingConfig
