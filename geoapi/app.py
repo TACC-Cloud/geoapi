@@ -18,6 +18,7 @@ app.config.from_object(app_settings)
 socketio = SocketIO(app, cors_allowed_origins='http://localhost:4200')
 api.init_app(app)
 
+
 @socketio.on('connect')
 def handle_connect():
     logging.info('Client connected')
@@ -106,4 +107,3 @@ def shutdown_session(exception=None):
 
 if __name__ == '__main__':
     socketio.run(app, port=8000, debug=True)
-
