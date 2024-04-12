@@ -91,7 +91,7 @@ services:
     image: taccaci/hazmapper:${HAZMAPPER_TAG}
     restart: always
     ports:
-      - 80:80
+      - 83:80
     container_name: hazmapper
 
   taggit:
