@@ -67,8 +67,6 @@ services:
       - geoapi
     volumes:
       - /assets:/assets
-    ports:
-      - 8000:8000
     dns:
       - 8.8.8.8
       - 8.8.4.4
