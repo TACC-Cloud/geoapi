@@ -24,10 +24,13 @@ services:
     image: nginx
     restart: always
     ports:
-      - 8888:80
+      - 80:80
+      - 443:443
     volumes:
       - /assets:/assets
       - ./nginx.conf:/etc/nginx/nginx.conf
+      - /etc/letsencrypt/live/${NGINX_SERVER_NAME}/fullchain.pem:/etc/ssl/certs/portal.cer
+      - /etc/letsencrypt/live/${NGINX_SERVER_NAME}/privkey.pem:/etc/ssl/private/portal.key
     logging:
       driver: syslog
       options:
