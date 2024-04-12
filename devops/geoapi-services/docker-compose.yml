@@ -112,7 +112,7 @@ services:
     image: containrrr/watchtower:1.7.1
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
-    command: --interval 300 api celerybeat hazmapper hazmapper-react taggit
+    command: --interval 300 geoapi geoapicelerybeat hazmapper hazmapper-react taggit
     # Watchtower configuration for development environment. This service monitors
     # and updates the specified containers every 5 min (300s). Staging/Production
     # use specific commit hash tags, so updates are controlled and do not affect
