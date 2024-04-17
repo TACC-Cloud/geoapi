@@ -1,10 +1,10 @@
-from geoapi.celery_app import app
+from geoapi.app import celery
 from geoapi.utils.assets import get_project_asset_dir
 from geoapi.log import logger
 import shutil
 
 
-@app.task()
+@celery.task()
 def remove_project_assets(project_id):
     """
     Remove all assets associated with a project.

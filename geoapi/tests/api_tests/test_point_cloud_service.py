@@ -7,7 +7,7 @@ from geoapi.services.point_cloud import PointCloudService
 from geoapi.services.features import FeaturesService
 from geoapi.models import User, Feature, FeatureAsset, PointCloud
 from geoapi.utils.assets import get_project_asset_dir, get_asset_path
-from geoapi.celery_app import app
+from geoapi.app import celery
 from geoapi.tasks.external_data import import_point_clouds_from_agave
 
 POINT_CLOUD_DATA = {'description': "description", 'conversion_parameters': "--scale 2.0"}
@@ -15,9 +15,9 @@ POINT_CLOUD_DATA = {'description': "description", 'conversion_parameters': "--sc
 
 @pytest.fixture(scope="function")
 def celery_task_always_eager():
-    app.conf.task_always_eager = True
+    celery.conf.task_always_eager = True
     yield
-    app.conf.task_always_eager = False
+    celery.conf.task_always_eager = False
 
 
 def test_add_point_cloud(projects_fixture):

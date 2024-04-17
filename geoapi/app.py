@@ -9,17 +9,26 @@ from geoapi.exceptions import (InvalidGeoJSON, InvalidEXIFData, InvalidCoordinat
                                StreetviewLimitException)
 
 import logging
+from geoapi.utils.decorators import jwt_socket_decoder
 
 logging.basicConfig(format='%(asctime)s %(message)s', level=logging.INFO)
 
 
 app = Flask(__name__)
 app.config.from_object(app_settings)
+
+
+# Initialize SocketIO
 socketio = SocketIO(app, cors_allowed_origins='http://localhost:4200')
 api.init_app(app)
 
+# Initialize Celery
+from geoapi.celery_app import make_celery
+celery = make_celery(app)
+
 
 @socketio.on('connect')
+@jwt_socket_decoder
 def handle_connect():
     logging.info('Client connected')
 
@@ -27,7 +36,7 @@ def handle_connect():
 @socketio.on('trigger_notification')
 def handle_notification(data):
     logging.info('Received trigger notification event: %s', data)
-    socketio.emit('notification', {'message': 'This is a toast message!'})
+    socketio.emit('new_notification', {'message': data.get('message')})
 
 
 @socketio.on('trigger_asset_success')

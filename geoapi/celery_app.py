@@ -9,14 +9,25 @@ CELERY_CONNECTION_STRING = "amqp://{user}:{pwd}@{hostname}/{vhost}".format(
     vhost=settings.RABBITMQ_VHOST
 )
 
-app = Celery('hello',
-             backend='rpc',
-             broker=CELERY_CONNECTION_STRING,
-             include=['geoapi.tasks'])
+def make_celery(app):
+    celery = Celery(
+                app.import_name,
+                backend='rpc',
+                broker=CELERY_CONNECTION_STRING,
+                include=['geoapi.tasks'])
 
-app.conf.beat_schedule = {
+    celery.conf.beat_schedule = {
     'refresh_observable_projects': {
         'task': 'geoapi.tasks.external_data.refresh_observable_projects',
         'schedule': crontab(hour='*', minute='0')
-    }
-}
+    }}
+
+    celery.conf.update(app.config)
+
+    class ContextTask(celery.Task):
+        def __call__(self, *args, **kwargs):
+            with app.app_context():
+                return self.run(*args, **kwargs)
+
+    celery.Task = ContextTask
+    return celery

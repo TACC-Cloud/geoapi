@@ -114,3 +114,9 @@ class NotificationsService:
         for pn in note:
             database_session.delete(pn)
         database_session.commit()
+
+    @staticmethod
+    def emit_socketio_event(event: str, message: str, socketio):
+        logger.info('Emitting socketio event: %s', event)
+        socketio.emit(event, {'message': message})
+        logger.info('Socketio event emitted: %s', event)

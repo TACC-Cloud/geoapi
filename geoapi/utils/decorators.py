@@ -15,6 +15,7 @@ from geoapi.log import logger
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import serialization
 import base64
+from flask_socketio import disconnect
 
 
 def get_pub_key():
@@ -60,6 +61,17 @@ def jwt_decoder(fn):
             UserService.setJWT(db_session, user, token)
         request.current_user = user
         return fn(*args, **kwargs)
+    return wrapper
+
+def jwt_socket_decoder(fn):
+    @wraps(fn)
+    def wrapper(auth=None):
+        token = auth.get('token') if auth else None
+        
+        if not token:
+            logger.error('No token provided.')
+            disconnect()
+            return
     return wrapper
 
 

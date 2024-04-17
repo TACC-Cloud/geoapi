@@ -13,7 +13,7 @@ from celery import uuid as celery_uuid
 from geoalchemy2.shape import from_shape
 from shapely.geometry import Point, LineString
 
-from geoapi.celery_app import app
+from geoapi.app import celery as celery_app
 from geoapi.exceptions import (StreetviewAuthException,
                                StreetviewLimitException,
                                StreetviewExistsException)
@@ -198,7 +198,7 @@ def check_existing_upload(session, user, streetview_service, task_uuid, system_i
 
 
 # TODO: Ensure that just user works and not userid (previously took userid)
-@app.task(rate_limit="5/s")
+@celery_app.task(rate_limit="5/s")
 def from_tapis_to_streetview(user_id: int,
                              streetview_service_id: int,
                              system_id: str,
@@ -329,7 +329,7 @@ class StreetviewSequenceProcessingTask(celery.Task):
             session.commit()
 
 
-@app.task(bind=True, base=StreetviewSequenceProcessingTask)
+@celery_app.task(bind=True, base=StreetviewSequenceProcessingTask)
 def convert_streetview_sequence_to_feature(self, projectId, sequenceId, token):
     """
     Process point cloud files
