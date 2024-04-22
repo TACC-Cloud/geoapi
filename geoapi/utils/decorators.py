@@ -63,11 +63,12 @@ def jwt_decoder(fn):
         return fn(*args, **kwargs)
     return wrapper
 
+
 def jwt_socket_decoder(fn):
     @wraps(fn)
     def wrapper(auth=None):
         token = auth.get('token') if auth else None
-        
+
         if not token:
             logger.error('No token provided.')
             disconnect()

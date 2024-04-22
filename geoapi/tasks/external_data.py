@@ -8,7 +8,7 @@ import datetime
 from celery import uuid as celery_uuid
 import json
 
-from geoapi.app import celery
+from geoapi.celery_app import app
 from geoapi.exceptions import InvalidCoordinateReferenceSystem, MissingServiceAccount
 from geoapi.models import User, ProjectUser, ObservableDataProject, Task
 from geoapi.utils.agave import (AgaveUtils, SystemUser, get_system_users, get_metadata_using_service_account,
@@ -114,7 +114,7 @@ def get_additional_files(current_file, system_id: str, path: str, client, availa
     return additional_files_result
 
 
-@celery.task(rate_limit="10/s")
+@app.task(rate_limit="10/s")
 def import_file_from_agave(userId: int, systemId: str, path: str, projectId: int):
     """
     Import file from TAPIS system
@@ -136,9 +136,6 @@ def import_file_from_agave(userId: int, systemId: str, path: str, projectId: int
                                         original_path=path, additional_files=additional_files,
                                         location=optional_location_from_metadata)
             NotificationsService.create(session, user, "success", "Imported {f}".format(f=path))
-            # Import needed here to avoid circular import
-            from geoapi.app import socketio
-            NotificationsService.emit_socketio_event("new_notification", "Imported {f}".format(f=path), socketio=socketio)
             temp_file.close()
         except Exception as e:  # noqa: E722
             logger.exception("Could not import file from agave: {} :: {}".format(systemId, path))
@@ -156,7 +153,7 @@ def _update_point_cloud_task(database_session, pointCloudId: int, description: s
     database_session.commit()
 
 
-@celery.task(rate_limit="1/s")
+@app.task(rate_limit="1/s")
 def import_point_clouds_from_agave(userId: int, files, pointCloudId: int):
     with create_task_session() as session:
         user = session.query(User).get(userId)
@@ -253,7 +250,7 @@ def import_point_clouds_from_agave(userId: int, files, pointCloudId: int):
             NotificationsService.create(session, user, "error", "Processing failed for point cloud ({})!".format(pointCloudId))
 
 
-@celery.task(rate_limit="5/s")
+@app.task(rate_limit="5/s")
 def import_from_agave(tenant_id: str, userId: int, systemId: str, path: str, projectId: int):
     """
     Recursively import files from a system/path.
@@ -381,7 +378,7 @@ def import_from_files_from_path(session, tenant_id: str, userId: int, systemId: 
                     raise
 
 
-@celery.task()
+@app.task()
 def refresh_observable_projects():
     """
     Refresh all observable projects

@@ -40,6 +40,8 @@ class NotificationsService:
         try:
             database_session.add(note)
             database_session.commit()
+            from geoapi.app import socketio
+            socketio.emit('new_notification', {'message': message})
             return note
         except Exception:
             database_session.rollback()

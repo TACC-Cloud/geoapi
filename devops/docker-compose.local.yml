@@ -60,7 +60,7 @@ services:
     tty: true
     container_name: geoapiworkers
     hostname: geoapiworkers
-    command: "celery -A geoapi.app worker -l info"
+    command: "celery -A geoapi.celery_app worker -l info"
 
   celerybeat:
     image: taccaci/geoapi-workers:local
@@ -78,7 +78,7 @@ services:
     tty: true
     container_name: geoapicelerybeat
     hostname: geoapicelerybeat
-    command: "celery -A geoapi.app beat -l info"
+    command: "celery -A geoapi.celery_app beat -l info"
 
   api:
     image: taccaci/geoapi:local

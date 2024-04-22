@@ -10,7 +10,7 @@ from geoalchemy2.shape import from_shape
 from geoapi.log import logging
 from geoapi.utils.lidar import getProj4, get_bounding_box_2d
 from geoapi.utils import geometries
-from geoapi.app import celery as celery_app
+from geoapi.celery_app import app
 from geoapi.db import create_task_session
 from geoapi.models import Task
 from geoapi.utils.assets import make_project_asset_dir, get_asset_path, get_asset_relative_path
@@ -67,7 +67,7 @@ class PointCloudProcessingTask(celery.Task):
             session.commit()
 
 
-@celery_app.task(bind=True, base=PointCloudProcessingTask)
+@app.task(bind=True, base=PointCloudProcessingTask)
 def convert_to_potree(self, pointCloudId: int) -> None:
     """
     Use the potree converter to convert a LAS/LAZ file to potree format

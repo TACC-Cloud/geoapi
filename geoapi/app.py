@@ -22,10 +22,6 @@ app.config.from_object(app_settings)
 socketio = SocketIO(app, cors_allowed_origins='http://localhost:4200')
 api.init_app(app)
 
-# Initialize Celery
-from geoapi.celery_app import make_celery
-celery = make_celery(app)
-
 
 @socketio.on('connect')
 @jwt_socket_decoder
