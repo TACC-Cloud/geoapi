@@ -14,4 +14,3 @@ app = Celery('geoapi', backend='rpc', broker=CELERY_CONNECTION_STRING, include=[
 app.conf.beat_schedule = {'refresh_observable_projects': {
         'task': 'geoapi.tasks.external_data.refresh_observable_projects',
         'schedule': crontab(hour='*', minute='0')}}
-

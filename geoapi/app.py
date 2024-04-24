@@ -32,7 +32,10 @@ def handle_connect():
 @socketio.on('trigger_notification')
 def handle_notification(data):
     logging.info('Received trigger notification event: %s', data)
-    socketio.emit('new_notification', {'message': data.get('message')})
+    # Emit a new notification with the message sent from the client
+    # socketio.emit('new_notification', {'message': data.get('message')})
+    # Otherwise, emit a default message
+    socketio.emit('new_notification', {'message': 'This is a toast message!'})
 
 
 @socketio.on('trigger_asset_success')
