@@ -2,6 +2,20 @@
 
 ## [Unreleased]
 
+## [2.17] - 2024-4-29
+
+### Changed
+
+- WG-39 use RAPID metadata or exif data when importing files from /Rapp folder or elsewhere (#175)
+- WG-211 update metadata query to support DES-2636 (#175)
+- WG-44: updating PyJWT package (#169)
+- WG-95: update asset backup (#167)
+- WG-212: improve projects endpoint (#173)
+
+### Fixed
+
+- fix watchtower (#184)
+
 ## [2.16] - 2023-12-19
 
 ### Added
@@ -183,7 +197,8 @@
 - DES-1687: Add rollingback to worker tasks (#30)
 - DES-1663: Fix image rotations (#36)
 
-[unreleased]: https://github.com/TACC-Cloud/geoapi/compare/v2.16...HEAD
+[unreleased]: https://github.com/TACC-Cloud/geoapi/compare/v2.17...HEAD
+[2.17]: https://github.com/TACC-Cloud/geoapi/releases/tag/v2.17
 [2.16]: https://github.com/TACC-Cloud/geoapi/releases/tag/v2.16
 [2.15]: https://github.com/TACC-Cloud/geoapi/releases/tag/v2.15
 [2.14]: https://github.com/TACC-Cloud/geoapi/releases/tag/v2.14
