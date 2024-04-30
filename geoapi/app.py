@@ -1,5 +1,6 @@
 
 from flask import Flask
+from flask_socketio import SocketIO
 from geoapi.routes import api
 from geoapi.settings import settings as app_settings
 from geoapi.db import db_session
@@ -8,13 +9,56 @@ from geoapi.exceptions import (InvalidGeoJSON, InvalidEXIFData, InvalidCoordinat
                                StreetviewLimitException)
 
 import logging
+from geoapi.utils.decorators import jwt_socket_decoder
 
 logging.basicConfig(format='%(asctime)s %(message)s', level=logging.INFO)
 
 
 app = Flask(__name__)
-api.init_app(app)
 app.config.from_object(app_settings)
+
+
+# Initialize SocketIO
+socketio = SocketIO(app, cors_allowed_origins='http://localhost:4200')
+api.init_app(app)
+
+
+@socketio.on('connect')
+@jwt_socket_decoder
+def handle_connect():
+    logging.info('Client connected')
+
+
+@socketio.on('trigger_notification')
+def handle_notification(data):
+    logging.info('Received trigger notification event: %s', data)
+    # Emit a new notification with the message sent from the client
+    # socketio.emit('new_notification', {'message': data.get('message')})
+    # Otherwise, emit a default message
+    socketio.emit('new_notification', {'message': 'This is a toast message!'})
+
+
+@socketio.on('trigger_asset_success')
+def handle_asset_success(data):
+    logging.info('Received trigger notification event: %s', data)
+    socketio.emit('asset_success', {'message': 'Asset was successfully added!'})
+
+
+@socketio.on('trigger_asset_failure')
+def handle_asset_failure(data):
+    logging.info('Received trigger notification event: %s', data)
+    socketio.emit('asset_failure', {'message': 'Asset failed to be added!'})
+
+
+@socketio.on('client_message')
+def handle_client_message(message):
+    logging.info('Received message from client: %s', message)
+    socketio.emit('server_message', {'message': 'This is a server message!'})
+
+
+@socketio.on('disconnect')
+def handle_disconnect():
+    logging.info('Client disconnected')
 
 
 @api.errorhandler(InvalidGeoJSON)
@@ -67,3 +111,7 @@ def handle_streetview_limit_exception(error: Exception):
 @app.teardown_appcontext
 def shutdown_session(exception=None):
     db_session.remove()
+
+
+if __name__ == '__main__':
+    socketio.run(app, port=8000, debug=True)
