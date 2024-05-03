@@ -2,7 +2,7 @@ from geoapi.utils.geo_location import get_geolocation_from_file_metadata, GeoLoc
 import re
 import pytest
 
-METADATA_ROUTE = re.compile(r'http://.*/meta/v2/data')
+METADATA_ROUTE = re.compile(r'https://.*/api/filemeta/.*/.*')
 SYSTEM = "SYSTEM"
 PATH = "PATH"
 

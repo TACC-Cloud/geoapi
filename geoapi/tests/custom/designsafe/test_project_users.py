@@ -1,30 +1,31 @@
 import os
 import pytest
+from unittest.mock import patch
 import json
 from geoapi.custom.designsafe.project_users import get_system_users
 
 
 @pytest.fixture()
-def project_response(mocker):
+def project_response():
     home = os.path.dirname(__file__)
     with open(os.path.join(home, '../../fixtures/designsafe_api_project.json'), 'rb') as f:
         mock_data = json.loads(f.read())
 
     # TODO_TAPISV3 https://tacc-main.atlassian.net/browse/WG-257 can be dropped later as we rely on requests_mock
     # in tests
-    with mocker.patch('geoapi.custom.designsafe.project_users.get_project_data', return_value=mock_data["value"]):
+    with patch('geoapi.custom.designsafe.project_users.get_project_data', return_value=mock_data["value"]):
         yield mock_data
 
 
 @pytest.fixture()
-def project_response_with_duplicate_users(mocker):
+def project_response_with_duplicate_users():
     home = os.path.dirname(__file__)
     with open(os.path.join(home, '../../fixtures/designsafe_api_project_with_duplicate_users.json'), 'rb') as f:
         mock_data = json.loads(f.read())
 
     # TODO_TAPISV3 https://tacc-main.atlassian.net/browse/WG-257 can be dropped later as we rely on equests_mock
     # in tests
-    with mocker.patch('geoapi.custom.designsafe.project_users.get_project_data', return_value=mock_data["value"]):
+    with patch('geoapi.custom.designsafe.project_users.get_project_data', return_value=mock_data["value"]):
         yield mock_data["value"]
 
 
