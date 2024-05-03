@@ -44,8 +44,8 @@ class UnitTestingConfig(LocalDevelopmentConfig):
     TESTING = True
     STREETVIEW_DIR = os.environ.get('STREETVIEW_DIR', '/tmp/streetview')
     ASSETS_BASE_DIR = '/tmp'
-    TENANT = "{\"DESIGNSAFE\": {\"service_account_token\": \"ABCDEFG12344\"}," \
-             " \"TEST\": {\"service_account_token\": \"ABCDEFG12344\"}  }"
+    TENANT = "{\"DESIGNSAFE\": {\"tg458981_service_account_token\": \"ABCDEFG12344\"}," \
+             " \"TEST\": {\"tg458981_service_account_token\": \"ABCDEFG12344\"}  }"
 
 
 APP_ENV = os.environ.get('APP_ENV', '').lower()

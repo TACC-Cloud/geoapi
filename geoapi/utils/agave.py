@@ -264,19 +264,18 @@ class AgaveUtils:
 
 
 def service_account_client(tenant_id):
-    # TODO_TAPISV3
     try:
         tenant_secrets = json.loads(settings.TENANT)
     except TypeError:
-        logger.error("Could not get service account for tenant:{};  Ensure this your environment "
-                     "is properly configured.".format(tenant_id))
+        logger.exception("Could not get service account for tenant:{};  Ensure this your environment "
+                         "is properly configured.".format(tenant_id))
         raise MissingServiceAccount
 
     if tenant_secrets is None or tenant_id.upper() not in tenant_secrets:
         raise MissingServiceAccount
 
-    # TODO_TAPISV3 update service account
-    client = AgaveUtils(token=tenant_secrets[tenant_id.upper()]['service_account_token'], tenant=tenant_id)
+    client = AgaveUtils(token=tenant_secrets[tenant_id.upper()]['tg458981_service_account_token'], tenant_id=tenant_id)
+    token = tenant_secrets[tenant_id.upper()]['tg458981_service_account_token']
     return client
 
 
