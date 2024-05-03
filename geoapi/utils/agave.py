@@ -74,18 +74,19 @@ class AgaveFileListing:
 
 # TODO_TAPISV# rename AgaveUtils to TapisUtils
 class AgaveUtils:
-    def __init__(self, user):
+    def __init__(self, user=None, tenant_id=None, token=None):
         """
         Initializes the client session for a user.
 
         This constructor sets up a client session with headers updated for user's JWT.
+
+        If no user given, then a tenant_id and token need to be provided.
         """
         client = requests.Session()
+        client.headers.update({'X-Tapis-Token': user.jwt if user else token})
 
-        client.headers.update({'X-Tapis-Token': user.jwt})
-
-        self.tenant_id = user.tenant_id
-        self.base_url = get_api_server(user.tenant_id)
+        self.tenant_id = user.tenant_id if user else tenant_id
+        self.base_url = get_api_server(self.tenant_id)
         self.client = client
 
     def get(self, url, params=None):
@@ -275,7 +276,6 @@ def service_account_client(tenant_id):
         raise MissingServiceAccount
 
     client = AgaveUtils(token=tenant_secrets[tenant_id.upper()]['tg458981_service_account_token'], tenant_id=tenant_id)
-    token = tenant_secrets[tenant_id.upper()]['tg458981_service_account_token']
     return client
 
 
@@ -307,23 +307,19 @@ def get_metadata_using_service_account(tenant_id: str, system_id: str, path: str
     :param path: path to file
     :return: dictionary containing the metadata (including geolocation) of a file
     """
-    logger.debug("getting metadata. tenant:{}, system_id: {} , path:{}".format(tenant_id, system_id, path))
 
-    # TODO_TAPISV3 See https://tacc-main.atlassian.net/browse/WG-254
-    return {}
+    logger.debug(f"getting metadata. tenant:{tenant_id}, system_id: {system_id}, path:{path}")
 
     client = service_account_client(tenant_id)
-    meta_data_query = {
-            "name": "designsafe.file",
-            "value.system": system_id,
-            "value.path": os.path.join(path, '*')
-    }
-    params = {"limit": 300, "offset": 0, "q": json.dumps(meta_data_query)}
+    # TODO_TAPISV3 fix env file and service account information and update cache
+    # TODO_TAPISV3 environment variable for correct DesignSafe backend
+    # (i.e. https://www.designsafe-ci.org or https://designsafeci-dev.tacc.utexas.edu or  https://designsafeci-next.tacc.utexas.edu)
+    # See DESIGNSAFE_URL in geoapi/custom/designsafe/project.py and combine with that;  move this to custom/designsafe/?
+    client.base_url = "https://designsafeci-next.tacc.utexas.edu"
 
-    # same as Tapis v2 python client's: client.meta.listMetadata(q=json.dumps(query), limit=300, offset=0)
-    response = client.get(url=quote('/meta/v2/data/'), params=params)
+    response = client.get(url=quote(f'/api/filemeta/{system_id}/{path}'))
     response.raise_for_status()
-    meta_list = response.json()["result"]
-    if len(meta_list) > 0 and "value" in meta_list[0]:
-        return meta_list[0]["value"]
-    return {}
+    meta_response = response.json()
+    meta = meta_response["value"] if "value" in meta_response else {}
+    logger.debug(f"got metadata. tenant:{tenant_id}, system_id: {system_id}, path:{path} -> {meta}")
+    return meta
