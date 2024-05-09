@@ -47,6 +47,7 @@ class UnitTestingConfig(LocalDevelopmentConfig):
     ASSETS_BASE_DIR = '/tmp'
     TENANT = "{\"DESIGNSAFE\": {\"tg458981_service_account_token\": \"ABCDEFG12344\"}," \
              " \"TEST\": {\"tg458981_service_account_token\": \"ABCDEFG12344\"}  }"
+    DESIGNSAFE_URL = os.environ.get("DESIGNSAFE_URL", "https://designsafe-not-real.tacc.utexas.edu")
 
 
 APP_ENV = os.environ.get('APP_ENV', '').lower()
