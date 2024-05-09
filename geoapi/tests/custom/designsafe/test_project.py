@@ -1,5 +1,6 @@
-from geoapi.custom.designsafe.project import on_project_creation, on_project_deletion, DESIGNSAFE_URL
+from geoapi.custom.designsafe.project import on_project_creation, on_project_deletion
 from geoapi.services.features import FeaturesService
+from geoapi.settings import settings
 from geoapi.db import db_session
 from urllib.parse import quote
 import json
@@ -13,7 +14,7 @@ def test_on_project_creation(tapis_url, requests_mock, user1, observable_project
 
     designsafe_uuid = project.system_id[len("project-"):]
 
-    metadata_url = DESIGNSAFE_URL + f"api/projects/{designsafe_uuid}/"
+    metadata_url = settings.DESIGNSAFE_URL + f"api/projects/{designsafe_uuid}/"
     requests_mock.get(metadata_url, json={"value": {"hazmapperMaps": []}})
     requests_mock.post(metadata_url)
 
@@ -42,7 +43,7 @@ def test_on_project_deletion(tapis_url, requests_mock, user1, observable_project
 
     designsafe_uuid = project.system_id[len("project-"):]
 
-    metadata_url = DESIGNSAFE_URL + f"api/projects/{designsafe_uuid}/"
+    metadata_url = settings.DESIGNSAFE_URL + f"api/projects/{designsafe_uuid}/"
     requests_mock.get(metadata_url, json={"value": {"hazmapperMaps": [{"name": project.name,
                                                                        "uuid": str(project.uuid),
                                                                        "path": project.system_path,

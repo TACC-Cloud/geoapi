@@ -311,11 +311,7 @@ def get_metadata_using_service_account(tenant_id: str, system_id: str, path: str
     logger.debug(f"getting metadata. tenant:{tenant_id}, system_id: {system_id}, path:{path}")
 
     client = service_account_client(tenant_id)
-    # TODO_TAPISV3 fix env file and service account information and update cache
-    # TODO_TAPISV3 environment variable for correct DesignSafe backend
-    # (i.e. https://www.designsafe-ci.org or https://designsafeci-dev.tacc.utexas.edu or  https://designsafeci-next.tacc.utexas.edu)
-    # See DESIGNSAFE_URL in geoapi/custom/designsafe/project.py and combine with that;  move this to custom/designsafe/?
-    client.base_url = "https://designsafeci-next.tacc.utexas.edu"
+    client.base_url = settings.DESIGNSAFE_URL
 
     response = client.get(url=quote(f'/api/filemeta/{system_id}/{path}'))
     response.raise_for_status()

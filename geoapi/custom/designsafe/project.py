@@ -1,12 +1,11 @@
 import json
 import os
 from geoapi.log import logger
+from geoapi.settings import settings
 from geoapi.custom.designsafe.default_basemap_layers import default_layers
 from geoapi.models import User, Project
 
 import requests
-
-DESIGNSAFE_URL = 'https://www.designsafe-ci.org/'  # 'https://designsafeci-dev.tacc.utexas.edu/';
 
 
 def on_project_creation(database_session, user: User, project: Project):
@@ -85,7 +84,7 @@ def update_designsafe_project_hazmapper_metadata(user: User, project: Project, a
     client = requests.Session()
     client.headers.update({'X-JWT-Assertion-designsafe': user.jwt})
 
-    response = client.get(DESIGNSAFE_URL + f"api/projects/{designsafe_uuid}/")
+    response = client.get(settings.DESIGNSAFE_URL + f"api/projects/{designsafe_uuid}/")
     response.raise_for_status()
 
     current_metadata = response.json()
@@ -102,7 +101,7 @@ def update_designsafe_project_hazmapper_metadata(user: User, project: Project, a
                          "deployment": os.getenv("APP_ENV")}
         all_maps.append(new_map_entry)
     logger.debug(f"Updated metadata for DesignSafe_project:{designsafe_uuid}: {all_maps}")
-    response = client.post(DESIGNSAFE_URL + f"api/projects/{designsafe_uuid}/",
+    response = client.post(settings.DESIGNSAFE_URL + f"api/projects/{designsafe_uuid}/",
                            json={"hazmapperMaps": all_maps},
                            headers={'X-Requested-With': 'XMLHttpRequest'})
     response.raise_for_status()

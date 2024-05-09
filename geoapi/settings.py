@@ -9,6 +9,7 @@ class Config(object):
     RESTPLUS_MASK_SWAGGER = False
     TENANT = os.environ.get("TENANT")
     STREETVIEW_DIR = os.environ.get('STREETVIEW_DIR', '/assets/streetview')
+    DESIGNSAFE_URL = os.environ.get("DESIGNSAFE_URL")
 
 
 class DeployedConfig(Config):
