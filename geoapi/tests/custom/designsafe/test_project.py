@@ -14,7 +14,7 @@ def test_on_project_creation(tapis_url, requests_mock, user1, observable_project
 
     designsafe_uuid = project.system_id[len("project-"):]
 
-    metadata_url = settings.DESIGNSAFE_URL + f"api/projects/{designsafe_uuid}/"
+    metadata_url = settings.DESIGNSAFE_URL + f"/api/projects/{designsafe_uuid}/"
     requests_mock.get(metadata_url, json={"value": {"hazmapperMaps": []}})
     requests_mock.post(metadata_url)
 
