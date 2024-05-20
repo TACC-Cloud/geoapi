@@ -55,7 +55,6 @@ services:
       - FLASK_APP=/app/geoapi/app.py
       - APP_ENV=local
       - ASSETS_BASE_DIR=/assets
-      - TENANT=${TENANT_TAPIS_V3}
       - DESIGNSAFE_URL=${DESIGNSAFE_URL}
 
     stdin_open: true
@@ -99,7 +98,6 @@ services:
       - FLASK_APP=/app/geoapi/app.py
       - APP_ENV=local
       - ASSETS_BASE_DIR=/assets
-      - TENANT=${TENANT_TAPIS_V3}
       - DESIGNSAFE_URL=${DESIGNSAFE_URL}
     stdin_open: true
     tty: true
