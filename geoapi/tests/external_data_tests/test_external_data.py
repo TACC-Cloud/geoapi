@@ -18,6 +18,7 @@ from geoapi.services.point_cloud import PointCloudService
 
 METADATA_ROUTE = re.compile(r'https://.*/api/filemeta/.*/.*')
 
+
 @pytest.fixture(scope="function")
 def metadata_none_fixture(requests_mock):
     response = {}

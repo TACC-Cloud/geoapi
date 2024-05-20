@@ -5,7 +5,6 @@ from unittest.mock import patch
 from geoapi.utils.agave import AgaveUtils, AgaveFileGetError
 
 
-
 @pytest.fixture(scope="function")
 def retry_sleep_seconds_mock():
     with patch('geoapi.utils.agave.SLEEP_SECONDS_BETWEEN_RETRY', 0) as sleep_mock:

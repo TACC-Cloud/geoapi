@@ -1,6 +1,5 @@
 from geoapi.utils.geo_location import get_geolocation_from_file_metadata, GeoLocation
 import re
-import pytest
 
 METADATA_ROUTE = re.compile(r'https://.*/api/filemeta/.*/.*')
 SYSTEM = "SYSTEM"

@@ -99,7 +99,6 @@ class AgaveUtils(ApiUtils):
         """
         super().__init__(user=user, base_url=get_api_server(user.tenant_id))
 
-
     def systemsGet(self, systemId: str) -> Dict:
         url = quote('/v3/systems/{}'.format(systemId))
         resp = self.get(url)
@@ -301,7 +300,6 @@ def get_metadata(user: User, system_id: str, path: str) -> Dict:
     logger.debug(f"getting metadata. system_id: {system_id}, path:{path}")
 
     client = ApiUtils(user=user, base_url=settings.DESIGNSAFE_URL)
-
     response = client.get(url=quote(f'/api/filemeta/{system_id}/{path}'))
     response.raise_for_status()
     meta_response = response.json()
