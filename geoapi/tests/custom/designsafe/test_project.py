@@ -14,24 +14,21 @@ def test_on_project_creation(tapis_url, requests_mock, user1, observable_project
 
     designsafe_uuid = project.system_id[len("project-"):]
 
-    metadata_url = settings.DESIGNSAFE_URL + f"/api/projects/{designsafe_uuid}/"
-    requests_mock.get(metadata_url, json={"value": {"hazmapperMaps": []}})
+    metadata_url = settings.DESIGNSAFE_URL + f"/api/projects/v2/{designsafe_uuid}/"
+    requests_mock.get(metadata_url, json={"baseProject": {"value": {"hazmapperMaps": []}}})
     requests_mock.post(metadata_url)
 
     on_project_creation(db_session, user1, project)
 
     assert len(FeaturesService.getTileServers(db_session, projectId=project.id)) == 2
 
-    # TODO_TAPISV3 https://tacc-main.atlassian.net/browse/WG-258
-    TODO_TAPISV3 = False
-    if TODO_TAPISV3:
-        assert len(requests_mock.request_history) == 3
-        update_metadata_request = requests_mock.request_history[2]
-        assert json.loads(update_metadata_request.text) == {'hazmapperMaps':
-                                                            [{"name": project.name,
-                                                              "uuid": str(project.uuid),
-                                                              "path": project.system_path,
-                                                              "deployment": os.getenv("APP_ENV")}]}
+    assert len(requests_mock.request_history) == 3
+    update_metadata_request = requests_mock.request_history[2]
+    assert json.loads(update_metadata_request.text) == {'hazmapperMaps':
+                                                        [{"name": project.name,
+                                                          "uuid": str(project.uuid),
+                                                          "path": project.system_path,
+                                                          "deployment": os.getenv("APP_ENV")}]}
 
 
 def test_on_project_deletion(tapis_url, requests_mock, user1, observable_projects_fixture):
@@ -43,18 +40,28 @@ def test_on_project_deletion(tapis_url, requests_mock, user1, observable_project
 
     designsafe_uuid = project.system_id[len("project-"):]
 
-    metadata_url = settings.DESIGNSAFE_URL + f"/api/projects/{designsafe_uuid}/"
-    requests_mock.get(metadata_url, json={"value": {"hazmapperMaps": [{"name": project.name,
-                                                                       "uuid": str(project.uuid),
-                                                                       "path": project.system_path,
-                                                                       "deployment": os.getenv("APP_ENV")}]}})
+    metadata_url = settings.DESIGNSAFE_URL + f"/api/projects/v2/{designsafe_uuid}/"
+    requests_mock.get(
+        metadata_url,
+        json={
+            "baseProject": {
+                "value": {
+                    "hazmapperMaps": [
+                        {
+                            "name": project.name,
+                            "uuid": str(project.uuid),
+                            "path": project.system_path,
+                            "deployment": os.getenv("APP_ENV")
+                        }
+                    ]
+                }
+            }
+        }
+    )
     requests_mock.post(metadata_url)
 
     on_project_deletion(user1, project)
 
-    # TODO_TAPISV3 https://tacc-main.atlassian.net/browse/WG-258
-    TODO_TAPISV3 = False
-    if TODO_TAPISV3:
-        assert len(requests_mock.request_history) == 3
-        update_metadata_request = requests_mock.request_history[2]
-        assert json.loads(update_metadata_request.text) == {'hazmapperMaps': []}
+    assert len(requests_mock.request_history) == 3
+    update_metadata_request = requests_mock.request_history[2]
+    assert json.loads(update_metadata_request.text) == {'hazmapperMaps': []}
