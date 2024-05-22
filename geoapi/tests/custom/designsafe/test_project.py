@@ -24,11 +24,19 @@ def test_on_project_creation(tapis_url, requests_mock, user1, observable_project
 
     assert len(requests_mock.request_history) == 3
     update_metadata_request = requests_mock.request_history[2]
-    assert json.loads(update_metadata_request.text) == {'hazmapperMaps':
-                                                        [{"name": project.name,
-                                                          "uuid": str(project.uuid),
-                                                          "path": project.system_path,
-                                                          "deployment": os.getenv("APP_ENV")}]}
+    assert json.loads(update_metadata_request.text) == {
+        "patchMetadata": {
+            'hazmapperMaps':
+                [
+                    {
+                        "name": project.name,
+                        "uuid": str(project.uuid),
+                        "path": project.system_path,
+                        "deployment": os.getenv("APP_ENV")
+                    }
+                ]
+        }
+    }
 
 
 def test_on_project_deletion(tapis_url, requests_mock, user1, observable_projects_fixture):
@@ -64,4 +72,9 @@ def test_on_project_deletion(tapis_url, requests_mock, user1, observable_project
 
     assert len(requests_mock.request_history) == 3
     update_metadata_request = requests_mock.request_history[2]
-    assert json.loads(update_metadata_request.text) == {'hazmapperMaps': []}
+    assert json.loads(update_metadata_request.text) == {
+        "patchMetadata":
+            {
+                'hazmapperMaps': []
+            }
+    }
