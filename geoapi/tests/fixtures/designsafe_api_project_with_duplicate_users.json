@@ -1,103 +1,105 @@
 {
-    "uuid": "5752672753351626260-242ac118-0001-014",
-    "schemaId": null,
-    "internalUsername": null,
-    "associationIds": [],
-    "lastUpdated": "2022-07-15T14:12:13.776000-05:00",
-    "created": "2022-04-22T15:06:02.127000-05:00",
-    "owner": "ds_admin",
-    "name": "designsafe.project",
-    "_links": {
-        "self": {
-            "href": "https://agave.designsafe-ci.org/meta/v2/data/5752672753351626260-242ac118-0001-014"
-        },
-        "permissions": {
-            "href": "https://agave.designsafe-ci.org/meta/v2/data/5752672753351626260-242ac118-0001-014/pems"
-        },
-        "owner": {
-            "href": "https://agave.designsafe-ci.org/profiles/v2/ds_admin"
-        },
-        "associationIds": []
-    },
-    "value": {
-        "users": [
-            {
-                "role": "pi",
-                "username": "user_pi"
-            },
-            {
-                "role": "co_pi",
-                "username": "user_copi_1"
-            },
-            {
-                "role": "co_pi",
-                "username": "user_copi_2"
-            },
-            {
-                "role": "team_member",
-                "username": "user4"
-            },
-            {
-                "role": "team_member",
-                "username": "user5"
-            },
-            {
-                "role": "team_member",
-                "username": "user_copi_1"
-            },
-            {
-                "role": "team_member",
-                "username": "user_copi_2"
-            },
-            {
-                "role": "team_member",
-                "username": "user_pi"
-            },
-            {
-                "role": "co_pi",
-                "username": "user5"
-            }
-        ],
-        "projectType": "None",
-        "dataType": "",
-        "teamOrder": [],
-        "projectId": "PRJ-1234",
-        "description": "",
-        "title": "Some project",
-        "awardNumber": [
-            "[",
-            "{",
-            "u",
-            "",
-            "n",
-            "a",
-            "m",
-            "e",
-            ":",
-            " ",
-            "]",
-            ",",
-            "b",
-            "r",
-            "}"
-        ],
-        "awardNumbers": [],
-        "associatedProjects": [
-            {
-                "href": "",
-                "title": ""
-            }
-        ],
-        "ef": "",
-        "keywords": "",
-        "fileTags": [],
-        "nhTypes": [],
-        "dois": [],
-        "hazmapperMaps": []
-    },
-    "_ui": {
+    "baseProject": {
         "uuid": "5752672753351626260-242ac118-0001-014",
-        "orders": []
-    },
-    "_related": {}
+        "schemaId": null,
+        "internalUsername": null,
+        "associationIds": [],
+        "lastUpdated": "2022-07-15T14:12:13.776000-05:00",
+        "created": "2022-04-22T15:06:02.127000-05:00",
+        "owner": "ds_admin",
+        "name": "designsafe.project",
+        "_links": {
+            "self": {
+                "href": "https://agave.designsafe-ci.org/meta/v2/data/5752672753351626260-242ac118-0001-014"
+            },
+            "permissions": {
+                "href": "https://agave.designsafe-ci.org/meta/v2/data/5752672753351626260-242ac118-0001-014/pems"
+            },
+            "owner": {
+                "href": "https://agave.designsafe-ci.org/profiles/v2/ds_admin"
+            },
+            "associationIds": []
+        },
+        "value": {
+            "users": [
+                {
+                    "role": "pi",
+                    "username": "user_pi"
+                },
+                {
+                    "role": "co_pi",
+                    "username": "user_copi_1"
+                },
+                {
+                    "role": "co_pi",
+                    "username": "user_copi_2"
+                },
+                {
+                    "role": "team_member",
+                    "username": "user4"
+                },
+                {
+                    "role": "team_member",
+                    "username": "user5"
+                },
+                {
+                    "role": "team_member",
+                    "username": "user_copi_1"
+                },
+                {
+                    "role": "team_member",
+                    "username": "user_copi_2"
+                },
+                {
+                    "role": "team_member",
+                    "username": "user_pi"
+                },
+                {
+                    "role": "co_pi",
+                    "username": "user5"
+                }
+            ],
+            "projectType": "None",
+            "dataType": "",
+            "teamOrder": [],
+            "projectId": "PRJ-1234",
+            "description": "",
+            "title": "Some project",
+            "awardNumber": [
+                "[",
+                "{",
+                "u",
+                "",
+                "n",
+                "a",
+                "m",
+                "e",
+                ":",
+                " ",
+                "]",
+                ",",
+                "b",
+                "r",
+                "}"
+            ],
+            "awardNumbers": [],
+            "associatedProjects": [
+                {
+                    "href": "",
+                    "title": ""
+                }
+            ],
+            "ef": "",
+            "keywords": "",
+            "fileTags": [],
+            "nhTypes": [],
+            "dois": [],
+            "hazmapperMaps": []
+        },
+        "_ui": {
+            "uuid": "5752672753351626260-242ac118-0001-014",
+            "orders": []
+        },
+        "_related": {}
+    }
 }
