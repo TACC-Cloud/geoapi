@@ -40,7 +40,6 @@ def on_project_creation(database_session, user: User, project: Project):
 
     try:
         # add metadata to DS projects (i.e. only when system_id starts with "project-"
-        # TODO_TAPISV3 https://tacc-main.atlassian.net/browse/WG-258
         if project.system_id.startswith("project-"):
             logger.debug(f"Adding metadata for user:{user.username}"
                          f" project:{project.id} project_uuid:{project.uuid} ")
@@ -68,7 +67,6 @@ def on_project_deletion(user: User, project: Project):
 
     try:
         # remove metadata for DS projects (i.e. only when system_id starts with "project-"
-        # TODO_TAPISV3 https://tacc-main.atlassian.net/browse/WG-258
         if project.system_id.startswith("project-"):
             logger.debug(f"Removing metadata for user:{user.username}"
                          f" during deletion of project:{project.id} project_uuid:{project.uuid} ")
@@ -84,15 +82,15 @@ def update_designsafe_project_hazmapper_metadata(user: User, project: Project, a
     client = requests.Session()
     client.headers.update({'X-JWT-Assertion-designsafe': user.jwt})
 
-    response = client.get(settings.DESIGNSAFE_URL + f"/api/projects/{designsafe_uuid}/")
+    response = client.get(settings.DESIGNSAFE_URL + f"/api/projects/v2/{designsafe_uuid}/")
     response.raise_for_status()
 
     current_metadata = response.json()
     all_maps = []
     logger.debug(f"Current metadata for DesignSafe_project:{designsafe_uuid}: {current_metadata}")
-    if "hazmapperMaps" in current_metadata["value"]:
+    if "hazmapperMaps" in current_metadata["baseProject"]["value"]:
         # remove this project from the map list as we will update (or delete) it
-        all_maps = [e for e in current_metadata['value']['hazmapperMaps'] if e['uuid'] != str(project.uuid)]
+        all_maps = [e for e in current_metadata["baseProject"]['value']['hazmapperMaps'] if e['uuid'] != str(project.uuid)]
 
     if add_project:
         new_map_entry = {"name": project.name,
@@ -101,7 +99,7 @@ def update_designsafe_project_hazmapper_metadata(user: User, project: Project, a
                          "deployment": os.getenv("APP_ENV")}
         all_maps.append(new_map_entry)
     logger.debug(f"Updated metadata for DesignSafe_project:{designsafe_uuid}: {all_maps}")
-    response = client.post(settings.DESIGNSAFE_URL + f"/api/projects/{designsafe_uuid}/",
-                           json={"hazmapperMaps": all_maps},
-                           headers={'X-Requested-With': 'XMLHttpRequest'})
+    response = client.patch(settings.DESIGNSAFE_URL + f"/api/projects/v2/{designsafe_uuid}/",
+                            json={"patchMetadata": {"hazmapperMaps": all_maps}},
+                            headers={'X-Requested-With': 'XMLHttpRequest'})
     response.raise_for_status()
