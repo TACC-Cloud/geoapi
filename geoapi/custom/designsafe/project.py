@@ -100,6 +100,6 @@ def update_designsafe_project_hazmapper_metadata(user: User, project: Project, a
         all_maps.append(new_map_entry)
     logger.debug(f"Updated metadata for DesignSafe_project:{designsafe_uuid}: {all_maps}")
     response = client.patch(settings.DESIGNSAFE_URL + f"/api/projects/v2/{designsafe_uuid}/",
-                           json={"patchMetadata": {"hazmapperMaps": all_maps}},
-                           headers={'X-Requested-With': 'XMLHttpRequest'})
+                            json={"patchMetadata": {"hazmapperMaps": all_maps}},
+                            headers={'X-Requested-With': 'XMLHttpRequest'})
     response.raise_for_status()
