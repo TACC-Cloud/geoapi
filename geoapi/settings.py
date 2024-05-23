@@ -9,6 +9,7 @@ class Config(object):
     RESTPLUS_MASK_SWAGGER = False
     TENANT = os.environ.get("TENANT")
     STREETVIEW_DIR = os.environ.get('STREETVIEW_DIR', '/assets/streetview')
+    DESIGNSAFE_URL = os.environ.get("DESIGNSAFE_URL")
 
 
 class DeployedConfig(Config):
@@ -44,8 +45,7 @@ class UnitTestingConfig(LocalDevelopmentConfig):
     TESTING = True
     STREETVIEW_DIR = os.environ.get('STREETVIEW_DIR', '/tmp/streetview')
     ASSETS_BASE_DIR = '/tmp'
-    TENANT = "{\"DESIGNSAFE\": {\"service_account_token\": \"ABCDEFG12344\"}," \
-             " \"TEST\": {\"service_account_token\": \"ABCDEFG12344\"}  }"
+    DESIGNSAFE_URL = os.environ.get("DESIGNSAFE_URL", "https://designsafe-not-real.tacc.utexas.edu")
 
 
 APP_ENV = os.environ.get('APP_ENV', '').lower()

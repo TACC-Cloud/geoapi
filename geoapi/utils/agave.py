@@ -16,7 +16,6 @@ from dateutil import parser
 
 from geoapi.settings import settings
 from geoapi.utils.tenants import get_api_server
-from geoapi.exceptions import MissingServiceAccount
 from geoapi.custom import custom_system_user_retrieval
 from geoapi.models import User
 from contextlib import closing
@@ -72,24 +71,33 @@ class AgaveFileListing:
         return self.path.suffix.lstrip('.').lower()
 
 
-# TODO_TAPISV# rename AgaveUtils to TapisUtils
-class AgaveUtils:
-    def __init__(self, user):
+class ApiUtils:
+    def __init__(self, user: User, base_url: str):
+        """
+        Initializes the client session for a user using an API that uses Tapis tokens for auth.
+
+        :param user: The user object containing the JWT.
+        :param base_url: The base URL for the API endpoints.
+        """
+        client = requests.Session()
+        client.headers.update({'X-Tapis-Token': user.jwt})
+        self.client = client
+        self.base_url = base_url
+
+    def get(self, url, params=None):
+        return self.client.get(self.base_url + url, params=params)
+
+
+# TODO_TAPISV# rename AgaveUtils to TapisUtils and rename this from agave.py to external_api(?) or something similar
+# to reflect
+class AgaveUtils(ApiUtils):
+    def __init__(self, user: User):
         """
         Initializes the client session for a user.
 
         This constructor sets up a client session with headers updated for user's JWT.
         """
-        client = requests.Session()
-
-        client.headers.update({'X-Tapis-Token': user.jwt})
-
-        self.tenant_id = user.tenant_id
-        self.base_url = get_api_server(user.tenant_id)
-        self.client = client
-
-    def get(self, url, params=None):
-        return self.client.get(self.base_url + url, params=params)
+        super().__init__(user=user, base_url=get_api_server(user.tenant_id))
 
     def systemsGet(self, systemId: str) -> Dict:
         url = quote('/v3/systems/{}'.format(systemId))
@@ -143,7 +151,7 @@ class AgaveUtils:
         out = {k: v for d in results for k, v in d.items()}
         return out
 
-    def _get_file(self, systemId: str, path: str, use_service_account: bool = False) -> NamedTemporaryFile:
+    def _get_file(self, systemId: str, path: str) -> NamedTemporaryFile:
         """
         Get file
 
@@ -153,15 +161,12 @@ class AgaveUtils:
 
         :param systemId:
         :param path:
-        :parm use_service_account: if service account should be used
         :return:
         """
         url = quote(f"/v3/files/content/{systemId}/{path}")
 
-        client = service_account_client(self.tenant_id).client if use_service_account else self.client
-
         # TODO_TAPISV3 what error code do we get if tapis is unable to get our file, but we should try again (500?)
-        with client.get(self.base_url + url, stream=True) as r:
+        with self.client.get(self.base_url + url, stream=True) as r:
 
             if r.status_code > 400:
                 if r.status_code != 404:
@@ -263,23 +268,6 @@ class AgaveUtils:
         response.raise_for_status()
 
 
-def service_account_client(tenant_id):
-    # TODO_TAPISV3
-    try:
-        tenant_secrets = json.loads(settings.TENANT)
-    except TypeError:
-        logger.error("Could not get service account for tenant:{};  Ensure this your environment "
-                     "is properly configured.".format(tenant_id))
-        raise MissingServiceAccount
-
-    if tenant_secrets is None or tenant_id.upper() not in tenant_secrets:
-        raise MissingServiceAccount
-
-    # TODO_TAPISV3 update service account
-    client = AgaveUtils(token=tenant_secrets[tenant_id.upper()]['service_account_token'], tenant=tenant_id)
-    return client
-
-
 @dataclass(frozen=True, eq=True)
 class SystemUser:
     username: str
@@ -299,32 +287,22 @@ def get_system_users(user: User, system_id: str) -> List[SystemUser]:
     return custom_system_user_retrieval[user.tenant_id.upper()](user, system_id)
 
 
-def get_metadata_using_service_account(tenant_id: str, system_id: str, path: str) -> Dict:
+def get_metadata(user: User, system_id: str, path: str) -> Dict:
     """
     Get a file's tapis metadata (which typically include geolocation) using service account
 
-    :param tenant_id: tenant id
+    :param user: User to make the query
     :param system_id: system id
     :param path: path to file
     :return: dictionary containing the metadata (including geolocation) of a file
     """
-    logger.debug("getting metadata. tenant:{}, system_id: {} , path:{}".format(tenant_id, system_id, path))
 
-    # TODO_TAPISV3 See https://tacc-main.atlassian.net/browse/WG-254
-    return {}
+    logger.debug(f"getting metadata. system_id: {system_id}, path:{path}")
 
-    client = service_account_client(tenant_id)
-    meta_data_query = {
-            "name": "designsafe.file",
-            "value.system": system_id,
-            "value.path": os.path.join(path, '*')
-    }
-    params = {"limit": 300, "offset": 0, "q": json.dumps(meta_data_query)}
-
-    # same as Tapis v2 python client's: client.meta.listMetadata(q=json.dumps(query), limit=300, offset=0)
-    response = client.get(url=quote('/meta/v2/data/'), params=params)
+    client = ApiUtils(user=user, base_url=settings.DESIGNSAFE_URL)
+    response = client.get(url=quote(f'/api/filemeta/{system_id}/{path}'))
     response.raise_for_status()
-    meta_list = response.json()["result"]
-    if len(meta_list) > 0 and "value" in meta_list[0]:
-        return meta_list[0]["value"]
-    return {}
+    meta_response = response.json()
+    meta = meta_response["value"] if "value" in meta_response else {}
+    logger.debug(f"got metadata. system_id: {system_id}, path:{path} -> {meta}")
+    return meta

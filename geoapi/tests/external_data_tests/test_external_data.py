@@ -16,6 +16,27 @@ from geoapi.exceptions import InvalidCoordinateReferenceSystem
 from geoapi.services.point_cloud import PointCloudService
 
 
+METADATA_ROUTE = re.compile(r'https://.*/api/filemeta/.*/.*')
+
+
+@pytest.fixture(scope="function")
+def metadata_none_fixture(requests_mock):
+    response = {}
+    requests_mock.get(METADATA_ROUTE, json=response)
+
+
+@pytest.fixture(scope="function")
+def metadata_but_no_geolocation_fixture(requests_mock):
+    response = {"value": {"geolocation": []}}
+    requests_mock.get(METADATA_ROUTE, json=response)
+
+
+@pytest.fixture(scope="function")
+def metadata_geolocation_30long_20lat_fixture(requests_mock):
+    response = {"value": {"geolocation": [{"longitude": 20, "latitude": 30}]}}
+    requests_mock.get(METADATA_ROUTE, json=response)
+
+
 @pytest.fixture(scope="function")
 def get_system_users_mock(user1, user2):
     users = [SystemUser(username=user1.username, admin=True), SystemUser(username=user2.username, admin=False)]
@@ -78,7 +99,7 @@ def agave_utils_with_bad_image_file(image_file_no_location_fixture):
 
 
 @pytest.fixture(scope="function")
-def agave_utils_with_image_file_from_rapp_folder(requests_mock, image_file_fixture):
+def agave_utils_with_image_file_from_rapp_folder(metadata_geolocation_30long_20lat_fixture, requests_mock, image_file_fixture):
     filesListing = [
         AgaveFileListing({
             "type": "file",
@@ -86,10 +107,6 @@ def agave_utils_with_image_file_from_rapp_folder(requests_mock, image_file_fixtu
             "lastModified": "2020-08-31T12:00:00Z"
         })
     ]
-
-    METADATA_ROUTE = re.compile(r'http://.*/meta/v2/data')
-    response = {"result": [{"value": {"geolocation": [{"longitude": 20, "latitude": 30}]}}]}
-    requests_mock.get(METADATA_ROUTE, json=response)
 
     with patch('geoapi.utils.agave.AgaveUtils.listing') as mock_listing_utils, \
             patch('geoapi.utils.agave.AgaveUtils.getFile') as mock_get_file_utils, \
@@ -146,11 +163,8 @@ def agave_utils_listing_with_single_trash_folder_of_image(image_file_fixture):
 
 
 @pytest.mark.worker
-def test_external_data_good_files(requests_mock, user1, projects_fixture, agave_utils_with_geojson_file):
-    METADATA_ROUTE = re.compile(r'http://.*/meta/v2/data')
-    response = {"result": [{"value": {"geolocation": [{"longitude": 20, "latitude": 30}]}}]}
-    requests_mock.get(METADATA_ROUTE, json=response)
-
+def test_external_data_good_files(metadata_geolocation_30long_20lat_fixture, user1,
+                                  projects_fixture, agave_utils_with_geojson_file):
     import_from_agave(projects_fixture.tenant_id, user1.id, "testSystem", "/testPath", projects_fixture.id)
     features = db_session.query(Feature).all()
     # the test geojson has 3 features in it
@@ -172,11 +186,7 @@ def test_external_data_good_files(requests_mock, user1, projects_fixture, agave_
 
 
 @pytest.mark.worker
-def test_external_data_bad_files(requests_mock, user1, projects_fixture, agave_utils_with_bad_image_file):
-    METADATA_ROUTE = re.compile(r'http://.*/meta/v2/data')
-    response = {"result": [{"value": {"geolocation": [{"longitude": 20, "latitude": 30}]}}]}
-    requests_mock.get(METADATA_ROUTE, json=response)
-
+def test_external_data_bad_files(metadata_none_fixture, user1, projects_fixture, agave_utils_with_bad_image_file):
     import_from_agave(projects_fixture.tenant_id, user1.id, "testSystem", "/testPath", projects_fixture.id)
     features = db_session.query(Feature).all()
     assert len(features) == 0
@@ -208,7 +218,6 @@ def test_external_data_no_files_except_for_trash(user1, projects_fixture, agave_
 
 
 @pytest.mark.worker
-@pytest.mark.skip(reason="TODO_TAPISV3 See https://tacc-main.atlassian.net/browse/WG-254")
 def test_external_data_rapp(user1, projects_fixture,
                             agave_utils_with_image_file_from_rapp_folder):
     import_from_agave(projects_fixture.tenant_id, user1.id, "testSystem", "/Rapp", projects_fixture.id)
@@ -223,11 +232,8 @@ def test_external_data_rapp(user1, projects_fixture,
 
 @pytest.mark.worker
 def test_external_data_rapp_missing_geospatial_metadata(user1, projects_fixture,
-                                                        agave_utils_with_image_file_from_rapp_folder, requests_mock):
-    METADATA_ROUTE = re.compile(r'http://.*/meta/v2/data')
-    response = {"result": [{"value": {"geolocation": []}}]}
-    requests_mock.get(METADATA_ROUTE, json=response)
-
+                                                        agave_utils_with_image_file_from_rapp_folder,
+                                                        metadata_but_no_geolocation_fixture):
     import_from_agave(projects_fixture.tenant_id, user1.id, "testSystem", "/Rapp", projects_fixture.id)
     features = db_session.query(Feature).all()
     assert len(features) == 0
@@ -357,7 +363,8 @@ def test_import_from_agave_failed_dbsession_rollback(agave_utils_with_geojson_fi
 
 
 @pytest.mark.worker
-def test_refresh_observable_projects(user1,
+def test_refresh_observable_projects(metadata_but_no_geolocation_fixture,
+                                     user1,
                                      user2,
                                      agave_utils_with_geojson_file,
                                      observable_projects_fixture,

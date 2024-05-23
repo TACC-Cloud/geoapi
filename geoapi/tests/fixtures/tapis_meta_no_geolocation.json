@@ -1,53 +1,32 @@
 {
-  "result": [
-    {
-      "uuid": "8979750356237676050-242ac117-0001-012",
-      "owner": "ds_admin",
-      "schemaId": null,
-      "internalUsername": null,
-      "associationIds": [],
-      "lastUpdated": "2024-01-16T17:11:00.585-06:00",
-      "name": "designsafe.file",
-      "value": {
-        "_author": "Test User",
-        "geolocation": [],
-        "instrument_manufacturer_and_model": "",
-        "title": "Photo 1688148916614",
-        "_timestamp": 1688148922.1698608,
-        "_rapp_parent_collection_uuid": "F45CD6A6-4DC0-42CE-A717-16045AF5F6A7",
-        "geoid_model": "",
-        "misc_notes": "",
-        "instrument_type": "other",
-        "coord_system_epoch": "",
-        "path": "/test_user/Photo1.jpg",
-        "system": "project-4193535358505521646-242ac117-0001-012",
-        "geodetic_datum": "",
-        "coord_ref_system": "",
-        "geodetic_datum_realization": "",
-        "basePath": "/test_user",
-        "vertical_datum": "",
-        "format": "jpg",
-        "_rapp_asset_uuid": "B28E06C3-9B14-4235-B307-2F0F5FA961C0",
-        "units": "",
-        "data_type": "image",
-        "referenced_data_links": [],
-        "coord_system": "",
-        "data_hazard_type": "other",
-        "description": ""
-      },
-      "created": "2024-01-16T17:11:00.585-06:00",
-      "_links": {
-        "self": {
-          "href": "https://agave.designsafe-ci.org/meta/v2/data/8979750356237676050-242ac117-0001-012"
-        },
-        "permissions": {
-          "href": "https://agave.designsafe-ci.org/meta/v2/data/8979750356237676050-242ac117-0001-012/pems"
-        },
-        "owner": {
-          "href": "https://agave.designsafe-ci.org/profiles/v2/ds_admin"
-        },
-        "associationIds": []
-      }
-    }
-  ]
+  "lastUpdated": "2024-01-20T07:05:01.333-06:00",
+  "name": "designsafe.file",
+  "value": {
+    "_author": "Test User",
+    "geolocation": [
+    ],
+    "instrument_manufacturer_and_model": "",
+    "title": "Photo 1690399237478",
+    "_timestamp": 1690399240.36766,
+    "_rapp_parent_collection_uuid": "CA16655D-A422-444D-A078-546BC5CF1C67",
+    "geoid_model": "",
+    "misc_notes": "",
+    "instrument_type": "other",
+    "coord_system_epoch": "",
+    "path": "/Photo 1690399237478.jpg",
+    "system": "project-4193535358505521646-242ac117-0001-012",
+    "geodetic_datum": "",
+    "coord_ref_system": "",
+    "geodetic_datum_realization": "",
+    "basePath": "/",
+    "vertical_datum": "",
+    "format": "jpg",
+    "_rapp_asset_uuid": "8C9E6B10-0A00-4F0B-BDD8-E443BDE64519",
+    "units": "",
+    "data_type": "image",
+    "referenced_data_links": [],
+    "coord_system": "",
+    "data_hazard_type": "other",
+    "description": ""
+  }
 }

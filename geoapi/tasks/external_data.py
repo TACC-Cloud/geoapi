@@ -9,9 +9,9 @@ from celery import uuid as celery_uuid
 import json
 
 from geoapi.celery_app import app
-from geoapi.exceptions import InvalidCoordinateReferenceSystem, MissingServiceAccount, GetUsersForProjectNotSupported
+from geoapi.exceptions import InvalidCoordinateReferenceSystem, GetUsersForProjectNotSupported
 from geoapi.models import User, ProjectUser, ObservableDataProject, Task
-from geoapi.utils.agave import (AgaveUtils, SystemUser, get_system_users, get_metadata_using_service_account,
+from geoapi.utils.agave import (AgaveUtils, SystemUser, get_system_users, get_metadata,
                                 AgaveFileGetError, AgaveListingError)
 from geoapi.utils import features as features_util
 from geoapi.log import logger
@@ -304,12 +304,7 @@ def import_from_files_from_path(session, tenant_id: str, userId: int, systemId: 
                 # If it is a RApp project folder and not a questionnaire file, use the metadata from tapis meta service
                 if features_util.is_supported_file_type_in_rapp_folder_and_needs_metadata(item_system_path):
                     logger.info(f"RApp: importing:{item_system_path} for user:{user.username}. Using metadata service for geolocation.")
-                    try:
-                        meta = get_metadata_using_service_account(tenant_id, systemId, item.path)
-                    except MissingServiceAccount:
-                        logger.error(
-                            "No service account. Unable to get metadata for {}:{}".format(systemId, item.path))
-                        return {}
+                    meta = get_metadata(user, systemId, item.path)
 
                     logger.debug("metadata from service account for file:{} : {}".format(item_system_path, meta))
 

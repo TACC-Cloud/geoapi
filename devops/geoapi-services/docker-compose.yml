@@ -75,6 +75,7 @@ services:
       - FLASK_APP=/app/geoapi/app.py
       - ASSETS_BASE_DIR=/assets
       - GEOAPI_TAG=ENV_GEOAPI_TAG
+      - DESIGNSAFE_URL=${DESIGNSAFE_URL}
     stdin_open: true
     tty: true
     container_name: geoapi

@@ -19,11 +19,6 @@ class ObservableProjectAlreadyExists(Exception):
     pass
 
 
-class MissingServiceAccount(Exception):
-    """ No service account for this tenant """
-    pass
-
-
 class ApiException(Exception):
     """ A generic exception from the api"""
     pass
