@@ -1,6 +1,5 @@
 import os
 import pytest
-from unittest.mock import patch
 import json
 from geoapi.custom.designsafe.project_users import get_system_users
 from geoapi.settings import settings
