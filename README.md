@@ -112,7 +112,6 @@ docker exec -it geoapiworkers bash
 APP_ENV=testing pytest -m "worker"
 ```
 
-
 ## Kubernetes (Production/Staging)
 
 Information on Kubernetes configuration for production and staging environments can be found in the [kube/README.md](kube/README.md) including information
