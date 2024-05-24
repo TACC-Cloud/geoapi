@@ -207,8 +207,8 @@ def import_point_clouds_from_agave(userId: int, files, pointCloudId: int):
                              f"for user:{user.username} due to missing coordinate reference system: {system_id}:{path}")
                 failed_message = "Error importing {}: missing coordinate reference system".format(path)
             except Exception as e:
-                logger.error(f"Could not import point cloud file for user:{user.username} point cloud: {pointCloudId}"
-                             f"from tapis: {system_id}/{path} : {e}")
+                logger.exception(f"Could not import point cloud file for user:{user.username} point cloud: {pointCloudId}"
+                                 f"from tapis: {system_id}/{path} : {e}")
                 failed_message = "Unknown error importing {}:{}".format(system_id, path)
 
             if failed_message:
