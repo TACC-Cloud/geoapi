@@ -18,7 +18,7 @@ api = Api(
         },
         'JWT': {
             'type': 'apiKey',
-            'name': 'X-JWT-Assertion-designsafe',
+            'name': 'X-Tapis-Token',
             'in': 'header'
         }
     }
