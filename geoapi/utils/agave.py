@@ -71,6 +71,17 @@ class AgaveFileListing:
         return self.path.suffix.lstrip('.').lower()
 
 
+def get_session(user: User):
+    """
+    Get the client session which contains correct headers
+
+    :param user: The user object containing the JWT.
+    """
+    client = requests.Session()
+    client.headers.update({'X-Tapis-Token': user.jwt})
+    return client
+
+
 class ApiUtils:
     def __init__(self, user: User, base_url: str):
         """
@@ -79,9 +90,7 @@ class ApiUtils:
         :param user: The user object containing the JWT.
         :param base_url: The base URL for the API endpoints.
         """
-        client = requests.Session()
-        client.headers.update({'X-Tapis-Token': user.jwt})
-        self.client = client
+        self.client = get_session(user)
         self.base_url = base_url
 
     def get(self, url, params=None):
