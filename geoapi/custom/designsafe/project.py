@@ -5,6 +5,7 @@ from geoapi.settings import settings
 from geoapi.custom.designsafe.default_basemap_layers import default_layers
 from geoapi.models import User, Project
 
+
 def on_project_creation(database_session, user: User, project: Project):
     try:
         logger.debug(f"Creating .hazmapper file for user:{user.username}"
