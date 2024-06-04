@@ -5,8 +5,6 @@ from geoapi.settings import settings
 from geoapi.custom.designsafe.default_basemap_layers import default_layers
 from geoapi.models import User, Project
 
-import requests
-
 
 def on_project_creation(database_session, user: User, project: Project):
     try:
@@ -79,9 +77,8 @@ def on_project_deletion(user: User, project: Project):
 def update_designsafe_project_hazmapper_metadata(user: User, project: Project, add_project: bool):
     designsafe_uuid = project.system_id[len("project-"):]
 
-    client = requests.Session()
-    client.headers.update({'X-JWT-Assertion-designsafe': user.jwt})
-
+    from geoapi.utils.agave import get_session
+    client = get_session(user)
     response = client.get(settings.DESIGNSAFE_URL + f"/api/projects/v2/{designsafe_uuid}/")
     response.raise_for_status()
 
