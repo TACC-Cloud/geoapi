@@ -5,10 +5,11 @@ class Config(object):
     DEBUG = False
     TESTING = False
     ASSETS_BASE_DIR = os.environ.get('ASSETS_BASE_DIR', '/assets')
-    JWT_PUB_KEY = 'MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQCUp/oV1vWc8/TkQSiAvTousMzOM4asB2iltr2QKozni5aVFu818MpOLZIr8LMnTzWllJvvaA5RAAdpbECb+48FjbBe0hseUdN5HpwvnH/DW8ZccGvk53I6Orq7hLCv1ZHtuOCokghz/ATrhyPq+QktMfXnRS4HrKGJTzxaCcU7OQIDAQAB'  # noqa: E501
+    JWT_PUB_KEY = 'MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAmqQ9Je2o5zydpVY865qao1iX1+E1Kxw3Hpb8FX3PHGjDoOAxrpY2lV0jdXwEPECbYbTv51fu7wBh8p6Y5outup+aRUfAAJxvq0D0w//AQTNE7bYbVNSGlVt68vnywMoFOab2zZ6o83jrlhmvkswb7N48aaZTnY0tCAYJ7SCCj2BN7BsbBoB4Bzv62S86Sw0hMXf3mJlWMoh5bDRANVYbOJ31bzIzJFxCs0hyfLBT8X+d2qSxfF7i33JOIDzOW0GiI0McVJZpifnSbGnLcw/mBGlNB67zwZ9PTsi2TS3s8z0TwnmP9ORM/cpqEfu4yFPvWeADsVAE9h9ZZX6nRCQ91QIDAQAB'  # noqa: E501
     RESTPLUS_MASK_SWAGGER = False
     TENANT = os.environ.get("TENANT")
     STREETVIEW_DIR = os.environ.get('STREETVIEW_DIR', '/assets/streetview')
+    DESIGNSAFE_URL = os.environ.get("DESIGNSAFE_URL")
 
 
 class DeployedConfig(Config):
@@ -44,12 +45,11 @@ class UnitTestingConfig(LocalDevelopmentConfig):
     TESTING = True
     STREETVIEW_DIR = os.environ.get('STREETVIEW_DIR', '/tmp/streetview')
     ASSETS_BASE_DIR = '/tmp'
-    TENANT = "{\"DESIGNSAFE\": {\"service_account_token\": \"ABCDEFG12344\"}," \
-             " \"TEST\": {\"service_account_token\": \"ABCDEFG12344\"}  }"
+    DESIGNSAFE_URL = os.environ.get("DESIGNSAFE_URL", "https://designsafe-not-real.tacc.utexas.edu")
 
 
 APP_ENV = os.environ.get('APP_ENV', '').lower()
-if APP_ENV == 'production' or APP_ENV == 'staging' or APP_ENV == 'dev':
+if APP_ENV == 'production' or APP_ENV == 'staging' or APP_ENV == 'dev' or APP_ENV == "experimental":
     settings = DeployedConfig
 elif APP_ENV == 'testing':
     settings = UnitTestingConfig

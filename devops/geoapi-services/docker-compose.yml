@@ -24,10 +24,13 @@ services:
     image: nginx
     restart: always
     ports:
-      - 8888:80
+      - 80:80
+      - 443:443
     volumes:
       - /assets:/assets
       - ./nginx.conf:/etc/nginx/nginx.conf
+      - /etc/letsencrypt/live/${GEOAPI_SERVICES_HOST}/fullchain.pem:/etc/ssl/certs/portal.cer
+      - /etc/letsencrypt/live/${GEOAPI_SERVICES_HOST}/privkey.pem:/etc/ssl/private/portal.key
     logging:
       driver: syslog
       options:
@@ -64,8 +67,6 @@ services:
       - geoapi
     volumes:
       - /assets:/assets
-    ports:
-      - 8000:8000
     dns:
       - 8.8.8.8
       - 8.8.4.4
@@ -74,6 +75,7 @@ services:
       - FLASK_APP=/app/geoapi/app.py
       - ASSETS_BASE_DIR=/assets
       - GEOAPI_TAG=ENV_GEOAPI_TAG
+      - DESIGNSAFE_URL=${DESIGNSAFE_URL}
     stdin_open: true
     tty: true
     container_name: geoapi
@@ -90,7 +92,7 @@ services:
     image: taccaci/hazmapper:${HAZMAPPER_TAG}
     restart: always
     ports:
-      - 80:80
+      - 83:80
     container_name: hazmapper
 
   taggit:

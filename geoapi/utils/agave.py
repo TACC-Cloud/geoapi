@@ -1,4 +1,5 @@
 import shutil
+import re
 import os
 import io
 import time
@@ -8,15 +9,15 @@ from dataclasses import dataclass
 import requests
 import pathlib
 from typing import List, Dict, IO
-from urllib.parse import quote, urlparse, parse_qs
+from urllib.parse import quote
 import json
 from geoapi.log import logging
 from dateutil import parser
 
 from geoapi.settings import settings
-from geoapi.utils.tenants import get_api_server, get_service_accounts
-from geoapi.exceptions import MissingServiceAccount
+from geoapi.utils.tenants import get_api_server
 from geoapi.custom import custom_system_user_retrieval
+from geoapi.models import User
 from contextlib import closing
 
 logger = logging.getLogger(__name__)
@@ -58,12 +59,8 @@ class RetryableTapisFileError(Exception):
 class AgaveFileListing:
 
     def __init__(self, data: Dict):
-        self._links = data["_links"]
-        self.system = data["system"]
         self.type = data["type"]
-        self.length = data["length"]
         self.path = pathlib.Path(data["path"])
-        self.mimeType = data["mimeType"]
         self.lastModified = parser.parse(data["lastModified"])
 
     def __repr__(self):
@@ -73,58 +70,46 @@ class AgaveFileListing:
     def ext(self):
         return self.path.suffix.lstrip('.').lower()
 
-    @property
-    def uuid(self):
+
+def get_session(user: User):
+    """
+    Get the client session which contains correct headers
+
+    :param user: The user object containing the JWT.
+    """
+    client = requests.Session()
+    client.headers.update({'X-Tapis-Token': user.jwt})
+    return client
+
+
+class ApiUtils:
+    def __init__(self, user: User, base_url: str):
         """
-        In the files `_links` is an href to metadata via associationIds. The
-        `associationId` is the UUID of this file. Use urlparse to parse the URL and then
-        the query. The `q` query parameter is a JSON string in the form::
+        Initializes the client session for a user using an API that uses Tapis tokens for auth.
 
-            {"assocationIds": "{{ uuid }}"}
-
-        :return: string: the UUID for the file
+        :param user: The user object containing the JWT.
+        :param base_url: The base URL for the API endpoints.
         """
-        if 'metadata' in self._links:
-            assoc_meta_href = self._links['metadata']['href']
-            parsed_href = urlparse(assoc_meta_href)
-            query_dict = parse_qs(parsed_href.query)
-            if 'q' in query_dict:
-                meta_q = json.loads(query_dict['q'][0])
-                return meta_q.get('associationIds')
-        return None
-
-
-class AgaveUtils:
-    BASE_URL = 'http://api.prod.tacc.cloud'
-
-    def __init__(self, jwt=None, token=None, tenant=None):
-        """
-        Initializes the client session.
-
-        This constructor sets up a client session with headers updated for JWT or bearer token authentication.
-        If a tenant is specified, it uses the tenant's API server. Note that the BASE_URL Tapis V2 server is the
-        only tapis service using a JWT, so if a tenant is given, a token must also be provided.
-        """
-        client = requests.Session()
-        if jwt:
-            client.headers.update({'X-JWT-Assertion-designsafe': jwt})
-        if token:
-            client.headers.update({'Authorization': 'Bearer {}'.format(token)})
-        # Use tenant's api server (if tenant is provided) to allow for use
-        # of service account which are specific to a tenant
-        self.base_url = get_api_server(tenant) if tenant else self.BASE_URL
-        self.client = client
+        self.client = get_session(user)
+        self.base_url = base_url
 
     def get(self, url, params=None):
         return self.client.get(self.base_url + url, params=params)
 
-    def systemsList(self):
-        resp = self.get(quote('/systems/'))
-        listing = resp.json()
-        return listing["result"]
+
+# TODO_TAPISV# rename AgaveUtils to TapisUtils and rename this from agave.py to external_api(?) or something similar
+# to reflect
+class AgaveUtils(ApiUtils):
+    def __init__(self, user: User):
+        """
+        Initializes the client session for a user.
+
+        This constructor sets up a client session with headers updated for user's JWT.
+        """
+        super().__init__(user=user, base_url=get_api_server(user.tenant_id))
 
     def systemsGet(self, systemId: str) -> Dict:
-        url = quote('/systems/{}'.format(systemId))
+        url = quote('/v3/systems/{}'.format(systemId))
         resp = self.get(url)
         listing = resp.json()
         return listing["result"]
@@ -136,15 +121,29 @@ class AgaveUtils:
         return listing["result"]
 
     def listing(self, systemId: str, path: str) -> List[AgaveFileListing]:
-        url = quote('/files/listings/system/{}/{}?limit=10000'.format(systemId, path))
-        resp = self.get(url)
-        if resp.status_code != 200:
-            e = AgaveListingError(message=f"Unable to perform files listing of {systemId}/{path}. Status code: {resp.status_code}",
-                                  response=resp)
-            raise e
-        listing = resp.json()
-        out = [AgaveFileListing(d) for d in listing["result"]]
-        return out
+        listings = []
+        offset = 0
+        limit = 1000  # Set the limit for each request
+        total_fetched = 0
+
+        while True:
+            url = quote(f"/v3/files/ops/{systemId}/{path}")
+            resp = self.get(url, params={"offset": offset, "limit": limit})
+            if resp.status_code != 200:
+                e = AgaveListingError(
+                    message=f"Unable to perform files listing of {systemId}/{path}. Status code: {resp.status_code}",
+                    response=resp)
+                raise e
+
+            listing = resp.json()
+            fetched_listings = [AgaveFileListing(d) for d in listing["result"]]
+            listings.extend(fetched_listings)
+            total_fetched += len(fetched_listings)
+
+            if len(fetched_listings) < limit:
+                break
+            offset += limit
+        return listings
 
     def getMetaAssociated(self, uuid: str) -> Dict:
         """
@@ -161,7 +160,7 @@ class AgaveUtils:
         out = {k: v for d in results for k, v in d.items()}
         return out
 
-    def _get_file(self, systemId: str, path: str, use_service_account: bool = False) -> NamedTemporaryFile:
+    def _get_file(self, systemId: str, path: str) -> NamedTemporaryFile:
         """
         Get file
 
@@ -171,31 +170,16 @@ class AgaveUtils:
 
         :param systemId:
         :param path:
-        :parm use_service_account: if service account should be used
         :return:
         """
-        url = quote('/files/media/system/{}/{}'.format(systemId, path))
+        url = quote(f"/v3/files/content/{systemId}/{path}")
 
-        client = service_account_client("designsafe").client if use_service_account else self.client
-        base_url = service_account_client("designsafe").base_url if use_service_account else self.base_url
+        # TODO_TAPISV3 what error code do we get if tapis is unable to get our file, but we should try again (500?)
+        with self.client.get(self.base_url + url, stream=True) as r:
 
-        with client.get(base_url + url, stream=True) as r:
-            if r.status_code == 403 and not use_service_account:
-                # This is a workaround for bug documented in https://jira.tacc.utexas.edu/browse/CS-169
-                # and in https://jira.tacc.utexas.edu/browse/DES-2084 where sometimes a 403 is returned by tapis
-                # for some files.
-                logger.warning(f"Could not fetch file ({systemId}/{path}) due to unexpected 403. Possibly CS-169/DES-2084.")
-                systemInfo = self.systemsGet(systemId)
-                if systemInfo["public"]:
-                    logger.warning("As system is a public storage system for projects. we will use service "
-                                   "account to get file: {}/{}".format(systemId, path))
-                    return self._get_file(systemId, path, use_service_account=True)
-                else:
-                    logger.warning(f"System is not public so not trying work-around for CS-169/DES-2084: {systemId}/{path}")
             if r.status_code > 400:
-                if r.status_code == 500:
-                    logger.warning(f"Fetch file ({systemId}/{path}) but got 500 {r}: {r.content};"
-                                   f"500 is possibly due to CS-196/DES-2236.")
+                if r.status_code != 404:
+                    logger.warning(f"Fetch file ({systemId}/{path}) but got {r.status_code}, {r}: {r.content}")
                     raise RetryableTapisFileError
 
                 raise AgaveFileGetError("Could not fetch file ({}/{}) status_code:{} content:{}".format(systemId,
@@ -207,9 +191,9 @@ class AgaveUtils:
                 tmpFile.write(chunk)
             tmpFile.seek(0)
 
+            # TODO_TAPISV3 is this still needed; this was a v2 error where empty files were sometimes returned
             if os.path.getsize(tmpFile.name) < 1:
-                logger.warning(f"Fetch file ({systemId}/{path}) but is empty. "
-                               f"Either file is really empty or possibly due to CS-196/DES-2236.")
+                logger.warning(f"Fetch file ({systemId}/{path}) but is empty. ")
                 raise RetryableTapisFileError
         return tmpFile
 
@@ -237,14 +221,14 @@ class AgaveUtils:
                 return self._get_file(systemId, path)
             except RetryableTapisFileError:
                 allowed_attempts = allowed_attempts - 1
-                logger.error(f"File fetching failed but is retryable (i.e. could be CS-196): ({systemId}/{path}) ")
+                logger.error(f"File fetching failed but is retryable: ({systemId}/{path}) ")
                 if allowed_attempts > 0:
                     time.sleep(SLEEP_SECONDS_BETWEEN_RETRY)
                 continue
             except Exception as e:
                 logger.exception(f"Could not fetch file and did not attempt to retry: ({systemId}/{path})")
                 raise e
-        msg = f"Could not fetch file and no longer retrying. (could be CS-196): ({systemId}/{path})"
+        msg = f"Could not fetch file and no longer retrying.: ({systemId}/{path})"
         logger.exception(msg)
         raise AgaveFileGetError(msg)
 
@@ -276,38 +260,21 @@ class AgaveUtils:
         file_like_object = io.BytesIO(file_content)
 
         files = {
-            'fileToUpload': (file_name, file_like_object, 'plain/text')
+            'file': (file_name, file_like_object, 'plain/text')
         }
-        data = {"fileType": "plain/text",
-                "callbackUrl": "",
-                "fileName": file_name,
-                }
-        file_import_url = self.base_url + quote(f"/files/media/system/{system_id}{system_path}/")
-        response = self.client.post(file_import_url, files=files, data=data)
+        file_import_url = self.base_url + quote(f"/v3/files/ops/{system_id}/{system_path}/{file_name}")
+        file_import_url = re.sub(r'(?<!:)/+', '/', file_import_url)
+        response = self.client.post(file_import_url, files=files)
         response.raise_for_status()
 
     def delete_file(self, system_id: str, file_path: str):
         """
         Deletes a file on a Tapis storage system.
         """
-        file_delete_url = self.base_url + quote(f"/files/media/system/{system_id}{file_path}")
+        file_delete_url = self.base_url + quote(f"/v3/files/ops/{system_id}/{file_path}")
+        file_delete_url = re.sub(r'(?<!:)/+', '/', file_delete_url)
         response = self.client.delete(file_delete_url)
         response.raise_for_status()
-
-
-def service_account_client(tenant_id):
-    try:
-        tenant_secrets = json.loads(settings.TENANT)
-    except TypeError:
-        logger.error("Could not get service account for tenant:{};  Ensure this your environment "
-                     "is properly configured.".format(tenant_id))
-        raise MissingServiceAccount
-
-    if tenant_secrets is None or tenant_id.upper() not in tenant_secrets:
-        raise MissingServiceAccount
-
-    client = AgaveUtils(token=tenant_secrets[tenant_id.upper()]['service_account_token'], tenant=tenant_id)
-    return client
 
 
 @dataclass(frozen=True, eq=True)
@@ -316,81 +283,35 @@ class SystemUser:
     admin: bool = False
 
 
-def get_default_system_users(tenant_id, jwt, system_id: str) -> List[SystemUser]:
-    """
-    Get systems users for a system using a user's jwt and (potentially) the tenant's service account.
-
-    Tapis provides all roles for owner of system which is why we attempt
-    to use the service account super token as well.
-
-    :param tenant_id: tenant id
-    :param jwt: jwt of a user
-    :param system_id: str
-    :return: list of users with admin status
-    """
-
-    client = AgaveUtils(jwt)
-    user_names = [entry["username"] for entry in client.systemsRolesGet(system_id)]
-
-    try:
-        client = service_account_client(tenant_id)
-        user_names_from_service_account = [entry["username"] for entry in client.systemsRolesGet(system_id)]
-        user_names = set(user_names + user_names_from_service_account)
-    except MissingServiceAccount:
-        logger.error("No service account. Unable to get system roles/users for {}".format(system_id))
-    except: # noqa
-        logger.exception("Unable to get system roles/users for {} using service account".format(system_id))
-
-    # remove any possible service accounts
-    for u in get_service_accounts(tenant_id):
-        try:
-            user_names.remove(u)
-        except (ValueError, KeyError):
-            pass  # do nothing if no service account
-
-    logger.info("System:{} has the following users: {}".format(system_id, user_names))
-    return [SystemUser(username=u, admin=False) for u in user_names]
-
-
-def get_system_users(tenant_id, jwt, system_id: str) -> List[SystemUser]:
+def get_system_users(user: User, system_id: str) -> List[SystemUser]:
     """
     Get systems users for a system and their admin status.
 
     Right now, this would always be DesignSafe.
 
-    :param tenant_id: tenant id
-    :param jwt: jwt of a user
+    :param user: User to make the query
     :param system_id: str
     :return: list of users with admin status
     """
-
-    if tenant_id.upper() in custom_system_user_retrieval:
-        return custom_system_user_retrieval[tenant_id.upper()](tenant_id, jwt, system_id)
-    return get_default_system_users(tenant_id, jwt, system_id)
+    return custom_system_user_retrieval[user.tenant_id.upper()](user, system_id)
 
 
-def get_metadata_using_service_account(tenant_id: str, system_id: str, path: str) -> Dict:
+def get_metadata(user: User, system_id: str, path: str) -> Dict:
     """
     Get a file's tapis metadata (which typically include geolocation) using service account
 
-    :param tenant_id: tenant id
+    :param user: User to make the query
     :param system_id: system id
     :param path: path to file
     :return: dictionary containing the metadata (including geolocation) of a file
     """
-    logger.debug("getting metadata. tenant:{}, system_id: {} , path:{}".format(tenant_id, system_id, path))
-    client = service_account_client(tenant_id)
-    meta_data_query = {
-            "name": "designsafe.file",
-            "value.system": system_id,
-            "value.path": os.path.join(path, '*')
-    }
-    params = {"limit": 300, "offset": 0, "q": json.dumps(meta_data_query)}
 
-    # same as Tapis v2 python client's: client.meta.listMetadata(q=json.dumps(query), limit=300, offset=0)
-    response = client.get(url=quote('/meta/v2/data/'), params=params)
+    logger.debug(f"getting metadata. system_id: {system_id}, path:{path}")
+
+    client = ApiUtils(user=user, base_url=settings.DESIGNSAFE_URL)
+    response = client.get(url=quote(f'/api/filemeta/{system_id}/{path}'))
     response.raise_for_status()
-    meta_list = response.json()["result"]
-    if len(meta_list) > 0 and "value" in meta_list[0]:
-        return meta_list[0]["value"]
-    return {}
+    meta_response = response.json()
+    meta = meta_response["value"] if "value" in meta_response else {}
+    logger.debug(f"got metadata. system_id: {system_id}, path:{path} -> {meta}")
+    return meta

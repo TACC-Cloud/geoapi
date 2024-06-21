@@ -19,11 +19,6 @@ class ObservableProjectAlreadyExists(Exception):
     pass
 
 
-class MissingServiceAccount(Exception):
-    """ No service account for this tenant """
-    pass
-
-
 class ApiException(Exception):
     """ A generic exception from the api"""
     pass
@@ -41,4 +36,9 @@ class StreetviewLimitException(Exception):
 
 class StreetviewExistsException(Exception):
     """ Already published the streetview assets from a system/path """
+    pass
+
+
+class GetUsersForProjectNotSupported(Exception):
+    """ Getting users for a project is not supported) """
     pass

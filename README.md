@@ -95,6 +95,23 @@ Note that images need to be rebuilt before running tests if they have been updat
 ```
 make build
 ```
+
+or run directly in your running containers:
+```
+docker exec -it geoapi_postgres psql -d postgres  -U dev
+CREATE DATABASE TEST;
+ \connect test;
+CREATE EXTENSION postgis;
+
+# then run tests in api
+docker exec -it geoapi bash
+APP_ENV=testing pytest
+
+# then run tests in worker
+docker exec -it geoapiworkers bash
+APP_ENV=testing pytest -m "worker"
+```
+
 ## Kubernetes (Production/Staging)
 
 Information on Kubernetes configuration for production and staging environments can be found in the [kube/README.md](kube/README.md) including information

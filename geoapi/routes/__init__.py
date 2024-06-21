@@ -7,18 +7,13 @@ from .public_projects import api as public_projects
 
 api = Api(
     title='GeoAPI',
-    version='0.1',
+    version='0.2',
     description='Geospatial API for TAPIS',
-    security=['Token', 'JWT'],
+    security=['JWT'],
     authorizations={
-        'Token': {
-            'type': 'apiKey',
-            'name': 'Authorization',
-            'in': 'header'
-        },
         'JWT': {
             'type': 'apiKey',
-            'name': 'X-JWT-Assertion-designsafe',
+            'name': 'X-Tapis-Token',
             'in': 'header'
         }
     }

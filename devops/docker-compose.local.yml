@@ -53,7 +53,8 @@ services:
       - FLASK_APP=/app/geoapi/app.py
       - APP_ENV=local
       - ASSETS_BASE_DIR=/assets
-      - TENANT=${TENANT}
+      - DESIGNSAFE_URL=${DESIGNSAFE_URL}
+
     stdin_open: true
     tty: true
     container_name: geoapiworkers
@@ -95,7 +96,7 @@ services:
       - FLASK_APP=/app/geoapi/app.py
       - APP_ENV=local
       - ASSETS_BASE_DIR=/assets
-      - TENANT=${TENANT}
+      - DESIGNSAFE_URL=${DESIGNSAFE_URL}
     stdin_open: true
     tty: true
     container_name: geoapi

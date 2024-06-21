@@ -1,17 +1,13 @@
 from geoapi.utils.geo_location import get_geolocation_from_file_metadata, GeoLocation
 import re
 
-METADATA_ROUTE = re.compile(r'http://.*/meta/v2/data')
+METADATA_ROUTE = re.compile(r'https://.*/api/filemeta/.*/.*')
 SYSTEM = "SYSTEM"
 PATH = "PATH"
 
 
 def test_no_metadata(requests_mock, user1):
-    response = {"result": [{}]}
-    requests_mock.get(METADATA_ROUTE, json=response)
-    assert get_geolocation_from_file_metadata(user1, system_id=SYSTEM, path=PATH) is None
-
-    response = {"result": []}
+    response = {}
     requests_mock.get(METADATA_ROUTE, json=response)
     assert get_geolocation_from_file_metadata(user1, system_id=SYSTEM, path=PATH) is None
 
