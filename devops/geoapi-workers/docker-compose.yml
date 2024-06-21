@@ -1,5 +1,4 @@
 ---
-version: "3"
 services:
   workers:
     image: taccaci/geoapi-workers:${GEOAPI_TAG}
