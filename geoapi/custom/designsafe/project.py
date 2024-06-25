@@ -10,7 +10,7 @@ def on_project_creation(database_session, user: User, project: Project):
     try:
         logger.debug(f"Creating .hazmapper file for user:{user.username}"
                      f" project:{project.id} project_uuid:{project.uuid} ")
-        deployment = os.getenv("APP_ENV")
+        deployment = settings.APP_ENV
         file_content = json.dumps({"uuid": str(project.uuid), "deployment": deployment})
         file_name = f"{project.system_file}.hazmapper"
         from geoapi.utils.agave import AgaveUtils
@@ -93,7 +93,7 @@ def update_designsafe_project_hazmapper_metadata(user: User, project: Project, a
         new_map_entry = {"name": project.name,
                          "uuid": str(project.uuid),
                          "path": project.system_path,
-                         "deployment": os.getenv("APP_ENV")}
+                         "deployment": settings.APP_ENV}
         all_maps.append(new_map_entry)
     logger.debug(f"Updated metadata for DesignSafe_project:{designsafe_uuid}: {all_maps}")
     response = client.patch(settings.DESIGNSAFE_URL + f"/api/projects/v2/{designsafe_uuid}/",
