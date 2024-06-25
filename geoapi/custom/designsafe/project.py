@@ -1,5 +1,4 @@
 import json
-import os
 from geoapi.log import logger
 from geoapi.settings import settings
 from geoapi.custom.designsafe.default_basemap_layers import default_layers
