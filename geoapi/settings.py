@@ -57,8 +57,8 @@ class UnitTestingConfig(LocalDevelopmentConfig):
     STREETVIEW_DIR = os.environ.get('STREETVIEW_DIR', '/tmp/streetview')
     ASSETS_BASE_DIR = '/tmp'
     DESIGNSAFE_URL = os.environ.get("DESIGNSAFE_URL", "https://designsafe-not-real.tacc.utexas.edu")
-    TAPIS_CLIENT_ID = os.environ.get("TAPIS_CLIENT_ID", "client_id")
-    TAPIS_CLIENT_KEY = os.environ.get("TAPIS_CLIENT_KEY", "client_key_1234")
+    TAPIS_CLIENT_ID = "test_client_id"
+    TAPIS_CLIENT_KEY = "test_client_key_1234"
     SECRET_KEY = os.environ.get("FLASK_SESSION_SECRET_KEY", "flask_session_secret_key_1234")
 
 

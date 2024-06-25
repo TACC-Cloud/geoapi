@@ -21,7 +21,7 @@ def validate_referrer_url(referrer_url):
     """ Check if referrer url is valid.  Raises AuthenticationIssue if not valid. """
     client_url_from_request_url = get_client_url(referrer_url)
     if client_url_from_request_url is None:
-        logger.exception(f"Issue with referrer url: {client_url_from_request_url}")
+        logger.exception(f"Issue with referrer url: {referrer_url}")
         raise AuthenticationIssue('Authentication error: Requesting client not expected')
 
 
@@ -62,10 +62,12 @@ def get_deployed_geoapi_url():
         "staging": "https://hazmapper.tacc.utexas.edu/geoapi-staging",
         "dev": "https://hazmapper.tacc.utexas.edu/geoapi-dev",
         "experimental": "https://hazmapper.tacc.utexas.edu/geoapi-experimental",
+        "testing": "http://test:8888",
     }
     if settings.APP_ENV in geoapi_urls:
         return geoapi_urls[settings.APP_ENV]
     else:
+        logger.exception(f"Unknown/unsupported APP_ENV:{settings.APP_ENV}")
         raise ApiException(f"Unknown APP_ENV:{settings.APP_ENV}")
 
 
