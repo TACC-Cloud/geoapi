@@ -437,7 +437,7 @@ class FeaturesService:
         :param fileObj: file
         :return: Feature
         """
-        client = AgaveUtils(user)
+        client = AgaveUtils(database_session, user)
         fileObj = client.getFile(systemId, path)
         fileObj.filename = pathlib.Path(path).name
         return FeaturesService.createFeatureAsset(database_session, projectId, featureId, fileObj, original_path=path)
@@ -572,7 +572,7 @@ class FeaturesService:
     def addOverlayFromTapis(database_session,
                             user: User, project_id: int, system_id: str,
                             path: str, bounds: List[float], label: str) -> Overlay:
-        client = AgaveUtils(user)
+        client = AgaveUtils(database_session, user)
         file_obj = client.getFile(system_id, path)
         ov = FeaturesService.addOverlay(database_session, project_id, file_obj, bounds, label)
         return ov

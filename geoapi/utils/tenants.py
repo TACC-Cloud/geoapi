@@ -1,7 +1,7 @@
 from geoapi.settings import settings
 
 
-def get_api_server(tenant_name):
+def get_tapis_api_server(tenant_name):
     """ Retrieve the TAPIS API server URL based on the tenant name."""
     if tenant_name.upper() == 'PORTALS':
         return 'https://portals.tapis.io'

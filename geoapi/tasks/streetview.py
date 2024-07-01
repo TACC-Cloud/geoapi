@@ -93,7 +93,7 @@ def _from_tapis(database_session, user: User, task_uuid: UUID, systemId: str, pa
     :param systemId: str
     :param path: str
     """
-    client = AgaveUtils(user)
+    client = AgaveUtils(database_session, user)
     listing = client.listing(systemId, path)
     files_in_directory = listing[1:]
 
