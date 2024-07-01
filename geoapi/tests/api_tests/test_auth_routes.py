@@ -1,11 +1,11 @@
-
-from geoapi.utils.tenants import get_api_server
+import urllib
+from geoapi.utils.tenants import get_tapis_api_server
 from geoapi.settings import settings
-import time
+from datetime import datetime, timedelta
 
 
 def test_login(test_client):
-    tapis_server = get_api_server("TEST")
+    tapis_server = get_tapis_api_server("TEST")
     resp = test_client.get('/auth/login?to=/somewhere', headers={'Referer': 'http://localhost:4200/'})
 
     assert resp.status_code == 302
@@ -23,17 +23,18 @@ def test_login(test_client):
         assert f'state={sess["auth_state"]}' in resp.location
 
 
-def test_callback(test_client, requests_mock):
-    current_time = int(time.time())
+def test_callback(test_client, requests_mock, user1):
+    current_time = datetime.utcnow()
+    access_token = user1.auth.access_token
     access_token_expires_in = 14400
-    access_token_expires_at = current_time + access_token_expires_in
-    refresh_token_expires_at = current_time + 31556926 # year from now
+    access_token_expires_at = (current_time + timedelta(seconds=access_token_expires_in)).isoformat()
+    refresh_token_expires_at = (current_time + timedelta(days=365)).isoformat()  # 1 year from now
 
-    tapis_server = get_api_server("TEST")
+    tapis_server = get_tapis_api_server("TEST")
     requests_mock.post(f'{tapis_server}/v3/oauth2/tokens', json={
         "result": {
             "access_token": {
-                "access_token": "mocked_access_token",
+                "access_token": access_token,
                 "expires_in": access_token_expires_in,
                 "expires_at": access_token_expires_at
             },
@@ -53,10 +54,10 @@ def test_callback(test_client, requests_mock):
 
     assert resp.status_code == 302
     assert resp.location.startswith('http://localhost:4200/handle-login')
-    assert 'access_token=mocked_access_token' in resp.location
+    assert f'access_token={access_token}' in resp.location
     assert f'expires_in={access_token_expires_in}' in resp.location
-    assert f'expires_at={access_token_expires_at}' in resp.location
-    assert 'to=/' in resp.location
+    assert f'expires_at={urllib.parse.quote_plus(access_token_expires_at)}' in resp.location
+    assert "to=%2Fsomewhere" in resp.location
 
     with test_client.session_transaction() as sess:
         assert 'auth_state' not in sess
