@@ -18,7 +18,7 @@ def parse_rapid_geolocation(geolocation_metadata):
     return GeoLocation(lat, lon)
 
 
-def get_geolocation_from_file_metadata(user: User, system_id: str, path: str) -> Optional[GeoLocation]:
+def get_geolocation_from_file_metadata(database_session, user: User, system_id: str, path: str) -> Optional[GeoLocation]:
     """
     Retrieves the geolocation from Tapis file metadata.
 
@@ -29,7 +29,7 @@ def get_geolocation_from_file_metadata(user: User, system_id: str, path: str) ->
 
     :return: A GeoLocation object if geolocation information is found; otherwise, None.
     """
-    meta = get_metadata(user, system_id, path)
+    meta = get_metadata(database_session, user, system_id, path)
     if meta and "geolocation" in meta and len(meta["geolocation"]) > 0:
         return parse_rapid_geolocation(meta.get("geolocation"))
     return None

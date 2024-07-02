@@ -15,10 +15,12 @@ from geoapi.models.feature import Feature
 from geoapi.models.task import Task
 from geoapi.services.point_cloud import PointCloudService
 from geoapi.services.features import FeaturesService
+from geoapi.services.users import UserService
 from geoapi.app import app
 from geoapi.utils.assets import get_project_asset_dir
 from geoapi.utils.agave import AgaveFileListing, SystemUser
-from geoapi.utils.tenants import get_api_server
+from geoapi.utils.tenants import get_tapis_api_server
+from geoapi.utils.jwt_utils import create_token_expiry_hours_from_now
 from geoapi.exceptions import InvalidCoordinateReferenceSystem
 
 
@@ -42,17 +44,19 @@ def userdata(test_client):
     user2JWT = "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiJjY2Q2Y2UwZS0xNTY4LTRjNTItYTVlYy03MGE3YTc2M2M0YTMiLCJpc3MiOiJodHRwczovL2Rlc2lnbnNhZmUudGFwaXMuaW8vdjMvdG9rZW5zIiwic3ViIjoidGVzdDNAZGVzaWduc2FmZSIsInRhcGlzL3RlbmFudF9pZCI6InRlc3QiLCJ0YXBpcy90b2tlbl90eXBlIjoiYWNjZXNzIiwidGFwaXMvZGVsZWdhdGlvbiI6ZmFsc2UsInRhcGlzL2RlbGVnYXRpb25fc3ViIjpudWxsLCJ0YXBpcy91c2VybmFtZSI6InRlc3QyIiwidGFwaXMvYWNjb3VudF90eXBlIjoidXNlciIsImV4cCI6MTcwODExOTU1OCwidGFwaXMvY2xpZW50X2lkIjoiaGF6bWFwcGVyLnRlc3QiLCJ0YXBpcy9ncmFudF90eXBlIjoiaW1wbGljaXQifQ.lsa8XEIXkb_4rkzFdVpuwCIcWrwAolLN7Gx0K2V6KdcTVWLrUn_5ZONr5AoCPOeV6SR14Bs5kpZdZB5bxfyf0z7OWIRbsRJgyThSle3LS-bdA8ltflFOW-coZsDd4C_eXfj-8b0RM1JTRHCkS3daFUeJOLL6QDnhoENiY4FlT-1WTydgw_f2T4BRPatqwQPZajBfnOVs9cwlhsS0HuDJVRWV4zh78jckW3jPdZ_JybjwGy9w32cSFm2BTASdvUfuCN4CJfY1QwJP7jlZno377MJnsCypW-CJyF57LbEZ_dqgQVVFVGLWS_zd5zmhctxtDtaC80e8jkS6Ld1F1duNHSU0GUfURBg_aoi1vBzlE6h49MfLxCtX0oOhiysoQeiZpBV4F-ZkNhULw_GrKm7JNUsHvTsRUb61tkje2uVN-YefqsZYQ7apwRQ7S5oU0ccNXubCp_uk6TNSHB7cZMiElnWJalRZlOo0MD7Lx7NXlohCaK_ICh5BMSS1jKzhBxj-ug5O2R3oGIztNkHlUp3F476aWN8bRtVOobFgk4MhRBahWqAgrbpLHbk5OSyCeSQ_brB9avjoNl8e23mJTKQIO6HDc_QqsA586buXT3deb5d4QaqzGWkSwmZs6_kozDnbOItYJC-6E4qm25AX8ew4NHmLrPvtYW66FT-UCI5LiBU"  # noqa: E501
     user3JWT = "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiJjY2Q2Y2UwZS0xNTY4LTRjNTItYTVlYy03MGE3YTc2M2M0YTMiLCJpc3MiOiJodHRwczovL2Rlc2lnbnNhZmUudGFwaXMuaW8vdjMvdG9rZW5zIiwic3ViIjoidGVzdDNAZGVzaWduc2FmZSIsInRhcGlzL3RlbmFudF9pZCI6InRlc3QiLCJ0YXBpcy90b2tlbl90eXBlIjoiYWNjZXNzIiwidGFwaXMvZGVsZWdhdGlvbiI6ZmFsc2UsInRhcGlzL2RlbGVnYXRpb25fc3ViIjpudWxsLCJ0YXBpcy91c2VybmFtZSI6InRlc3QzIiwidGFwaXMvYWNjb3VudF90eXBlIjoidXNlciIsImV4cCI6MTcwODExOTU1OCwidGFwaXMvY2xpZW50X2lkIjoiaGF6bWFwcGVyLnRlc3QiLCJ0YXBpcy9ncmFudF90eXBlIjoiaW1wbGljaXQifQ.Ojtx5fCZGFHxl7zXdH6j2OPBdVHvp_MCGJMeg_sTNuAqT-gVf_L81h1Zqrh9gdLR4og1n-V4yQp8aYQsUJ_jBv_9OIvF4KuYa2hAN9Bn-FAL0VngJUU1wHvkLYlTpLGmTnhgTdtOi2Xj_geNNKgs3EsWacqZwE7-lUKv0YtsVvjb_Z5fZUjXzjxg4jWIx7FhHqz2bodT8WNU7eMPE2oNgwPFjkouoi5yELLmAHE_8bvudlW4sbIiO16cFGfH3xdzDi7TsfZa_Nmqg1x6BHHQ-n47yB0q87ntJ4MiS7cGio8C0x1j25eohjFkQ0ztj3F3KfQMuVb9nFc3JBjtycDbfqvIIzFIqf7eLso5oWqioPPnAi0DG7THIad2XzRPPB6Ri2jtbc8cDHlVOadwXNndud8fjdPSOQ68mFwMMj4-24ndhxf-Tp8MrvXpo91It66KescGQyFt5tFNGDZtzXdve4L6HUHdP9yaYEPmPEtvAODqUJTLAx088NuIxIcDvSRe_pHWKnkkYNPvdsJcXspw2KYTJjNRrVxjIY5mOLMsCtJQug8VZVWJ6wk7zDnpvnaD8CzFIl2ge5ECZtAuD1MtBfIR45j0shynDs8JiX2vH6-0z03zFU_OWSXXGppZBLIjrgcIJEVIFF0F64na3ZH6Zlt56ZoZngRjNGHypD3XZGA"  # noqa: E501
 
-    u1 = User(username="test1", jwt=user1JWT, tenant_id="test")
-    u2 = User(username="test2", jwt=user2JWT, tenant_id="test")
-    u3 = User(username="test3", jwt=user3JWT, tenant_id="test")
-    db_session.add_all([u1, u2, u3])
-    db_session.commit()
+    user1JWT = create_token_expiry_hours_from_now(user1JWT)
+    user2JWT = create_token_expiry_hours_from_now(user2JWT)
+    user3JWT = create_token_expiry_hours_from_now(user3JWT)
+
+    u1 = UserService.create(db_session, username="test1", access_token=user1JWT, tenant="test")
+    UserService.create(db_session, username="test2", access_token=user2JWT, tenant="test")
+    UserService.create(db_session, username="test3", access_token=user3JWT, tenant="test")
     yield u1
 
 
 @pytest.fixture(autouse=True, scope="function")
 def tapis_url(user1):
-    yield get_api_server(user1.tenant_id)
+    yield get_tapis_api_server(user1.tenant_id)
 
 
 @pytest.fixture(scope="function")

@@ -5,7 +5,7 @@ from geoapi.settings import settings as app_settings
 from geoapi.db import db_session
 from geoapi.exceptions import (InvalidGeoJSON, InvalidEXIFData, InvalidCoordinateReferenceSystem,
                                ObservableProjectAlreadyExists, ApiException, StreetviewAuthException,
-                               StreetviewLimitException)
+                               StreetviewLimitException, AuthenticationIssue)
 
 import logging
 
@@ -61,6 +61,11 @@ def handle_streetview_auth_exception(error: Exception):
 @api.errorhandler(StreetviewLimitException)
 def handle_streetview_limit_exception(error: Exception):
     return {'message': 'Exceed concurrent streetview publish limit'}, 403
+
+
+@api.errorhandler(AuthenticationIssue)
+def handle_authentication_issue_exception(error: AuthenticationIssue):
+    return {'message': error.message}, 400
 
 
 # ensure SQLAlchemy sessions are properly closed at the end of each request.

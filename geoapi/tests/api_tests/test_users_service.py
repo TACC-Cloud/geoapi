@@ -13,11 +13,11 @@ def test_user_get(userdata):
 
 
 def test_user_create(userdata):
-    user = UserService.create(database_session=db_session, username="newUser", jwt="testjwt", tenant="test")
+    user = UserService.create(database_session=db_session, username="newUser", access_token="testjwt", tenant="test")
     assert user.id is not None
     assert user.created is not None
     assert user.username == 'newUser'
-    assert user.jwt == "testjwt"
+    assert user.auth.access_token == "testjwt"
 
 
 def test_projects_for_user(user1):

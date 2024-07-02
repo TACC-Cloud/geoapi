@@ -68,7 +68,7 @@ def test_on_project_deletion(tapis_url, requests_mock, user1, observable_project
     )
     requests_mock.post(metadata_url)
 
-    on_project_deletion(user1, project)
+    on_project_deletion(db_session, user1, project)
 
     assert len(requests_mock.request_history) == 3
     update_metadata_request = requests_mock.request_history[2]

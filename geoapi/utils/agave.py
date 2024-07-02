@@ -5,20 +5,22 @@ import io
 import time
 from tempfile import NamedTemporaryFile
 from dataclasses import dataclass
-
+from functools import wraps
+from contextlib import closing
 import requests
 import pathlib
 from typing import List, Dict, IO
 from urllib.parse import quote
 import json
-from geoapi.log import logging
 from dateutil import parser
 
+from geoapi.log import logging
 from geoapi.settings import settings
-from geoapi.utils.tenants import get_api_server
+from geoapi.utils.tenants import get_tapis_api_server
 from geoapi.custom import custom_system_user_retrieval
 from geoapi.models import User
-from contextlib import closing
+from geoapi.services.users import UserService, ExpiredTokenError, RefreshTokenError
+from geoapi.utils import jwt_utils
 
 logger = logging.getLogger(__name__)
 
@@ -50,8 +52,8 @@ class AgaveFileGetError(Exception):
 class RetryableTapisFileError(Exception):
     """ Tapis file errors which are known to possibly work if retried.
 
-        This is raised if we know its an error that we can re-attempt to get. Note that if we
-        try multiple times and it still doesn't work, we then raise a AgaveFileGetError exception
+        This is raised if we know it is an error that we can re-attempt to get. Note that if we
+        try multiple times, and it still doesn't work, we then raise a AgaveFileGetError exception
     """
     pass
 
@@ -82,31 +84,85 @@ def get_session(user: User):
     return client
 
 
-class ApiUtils:
-    def __init__(self, user: User, base_url: str):
-        """
-        Initializes the client session for a user using an API that uses Tapis tokens for auth.
+class EnsureValidTokenMeta(type):
+    def __new__(cls, name, bases, dct):
+        for attr_name, attr in dct.items():
+            if callable(attr) and not attr_name.startswith('_'):
+                dct[attr_name] = cls.wrap_method(attr)
+        return super().__new__(cls, name, bases, dct)
 
-        :param user: The user object containing the JWT.
-        :param base_url: The base URL for the API endpoints.
-        """
-        self.client = get_session(user)
+    @staticmethod
+    def wrap_method(method):
+        @wraps(method)
+        def wrapper(self, *args, **kwargs):
+            self._ensure_valid_token()
+            return method(self, *args, **kwargs)
+        return wrapper
+
+
+class ApiUtils(metaclass=EnsureValidTokenMeta):
+    """
+    Class that handle's the client session for a user using an API that uses Tapis tokens for auth.
+
+    The metaclass EnsureValidTokenMeta is used to ensure that we are calling _ensure_valid_token() before
+    making any calls to ensure that any request has a valid token.
+
+    :param database_session: database session
+    :param user: The user object containing the JWT.
+    :param base_url: The base URL for the API endpoints.
+    """
+    def __init__(self, database_session, user: User, base_url: str):
+        self.database_session = database_session
+        self.user = user
         self.base_url = base_url
+        self.client = get_session(user)
 
     def get(self, url, params=None):
+        """ Make get request"""
         return self.client.get(self.base_url + url, params=params)
 
+    def _ensure_valid_token(self):
+        """
+        Ensures there is a valid token.
 
-# TODO_TAPISV# rename AgaveUtils to TapisUtils and rename this from agave.py to external_api(?) or something similar
-# to reflect
+        Method checks if we need to refresh token
+
+        Raises:
+            ExpiredTokenError: If unable to ensure there is a valid token
+        """
+        try:
+            # if we can refresh token, and our token is about to expire,
+            # let's go ahead and refreshit.
+            if (self.user.has_unexpired_refresh_token() and
+                    self.user.auth.access_token
+                    and jwt_utils.token_will_expire_soon(self.user.auth.access_token)):
+                logger.debug(f"user:{self.user} has a token about to expire or has expired; we will refresh it.")
+
+                UserService.refresh_access_token(self.database_session, self.user)
+
+                # Update the user and then the client after refreshing the token
+                self.user = self.database_session.query(User).filter(User.id == self.user.id).one()
+                self.client = get_session(self.user)
+        except RefreshTokenError:
+            logger.error(f"There was a problem refreshing access token of user:{self.user.username}.")
+        except Exception:
+            logger.exception(f"Something went wrong when ensuring that token was valid for user:{self.user.username}")
+
+        if not self.user.has_valid_token():
+            msg = f"Access token of user:{self.user.username} is expired (or invalid)."
+            logger.error(msg)
+            raise ExpiredTokenError(msg)
+
+
+# TODO_TAPISV3 rename AgaveUtils to TapisUtils:  rename agave.py to external_api(?)
 class AgaveUtils(ApiUtils):
-    def __init__(self, user: User):
+    def __init__(self, database_session, user: User):
         """
         Initializes the client session for a user.
 
         This constructor sets up a client session with headers updated for user's JWT.
         """
-        super().__init__(user=user, base_url=get_api_server(user.tenant_id))
+        super().__init__(database_session=database_session, user=user, base_url=get_tapis_api_server(user.tenant_id))
 
     def systemsGet(self, systemId: str) -> Dict:
         url = quote('/v3/systems/{}'.format(systemId))
@@ -145,6 +201,7 @@ class AgaveUtils(ApiUtils):
             offset += limit
         return listings
 
+    # TODO_V3_REMOVE
     def getMetaAssociated(self, uuid: str) -> Dict:
         """
         Get metadata associated with a file object for Rapid
@@ -283,23 +340,25 @@ class SystemUser:
     admin: bool = False
 
 
-def get_system_users(user: User, system_id: str) -> List[SystemUser]:
+def get_system_users(database_session, user: User, system_id: str) -> List[SystemUser]:
     """
     Get systems users for a system and their admin status.
 
     Right now, this would always be DesignSafe.
 
+    :param database_session: Database session
     :param user: User to make the query
     :param system_id: str
     :return: list of users with admin status
     """
-    return custom_system_user_retrieval[user.tenant_id.upper()](user, system_id)
+    return custom_system_user_retrieval[user.tenant_id.upper()](database_session, user, system_id)
 
 
-def get_metadata(user: User, system_id: str, path: str) -> Dict:
+def get_metadata(database_session, user: User, system_id: str, path: str) -> Dict:
     """
     Get a file's tapis metadata (which typically include geolocation) using service account
 
+    :param database_session: Database session
     :param user: User to make the query
     :param system_id: system id
     :param path: path to file
@@ -308,7 +367,7 @@ def get_metadata(user: User, system_id: str, path: str) -> Dict:
 
     logger.debug(f"getting metadata. system_id: {system_id}, path:{path}")
 
-    client = ApiUtils(user=user, base_url=settings.DESIGNSAFE_URL)
+    client = ApiUtils(database_session=database_session, user=user, base_url=settings.DESIGNSAFE_URL)
     response = client.get(url=quote(f'/api/filemeta/{system_id}/{path}'))
     response.raise_for_status()
     meta_response = response.json()

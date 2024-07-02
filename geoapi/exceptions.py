@@ -42,3 +42,10 @@ class StreetviewExistsException(Exception):
 class GetUsersForProjectNotSupported(Exception):
     """ Getting users for a project is not supported) """
     pass
+
+
+class AuthenticationIssue(Exception):
+    """ Issue during auth process"""
+    def __init__(self, message="Unknown error in auth"):
+        self.message = message
+        super().__init__(self.message)
