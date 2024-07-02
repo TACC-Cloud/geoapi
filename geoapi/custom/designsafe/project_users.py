@@ -26,6 +26,13 @@ def get_project_data(user: User,  system_id: str) -> dict:
     return project
 
 
+def _is_designsafe_project_guest_user(user):
+    if "username" not in user or user["role"] == "guest":
+        return True
+    else:
+        return False
+
+
 def get_system_users(user, system_id: str):
     """
     Get systems users based on the DesignSafe project's co-pis and pis.
@@ -46,7 +53,7 @@ def get_system_users(user, system_id: str):
     users = {}
     for u in project["users"]:
         is_admin = u["role"] in ("pi", "co_pi")
-        if u["username"] not in users:
+        if (not _is_designsafe_project_guest_user(u) and u["username"] not in users):
             users[u["username"]] = SystemUser(username=u["username"], admin=is_admin)
         else:
             # there can be duplicates (seen in v2) so we want to ensure we have the "admin=True" version of a duplicate
