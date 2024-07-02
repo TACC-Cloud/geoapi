@@ -18,13 +18,11 @@ RUN poetry config virtualenvs.create false
 RUN git clone https://github.com/mapillary/mapillary_tools.git /opt/mapillary_source
 RUN cd /opt/mapillary_source && git checkout 4bfebf8
 
-RUN mkdir /app
-
-WORKDIR /app
-
+WORKDIR /opt
 COPY devops/poetry.lock devops/pyproject.toml ./
 RUN poetry install
 
+RUN mkdir /app
 COPY geoapi /app/geoapi
 ENV PYTHONPATH "${PYTHONPATH}:/app"
 WORKDIR /app/geoapi

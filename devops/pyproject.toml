@@ -30,7 +30,7 @@ requests = "^2.29.0"
 laspy = "1.6.0"
 configparser = "^5.2.0"
 cryptography = "^37.0.2"
-mapillary_tools = { path = "/opt/mapillary_source" }
+mapillary_tools = { path = "mapillary_source" }
 requests-mock = "^1.10.0"
 ExifRead = "^2.3.2"
 flake8 = "^5.0.4"
