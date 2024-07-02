@@ -37,6 +37,13 @@
                 {
                     "role": "team_member",
                     "username": "user4"
+                },
+                {
+                    "inst": "MyInstitution",
+                    "role": "guest",
+                    "email": "nathan.franklin@gmail.com",
+                    "fname": "FirstNameGuest",
+                    "lname": "LastNameGuest"
                 }
             ],
             "projectType": "None",
