@@ -52,8 +52,8 @@ PRIVATE_KEY_FOR_TESTING, PUBLIC_KEY_FOR_TESTING = generate_rsa_key_pair()
 
 
 def get_pub_key():
-    """ Get production public key for singed tokens"""
-    pkey = base64.b64decode(settings.JWT_PUB_KEY)
+    """ Get production public key for signed tokens"""
+    pkey = base64.b64decode(settings.TAPIS_PUB_KEY_FOR_VALIDATION)
     pub_key = serialization.load_der_public_key(pkey,
                                                 backend=default_backend())
     return pub_key
