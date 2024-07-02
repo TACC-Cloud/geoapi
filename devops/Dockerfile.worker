@@ -29,8 +29,7 @@ ENV POETRY_HOME=/opt/poetry
 ENV PATH="$POETRY_HOME/bin:$PATH"
 RUN curl -sSL https://install.python-poetry.org | python3 -
 RUN poetry config virtualenvs.create false
-#COPY devops/pyproject.toml devops/poetry.lock ./
-COPY devops/pyproject.toml ./
+COPY devops/pyproject.toml devops/poetry.lock ./
 
 # use local mapillary (instead of directly from github in pyproject.toml)
 # due to issues with worker image environment
