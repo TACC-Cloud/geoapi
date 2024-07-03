@@ -64,6 +64,8 @@ class UserService:
         if user and user.auth is None:
             auth = Auth(user_id=user.id)
             database_session.add(auth)
+            database_session.commit()
+            database_session.refresh(user)
         return user
 
     @staticmethod
