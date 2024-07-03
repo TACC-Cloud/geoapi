@@ -55,10 +55,16 @@ class UserService:
 
     @staticmethod
     def getUser(database_session, username: str, tenant: str) -> User:
-        return database_session.query(User)\
+        user = database_session.query(User)\
             .filter(User.username == username)\
             .filter(User.tenant_id == tenant)\
             .first()
+
+        # Need to ensure now that old users have an auth entry
+        if user and user.auth is None:
+            auth = Auth(user_id=user.id)
+            database_session.add(auth)
+        return user
 
     @staticmethod
     def get(database_session, userId: int) -> User:
