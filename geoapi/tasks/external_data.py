@@ -291,7 +291,7 @@ def import_files_recursively_from_path(session, tenant_id: str, userId: int, sys
 
     filenames_in_directory = [str(f.path) for f in listing]
     for item in listing:
-        if item.type == "dir" and not str(item.path).endswith("/.Trash"):
+        if item.type == "dir" and not str(item.path).endswith(".Trash"):
             import_files_recursively_from_path(session, tenant_id, userId, systemId, item.path, projectId)
         item_system_path = os.path.join(systemId, str(item.path).lstrip("/"))
         if features_util.is_file_supported_for_automatic_scraping(item_system_path):
