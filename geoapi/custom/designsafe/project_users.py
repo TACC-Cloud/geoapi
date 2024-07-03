@@ -34,7 +34,7 @@ def _is_designsafe_project_guest_user(user):
         return False
 
 
-def get_system_users(user, system_id: str):
+def get_system_users(database_session, user, system_id: str):
     """
     Get systems users based on the DesignSafe project's co-pis and pis.
 
