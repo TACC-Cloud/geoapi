@@ -60,8 +60,6 @@ jobs:
     - name: Install Python Packages
       run: |
         cd devops
-        git clone https://github.com/mapillary/mapillary_tools.git mapillary_source
-        cd mapillary_source && git checkout 4bfebf8 && cd ..
         poetry install
     - name: Run server-side unit tests
       run: |
