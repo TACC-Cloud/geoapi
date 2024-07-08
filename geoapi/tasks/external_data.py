@@ -388,10 +388,20 @@ def refresh_observable_projects():
                 # TODO_TAPISv3 refactored into a command (used here and by ProjectService) or just put into its own method for clarity?
                 try:
                     try:
-                        # we need a user with a jwt for importing
-                        importing_user = next((u for u in o.project.users if u.has_unexpired_refresh_token() or u.has_valid_token()))
+                        # we need a user with a valid Tapis token for importing files or updating users
+                        importing_user = next(
+                            (u for u in o.project.users if u.has_unexpired_refresh_token() or u.has_valid_token()),
+                            None)
+
+                        if importing_user is None:
+                            logger.error(f"Unable to refresh observable project ({i}/{len(obs)}): observer:{importing_user} "
+                                         f"system:{o.system_id} path:{o.path} project:{o.project.id} "
+                                         f"watch_content:{o.watch_content}: No user with an active token found. So we "
+                                         f"are skipping (i.e. no update of users or importing of watched content)")
+                            continue
+
                         logger.info(f"Refreshing observable project ({i}/{len(obs)}): observer:{importing_user} "
-                                    f"system:{o.system_id} path:{o.path} project:{o.project.id}")
+                                    f"system:{o.system_id} path:{o.path} project:{o.project.id} watch_content:{o.watch_content}")
 
                         # we need to add any users who have been added to the project/system or update if their admin-status
                         # has changed
