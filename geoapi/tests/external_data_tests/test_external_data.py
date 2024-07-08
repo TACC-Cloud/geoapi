@@ -137,7 +137,7 @@ def agave_utils_listing_with_single_trash_folder_of_image(image_file_fixture):
 
     top_level_file_listing = [
         AgaveFileListing({
-            "path": "/.Trash",
+            "path": ".Trash",
             "type": "dir",
             "lastModified": "2020-08-31T12:00:00Z"
         })
@@ -145,7 +145,7 @@ def agave_utils_listing_with_single_trash_folder_of_image(image_file_fixture):
     subfolder_file_listing = [
         AgaveFileListing({
             "type": "file",
-            "path": "/.Trash/file.jpg",
+            "path": ".Trash/file.jpg",
             "lastModified": "2020-08-31T12:00:00Z"
         })
     ]
