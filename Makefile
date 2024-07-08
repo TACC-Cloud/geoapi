@@ -2,6 +2,12 @@ TAG := $(shell git log --format=%h -1)
 GEOAPI_IMAGE=taccaci/geoapi
 GEOAPI_WORKERS=taccaci/geoapi-workers
 
+
+.PHONY: help
+help:  ## Display this help screen
+	@grep -E '^([a-zA-Z_-]+):.*?## .*$$|^([a-zA-Z_-]+):' $(MAKEFILE_LIST) \
+	| awk 'BEGIN {FS = ":.*?## "}; {if ($$2) {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2} else {printf "\033[36m%-30s\033[0m %s\n", $$1, "(no description)"}}'
+
 .PHONY: start
 start:
 	docker-compose -f devops/docker-compose.local.yml --env-file .env up
@@ -44,8 +50,3 @@ deploy-geoapi:
 deploy-workers:
 	docker push $(GEOAPI_WORKERS):$(TAG)
 	docker push $(GEOAPI_WORKERS):latest
-
-.PHONY: help
-help:  ## Display this help screen
-	@grep -E '^([a-zA-Z_-]+):.*?## .*$$|^([a-zA-Z_-]+):' $(MAKEFILE_LIST) \
-	| awk 'BEGIN {FS = ":.*?## "}; {if ($$2) {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2} else {printf "\033[36m%-30s\033[0m %s\n", $$1, "(no description)"}}'
