@@ -277,11 +277,12 @@ def import_files_recursively_from_path(session, tenant_id: str, userId: int, sys
     This method is called by refresh_observable_projects() via import_from_agave
     """
     user = session.query(User).get(userId)
-    client = AgaveUtils(session, user)
     logger.info("Importing for project:{} directory:{}/{} for user:{}".format(projectId,
                                                                               systemId,
                                                                               path,
                                                                               user.username))
+    client = AgaveUtils(session, user)
+
     try:
         listing = client.listing(systemId, path)
     except AgaveListingError:
