@@ -45,7 +45,7 @@ class User(Base):
         Returns:
             bool: True if the refresh token is expired (or doesn't exist), False otherwise.
         """
-        if not self.auth.refresh_token:
+        if not self.auth or not self.auth.refresh_token:
             return False
         current_time = datetime.now(pytz.utc)  # Make current_time offset-aware with UTC
         buffer = timedelta(minutes=1)  # 1 minute buffer
@@ -53,7 +53,8 @@ class User(Base):
 
     def has_valid_token(self) -> bool:
         """ Check if access_token is valid"""
-        if self.auth.access_token:
-            return jwt_utils.is_token_valid(self.auth.access_token)
-        else:
-            return False
+        return (
+                self.auth and
+                self.auth.access_token and
+                jwt_utils.is_token_valid(self.auth.access_token)
+        )
