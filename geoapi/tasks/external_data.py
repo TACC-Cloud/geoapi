@@ -380,6 +380,8 @@ def refresh_observable_projects():
     """
     Refresh all observable projects
     """
+
+    # TODO refactor to consider scaling issues; see https://tacc-main.atlassian.net/browse/WG-47
     start_time = time.time()
     with create_task_session() as session:
         try:
