@@ -2,32 +2,20 @@
 from functools import wraps
 from flask import abort
 from flask import request
-import jwt
 from geoapi.services.users import UserService
 from geoapi.services.projects import ProjectsService
 from geoapi.services.features import FeaturesService
 from geoapi.services.point_cloud import PointCloudService
-from geoapi.settings import settings
 from geoapi.utils import jwt_utils
 from geoapi.utils.users import is_anonymous, AnonymousUser
 from geoapi.db import db_session
 from geoapi.log import logger
-from cryptography.hazmat.backends import default_backend
-from cryptography.hazmat.primitives import serialization
-import base64
-
-
-def get_pub_key():
-    pkey = base64.b64decode(settings.JWT_PUB_KEY)
-    pub_key = serialization.load_der_public_key(pkey,
-                                                backend=default_backend())
-    return pub_key
+from geoapi.settings import settings
 
 
 def jwt_decoder(fn):
     @wraps(fn)
     def wrapper(*args, **kwargs):
-        pub_key = get_pub_key()
         user = None
         token = None
         try:
@@ -41,8 +29,7 @@ def jwt_decoder(fn):
             user = AnonymousUser(guest_unique_id=guest_uuid)
         if user is None:
             try:
-                options = {"verify_signature": not settings.TESTING}
-                decoded = jwt.decode(token, pub_key, algorithms=["RS256"], options=options)
+                decoded = jwt_utils.decode_token(token, verify=not settings.TESTING)
                 username = decoded["tapis/username"]
                 tenant = decoded["tapis/tenant_id"]
             # Exceptions
@@ -52,9 +39,14 @@ def jwt_decoder(fn):
 
             user = UserService.getUser(db_session, username, tenant)
             if not user:
-                user = UserService.create(db_session, username=username, jwt=token, tenant=tenant)
-            # In case the JWT was updated for some reason, reset the jwt
-            UserService.setJWT(db_session, user, token)
+                user = UserService.create(db_session, username=username, access_token=token, tenant=tenant)
+            else:
+                # Update the jwt access token
+                #   (It is more common that user will be using an auth flow were hazmapper will auth
+                #   with geoapi to get the token. BUT we can't assume that as it is also possible that
+                #   user just uses geoapi as a service with token generated somewhere else. So we need
+                #   to get/update just their access token for these cases)
+                UserService.update_access_token(db_session, user, token)
         request.current_user = user
         return fn(*args, **kwargs)
     return wrapper

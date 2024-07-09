@@ -82,7 +82,7 @@ class ProjectsService:
         name = proj.system_id + '/' + folder_name
 
         # TODO: Handle no storage system found
-        AgaveUtils(user).systemsGet(proj.system_id)
+        AgaveUtils(database_session, user).systemsGet(proj.system_id)
 
         obs = ObservableDataProject(
             system_id=proj.system_id,
@@ -92,7 +92,7 @@ class ProjectsService:
 
         system_users = None
         try:
-            system_users = get_system_users(user, proj.system_id)
+            system_users = get_system_users(database_session, user, proj.system_id)
             logger.info("Initial update of project:{} to have the following users: {}".format(name, system_users))
             users = [UserService.getOrCreateUser(database_session, u.username, tenant=proj.tenant_id) for u in system_users]
             proj.users = users
@@ -300,7 +300,7 @@ class ProjectsService:
         # Run any custom on-project-deletion actions
         if user.tenant_id.upper() in custom_on_project_deletion:
             project = database_session.query(Project).filter(Project.id == projectId).one()
-            custom_on_project_deletion[user.tenant_id.upper()](user, project)
+            custom_on_project_deletion[user.tenant_id.upper()](database_session, user, project)
 
         # TODO move the database remove call to celery (https://tacc-main.atlassian.net/browse/WG-235)
         database_session.query(Project).filter(Project.id == projectId).delete()
