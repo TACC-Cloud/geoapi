@@ -95,9 +95,8 @@ class ProjectsService:
         users = [UserService.getOrCreateUser(database_session, u.username, tenant=proj.tenant_id) for u in system_users]
         proj.users = users
 
-        obs.project = proj
-
         try:
+            obs.project = proj
             database_session.add(obs)
             database_session.commit()
         except IntegrityError as e:
