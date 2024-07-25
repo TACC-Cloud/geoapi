@@ -4,21 +4,17 @@ from .status import api as status
 from .streetview import api as streetview
 from .notifications import api as notifications
 from .public_projects import api as public_projects
+from .auth import api as auth
 
 api = Api(
     title='GeoAPI',
-    version='0.1',
+    version='0.2',
     description='Geospatial API for TAPIS',
-    security=['Token', 'JWT'],
+    security=['JWT'],
     authorizations={
-        'Token': {
-            'type': 'apiKey',
-            'name': 'Authorization',
-            'in': 'header'
-        },
         'JWT': {
             'type': 'apiKey',
-            'name': 'X-JWT-Assertion-designsafe',
+            'name': 'X-Tapis-Token',
             'in': 'header'
         }
     }
@@ -29,3 +25,4 @@ api.add_namespace(public_projects)
 api.add_namespace(notifications)
 api.add_namespace(status)
 api.add_namespace(streetview)
+api.add_namespace(auth)

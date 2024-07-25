@@ -19,11 +19,6 @@ class ObservableProjectAlreadyExists(Exception):
     pass
 
 
-class MissingServiceAccount(Exception):
-    """ No service account for this tenant """
-    pass
-
-
 class ApiException(Exception):
     """ A generic exception from the api"""
     pass
@@ -42,3 +37,15 @@ class StreetviewLimitException(Exception):
 class StreetviewExistsException(Exception):
     """ Already published the streetview assets from a system/path """
     pass
+
+
+class GetUsersForProjectNotSupported(Exception):
+    """ Getting users for a project is not supported) """
+    pass
+
+
+class AuthenticationIssue(Exception):
+    """ Issue during auth process"""
+    def __init__(self, message="Unknown error in auth"):
+        self.message = message
+        super().__init__(self.message)

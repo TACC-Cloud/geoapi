@@ -9,9 +9,9 @@ from celery import uuid as celery_uuid
 import json
 
 from geoapi.celery_app import app
-from geoapi.exceptions import InvalidCoordinateReferenceSystem, MissingServiceAccount
+from geoapi.exceptions import InvalidCoordinateReferenceSystem, GetUsersForProjectNotSupported
 from geoapi.models import User, ProjectUser, ObservableDataProject, Task
-from geoapi.utils.agave import (AgaveUtils, SystemUser, get_system_users, get_metadata_using_service_account,
+from geoapi.utils.agave import (AgaveUtils, SystemUser, get_system_users, get_metadata,
                                 AgaveFileGetError, AgaveListingError)
 from geoapi.utils import features as features_util
 from geoapi.log import logger
@@ -125,12 +125,12 @@ def import_file_from_agave(userId: int, systemId: str, path: str, projectId: int
     with create_task_session() as session:
         try:
             user = session.query(User).get(userId)
-            client = AgaveUtils(user.jwt)
+            client = AgaveUtils(session, user)
             temp_file = client.getFile(systemId, path)
             temp_file.filename = Path(path).name
             additional_files = get_additional_files(temp_file, systemId, path, client)
 
-            optional_location_from_metadata = get_geolocation_from_file_metadata(user, system_id=systemId, path=path)
+            optional_location_from_metadata = get_geolocation_from_file_metadata(session, user, system_id=systemId, path=path)
 
             FeaturesService.fromFileObj(session, projectId, temp_file, {},
                                         original_path=path, additional_files=additional_files,
@@ -157,7 +157,7 @@ def _update_point_cloud_task(database_session, pointCloudId: int, description: s
 def import_point_clouds_from_agave(userId: int, files, pointCloudId: int):
     with create_task_session() as session:
         user = session.query(User).get(userId)
-        client = AgaveUtils(user.jwt)
+        client = AgaveUtils(session, user)
 
         point_cloud = pointcloud.PointCloudService.get(session, pointCloudId)
         celery_task_id = celery_uuid()
@@ -254,12 +254,15 @@ def import_point_clouds_from_agave(userId: int, files, pointCloudId: int):
 def import_from_agave(tenant_id: str, userId: int, systemId: str, path: str, projectId: int):
     """
     Recursively import files from a system/path.
+
+    This method is called regularly refresh_observable_projects() and once when a project is created
+    where watch content is true
     """
     with create_task_session() as session:
-        import_from_files_from_path(session, tenant_id, userId, systemId, path, projectId)
+        import_files_recursively_from_path(session, tenant_id, userId, systemId, path, projectId)
 
 
-def import_from_files_from_path(session, tenant_id: str, userId: int, systemId: str, path: str, projectId: int):
+def import_files_recursively_from_path(session, tenant_id: str, userId: int, systemId: str, path: str, projectId: int):
     """
     Recursively import files from a system/path.
 
@@ -271,14 +274,15 @@ def import_from_files_from_path(session, tenant_id: str, userId: int, systemId: 
     contained in specific-file-format metadata (e.g. exif for images) but instead the location is stored in Tapis
     metadata.
 
-    This method is called by refresh_observable_projects()
+    This method is called by refresh_observable_projects() via import_from_agave
     """
     user = session.query(User).get(userId)
-    client = AgaveUtils(user.jwt)
     logger.info("Importing for project:{} directory:{}/{} for user:{}".format(projectId,
                                                                               systemId,
                                                                               path,
                                                                               user.username))
+    client = AgaveUtils(session, user)
+
     try:
         listing = client.listing(systemId, path)
     except AgaveListingError:
@@ -286,13 +290,11 @@ def import_from_files_from_path(session, tenant_id: str, userId: int, systemId: 
         NotificationsService.create(session, user, "error", f"Error importing as unable to access {systemId}/{path}")
         return
 
-    # First item is always a reference to self
-    files_in_directory = listing[1:]
-    filenames_in_directory = [str(f.path) for f in files_in_directory]
-    for item in files_in_directory:
-        if item.type == "dir" and not str(item.path).endswith("/.Trash"):
-            import_from_files_from_path(session, tenant_id, userId, systemId, item.path, projectId)
-        item_system_path = os.path.join(item.system, str(item.path).lstrip("/"))
+    filenames_in_directory = [str(f.path) for f in listing]
+    for item in listing:
+        if item.type == "dir" and not str(item.path).endswith(".Trash"):
+            import_files_recursively_from_path(session, tenant_id, userId, systemId, item.path, projectId)
+        item_system_path = os.path.join(systemId, str(item.path).lstrip("/"))
         if features_util.is_file_supported_for_automatic_scraping(item_system_path):
             try:
                 # first check if there already is a file in the DB
@@ -306,12 +308,7 @@ def import_from_files_from_path(session, tenant_id: str, userId: int, systemId: 
                 # If it is a RApp project folder and not a questionnaire file, use the metadata from tapis meta service
                 if features_util.is_supported_file_type_in_rapp_folder_and_needs_metadata(item_system_path):
                     logger.info(f"RApp: importing:{item_system_path} for user:{user.username}. Using metadata service for geolocation.")
-                    try:
-                        meta = get_metadata_using_service_account(tenant_id, item.system, item.path)
-                    except MissingServiceAccount:
-                        logger.error(
-                            "No service account. Unable to get metadata for {}:{}".format(item.system, item.path))
-                        return {}
+                    meta = get_metadata(session, user, systemId, item.path)
 
                     logger.debug("metadata from service account for file:{} : {}".format(item_system_path, meta))
 
@@ -342,7 +339,7 @@ def import_from_files_from_path(session, tenant_id: str, userId: int, systemId: 
                     tmp_file.filename = Path(item.path).name
                     additional_files = get_additional_files(tmp_file, systemId, item.path, client, available_files=filenames_in_directory)
 
-                    optional_location_from_metadata = get_geolocation_from_file_metadata(user, system_id=systemId, path=path)
+                    optional_location_from_metadata = get_geolocation_from_file_metadata(session, user, system_id=systemId, path=path)
 
                     FeaturesService.fromFileObj(session, projectId, tmp_file, {},
                                                 original_path=item_system_path, additional_files=additional_files,
@@ -383,58 +380,76 @@ def refresh_observable_projects():
     """
     Refresh all observable projects
     """
+
+    # TODO refactor to consider scaling issues; see https://tacc-main.atlassian.net/browse/WG-47
     start_time = time.time()
     with create_task_session() as session:
         try:
             logger.info("Starting to refresh all observable projects")
             obs = session.query(ObservableDataProject).all()
             for i, o in enumerate(obs):
+                # TODO_TAPISv3 refactored into a command (used here and by ProjectService) or just put into its own method for clarity?
                 try:
-                    # we need a user with a jwt for importing
-                    importing_user = next((u for u in o.project.users if u.jwt))
-                    logger.info(f"Refreshing observable project ({i}/{len(obs)}): observer:{importing_user} "
-                                f"system:{o.system_id} path:{o.path} project:{o.project.id}")
+                    try:
+                        # we need a user with a valid Tapis token for importing files or updating users
+                        importing_user = next(
+                            (u for u in o.project.users if u.has_unexpired_refresh_token() or u.has_valid_token()),
+                            None)
 
-                    # we need to add any users who have been added to the project/system or update if their admin-status
-                    # has changed
-                    current_users = set([SystemUser(username=u.user.username, admin=u.admin)
-                                         for u in o.project.project_users])
-                    updated_users = set(get_system_users(o.project.tenant_id, importing_user.jwt, o.system_id))
+                        if importing_user is None:
+                            logger.error(f"Unable to refresh observable project ({i}/{len(obs)}): observer:{importing_user} "
+                                         f"system:{o.system_id} path:{o.path} project:{o.project.id} "
+                                         f"watch_content:{o.watch_content}: No user with an active token found. So we "
+                                         f"are skipping (i.e. no update of users or importing of watched content)")
+                            continue
 
-                    current_creator = session.query(ProjectUser)\
-                        .filter(ProjectUser.project_id == o.id)\
-                        .filter(ProjectUser.creator is True).one_or_none()
+                        logger.info(f"Refreshing observable project ({i}/{len(obs)}): observer:{importing_user} "
+                                    f"system:{o.system_id} path:{o.path} project:{o.project.id} watch_content:{o.watch_content}")
 
-                    if current_users != updated_users:
-                        logger.info("Updating users from:{} to:{}".format(current_users, updated_users))
+                        # we need to add any users who have been added to the project/system or update if their admin-status
+                        # has changed
+                        current_users = set([SystemUser(username=u.user.username, admin=u.admin)
+                                             for u in o.project.project_users])
+                        updated_users = set(get_system_users(session, importing_user, o.system_id))
 
-                        # set project users
-                        o.project.users = [UserService.getOrCreateUser(session, u.username, tenant=o.project.tenant_id)
-                                           for u in updated_users]
-                        session.add(o)
-                        session.commit()
+                        current_creator = session.query(ProjectUser)\
+                            .filter(ProjectUser.project_id == o.id)\
+                            .filter(ProjectUser.creator is True).one_or_none()
 
-                        updated_users_to_admin_status = {u.username: u for u in updated_users}
-                        logger.info("current_users_to_admin_status:{}".format(updated_users_to_admin_status))
-                        for u in o.project.project_users:
-                            u.admin = updated_users_to_admin_status[u.user.username].admin
-                            session.add(u)
-                        session.commit()
+                        if current_users != updated_users:
+                            logger.info("Updating users from:{} to:{}".format(current_users, updated_users))
 
-                        if current_creator:
-                            # reset the creator by finding that updated user again and updating it.
-                            current_creator = session.query(ProjectUser)\
-                                .filter(ProjectUser.project_id == o.id)\
-                                .filter(ProjectUser.user_id == current_creator.user_id)\
-                                .one_or_none()
+                            # set project users
+                            o.project.users = [UserService.getOrCreateUser(session, u.username, tenant=o.project.tenant_id)
+                                               for u in updated_users]
+                            session.add(o)
+                            session.commit()
+
+                            updated_users_to_admin_status = {u.username: u for u in updated_users}
+                            logger.info("current_users_to_admin_status:{}".format(updated_users_to_admin_status))
+                            for u in o.project.project_users:
+                                u.admin = updated_users_to_admin_status[u.user.username].admin
+                                session.add(u)
+                            session.commit()
+
                             if current_creator:
-                                current_creator.creator = True
-                                session.add(current_creator)
-                                session.commit()
+                                # reset the creator by finding that updated user again and updating it.
+                                current_creator = session.query(ProjectUser)\
+                                    .filter(ProjectUser.project_id == o.id)\
+                                    .filter(ProjectUser.user_id == current_creator.user_id)\
+                                    .one_or_none()
+                                if current_creator:
+                                    current_creator.creator = True
+                                    session.add(current_creator)
+                                    session.commit()
+                    except GetUsersForProjectNotSupported:
+                        logger.info(f"Not updating users for project:{o.project.id} system_id:{o.system_id}")
+                        pass
 
                     # perform the importing
                     if o.watch_content:
-                        import_from_files_from_path(session, o.project.tenant_id, importing_user.id, o.system_id, o.path, o.project.id)
+                        import_files_recursively_from_path(session, o.project.tenant_id,
+                                                           importing_user.id, o.system_id, o.path, o.project.id)
                 except Exception:  # noqa: E722
                     logger.exception(f"Unhandled exception when importing observable project:{o.project.id}. "
                                      "Performing rollback of current database transaction")

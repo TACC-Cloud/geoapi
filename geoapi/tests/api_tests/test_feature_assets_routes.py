@@ -11,14 +11,14 @@ def test_post_image_feature_asset(MockAgaveUtils, test_client, projects_fixture,
     resp = test_client.post(
         '/projects/1/features/1/assets/',
         json={"system_id": 'test', 'path': '/test/corrected_image.jpg'},
-        headers={'x-jwt-assertion-test': u1.jwt})
+        headers={'X-Tapis-Token': u1.jwt})
     data = resp.get_json() # noqa
     assert resp.status_code == 200
 
     # Have to reload the User from the DB, in app.py in the teardown_appcontext callback
     # the session is removed, which causes u1 above to be undefined AFTER the request above.
     u1 = db_session.query(User).get(1)
-    resp2 = test_client.get("/projects/1/features/1/", headers={'x-jwt-assertion-test': u1.jwt})
+    resp2 = test_client.get("/projects/1/features/1/", headers={'X-Tapis-Token': u1.jwt})
     feat = resp2.get_json()
     assert len(feat["assets"]) == 1
 
@@ -30,11 +30,11 @@ def test_post_video_feature_asset(MockAgaveUtils, test_client, projects_fixture,
     resp = test_client.post(
         '/projects/1/features/1/assets/',
         json={"system_id": 'test', 'path': '/test/test.mp4'},
-        headers={'x-jwt-assertion-test': u1.jwt})
+        headers={'X-Tapis-Token': u1.jwt})
     data = resp.get_json() # noqa
     assert resp.status_code == 200
 
     u1 = db_session.query(User).get(1)
-    resp2 = test_client.get("/projects/1/features/1/", headers={'x-jwt-assertion-test': u1.jwt})
+    resp2 = test_client.get("/projects/1/features/1/", headers={'X-Tapis-Token': u1.jwt})
     feat = resp2.get_json()
     assert len(feat["assets"]) == 1
