@@ -53,7 +53,11 @@ services:
       - FLASK_APP=/app/geoapi/app.py
       - APP_ENV=local
       - ASSETS_BASE_DIR=/assets
-      - DESIGNSAFE_URL
+      - DESIGNSAFE_URL={DESIGNSAFE_URL}
+      # from secrets.env
+      - FLASK_SESSION_SECRET_KEY={FLASK_SESSION_SECRET_KEY}
+      - TAPIS_CLIENT_ID={TAPIS_CLIENT_ID}
+      - TAPIS_CLIENT_KEY={TAPIS_CLIENT_KEY}
 
     stdin_open: true
     tty: true
