@@ -39,7 +39,7 @@ def get_client_url(url):
     """
     client_urls = [
         "http://localhost:4200/",
-        "https://hazmapper.tacc.utexas.edu/hazmapper/"
+        "https://hazmapper.tacc.utexas.edu/hazmapper/",
         "https://hazmapper.tacc.utexas.edu/staging/",
         "https://hazmapper.tacc.utexas.edu/dev/",
         "https://hazmapper.tacc.utexas.edu/exp/",
