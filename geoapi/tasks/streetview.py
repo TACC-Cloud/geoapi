@@ -279,7 +279,8 @@ def from_tapis_to_streetview(user_id: int,
                 error_message = ("Error during finalization of mapillary upload for streetview task:{} "
                                  "for user:{}. Error message: {}").format(task_uuid, user.username, e)
                 logger.exception(error_message)
-                clean_session(streetview_instance,
+                clean_session(session,
+                              streetview_instance,
                               user,
                               task_uuid,
                               'error',
