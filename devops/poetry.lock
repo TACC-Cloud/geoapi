@@ -1064,8 +1064,8 @@ typing_extensions = "*"
 [package.source]
 type = "git"
 url = "https://github.com/mapillary/mapillary_tools.git"
-reference = "HEAD"
-resolved_reference = "8a8c5e5b8f5ce8174b462dc50768144bac3df672"
+reference = "4bfebf8"
+resolved_reference = "4bfebf8\n"
 
 [[package]]
 name = "markupsafe"
@@ -2082,4 +2082,4 @@ testing = ["coverage (>=5.0.3)", "zope.event", "zope.testing"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.9"
-content-hash = "891c82a819050d8c80727e1aee0727aaf73feed7d9348d4f684cf5426c4a30ac"
+content-hash = "988f72cf0ce4c611b616cc0455e3aea618ba9f65d0474bd95845ce02befc2b08"
