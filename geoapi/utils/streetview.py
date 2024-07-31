@@ -113,7 +113,7 @@ class MapillaryUtils:
         pass
 
     @staticmethod
-    def upload(userId: int, task_uuid: UUID, service_user: str, organization_key: str):
+    def upload(database_session, userId: int, task_uuid: UUID, service_user: str, organization_key: str):
         command = [
             '/opt/conda/bin/mapillary_tools',
             'process_and_upload',
