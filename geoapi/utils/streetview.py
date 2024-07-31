@@ -134,7 +134,10 @@ class MapillaryUtils:
                                         'MAPILLARY_CONFIG_PATH': MapillaryUtils.get_auth_file(userId)
                                     },
                                     text=True)
-            NotificationsService.updateProgress(task_uuid, "created", "Uploading to Mapillary")
+            NotificationsService.updateProgress(database_session,
+                                                task_uuid,
+                                                "created",
+                                                "Uploading to Mapillary")
 
             for line in iter(prog.stdout.readline, b''):
                 if line == '':
@@ -143,12 +146,14 @@ class MapillaryUtils:
                 catch_upload_status = re.compile(r'(.*): (\d+(?=%))')
                 upload_status_match = re.search(catch_upload_status, str(line.rstrip()))
                 if upload_status_match:
-                    NotificationsService.updateProgress(task_uuid,
+                    NotificationsService.updateProgress(database_session,
+                                                        task_uuid,
                                                         "in_progress",
                                                         upload_status_match.group(1),
                                                         int(float(upload_status_match.group(2))))
                 else:
-                    NotificationsService.updateProgress(task_uuid,
+                    NotificationsService.updateProgress(database_session,
+                                                        task_uuid,
                                                         "created",
                                                         "Processing upload...")
 

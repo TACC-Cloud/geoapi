@@ -153,7 +153,7 @@ def _to_mapillary(database_session, user: User, streetview_instance: StreetviewI
                                             "Uploading to Mapillary")
 
         MapillaryUtils.authenticate(user.id, token, service_user)
-        MapillaryUtils.upload(user.id, task_uuid, service_user, organization_key)
+        MapillaryUtils.upload(database_session, user.id, task_uuid, service_user, organization_key)
     except Exception as e:
         msg = "Errors during mapillary upload task {} for user {}: Error: {}".format(task_uuid, user.username, e)
         raise Exception(msg)
