@@ -791,12 +791,12 @@ test = ["backports.socketpair", "cffi (>=1.12.2)", "contextvars (==2.4)", "cover
 
 [[package]]
 name = "gpxpy"
-version = "1.5.0"
+version = "1.4.2"
 description = "GPX file parser and GPS track manipulation library"
 optional = false
 python-versions = ">=3.6"
 files = [
-    {file = "gpxpy-1.5.0.tar.gz", hash = "sha256:e6993a8945eae07a833cd304b88bbc6c3c132d63b2bf4a9b0a5d9097616b8708"},
+    {file = "gpxpy-1.4.2.tar.gz", hash = "sha256:0832041899cdfdc5a607291bbef3d73042e16ffcecc3f2cb9631b699db0bb53f"},
 ]
 
 [[package]]
@@ -1041,31 +1041,27 @@ lingua = ["lingua"]
 testing = ["pytest"]
 
 [[package]]
-name = "mapillary_tools"
-version = "0.11.2"
+name = "mapillary-tools"
+version = "0.9.5"
 description = "Mapillary Image/Video Import Pipeline"
 optional = false
-python-versions = ">=3.8"
-files = []
-develop = false
+python-versions = ">=3.6"
+files = [
+    {file = "mapillary_tools-0.9.5-py3-none-any.whl", hash = "sha256:4a6974483e6fdafeddb6bec197c3e60cb8d09274f152de83eb73e8445979cc7b"},
+    {file = "mapillary_tools-0.9.5.tar.gz", hash = "sha256:b71e1404f60c692c3a2fbfcc404d3010533363a42a7b1195762f7e37c5323989"},
+]
 
 [package.dependencies]
 appdirs = ">=1.4.4,<2.0.0"
 construct = ">=2.10.0,<3.0.0"
 exifread = "2.3.2"
-gpxpy = ">=1.5.0,<1.6.0"
-jsonschema = ">=4.17.3,<4.18.0"
+gpxpy = "1.4.2"
+jsonschema = "*"
 piexif = "1.1.3"
-pynmea2 = ">=1.12.0,<2.0.0"
+pynmea2 = "1.12.0"
 requests = ">=2.20.0,<3.0.0"
 tqdm = ">=4.0,<5.0"
-typing_extensions = "*"
-
-[package.source]
-type = "git"
-url = "https://github.com/mapillary/mapillary_tools.git"
-reference = "HEAD"
-resolved_reference = "8a8c5e5b8f5ce8174b462dc50768144bac3df672"
+typing-extensions = "*"
 
 [[package]]
 name = "markupsafe"
@@ -1514,13 +1510,12 @@ tests = ["coverage[toml] (==5.0.4)", "pytest (>=6.0.0,<7.0.0)"]
 
 [[package]]
 name = "pynmea2"
-version = "1.19.0"
+version = "1.12.0"
 description = "Python library for the NMEA 0183 protcol"
 optional = false
 python-versions = "*"
 files = [
-    {file = "pynmea2-1.19.0-py3-none-any.whl", hash = "sha256:5138558b4fb5daa587b2c17de99eb43df0297039de1c98010c996624abfb00eb"},
-    {file = "pynmea2-1.19.0.tar.gz", hash = "sha256:1daa79b93279f887d1c235e5cc5c79e32644564138ce46989ab0f4a2fc970d7c"},
+    {file = "pynmea2-1.12.0.tar.gz", hash = "sha256:f1509fe9a424f2ff0547a0b8475f807a587e3482eb6aed6b873c3df590edbca0"},
 ]
 
 [[package]]
@@ -2082,4 +2077,4 @@ testing = ["coverage (>=5.0.3)", "zope.event", "zope.testing"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.9"
-content-hash = "891c82a819050d8c80727e1aee0727aaf73feed7d9348d4f684cf5426c4a30ac"
+content-hash = "c7df62b24eb1e04b0b90746a819e8926492c8f553930d0a1b479c0ae150c9e98"
