@@ -121,6 +121,6 @@ def test_update_project(projects_fixture):
         'name': 'new name',
         'description': 'new description'
     }
-    proj = ProjectsService.update(db_session, user, projects_fixture.id, data)
+    proj = ProjectsService.update(db_session, projects_fixture.id, data)
     assert proj.name == "new name"
     assert proj.description == "new description"

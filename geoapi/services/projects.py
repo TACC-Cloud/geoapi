@@ -273,7 +273,7 @@ class ProjectsService:
         return out.geojson
 
     @staticmethod
-    def update(database_session, user: User, projectId: int, data: dict) -> Project:
+    def update(database_session, projectId: int, data: dict) -> Project:
         """
         Update the metadata associated with a project
         :param projectId: int
