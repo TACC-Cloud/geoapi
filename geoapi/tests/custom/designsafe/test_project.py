@@ -7,8 +7,8 @@ import json
 import os
 
 
-def test_on_project_creation(tapis_url, requests_mock, user1, observable_projects_fixture):
-    project = observable_projects_fixture.project
+def test_on_project_creation(tapis_url, requests_mock, user1, watch_content_users_projects_fixture):
+    project = watch_content_users_projects_fixture
     create_file_url = tapis_url + quote(f"/files/media/system/{project.system_id}{project.system_path}/")
     requests_mock.post(create_file_url)
 
@@ -39,8 +39,8 @@ def test_on_project_creation(tapis_url, requests_mock, user1, observable_project
     }
 
 
-def test_on_project_deletion(tapis_url, requests_mock, user1, observable_projects_fixture):
-    project = observable_projects_fixture.project
+def test_on_project_deletion(tapis_url, requests_mock, user1, watch_content_users_projects_fixture):
+    project = watch_content_users_projects_fixture
     file_path = f"{project.system_path}/{project.system_file}.hazmapper"
 
     delete_file_url = tapis_url + quote(f"/files/media/system/{project.system_id}{file_path}")

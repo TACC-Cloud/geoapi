@@ -15,8 +15,8 @@ app = Celery('hello',
              include=['geoapi.tasks'])
 
 app.conf.beat_schedule = {
-    'refresh_observable_projects': {
-        'task': 'geoapi.tasks.external_data.refresh_observable_projects',
+    'refresh_watch_content_projects': {
+        'task': 'geoapi.tasks.external_data.refresh_watch_content_projects',
         'schedule': crontab(hour='*', minute='0')
     }
 }
