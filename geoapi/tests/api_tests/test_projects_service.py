@@ -22,7 +22,7 @@ def test_create_project(user1):
     assert not proj.public
     assert not proj.watch_users
     assert not proj.watch_content
-    assert proj.project_users[0].id == user1.id
+    assert proj.project_users[0].user_id == user1.id
     assert proj.project_users[0].creator
     assert not proj.project_users[0].admin
 
