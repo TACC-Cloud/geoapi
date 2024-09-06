@@ -8,6 +8,7 @@ from geoapi.db import db_session, create_task_session
 from geoapi.tasks.external_data import (import_from_agave,
                                         import_point_clouds_from_agave,
                                         refresh_watch_content_projects,
+                                        refresh_watch_users_projects,
                                         get_additional_files)
 from geoapi.utils.features import is_member_of_rapp_project_folder
 from geoapi.utils.agave import AgaveFileListing, SystemUser
@@ -200,7 +201,7 @@ def test_external_data_bad_files(metadata_none_fixture, user1, projects_fixture,
     # run import again (to mimic the periodically scheduled refresh_watch_content_projects)
     import_from_agave(projects_fixture.tenant_id, user1.id, "testSystem", "/testPath", projects_fixture.id)
     # Getting the file should only have been called once, since there is only
-    # one FILE in the listing and we already attempted to import it in the first call
+    # one FILE in the listing, and we already attempted to import it in the first call
     # to import_from_agave
     agave_utils_with_bad_image_file.client_in_external_data.getFile.assert_not_called()
 
@@ -363,18 +364,35 @@ def test_import_from_agave_failed_dbsession_rollback(agave_utils_with_geojson_fi
 
 
 @pytest.mark.worker
-def test_refresh_watch_content_projects(metadata_but_no_geolocation_fixture,
-                                        user1,
-                                        user2,
-                                        agave_utils_with_geojson_file,
-                                        watch_content_users_projects_fixture,
-                                        get_system_users_mock,
-                                        caplog):
+def test_refresh_watch_users_projects(metadata_but_no_geolocation_fixture,
+                                      user1,
+                                      user2,
+                                      agave_utils_with_geojson_file,
+                                      watch_content_users_projects_fixture,
+                                      get_system_users_mock,
+                                      caplog):
     assert len(watch_content_users_projects_fixture.project_users) == 1
     # single user with no admin but is creator
     assert [(user1.username, False, True)] == [(u.user.username, u.admin, u.creator)
                                                for u in watch_content_users_projects_fixture.project_users]
 
+    refresh_watch_users_projects()
+
+    db_session.refresh(watch_content_users_projects_fixture)
+
+    assert "rollback" not in caplog.text
+
+    # now two users with one being the admin and creator
+    assert ([(user1.username, True, True), (user2.username, False, False)] ==
+            [(u.user.username, u.admin, u.creator) for u in watch_content_users_projects_fixture.project_users])
+
+
+@pytest.mark.worker
+def test_refresh_watch_content_projects(metadata_but_no_geolocation_fixture,
+                                        agave_utils_with_geojson_file,
+                                        watch_content_users_projects_fixture,
+                                        get_system_users_mock,
+                                        caplog):
     refresh_watch_content_projects()
 
     db_session.refresh(watch_content_users_projects_fixture)
@@ -383,9 +401,6 @@ def test_refresh_watch_content_projects(metadata_but_no_geolocation_fixture,
     features = db_session.query(Feature).all()
     # the test geojson has 3 features in it
     assert len(features) == 3
-    # now two users with one being the admin and creator
-    assert ([(user1.username, True, True), (user2.username, False, False)] ==
-            [(u.user.username, u.admin, u.creator) for u in watch_content_users_projects_fixture.project_users])
 
 
 @pytest.mark.worker

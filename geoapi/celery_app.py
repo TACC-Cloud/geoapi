@@ -1,6 +1,7 @@
 from celery import Celery
-from celery.schedules import crontab
+from datetime import timedelta
 from geoapi.settings import settings
+
 
 CELERY_CONNECTION_STRING = "amqp://{user}:{pwd}@{hostname}/{vhost}".format(
     user=settings.RABBITMQ_USERNAME,
@@ -17,6 +18,10 @@ app = Celery('hello',
 app.conf.beat_schedule = {
     'refresh_watch_content_projects': {
         'task': 'geoapi.tasks.external_data.refresh_watch_content_projects',
-        'schedule': crontab(hour='*', minute='0')
+        'schedule': timedelta(hours=1)
+    },
+    'refresh_watch_users_projects': {
+        'task': 'geoapi.tasks.external_data.refresh_watch_users_projects',
+        'schedule': timedelta(minutes=30)
     }
 }

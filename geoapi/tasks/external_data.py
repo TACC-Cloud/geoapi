@@ -375,10 +375,20 @@ def import_files_recursively_from_path(session, tenant_id: str, userId: int, sys
                     raise
 
 
+def _get_user_with_valid_token(project):
+    """ Return a user with valid token
+
+        Returns None if no such user exists.
+    """
+    importing_user = next(
+        (u for u in project.users if u.has_unexpired_refresh_token() or u.has_valid_token()), None)
+    return importing_user
+
+
 @app.task()
 def refresh_watch_content_projects():
     """
-    Refresh all observable projects (i.e. projects where watch_content is True)
+    Refresh users for all projects where watch_content is True
     """
     start_time = time.time()
     with create_task_session() as session:
@@ -386,70 +396,23 @@ def refresh_watch_content_projects():
             logger.info("Starting to refresh all projects where watch_content is True")
             projects_with_watch_content = session.query(Project).filter(Project.watch_content.is_(true())).all()
             for i, project in enumerate(projects_with_watch_content):
-                # TODO_TAPISv3 refactored into a command (used here and by ProjectService)
-                # or just put into its own method for clarity?
                 try:
-                    try:
-                        # we need a user with a valid Tapis token for importing files or updating users
-                        importing_user = next(
-                            (u for u in project.users if u.has_unexpired_refresh_token() or u.has_valid_token()), None)
+                    importing_user = _get_user_with_valid_token(project)
 
-                        if importing_user is None:
-                            logger.error(f"Unable to watch content of project"
-                                         f" ({i}/{len(projects_with_watch_content)}): observer:{importing_user} "
-                                         f"system:{project.system_id} path:{project.system_path} project:{project.id} "
-                                         f"watch_content:{project.watch_content}: No user with an active token found. "
-                                         f"So we are skipping (i.e. no update of users or importing of watched "
-                                         f"content)")
-                            continue
-
-                        logger.info(f"Refreshing content of project ({i}/{len(projects_with_watch_content)}): "
-                                    f"observer:{importing_user} system:{project.system_id} path:{project.system_path} "
-                                    f"project:{project.id} watch_content:{project.watch_content}")
-
-                        # we need to add any users who have been added to the project/system or update
-                        # if their admin-status has changed
-                        current_users = set([SystemUser(username=u.user.username, admin=u.admin)
-                                             for u in project.project_users])
-                        updated_users = set(get_system_users(session, importing_user, project.system_id))
-
-                        current_creator = session.query(ProjectUser)\
-                            .filter(ProjectUser.project_id == project.id)\
-                            .filter(ProjectUser.creator is True).one_or_none()
-
-                        if current_users != updated_users:
-                            logger.info("Updating users from:{} to:{}".format(current_users, updated_users))
-
-                            # set project users
-                            project.users = [UserService.getOrCreateUser(session, u.username, tenant=project.tenant_id)
-                                             for u in updated_users]
-                            session.add(project)
-                            session.commit()
-
-                            updated_users_to_admin_status = {u.username: u for u in updated_users}
-                            logger.info("current_users_to_admin_status:{}".format(updated_users_to_admin_status))
-                            for u in project.project_users:
-                                u.admin = updated_users_to_admin_status[u.user.username].admin
-                                session.add(u)
-                            session.commit()
-
-                            if current_creator:
-                                # reset the creator by finding that updated user again and updating it.
-                                current_creator = session.query(ProjectUser)\
-                                    .filter(ProjectUser.project_id == project.id)\
-                                    .filter(ProjectUser.user_id == current_creator.user_id)\
-                                    .one_or_none()
-                                if current_creator:
-                                    current_creator.creator = True
-                                    session.add(current_creator)
-                                    session.commit()
-                    except GetUsersForProjectNotSupported:
-                        logger.info(f"Not updating users for project:{project.id} "
-                                    f"system_id:{project.system_id}")
-                        pass
+                    if importing_user is None:
+                        logger.error(f"Unable to watch content of project"
+                                     f" ({i}/{len(projects_with_watch_content)}): observer:{importing_user} "
+                                     f"system:{project.system_id} path:{project.system_path} project:{project.id} "
+                                     f"watch_content:{project.watch_content}: No user with an active token found. "
+                                     f"So we are skipping (i.e. no update of users or importing of watched "
+                                     f"content)")
+                        continue
 
                     # perform the importing
                     if project.watch_content:
+                        logger.info(f"Refreshing content of project ({i}/{len(projects_with_watch_content)}): "
+                                    f"observer:{importing_user} system:{project.system_id} path:{project.system_path} "
+                                    f"project:{project.id} watch_content:{project.watch_content}")
                         import_files_recursively_from_path(session, project.tenant_id,
                                                            importing_user.id, project.system_id,
                                                            project.system_path, project.id)
@@ -462,6 +425,90 @@ def refresh_watch_content_projects():
                         "Elapsed time {}".format(datetime.timedelta(seconds=total_time)))
         except Exception:  # noqa: E722
             logger.error("Error when trying to get list of projects where watch_content is True; "
+                         "this is unexpected and should be reported "
+                         "(i.e. https://jira.tacc.utexas.edu/browse/WG-131).")
+            raise
+
+
+@app.task()
+def refresh_watch_users_projects():
+    """
+    Refresh users for all projects where watch_users is True
+    """
+    start_time = time.time()
+    with create_task_session() as session:
+        try:
+            logger.info("Starting to refresh all projects where watch_content is True")
+            projects_with_watch_users = session.query(Project).filter(Project.watch_users.is_(true())).all()
+            for i, project in enumerate(projects_with_watch_users):
+                # TODO_TAPISv3 refactored into a command (used here and by ProjectService)
+                # or just put into its own method for clarity?
+                try:
+                    # we need a user with a valid Tapis token for importing files or updating users
+                    importing_user = next(
+                        (u for u in project.users if u.has_unexpired_refresh_token() or u.has_valid_token()), None)
+
+                    if importing_user is None:
+                        logger.error(f"Unable to watch users of project"
+                                     f" ({i}/{len(projects_with_watch_users)}): observer:{importing_user} "
+                                     f"system:{project.system_id} path:{project.system_path} project:{project.id} "
+                                     f"watch_content:{project.watch_content}: No user with an active token found. "
+                                     f"So we are skipping (i.e. no update of users or importing of watched "
+                                     f"content)")
+                        continue
+
+                    logger.info(f"Refreshing users of project ({i}/{len(projects_with_watch_users)}): "
+                                f"observer:{importing_user} system:{project.system_id} path:{project.system_path} "
+                                f"project:{project.id} watch_content:{project.watch_content}")
+
+                    # we need to add any users who have been added to the project/system or update
+                    # if their admin-status has changed
+                    current_users = set([SystemUser(username=u.user.username, admin=u.admin)
+                                         for u in project.project_users])
+                    updated_users = set(get_system_users(session, importing_user, project.system_id))
+
+                    current_creator = session.query(ProjectUser)\
+                        .filter(ProjectUser.project_id == project.id)\
+                        .filter(ProjectUser.creator is True).one_or_none()
+                    if current_users != updated_users:
+                        logger.info("Updating users from:{} to:{}".format(current_users, updated_users))
+
+                        # set project users
+                        project.users = [UserService.getOrCreateUser(session, u.username, tenant=project.tenant_id)
+                                         for u in updated_users]
+                        session.add(project)
+                        session.commit()
+
+                        updated_users_to_admin_status = {u.username: u for u in updated_users}
+                        logger.info("current_users_to_admin_status:{}".format(updated_users_to_admin_status))
+                        for u in project.project_users:
+                            u.admin = updated_users_to_admin_status[u.user.username].admin
+                            session.add(u)
+                        session.commit()
+
+                        if current_creator:
+                            # reset the creator by finding that updated user again and updating it.
+                            current_creator = session.query(ProjectUser)\
+                                .filter(ProjectUser.project_id == project.id)\
+                                .filter(ProjectUser.user_id == current_creator.user_id)\
+                                .one_or_none()
+                            if current_creator:
+                                current_creator.creator = True
+                                session.add(current_creator)
+                                session.commit()
+                except GetUsersForProjectNotSupported:
+                    logger.info(f"Not updating users for project:{project.id} "
+                                f"system_id:{project.system_id}")
+                    pass
+                except Exception:  # noqa: E722
+                    logger.exception(f"Unhandled exception when updating users for project:{project.id}. "
+                                     "Performing rollback of current database transaction")
+                    session.rollback()
+            total_time = time.time() - start_time
+            logger.info("refresh_watch_users_projects completed. "
+                        "Elapsed time {}".format(datetime.timedelta(seconds=total_time)))
+        except Exception:  # noqa: E722
+            logger.error("Error when trying to get list of projects where watch_users is True; "
                          "this is unexpected and should be reported "
                          "(i.e. https://jira.tacc.utexas.edu/browse/WG-131).")
             raise
