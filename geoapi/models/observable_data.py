@@ -7,7 +7,7 @@ from sqlalchemy.sql import func
 from geoapi.db import Base
 
 
-# Deprecated; Replaced by watch_user and watch_content of Project table
+# Deprecated; Replaced by watch_user and watch_content of Project table. See https://tacc-main.atlassian.net/browse/WG-377
 class ObservableDataProject(Base):
     __tablename__ = 'observable_data_projects'
     id = Column(Integer, primary_key=True)
