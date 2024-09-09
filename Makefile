@@ -10,15 +10,15 @@ help:  ## Display this help screen
 
 .PHONY: start
 start:
-	docker-compose -f devops/docker-compose.local.yml --env-file .env up
+	docker compose -f devops/docker-compose.local.yml --env-file .env up
 
 .PHONY: stop
 stop:
-	docker-compose -f devops/docker-compose.local.yml --env-file .env down
+	docker compose -f devops/docker-compose.local.yml --env-file .env down
 
 .PHONY: restart-workers
 restart-workers:  ## Restart workers
-	docker-compose -f devops/docker-compose.local.yml --env-file .env restart workers
+	docker compose -f devops/docker-compose.local.yml --env-file .env restart workers
 
 .PHONY: build
 build:
