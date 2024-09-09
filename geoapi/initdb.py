@@ -1,32 +1,28 @@
-import random
-from geoapi.db import Base, engine, db_session
-from geoapi.models import *
-from shapely.geometry import Point
-from geoalchemy2.shape import from_shape
+import os
+from sqlalchemy_utils import database_exists, create_database
+from geoapi.db import engine, get_db_connection_string
+from alembic.config import Config
+from alembic import command
+from geoapi.settings import settings
 
 
-def initDB():
-    Base.metadata.drop_all(bind=engine)
-    Base.metadata.create_all(bind=engine)
+def init_database():
+    db_url = get_db_connection_string(settings)
 
-def dropDB():
-    Base.metadata.drop_all(bind=engine)
+    # Create database if it doesn't exist
+    if not database_exists(db_url):
+        create_database(db_url)
+        print(f"Database '{db_url.database}' created.")
 
+    # Run all migrations
+    alembic_cfg = Config("alembic.ini")
+    try:
+        command.upgrade(alembic_cfg, "head")
+        print("All migrations have been applied. Database is now up-to-date.")
+    except Exception as e:
+        print(f"Error applying migrations: {str(e)}")
+        raise
 
-def addRandomMarkers():
-    proj = Project(name="test", description="test", tenant_id="designsafe")
-    user = db_session.query(User).filter(User.username == "jmeiring").first()
-    proj.users.append(user)
-    db_session.add(user)
-    for i in range(0, 10000):
-        p = Point(random.uniform(-180, 180), random.uniform(-90, 90))
-        feat = Feature(
-            the_geom=from_shape(p, srid=4326),
-        )
-        feat.project = proj
-        db_session.add(feat)
-    db_session.commit()
 
 if __name__ == "__main__":
-    initDB()
-    # addRandomMarkers()
+    init_database()
