@@ -25,7 +25,7 @@ under gunicorn on port 8000
 `make build`
 `make start`
 
-###### Initialize the database
+###### Initialize the database (for local development and unit testing)
 
 `docker exec -it geoapi python initdb.py`
 
@@ -58,7 +58,7 @@ See https://github.com/TACC-Cloud/hazmapper for details.
 
 These are useful steps to follow when there are changes to the database model.
 
-First, apply migrations:
+First, apply migrations (i.e. do not run initdb.py):
 
 ```
 docker exec -it geoapi alembic upgrade head
@@ -76,28 +76,8 @@ alembic revision --autogenerate
 
 ## Testing
 
-Run route/service tests on the `api` container
+Run directly in your running containers:
 ```
-docker-compose -f devops/docker-compose.test.yml -p geoapi_test run api pytest
-```
-
-Run worker-related tasks on the `workers` container
-```
-docker-compose -f devops/docker-compose.test.yml -p geoapi_test run workers pytest -m "worker"
-```
-
-Note that images need to be rebuilt before running tests if they have been updated (e.g. packages):
-```
-make build
-```
-
-or run directly in your running containers:
-```
-docker exec -it geoapi_postgres psql -d postgres  -U dev
-CREATE DATABASE TEST;
- \connect test;
-CREATE EXTENSION postgis;
-
 # then run tests in api
 docker exec -it geoapi bash
 APP_ENV=testing pytest
