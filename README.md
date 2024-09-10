@@ -6,7 +6,7 @@ GeoAPI is a restful API to create geospatial features in a PostGIS database. Use
 can add features to it. The development docker-compose file has 3 containers: 
 * a PostGIS database exposing 5432, 
 * the api which exposes port 8000 behind gunicorn
-* an nginx server to serve static files and proxy to the api, running on port 8080. 
+* a nginx server to serve static files and proxy to the api, running on port 8080.
 
 See https://github.com/TACC-Cloud/hazmapper which is an associated viewer application.
 
@@ -29,29 +29,26 @@ under gunicorn on port 8000
 
 `docker exec -it geoapi python initdb.py`
 
-###### Obtain a JWT
+### Example requests
 
-Refer to the confluence page or ask a colleague for assistance in obtaining a JWT.
+You need a Tapis token for the appropriate tenant.
 
-###### Make some requests
-
-You need to add the following header for authentication:
-
-`X-JWT-Assertion-designsafe` to equal the JWT obtained above
-
-###### Create a new map project
-
-send a POST request to `localhost:8000/projects` with a body like this: 
-
-```json
-{
-  "name": "Awesome Project",
-  "description": "Cool project"
-}
-
+```bash
+export JWT=your_access_token_string
 ```
 
-send a GET request to `localhost:8000/projects` and you should get that back.
+To create a new "map" project, send a POST request:
+
+```
+curl -X POST -H "Content-Type: application/json" -H "X-Tapis-Token: $JWT" http://localhost:8000/projects/ -d '{"name": "Test Project", "description": "This is a test project."}'
+```
+
+To view all projects, including the newly created one, send a GET request:
+
+```
+curl -v -H "Content-Type: application/json" -H "X-Tapis-Token: $JWT" http://localhost:8000/projects/
+```
+
 
 ### Client viewer
 
