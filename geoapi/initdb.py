@@ -51,5 +51,4 @@ def setup_unit_test_database():
 
 if __name__ == "__main__":
     setup_local_dev_database()
-
     setup_unit_test_database()

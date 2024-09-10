@@ -58,7 +58,7 @@ See https://github.com/TACC-Cloud/hazmapper for details.
 
 These are useful steps to follow when there are changes to the database model.
 
-First, apply migrations (i.e. do not run initdb.py):
+First, apply migrations (Note, this is also done during running of initdb.py):
 
 ```
 docker exec -it geoapi alembic upgrade head
