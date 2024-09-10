@@ -9,6 +9,7 @@ from geoapi.log import logger
 def get_db_connection_string(conf):
     return f'postgresql://{conf.DB_USERNAME}:{conf.DB_PASSWD}@{conf.DB_HOST}/{conf.DB_NAME}'
 
+
 def create_engine_for_context(context=None):
     engine = create_engine(get_db_connection_string(settings),
                            echo=False,  # default value
