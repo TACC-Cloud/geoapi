@@ -93,7 +93,7 @@ def convert_to_potree(self, pointCloudId: int) -> None:
     outline = get_bounding_box_2d(input_files)
 
     command = [
-        "PotreeConverter",
+        "/opt/PotreeConverter/build/PotreeConverter",
         "--verbose",
         "-i",
         path_to_original_point_clouds,
