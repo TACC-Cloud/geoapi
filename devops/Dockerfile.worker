@@ -95,5 +95,9 @@ RUN ldconfig
 # Set the entrypoint
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
 
+# activate conda (to handle when user starts a bash via docker exec)
+RUN echo '. /opt/conda/etc/profile.d/conda.sh' >> /root/.bashrc && \
+    echo 'conda activate py39env' >> /root/.bashrc
+
 # Set a default command (can be overridden by docker-compose)
 CMD ["bash"]
