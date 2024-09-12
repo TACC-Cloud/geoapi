@@ -55,8 +55,9 @@ cmake -DCMAKE_BUILD_TYPE=Release -DLASZIP_INCLUDE_DIRS=/opt/LAStools/LASzip/dll/
 make
 
 # Setup our page template for PotreeConverter
-RUN cp -r /opt/PotreeConverter/resources /resources
-ADD devops/misc/potree/page_template /resources/page_template
+ADD devops/misc/potree/page_template/nsf_logo.png /opt/PotreeConverter/build/page_template/
+ADD devops/misc/potree/page_template/nsf_logo_snippet.txt /tmp/
+RUN sed -i '/<\/script>/r /tmp/nsf_logo_snippet.txt' /opt/PotreeConverter/build/resources/page_template/viewer_template.html
 
 # Install needed python packages using poetry
 RUN pip install poetry==1.8.3
