@@ -6,16 +6,12 @@ from contextlib import contextmanager
 from geoapi.log import logger
 
 
-CONNECTION_STRING = 'postgresql://{}:{}@{}/{}'.format(
-    settings.DB_USERNAME,
-    settings.DB_PASSWD,
-    settings.DB_HOST,
-    settings.DB_NAME
-)
+def get_db_connection_string(conf):
+    return f'postgresql://{conf.DB_USERNAME}:{conf.DB_PASSWD}@{conf.DB_HOST}/{conf.DB_NAME}'
 
 
 def create_engine_for_context(context=None):
-    engine = create_engine(CONNECTION_STRING,
+    engine = create_engine(get_db_connection_string(settings),
                            echo=False,  # default value
                            pool_pre_ping=True,
                            pool_reset_on_return=True)
