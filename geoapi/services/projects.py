@@ -1,6 +1,6 @@
 from typing import List, Optional
 
-from sqlalchemy import desc
+from sqlalchemy import desc, exists
 from geoapi.models import Project, ProjectUser, User
 from sqlalchemy.sql import select, text
 from geoapi.services.users import UserService
@@ -30,18 +30,16 @@ class ProjectsService:
         if data.get('system_id'):
             AgaveUtils(database_session, user).systemsGet(data.get('system_id'))
 
+        system_id = data.get("system_id")
+        system_path = data.get("system_path")
+
         # Check that there is no other matching projects if watch_content is True
-        if data.get("watch_content"):
-            matching_projects_with_same_system_path = (database_session.query(Project).filter(Project.system_id == data.get("system_id"))
-                                                       .filter(Project.system_path == data.get("system_path"))
-                                                       .filter(Project.watch_content)
-                                                       .all())
-            if matching_projects_with_same_system_path:
-                logger.exception(f"User:{user.username} tried to create a project with watch_content although there is "
-                                 f"a project for that  system_id={data.get('system_id')} and "
-                                 f"system_path={data.get('system_path')}")
-                raise ProjectSystemPathWatchFilesAlreadyExists(f"'{data.get('system_id')}/{data.get('system_path')}' "
-                                                               f"project already exists")
+        if data.get("watch_content") and ProjectsService.is_project_watching_content_on_system_path(database_session,
+                                                                                                    system_id,
+                                                                                                    system_path):
+            logger.exception(f"User:{user.username} tried to create a project with watch_content although there is "
+                             f"a project for that  system_id={system_id} and system_path={system_path}")
+            raise ProjectSystemPathWatchFilesAlreadyExists(f"'{system_id}/{system_path}' project already exists")
 
         project = Project(**data)
         project.tenant_id = user.tenant_id
@@ -334,3 +332,14 @@ class ProjectsService:
 
         project.users.remove(user)
         database_session.commit()
+
+    @staticmethod
+    def is_project_watching_content_on_system_path(database_session, system_id, system_path) -> bool:
+        """
+        Check if any project is watching content at the specified system path.
+        """
+        return database_session.query(exists().where(
+            Project.system_id == system_id,
+            Project.system_path == system_path,
+            Project.watch_content
+        )).scalar()
