@@ -35,7 +35,8 @@ ExifRead = "^2.3.2"
 flake8 = "^5.0.4"
 urllib3 = "<2"
 pytest-mock = "^3.12.0"
-mapillary-tools = "0.9.5"
+mapillary-tools = {git = "https://github.com/mapillary/mapillary_tools.git"}
+sqlalchemy-utils = "^0.41.2"
 
 [tool.poetry.dev-dependencies]
 
