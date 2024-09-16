@@ -100,7 +100,10 @@ def projects_fixture2(user1, user2):
     db_session.add(project)
     db_session.commit()
 
-    project_user1 = db_session.query(ProjectUser).filter(ProjectUser.project_id == project.id).filter(ProjectUser.user_id == user1.id).first()
+    project_user1 = db_session.query(ProjectUser) \
+        .filter(ProjectUser.project_id == project.id) \
+        .filter(ProjectUser.user_id == user1.id) \
+        .first()
     project_user1.creator = True
 
     db_session.add(project_user1)
