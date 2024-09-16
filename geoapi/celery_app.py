@@ -16,12 +16,12 @@ app = Celery('hello',
              include=['geoapi.tasks'])
 
 app.conf.beat_schedule = {
-    'refresh_watch_content_projects': {
-        'task': 'geoapi.tasks.external_data.refresh_watch_content_projects',
+    'refresh_projects_watch_content': {
+        'task': 'geoapi.tasks.external_data.refresh_projects_watch_content',
         'schedule': timedelta(hours=1)
     },
-    'refresh_watch_users_projects': {
-        'task': 'geoapi.tasks.external_data.refresh_watch_users_projects',
+    'refresh_projects_watch_users': {
+        'task': 'geoapi.tasks.external_data.refresh_projects_watch_users',
         'schedule': timedelta(minutes=30)
     }
 }

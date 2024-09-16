@@ -7,8 +7,8 @@ from geoapi.models import Feature, ImportedFile
 from geoapi.db import db_session, create_task_session
 from geoapi.tasks.external_data import (import_from_agave,
                                         import_point_clouds_from_agave,
-                                        refresh_watch_content_projects,
-                                        refresh_watch_users_projects,
+                                        refresh_projects_watch_content,
+                                        refresh_projects_watch_users,
                                         get_additional_files)
 from geoapi.utils.features import is_member_of_rapp_project_folder
 from geoapi.utils.agave import AgaveFileListing, SystemUser
@@ -179,7 +179,7 @@ def test_external_data_good_files(metadata_geolocation_30long_20lat_fixture, use
 
     agave_utils_with_geojson_file.reset_mock()
 
-    # run import again (to mimic the periodically scheduled refresh_watch_content_projects)
+    # run import again (to mimic the periodically scheduled refresh_projects_watch_content)
     import_from_agave(projects_fixture.tenant_id, user1.id, "testSystem", "/testPath", projects_fixture.id)
     # This should only have been called once, since there is only
     # one FILE in the listing
@@ -198,7 +198,7 @@ def test_external_data_bad_files(metadata_none_fixture, user1, projects_fixture,
 
     agave_utils_with_bad_image_file.client_in_external_data.reset_mock()
 
-    # run import again (to mimic the periodically scheduled refresh_watch_content_projects)
+    # run import again (to mimic the periodically scheduled refresh_projects_watch_content)
     import_from_agave(projects_fixture.tenant_id, user1.id, "testSystem", "/testPath", projects_fixture.id)
     # Getting the file should only have been called once, since there is only
     # one FILE in the listing, and we already attempted to import it in the first call
@@ -364,7 +364,7 @@ def test_import_from_agave_failed_dbsession_rollback(agave_utils_with_geojson_fi
 
 
 @pytest.mark.worker
-def test_refresh_watch_users_projects(metadata_but_no_geolocation_fixture,
+def test_refresh_projects_watch_users(metadata_but_no_geolocation_fixture,
                                       user1,
                                       user2,
                                       agave_utils_with_geojson_file,
@@ -376,7 +376,7 @@ def test_refresh_watch_users_projects(metadata_but_no_geolocation_fixture,
     assert [(user1.username, False, True)] == [(u.user.username, u.admin, u.creator)
                                                for u in watch_content_users_projects_fixture.project_users]
 
-    refresh_watch_users_projects()
+    refresh_projects_watch_users()
 
     db_session.refresh(watch_content_users_projects_fixture)
 
@@ -388,12 +388,12 @@ def test_refresh_watch_users_projects(metadata_but_no_geolocation_fixture,
 
 
 @pytest.mark.worker
-def test_refresh_watch_content_projects(metadata_but_no_geolocation_fixture,
+def test_refresh_projects_watch_content(metadata_but_no_geolocation_fixture,
                                         agave_utils_with_geojson_file,
                                         watch_content_users_projects_fixture,
                                         get_system_users_mock,
                                         caplog):
-    refresh_watch_content_projects()
+    refresh_projects_watch_content()
 
     db_session.refresh(watch_content_users_projects_fixture)
 
@@ -404,12 +404,12 @@ def test_refresh_watch_content_projects(metadata_but_no_geolocation_fixture,
 
 
 @pytest.mark.worker
-def test_refresh_watch_content_projects_dbsession_rollback(agave_utils_with_geojson_file,
+def test_refresh_projects_watch_content_dbsession_rollback(agave_utils_with_geojson_file,
                                                            watch_content_users_projects_fixture,
                                                            get_system_users_mock,
                                                            task_session_commit_throws_exception,
                                                            caplog):
-    refresh_watch_content_projects()
+    refresh_projects_watch_content()
     assert "rollback" in caplog.text
 
 

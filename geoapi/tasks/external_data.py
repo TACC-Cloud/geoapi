@@ -256,7 +256,7 @@ def import_from_agave(tenant_id: str, userId: int, systemId: str, path: str, pro
     """
     Recursively import files from a system/path.
 
-    For projects where watch_content is True, this method is called periodically by refresh_watch_content_projects()
+    For projects where watch_content is True, this method is called periodically by refresh_projects_watch_content()
     and once when the project is initially created (if watch_content is True)
     """
     with create_task_session() as session:
@@ -275,7 +275,7 @@ def import_files_recursively_from_path(session, tenant_id: str, userId: int, sys
     contained in specific-file-format metadata (e.g. exif for images) but instead the location is stored in Tapis
     metadata.
 
-    This method is called by refresh_watch_content_projects() via import_from_agave
+    This method is called by refresh_projects_watch_content() via import_from_agave
     """
     user = session.query(User).get(userId)
     logger.info("Importing for project:{} directory:{}/{} for user:{}".format(projectId,
@@ -386,7 +386,7 @@ def _get_user_with_valid_token(project):
 
 
 @app.task()
-def refresh_watch_content_projects():
+def refresh_projects_watch_content():
     """
     Refresh users for all projects where watch_content is True
     """
@@ -421,7 +421,7 @@ def refresh_watch_content_projects():
                                      "Performing rollback of current database transaction")
                     session.rollback()
             total_time = time.time() - start_time
-            logger.info("refresh_watch_content_projects completed. "
+            logger.info("refresh_projects_watch_content completed. "
                         "Elapsed time {}".format(datetime.timedelta(seconds=total_time)))
         except Exception:  # noqa: E722
             logger.error("Error when trying to get list of projects where watch_content is True; "
@@ -431,7 +431,7 @@ def refresh_watch_content_projects():
 
 
 @app.task()
-def refresh_watch_users_projects():
+def refresh_projects_watch_users():
     """
     Refresh users for all projects where watch_users is True
     """
@@ -506,7 +506,7 @@ def refresh_watch_users_projects():
                                      "Performing rollback of current database transaction")
                     session.rollback()
             total_time = time.time() - start_time
-            logger.info("refresh_watch_users_projects completed. "
+            logger.info("refresh_projects_watch_users completed. "
                         "Elapsed time {}".format(datetime.timedelta(seconds=total_time)))
         except Exception:  # noqa: E722
             logger.error("Error when trying to get list of projects where watch_users is True; "
