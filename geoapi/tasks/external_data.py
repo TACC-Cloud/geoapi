@@ -381,7 +381,7 @@ def _get_user_with_valid_token(project):
         Returns None if no such user exists.
     """
     importing_user = next(
-        (u for u in project.users if u.has_unexpired_refresh_token() or u.has_valid_token()), None)
+        (user for user in project.users if user.has_unexpired_refresh_token() or user.has_valid_token()), None)
     return importing_user
 
 
@@ -446,7 +446,8 @@ def refresh_watch_users_projects():
                 try:
                     # we need a user with a valid Tapis token for importing files or updating users
                     importing_user = next(
-                        (u for u in project.users if u.has_unexpired_refresh_token() or u.has_valid_token()), None)
+                        (user for user in project.users
+                         if user.has_unexpired_refresh_token() or user.has_valid_token()), None)
 
                     if importing_user is None:
                         logger.error(f"Unable to watch users of project"
@@ -463,8 +464,8 @@ def refresh_watch_users_projects():
 
                     # we need to add any users who have been added to the project/system or update
                     # if their admin-status has changed
-                    current_users = set([SystemUser(username=u.user.username, admin=u.admin)
-                                         for u in project.project_users])
+                    current_users = set([SystemUser(username=project_user.user.username, admin=project_user.admin)
+                                         for project_user in project.project_users])
                     updated_users = set(get_system_users(session, importing_user, project.system_id))
 
                     current_creator = session.query(ProjectUser)\
@@ -474,16 +475,16 @@ def refresh_watch_users_projects():
                         logger.info("Updating users from:{} to:{}".format(current_users, updated_users))
 
                         # set project users
-                        project.users = [UserService.getOrCreateUser(session, u.username, tenant=project.tenant_id)
-                                         for u in updated_users]
+                        project.users = [UserService.getOrCreateUser(session, user.username, tenant=project.tenant_id)
+                                         for user in updated_users]
                         session.add(project)
                         session.commit()
 
-                        updated_users_to_admin_status = {u.username: u for u in updated_users}
+                        updated_users_to_admin_status = {user.username: user for user in updated_users}
                         logger.info("current_users_to_admin_status:{}".format(updated_users_to_admin_status))
-                        for u in project.project_users:
-                            u.admin = updated_users_to_admin_status[u.user.username].admin
-                            session.add(u)
+                        for project_user in project.project_users:
+                            project_user.admin = updated_users_to_admin_status[project_user.user.username].admin
+                            session.add(project_user)
                         session.commit()
 
                         if current_creator:

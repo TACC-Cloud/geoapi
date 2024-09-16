@@ -69,14 +69,14 @@ class ProjectsService:
                 system_users = get_system_users(database_session, user, project.system_id)
                 logger.info(f"Initial update of project_id:{project.id} system_id:{project.system_id} "
                             f"system_path:{project.system_path} to have the following users: {system_users}")
-                users = [UserService.getOrCreateUser(database_session, u.username, project.tenant_id) for u in system_users]
+                users = [UserService.getOrCreateUser(database_session, user.username, project.tenant_id) for user in system_users]
                 project.users = users
 
                 if system_users:
                     # Initialize the admin status
-                    users_dict = {u.username: u for u in system_users}
-                    for u in project.project_users:
-                        u.admin = users_dict[u.user.username].admin
+                    users_dict = {user.username: user for user in system_users}
+                    for project_user in project.project_users:
+                        project_user.admin = users_dict[project_user.user.username].admin
                 database_session.add(project)
                 database_session.commit()
             except GetUsersForProjectNotSupported:
@@ -328,7 +328,7 @@ class ProjectsService:
             raise ApiException("Unable to remove last user of project")
 
         if proj.watch_content or proj.watch_users:
-            number_of_potential_observers = len([u for u in proj.users if u.jwt])
+            number_of_potential_observers = len([user for user in proj.users if user.jwt])
             if user.jwt and number_of_potential_observers == 1:
                 raise ApiException("Unable to remove last user of project who can observe file system or users")
 
