@@ -73,7 +73,8 @@ Then, create migrations:
 
 ```
 docker exec -it geoapi /bin/bash
-alembic revision --autogenerate
+# determine a description for the migration like 'add_user_email_column'
+alembic revision --autogenerate -m "add_user_email_column"
 # Then:
 # - remove drop table commands for postgis
 # - add/commit migrations

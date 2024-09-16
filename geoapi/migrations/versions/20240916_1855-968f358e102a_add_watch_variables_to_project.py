@@ -1,14 +1,18 @@
-"""
+"""add_watch_variables_to_project
+
+Revision ID: 968f358e102a
 Revises: 4eeeeea72dbc
-Create Date: 2024-09-04 19:13:52.297379
+Create Date: 2024-09-16 18:55:13.685590
+
 """
 from alembic import op
 import sqlalchemy as sa
 from sqlalchemy.orm import Session
 from geoapi.log import logger
 
+
 # revision identifiers, used by Alembic.
-revision = '6558809eeaed'
+revision = '968f358e102a'
 down_revision = '4eeeeea72dbc'
 branch_labels = None
 depends_on = None
