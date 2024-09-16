@@ -257,7 +257,7 @@ def test_import_point_clouds_from_agave(MockAgaveUtils,
     assert point_cloud.task.description == ""
     assert len(os.listdir(get_project_asset_dir(point_cloud.project_id))) == 2
     assert len(os.listdir(
-        get_asset_path(point_cloud.feature.assets[0].path))) == 4  # index.html, preview.html, pointclouds, libs
+        get_asset_path(point_cloud.feature.assets[0].path))) == 5  # index.html, preview.html, pointclouds, libs, logo
     assert len(os.listdir(get_asset_path(point_cloud_fixture.path, PointCloudService.ORIGINAL_FILES_DIR))) == 1
     assert os.path.isfile(os.path.join(get_asset_path(point_cloud.feature.assets[0].path), "index.html"))
     with open(os.path.join(get_asset_path(point_cloud.feature.assets[0].path), "index.html"), 'r+') as f:
