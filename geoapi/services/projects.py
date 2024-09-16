@@ -241,20 +241,23 @@ class ProjectsService:
     @staticmethod
     def update(database_session, projectId: int, data: dict) -> Project:
         """
-        Update the metadata associated with a project
+        Update the metadata associated with a project.
+
+        Only `name`, `description` and `public` can be updated.
+
         :param projectId: int
         :param data: dict
         :return: Project
         """
-        proj = ProjectsService.get(database_session=database_session, project_id=projectId)
+        project = ProjectsService.get(database_session=database_session, project_id=projectId)
 
-        proj.name = data.get('name', proj.name)
-        proj.description = data.get('description', proj.description)
-        proj.public = data.get('public', proj.public)
+        project.name = data.get('name', project.name)
+        project.description = data.get('description', project.description)
+        project.public = data.get('public', project.public)
 
         database_session.commit()
 
-        return proj
+        return project
 
     @staticmethod
     def delete(database_session, user: User, projectId: int) -> dict:
