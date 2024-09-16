@@ -288,9 +288,9 @@ class ProjectsService:
         :return:
         """
 
-        proj = database_session.query(Project).get(projectId)
-        user = UserService.getOrCreateUser(database_session, username, proj.tenant_id)
-        proj.users.append(user)
+        project = database_session.query(Project).get(projectId)
+        user = UserService.getOrCreateUser(database_session, username, project.tenant_id)
+        project.users.append(user)
         database_session.commit()
 
         project_user = database_session.query(ProjectUser)\
@@ -301,8 +301,8 @@ class ProjectsService:
 
     @staticmethod
     def getUsers(database_session, projectId: int) -> List[User]:
-        proj = database_session.query(Project).get(projectId)
-        return proj.users
+        project = database_session.query(Project).get(projectId)
+        return project.users
 
     @staticmethod
     def getUser(database_session, projectId: int, username: str) -> User:
@@ -318,19 +318,19 @@ class ProjectsService:
         :param username: str
         :return: None
         """
-        proj = database_session.query(Project).get(projectId)
+        project = database_session.query(Project).get(projectId)
         user = database_session.query(User).filter(User.username == username).first()
 
-        if user not in proj.users:
+        if user not in project.users:
             raise ApiException("User is not in project")
 
-        if len(proj.users) == 1:
+        if len(project.users) == 1:
             raise ApiException("Unable to remove last user of project")
 
-        if proj.watch_content or proj.watch_users:
-            number_of_potential_observers = len([user for user in proj.users if user.jwt])
+        if project.watch_content or project.watch_users:
+            number_of_potential_observers = len([user for user in project.users if user.jwt])
             if user.jwt and number_of_potential_observers == 1:
                 raise ApiException("Unable to remove last user of project who can observe file system or users")
 
-        proj.users.remove(user)
+        project.users.remove(user)
         database_session.commit()
