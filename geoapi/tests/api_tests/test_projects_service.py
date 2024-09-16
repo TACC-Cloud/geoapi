@@ -13,18 +13,18 @@ def test_create_project(user1):
         'name': "test name",
         'description': "test description",
     }
-    proj = ProjectsService.create(db_session, data, user1)
-    assert proj.id is not None
-    assert len(proj.users) == 1
-    assert proj.name == "test name"
-    assert proj.description == "test description"
-    assert proj.deletable
-    assert not proj.public
-    assert not proj.watch_users
-    assert not proj.watch_content
-    assert proj.project_users[0].user_id == user1.id
-    assert proj.project_users[0].creator
-    assert not proj.project_users[0].admin
+    project = ProjectsService.create(db_session, data, user1)
+    assert project.id is not None
+    assert len(project.users) == 1
+    assert project.name == "test name"
+    assert project.description == "test description"
+    assert project.deletable
+    assert not project.public
+    assert not project.watch_users
+    assert not project.watch_content
+    assert project.project_users[0].user_id == user1.id
+    assert project.project_users[0].creator
+    assert not project.project_users[0].admin
 
 
 def test_delete_project(projects_fixture, remove_project_assets_mock, user1):
@@ -46,15 +46,15 @@ def test_create_watch_users_watch_content_project(user1,
         'watch_users': True,
         'watch_content': True
     }
-    proj = ProjectsService.create(db_session, data, user1)
-    assert proj.id is not None
-    assert len(proj.users) == 2
-    assert proj.name == "test name"
-    assert proj.description == "test description"
-    assert proj.deletable
-    assert not proj.public
-    assert proj.watch_users
-    assert proj.watch_content
+    project = ProjectsService.create(db_session, data, user1)
+    assert project.id is not None
+    assert len(project.users) == 2
+    assert project.name == "test name"
+    assert project.description == "test description"
+    assert project.deletable
+    assert not project.public
+    assert project.watch_users
+    assert project.watch_content
 
     creator_user = db_session.query(ProjectUser).filter(ProjectUser.user_id == user1.id).one()
     assert creator_user.creator
