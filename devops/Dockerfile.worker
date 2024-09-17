@@ -80,12 +80,6 @@ RUN echo '#!/bin/bash' > /usr/local/bin/entrypoint.sh && \
     echo 'fi' >> /usr/local/bin/entrypoint.sh && \
     chmod +x /usr/local/bin/entrypoint.sh
 
-# Add PotreeConverter build directory to PATH
-ENV PATH="/opt/PotreeConverter/build:${PATH}"
-
-# Update library cache
-RUN ldconfig
-
 # Set the entrypoint
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
 
