@@ -41,16 +41,11 @@ SHELL ["conda", "run", "-n", "py39env", "/bin/bash", "-c"]
 # Install PDAL using conda
 RUN conda install -c conda-forge pdal -y
 
-
-# Install LAStools (needed by PotreeConverter)
-RUN git clone --depth 1 https://github.com/m-schuetz/LAStools.git && cd LAStools/LASzip && mkdir build && cd build && \
-cmake -DCMAKE_BUILD_TYPE=Release .. && make && make install && ldconfig
-
 # Install PotreeConverter
 # c2328c4 is v2.1.1 and some additional fixes
 RUN git clone -b develop https://github.com/potree/PotreeConverter.git && cd PotreeConverter && git checkout c2328c4 && \
 mkdir build && cd build && \
-cmake -DCMAKE_BUILD_TYPE=Release -DLASZIP_INCLUDE_DIRS=/opt/LAStools/LASzip/dll/ -DLASZIP_LIBRARY=/usr/local/lib/liblaszip.so .. && \
+cmake .. -DCMAKE_BUILD_TYPE=Release && \
 make
 
 # Setup our page template for PotreeConverter
