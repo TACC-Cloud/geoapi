@@ -216,14 +216,14 @@ class StreetviewService:
 
     @staticmethod
     def getInstances(database_session, projectId: int) -> List[StreetviewInstance]:
-        proj = database_session.query(Project).get(projectId)
-        return proj.streetview_instances
+        project = database_session.query(Project).get(projectId)
+        return project.streetview_instances
 
     @staticmethod
     def addInstanceToProject(database_session, projectId: int, streetview_instance_id: int) -> None:
-        proj = database_session.query(Project).get(projectId)
+        project = database_session.query(Project).get(projectId)
         streetview_instance = database_session.query(StreetviewInstance).get(streetview_instance_id)
-        proj.streetview_instances.append(streetview_instance)
+        project.streetview_instances.append(streetview_instance)
         database_session.commit()
 
     @staticmethod

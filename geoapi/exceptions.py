@@ -14,8 +14,8 @@ class InvalidCoordinateReferenceSystem(Exception):
     pass
 
 
-class ObservableProjectAlreadyExists(Exception):
-    """ Observable Project already exists for this path"""
+class ProjectSystemPathWatchFilesAlreadyExists(Exception):
+    """ Project with watch_files True already exists for this system path"""
     pass
 
 

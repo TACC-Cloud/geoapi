@@ -63,16 +63,6 @@ def test_get_projects_using_single_uuid(test_client, projects_fixture, projects_
     assert data[0]["deletable"] is True
 
 
-def test_get_projects_using_single_uuid_observable_project(test_client, observable_projects_fixture, user1):
-    resp = test_client.get('/projects/',
-                           query_string='uuid={}'.format(observable_projects_fixture.project.uuid),
-                           headers={'X-Tapis-Token': user1.jwt})
-    data = resp.get_json()
-    assert resp.status_code == 200
-    assert len(data) == 1
-    assert data[0]["uuid"] == str(observable_projects_fixture.project.uuid)
-
-
 def test_get_projects_using_single_uuid_that_is_wrong(test_client, user1):
     resp = test_client.get('/projects/',
                            query_string='uuid={}'.format(uuid.uuid4()),
@@ -408,21 +398,20 @@ def test_update_project_unauthorized_guest(test_client, public_projects_fixture)
     assert resp.status_code == 403
 
 
-def test_create_observable_project_already_exists(test_client,
-                                                  projects_fixture,
-                                                  get_system_users_mock,
-                                                  observable_projects_fixture,
-                                                  import_from_agave_mock,
-                                                  agave_utils_with_geojson_file_mock,
-                                                  user1):
+def test_create_project_watch_content_already_exists(test_client,
+                                                     watch_content_users_projects_fixture,
+                                                     get_system_users_mock,
+                                                     import_from_agave_mock,
+                                                     agave_utils_with_geojson_file_mock,
+                                                     user1):
     data = {
-        'name': 'Observable name',
-        'description': 'Observable description',
-        'system_id': observable_projects_fixture.system_id,
-        'system_path': observable_projects_fixture.path,
+        'name': 'Project name',
+        'description': 'Project description',
+        'system_id': watch_content_users_projects_fixture.system_id,
+        'system_path': watch_content_users_projects_fixture.system_path,
         'system_file': 'testFilename',
         'watch_users': True,
-        'watch_content': False
+        'watch_content': True
     }
 
     resp = test_client.post(
@@ -432,23 +421,22 @@ def test_create_observable_project_already_exists(test_client,
     )
 
     assert resp.status_code == 409
-    assert "Conflict, a project for this storage system/path already exists" in resp.json['message']
+    assert "Conflict, a project watching files for this storage system/path already exists" in resp.json['message']
 
 
-def test_create_observable_project(test_client,
-                                   get_system_users_mock,
-                                   import_from_agave_mock,
-                                   agave_utils_with_geojson_file_mock, user1):
+def test_create_project_with_watch_content_watch_users(test_client,
+                                                       get_system_users_mock,
+                                                       import_from_agave_mock,
+                                                       agave_utils_with_geojson_file_mock, user1):
     data = {
-        'name': 'Observable name',
-        'description': 'Observable description',
+        'name': 'Project name',
+        'description': 'Project description',
         'system_id': 'testSystem',
         'system_path': 'testPath',
         'system_file': 'testFilename',
         'watch_users': True,
         'watch_content': False
     }
-
     resp = test_client.post('/projects/',
                             json=data,
                             headers={'X-Tapis-Token': user1.jwt})
@@ -456,16 +444,16 @@ def test_create_observable_project(test_client,
     assert resp.status_code == 200
     data = resp.get_json()
     assert data["deletable"] is True
-    assert data["name"] == "Observable name"
+    assert data["name"] == "Project name"
 
     proj = db_session.query(Project).get(1)
-    assert proj.name == "Observable name"
+    assert proj.name == "Project name"
 
 
-def test_create_observable_project_unauthorized(test_client):
+def test_create_project_unauthorized(test_client):
     data = {
-        'name': 'Observable name',
-        'description': 'Observable description',
+        'name': 'Project name',
+        'description': 'Project description',
         'system_id': 'testSystem',
         'system_path': 'testPath',
         'system_file': 'testFilename',

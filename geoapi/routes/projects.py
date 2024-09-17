@@ -60,6 +60,12 @@ project_payload = api.model('Project', {
     'watch_users': fields.Boolean()
 })
 
+project_update_payload = api.model('Project', {
+    'name': fields.String(),
+    'description': fields.String(),
+    'public': fields.Boolean(),
+})
+
 project_response = api.model('ProjectResponse', {
     'id': fields.Integer(),
     'uuid': fields.String(),
@@ -225,6 +231,7 @@ class ProjectResource(Resource):
 
     @api.doc(id="updateProject",
              description="Update metadata about a project")
+    @api.expect(project_update_payload)
     @api.marshal_with(project_response)
     @project_permissions
     def put(self, projectId: int):
@@ -232,7 +239,6 @@ class ProjectResource(Resource):
         logger.info("Update project:{} for user:{}".format(projectId,
                                                            u.username))
         return ProjectsService.update(db_session,
-                                      user=u,
                                       projectId=projectId,
                                       data=api.payload)
 

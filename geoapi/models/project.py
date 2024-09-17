@@ -29,10 +29,11 @@ class Project(Base):
     id = Column(Integer, primary_key=True)
     uuid = Column(UUID(as_uuid=True), default=uuid.uuid4, nullable=False)
     tenant_id = Column(String, nullable=False)
-    # Project system_id/system_path really not used except for analytics.
-    # This could be improved; see https://jira.tacc.utexas.edu/browse/WG-185
+    # associated tapis system id
     system_id = Column(String, nullable=True)
+    # associated tapis system path
     system_path = Column(String, nullable=True)
+    # associated tapis system file
     system_file = Column(String, nullable=True)
     name = Column(String, nullable=False)
     description = Column(String)
@@ -47,5 +48,16 @@ class Project(Base):
                          overlaps="project,project_users")
     point_clouds = relationship('PointCloud', cascade="all, delete-orphan")
 
+    # watch content of tapis directory location (system_id and system_path)
+    watch_content = Column(Boolean, default=False)
+
+    # watch user of tapis system (system_id)
+    watch_users = Column(Boolean, default=False)
+
     def __repr__(self):
-        return '<Project(id={})>'.format(self.id)
+        return f"<Project(id={self.id}, uuid={self.uuid}, tenant_id='{self.tenant_id}', " \
+               f"system_id='{self.system_id}', system_path='{self.system_path}', " \
+               f"system_file='{self.system_file}', name='{self.name}', " \
+               f"description='{self.description}', public={self.public}, " \
+               f"created={self.created}, updated={self.updated}, " \
+               f"watch_content={self.watch_content}, watch_users={self.watch_users})>"
