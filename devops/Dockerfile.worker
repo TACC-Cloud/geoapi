@@ -3,9 +3,10 @@ FROM ubuntu:22.04
 ENV DEBIAN_FRONTEND=noninteractive
 
 RUN apt-get update && apt-get install -y \
-    #libtiff-dev \
-    #libgeotiff-dev \
-    #libgdal-dev \
+    vim \
+    libtiff-dev \
+    libgeotiff-dev \
+    libgdal-dev \
     libboost-system-dev \
     libboost-thread-dev \
     libboost-filesystem-dev \
@@ -24,8 +25,6 @@ RUN apt-get update && apt-get install -y \
     libc6-dev \
     libtbb-dev\
     libcgal-dev
-
-# dropping gcc-multilib
 
 WORKDIR /opt
 
