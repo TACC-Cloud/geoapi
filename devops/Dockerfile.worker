@@ -65,19 +65,16 @@ COPY geoapi /app/geoapi
 WORKDIR /app/geoapi
 ENV PYTHONPATH "${PYTHONPATH}:/app"
 
-# Create an entrypoint script using /bin/bash
+# Create an entrypoint script that activates our conda environment
 RUN echo '#!/bin/bash' > /usr/local/bin/entrypoint.sh && \
     echo 'set -e' >> /usr/local/bin/entrypoint.sh && \
+    echo '' >> /usr/local/bin/entrypoint.sh && \
+    echo '# Activate conda and the specific environment' >> /usr/local/bin/entrypoint.sh && \
     echo '. /opt/conda/etc/profile.d/conda.sh' >> /usr/local/bin/entrypoint.sh && \
     echo 'conda activate py39env' >> /usr/local/bin/entrypoint.sh && \
-    echo 'export PATH="/opt/conda/envs/py39env/bin:$PATH"' >> /usr/local/bin/entrypoint.sh && \
-    echo 'if [ "$1" = "bash" ] || [ "$1" = "sh" ]; then' >> /usr/local/bin/entrypoint.sh && \
-    echo '    exec "$@" -c "conda activate py39env && bash"' >> /usr/local/bin/entrypoint.sh && \
-    echo 'elif [ $# -eq 0 ]; then' >> /usr/local/bin/entrypoint.sh && \
-    echo '    conda activate py39env && exec bash' >> /usr/local/bin/entrypoint.sh && \
-    echo 'else' >> /usr/local/bin/entrypoint.sh && \
-    echo '    exec "$@"' >> /usr/local/bin/entrypoint.sh && \
-    echo 'fi' >> /usr/local/bin/entrypoint.sh && \
+    echo '' >> /usr/local/bin/entrypoint.sh && \
+    echo '# Execute the passed command' >> /usr/local/bin/entrypoint.sh && \
+    echo 'exec "$@"' >> /usr/local/bin/entrypoint.sh && \
     chmod +x /usr/local/bin/entrypoint.sh
 
 # Set the entrypoint
