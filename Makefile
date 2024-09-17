@@ -20,6 +20,11 @@ stop:
 restart-workers:  ## Restart workers
 	docker compose -f devops/docker-compose.local.yml --env-file .env restart workers
 
+.PHONY: restart-nginx
+restart-nginx:  ## Restart nginx
+	docker compose -f devops/docker-compose.local.yml --env-file .env restart nginx
+
+
 .PHONY: build
 build:
 	make geoapi && make workers

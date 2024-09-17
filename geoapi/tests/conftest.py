@@ -10,7 +10,6 @@ import laspy
 from geoapi.db import Base, engine, db_session
 from geoapi.models.users import User
 from geoapi.models.project import Project, ProjectUser
-from geoapi.models.observable_data import ObservableDataProject
 from geoapi.models.feature import Feature
 from geoapi.models.task import Task
 from geoapi.services.point_cloud import PointCloudService
@@ -72,44 +71,47 @@ def user2(userdata):
 @pytest.fixture(scope="function")
 def projects_fixture():
     """ Project with 1 user and test1 is an admin"""
-    proj = Project(name="test", description="description")
+    project = Project(name="test", description="description")
     u1 = db_session.query(User).filter(User.username == "test1").first()
-    proj.users.append(u1)
+    project.users.append(u1)
 
-    proj.tenant_id = u1.tenant_id
-    db_session.add(proj)
+    project.tenant_id = u1.tenant_id
+    db_session.add(project)
     db_session.commit()
 
-    project_user1 = db_session.query(ProjectUser).filter(ProjectUser.project_id == proj.id).first()
+    project_user1 = db_session.query(ProjectUser).filter(ProjectUser.project_id == project.id).first()
     project_user1.admin = True
     db_session.add(project_user1)
     db_session.commit()
 
-    yield proj
+    yield project
 
-    shutil.rmtree(get_project_asset_dir(proj.id), ignore_errors=True)
+    shutil.rmtree(get_project_asset_dir(project.id), ignore_errors=True)
 
 
 @pytest.fixture(scope="function")
 def projects_fixture2(user1, user2):
     """ Project with 2 users and test1 is creator"""
     ""
-    proj = Project(name="test2", description="description2")
-    proj.users.append(user1)
-    proj.users.append(user2)
-    proj.tenant_id = user1.tenant_id
-    db_session.add(proj)
+    project = Project(name="test2", description="description2")
+    project.users.append(user1)
+    project.users.append(user2)
+    project.tenant_id = user1.tenant_id
+    db_session.add(project)
     db_session.commit()
 
-    project_user1 = db_session.query(ProjectUser).filter(ProjectUser.project_id == proj.id).filter(ProjectUser.user_id == user1.id).first()
+    project_user1 = db_session.query(ProjectUser) \
+        .filter(ProjectUser.project_id == project.id) \
+        .filter(ProjectUser.user_id == user1.id) \
+        .first()
     project_user1.creator = True
 
     db_session.add(project_user1)
     db_session.commit()
 
-    yield proj
+    yield project
 
-    shutil.rmtree(get_project_asset_dir(proj.id), ignore_errors=True)
+    shutil.rmtree(get_project_asset_dir(project.id), ignore_errors=True)
 
 
 @pytest.fixture(scope="function")
@@ -121,35 +123,24 @@ def public_projects_fixture(projects_fixture):
 
 
 @pytest.fixture(scope="function")
-def observable_projects_fixture():
+def watch_content_users_projects_fixture():
     u1 = db_session.query(User).filter(User.username == "test1").first()
-    proj = Project(name="test_observable",
-                   description="description",
-                   tenant_id=u1.tenant_id,
-                   system_id="project-1234",
-                   system_path="/testPath",
-                   system_file="system_file")  # system_file.hazmapper
-    obs = ObservableDataProject(
-        system_id="project-1234",
-        path="/testPath",
-        watch_content=True
-    )
-
-    # Project system_id/system_path really not used except for analytics.
-    # This could be improved; see https://jira.tacc.utexas.edu/browse/WG-185
-    proj.system_id = obs.system_id
-    proj.system_path = obs.path
-
-    obs.project = proj
-    proj.users.append(u1)
-    db_session.add(obs)
-    db_session.add(proj)
+    project = Project(name="test_observable",
+                      description="description",
+                      tenant_id=u1.tenant_id,
+                      system_id="project-1234",
+                      system_path="/testPath",
+                      system_file="system_file",  # system_file.hazmapper
+                      watch_content=True,
+                      watch_users=True)
+    project.users.append(u1)
+    db_session.add(project)
     db_session.commit()
-    proj.project_users[0].creator = True
+    project.project_users[0].creator = True
     db_session.commit()
-    yield obs
+    yield project
 
-    shutil.rmtree(get_project_asset_dir(proj.id), ignore_errors=True)
+    shutil.rmtree(get_project_asset_dir(project.id), ignore_errors=True)
 
 
 @pytest.fixture(scope="function")

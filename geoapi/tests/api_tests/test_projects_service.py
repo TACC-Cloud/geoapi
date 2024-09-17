@@ -5,8 +5,7 @@ from geoapi.db import db_session
 from geoapi.services.projects import ProjectsService
 from geoapi.models import User
 from geoapi.models.project import Project, ProjectUser
-from geoapi.models.observable_data import ObservableDataProject
-from geoapi.exceptions import ObservableProjectAlreadyExists
+from geoapi.exceptions import ProjectSystemPathWatchFilesAlreadyExists
 
 
 def test_create_project(user1):
@@ -14,16 +13,18 @@ def test_create_project(user1):
         'name': "test name",
         'description': "test description",
     }
-    proj = ProjectsService.create(db_session, data, user1)
-    assert proj.id is not None
-    assert len(proj.users) == 1
-    assert proj.name == "test name"
-    assert proj.description == "test description"
-    assert proj.deletable
-
-    assert not db_session.query(ObservableDataProject).all()
-    matching_project_user = db_session.query(ProjectUser).filter(ProjectUser.user_id == user1.id).one()
-    assert matching_project_user.creator
+    project = ProjectsService.create(db_session, data, user1)
+    assert project.id is not None
+    assert len(project.users) == 1
+    assert project.name == "test name"
+    assert project.description == "test description"
+    assert project.deletable
+    assert not project.public
+    assert not project.watch_users
+    assert not project.watch_content
+    assert project.project_users[0].user_id == user1.id
+    assert project.project_users[0].creator
+    assert not project.project_users[0].admin
 
 
 def test_delete_project(projects_fixture, remove_project_assets_mock, user1):
@@ -32,10 +33,10 @@ def test_delete_project(projects_fixture, remove_project_assets_mock, user1):
     assert projects == []
 
 
-def test_create_observable_project(user1,
-                                   get_system_users_mock,
-                                   agave_utils_with_geojson_file_mock,
-                                   import_from_agave_mock):
+def test_create_watch_users_watch_content_project(user1,
+                                                  get_system_users_mock,
+                                                  agave_utils_with_geojson_file_mock,
+                                                  import_from_agave_mock):
     data = {
         'name': 'test name',
         'description': 'test description',
@@ -45,9 +46,16 @@ def test_create_observable_project(user1,
         'watch_users': True,
         'watch_content': True
     }
-    proj = ProjectsService.create(db_session, data, user1)
+    project = ProjectsService.create(db_session, data, user1)
+    assert project.id is not None
+    assert len(project.users) == 2
+    assert project.name == "test name"
+    assert project.description == "test description"
+    assert project.deletable
+    assert not project.public
+    assert project.watch_users
+    assert project.watch_content
 
-    assert len(proj.users) == 2
     creator_user = db_session.query(ProjectUser).filter(ProjectUser.user_id == user1.id).one()
     assert creator_user.creator
     assert creator_user.admin
@@ -56,27 +64,23 @@ def test_create_observable_project(user1,
     assert not other_user.creator
     assert not other_user.admin
 
-    observable_project = db_session.query(ObservableDataProject).one()
-    assert observable_project.project_id == proj.id
-    assert observable_project.watch_content
 
-
-def test_create_observable_project_already_exists(observable_projects_fixture,
-                                                  agave_utils_with_geojson_file_mock,
-                                                  import_from_agave_mock,
-                                                  get_system_users_mock):
+def test_create_watch_content_project_already_exists(watch_content_users_projects_fixture,
+                                                     agave_utils_with_geojson_file_mock,
+                                                     import_from_agave_mock,
+                                                     get_system_users_mock):
     user = db_session.query(User).get(1)
     data = {
         'name': 'test name',
         'description': 'test description',
-        'system_id': observable_projects_fixture.system_id,
-        'system_path': observable_projects_fixture.path,
+        'system_id': watch_content_users_projects_fixture.system_id,
+        'system_path': watch_content_users_projects_fixture.system_path,
         'system_file': 'file_name',
         'watch_users': True,
         'watch_content': True
     }
 
-    with pytest.raises(ObservableProjectAlreadyExists):
+    with pytest.raises(ProjectSystemPathWatchFilesAlreadyExists):
         ProjectsService.create(db_session, data, user)
 
 
@@ -116,11 +120,10 @@ def test_get_features_filter_type(projects_fixture,
 
 
 def test_update_project(projects_fixture):
-    user = db_session.query(User).get(1)
     data = {
         'name': 'new name',
         'description': 'new description'
     }
-    proj = ProjectsService.update(db_session, user, projects_fixture.id, data)
+    proj = ProjectsService.update(db_session, projects_fixture.id, data)
     assert proj.name == "new name"
     assert proj.description == "new description"

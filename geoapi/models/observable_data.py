@@ -1,17 +1,15 @@
 from sqlalchemy import (
     Column, Integer, String, Boolean,
-    ForeignKey, DateTime, UniqueConstraint
+    ForeignKey, DateTime
 )
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from geoapi.db import Base
 
 
+# Deprecated; Replaced by watch_user and watch_content of Project table. See https://tacc-main.atlassian.net/browse/WG-377
 class ObservableDataProject(Base):
     __tablename__ = 'observable_data_projects'
-    __table_args__ = (
-        UniqueConstraint('system_id', 'path', name="unique_system_id_path"),
-    )
     id = Column(Integer, primary_key=True)
     project_id = Column(ForeignKey('projects.id', ondelete="CASCADE", onupdate="CASCADE"), index=True)
     created_date = Column(DateTime(timezone=True), server_default=func.now())
