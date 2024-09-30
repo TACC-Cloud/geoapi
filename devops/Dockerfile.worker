@@ -43,7 +43,8 @@ RUN sed -i '/<body>/r /tmp/nsf_logo_snippet.txt' /opt/PotreeConverter/build/reso
 #  - remove reference to background image
 RUN sed -i 's/style="[^"]*background-image:[^"]*"//' /opt/PotreeConverter/build/resources/page_template/viewer_template.html
 
-# Install Miniforge to get pdal
+
+# Install Miniforge for our Python environment (provides easier PDAL installation)
 RUN wget -q -O miniforge.sh https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-Linux-$(uname -m).sh && \
     sh miniforge.sh -b -p /opt/conda && \
     rm miniforge.sh
