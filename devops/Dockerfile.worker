@@ -67,7 +67,7 @@ RUN poetry install
 RUN mkdir app
 COPY geoapi /app/geoapi
 WORKDIR /app/geoapi
-ENV PYTHONPATH "${PYTHONPATH}:/app"
+ENV PYTHONPATH=/app
 
 # Create an entrypoint script that activates our conda environment
 RUN echo '#!/bin/bash' > /usr/local/bin/entrypoint.sh && \
