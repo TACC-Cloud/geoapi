@@ -38,7 +38,10 @@ make
 # Setup our page template for PotreeConverter
 ADD devops/misc/potree/page_template/nsf_logo.png /opt/PotreeConverter/build/resources/page_template/
 ADD devops/misc/potree/page_template/nsf_logo_snippet.txt /tmp/
-RUN sed -i '/<\/script>/r /tmp/nsf_logo_snippet.txt' /opt/PotreeConverter/build/resources/page_template/viewer_template.html
+#  - add nsf logo
+RUN sed -i '/<body>/r /tmp/nsf_logo_snippet.txt' /opt/PotreeConverter/build/resources/page_template/viewer_template.html
+#  - remove reference to background image
+RUN sed -i 's/style="[^"]*background-image:[^"]*"//' /opt/PotreeConverter/build/resources/page_template/viewer_template.html
 
 # Install Miniforge to get pdal
 RUN wget -q -O miniforge.sh https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-Linux-$(uname -m).sh && \
