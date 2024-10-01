@@ -58,11 +58,7 @@ def upgrade():
     finally:
         session.close()
 
-    # Drop the unique constraint
-    op.drop_constraint('observable_data_projects_system_id_path_key', 'observable_data_projects')
-
 
 def downgrade():
     op.drop_column('projects', 'watch_users')
     op.drop_column('projects', 'watch_content')
-    op.create_unique_constraint('observable_data_projects_system_id_path_key', 'observable_data_projects', ['system_id', 'path'])
