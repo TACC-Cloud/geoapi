@@ -2,8 +2,8 @@
 
 ## Images building + Jenkins
 
-The deployment of images and updating of the services and applications is performed by a Jenkins
-workflow found [here](https://jenkins01.tacc.utexas.edu/view/Hazmapper+Geoapi/.)
+The deployment of images, updating of services and applications, and backup procedures are performed by multiple Jenkins
+workflows found [here](https://jenkins01.tacc.utexas.edu/view/Hazmapper+Geoapi/.)
 
 The images used in deployment are built automatically and 
 pushed to Docker Hub.
