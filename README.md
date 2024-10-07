@@ -89,10 +89,6 @@ APP_ENV=testing pytest
 docker exec -it geoapiworkers bash
 APP_ENV=testing pytest -m "worker"
 ```
-Note that images need to be rebuilt before running tests if they have been updated (e.g. packages):
-```
-make build
-```
 ## Production/Staging
 
 Information on  configuration for production and staging environments can be found in the [devops/README.md](devops/README.md) including information
