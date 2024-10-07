@@ -8,6 +8,8 @@ workflow found [here](https://jenkins01.tacc.utexas.edu/view/Hazmapper+Geoapi/.)
 The images used in deployment are built automatically for the master branch using TravisCI and 
 pushed to Docker Hub (see https://hub.docker.com/r/taccaci/hazmapper).
 
+Deployment configuration including the tag of which image is deployed is maintained at https://github.com/TACC-Cloud/wma-geospatial-deployments
+
 ## Access and Troubleshooting
 The configurations of each of the following are in their associated directories. 
 
