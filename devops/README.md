@@ -5,8 +5,13 @@
 The deployment of images and updating of the services and applications is performed by a Jenkins
 workflow found [here](https://jenkins01.tacc.utexas.edu/view/Hazmapper+Geoapi/.)
 
-The images used in deployment are built automatically for the master branch using TravisCI and 
-pushed to Docker Hub (see https://hub.docker.com/r/taccaci/hazmapper).
+The images used in deployment are built automatically and 
+pushed to Docker Hub.
+
+See:
+* https://hub.docker.com/r/taccaci/hazmapper
+* https://hub.docker.com/r/taccaci/geoapi
+* https://hub.docker.com/r/taccaci/geoapi-workers)
 
 Deployment configuration including the tag of which image is deployed is maintained at https://github.com/TACC-Cloud/wma-geospatial-deployments
 
