@@ -14,21 +14,13 @@ def agave_utils_with_image_file(image_file_fixture):
             patch('geoapi.tasks.streetview.AgaveUtils.get_file_context_manager') as mock_get_file_context_manager:
         filesListing = [
             AgaveFileListing({
-                "system": "testSystem",
                 "path": "/testPath",
                 "type": "dir",
-                "length": 4,
-                "_links": "links",
-                "mimeType": "folder",
                 "lastModified": "2020-08-31T12:00:00Z"
             }),
             AgaveFileListing({
-                "system": "testSystem",
                 "type": "file",
-                "length": 4096,
                 "path": "/testPath/file.jpg",
-                "_links": "links",
-                "mimeType": "image/jpeg",
                 "lastModified": "2020-08-31T12:00:00Z"
             })
         ]

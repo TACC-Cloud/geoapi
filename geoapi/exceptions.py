@@ -14,13 +14,8 @@ class InvalidCoordinateReferenceSystem(Exception):
     pass
 
 
-class ObservableProjectAlreadyExists(Exception):
-    """ Observable Project already exists for this path"""
-    pass
-
-
-class MissingServiceAccount(Exception):
-    """ No service account for this tenant """
+class ProjectSystemPathWatchFilesAlreadyExists(Exception):
+    """ Project with watch_files True already exists for this system path"""
     pass
 
 
@@ -42,3 +37,15 @@ class StreetviewLimitException(Exception):
 class StreetviewExistsException(Exception):
     """ Already published the streetview assets from a system/path """
     pass
+
+
+class GetUsersForProjectNotSupported(Exception):
+    """ Getting users for a project is not supported) """
+    pass
+
+
+class AuthenticationIssue(Exception):
+    """ Issue during auth process"""
+    def __init__(self, message="Unknown error in auth"):
+        self.message = message
+        super().__init__(self.message)

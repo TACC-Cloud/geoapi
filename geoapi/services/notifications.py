@@ -67,7 +67,7 @@ class NotificationsService:
 
     @staticmethod
     def createProgress(database_session, user: User, status: AnyStr, message: AnyStr, task_uuid: UUID,
-                       logs: List = None) -> ProgressNotification:
+                       logs: Dict = None) -> ProgressNotification:
         note = ProgressNotification(
             user_id=user.id,
             tenant_id=user.tenant_id,

@@ -13,11 +13,11 @@ def test_user_get(userdata):
 
 
 def test_user_create(userdata):
-    user = UserService.create(database_session=db_session, username="newUser", jwt="testjwt", tenant="test")
+    user = UserService.create(database_session=db_session, username="newUser", access_token="testjwt", tenant="test")
     assert user.id is not None
     assert user.created is not None
     assert user.username == 'newUser'
-    assert user.jwt == "testjwt"
+    assert user.auth.access_token == "testjwt"
 
 
 def test_projects_for_user(user1):
@@ -45,7 +45,10 @@ def test_add_new_user_to_project(user1):
 def test_add_existing_user_to_project(user1, user2, projects_fixture):
     assert not UserService.canAccess(db_session, user2, projects_fixture.id)
 
-    ProjectsService.addUserToProject(database_session=db_session, projectId=projects_fixture.id, username=user2.username, admin=False)
+    ProjectsService.addUserToProject(database_session=db_session,
+                                     projectId=projects_fixture.id,
+                                     username=user2.username,
+                                     admin=False)
     assert UserService.canAccess(db_session, user2, projects_fixture.id)
     project_user = db_session.query(ProjectUser).filter(ProjectUser.project_id == projects_fixture.id) \
         .filter(ProjectUser.user_id == user2.id).one_or_none()
@@ -56,7 +59,10 @@ def test_add_existing_user_to_project(user1, user2, projects_fixture):
 def test_add_existing_user_to_project_as_admin(user1, user2, projects_fixture):
     assert not UserService.canAccess(db_session, user2, projects_fixture.id)
 
-    ProjectsService.addUserToProject(database_session=db_session, projectId=projects_fixture.id, username=user2.username, admin=True)
+    ProjectsService.addUserToProject(database_session=db_session,
+                                     projectId=projects_fixture.id,
+                                     username=user2.username,
+                                     admin=True)
     assert UserService.canAccess(db_session, user2, projects_fixture.id)
     project_user = db_session.query(ProjectUser).filter(ProjectUser.project_id == projects_fixture.id) \
         .filter(ProjectUser.user_id == user2.id).one_or_none()
@@ -86,19 +92,9 @@ def test_remove_user_with_only_one_user_failure(projects_fixture):
     assert len(projects_fixture.users) == 1
 
 
-def test_remove_user_from_observable_project(observable_projects_fixture):
-    project = observable_projects_fixture.project
-
-    ProjectsService.addUserToProject(db_session, project.id, "newUser", admin=False)
-    assert len(project.users) == 2
-    ProjectsService.removeUserFromProject(db_session, project.id, "newUser")
-    assert len(project.users) == 1
-
-
-def test_remove_last_user_with_jwt_from_observable_project_failure(
-        observable_projects_fixture):
-    project = observable_projects_fixture.project
-
+def test_remove_last_user_with_jwt_from_watch_users_project_failure(
+        watch_content_users_projects_fixture):
+    project = watch_content_users_projects_fixture
     ProjectsService.addUserToProject(db_session, project.id, "newUser", admin=False)
     assert len(project.users) == 2
     with pytest.raises(ApiException):

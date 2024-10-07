@@ -10,21 +10,17 @@ import laspy
 from geoapi.db import Base, engine, db_session
 from geoapi.models.users import User
 from geoapi.models.project import Project, ProjectUser
-from geoapi.models.observable_data import ObservableDataProject
 from geoapi.models.feature import Feature
 from geoapi.models.task import Task
 from geoapi.services.point_cloud import PointCloudService
 from geoapi.services.features import FeaturesService
+from geoapi.services.users import UserService
 from geoapi.app import app
 from geoapi.utils.assets import get_project_asset_dir
 from geoapi.utils.agave import AgaveFileListing, SystemUser
+from geoapi.utils.tenants import get_tapis_api_server
+from geoapi.utils.jwt_utils import create_token_expiry_hours_from_now
 from geoapi.exceptions import InvalidCoordinateReferenceSystem
-
-
-# TODO: make these fixtures or something
-user1JWT = "eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJpc3MiOiJ3c28yLm9yZy9wcm9kdWN0cy9hbSIsImV4cCI6MjM4NDQ4MTcxMzg0MiwiaHR0cDovL3dzbzIub3JnL2NsYWltcy9zdWJzY3JpYmVyIjoidGVzdDEiLCJodHRwOi8vd3NvMi5vcmcvY2xhaW1zL2FwcGxpY2F0aW9uaWQiOiI0NCIsImh0dHA6Ly93c28yLm9yZy9jbGFpbXMvYXBwbGljYXRpb25uYW1lIjoiRGVmYXVsdEFwcGxpY2F0aW9uIiwiaHR0cDovL3dzbzIub3JnL2NsYWltcy9hcHBsaWNhdGlvbnRpZXIiOiJVbmxpbWl0ZWQiLCJodHRwOi8vd3NvMi5vcmcvY2xhaW1zL2FwaWNvbnRleHQiOiIvYXBwcyIsImh0dHA6Ly93c28yLm9yZy9jbGFpbXMvdmVyc2lvbiI6IjIuMCIsImh0dHA6Ly93c28yLm9yZy9jbGFpbXMvdGllciI6IlVubGltaXRlZCIsImh0dHA6Ly93c28yLm9yZy9jbGFpbXMva2V5dHlwZSI6IlBST0RVQ1RJT04iLCJodHRwOi8vd3NvMi5vcmcvY2xhaW1zL3VzZXJ0eXBlIjoiQVBQTElDQVRJT05fVVNFUiIsImh0dHA6Ly93c28yLm9yZy9jbGFpbXMvZW5kdXNlciI6InRlc3QxIiwiaHR0cDovL3dzbzIub3JnL2NsYWltcy9lbmR1c2VyVGVuYW50SWQiOiItOTk5OSIsImh0dHA6Ly93c28yLm9yZy9jbGFpbXMvZW1haWxhZGRyZXNzIjoidGVzdHVzZXIzQHRlc3QuY29tIiwiaHR0cDovL3dzbzIub3JnL2NsYWltcy9mdWxsbmFtZSI6IkRldiBVc2VyIiwiaHR0cDovL3dzbzIub3JnL2NsYWltcy9naXZlbm5hbWUiOiJEZXYiLCJodHRwOi8vd3NvMi5vcmcvY2xhaW1zL2xhc3RuYW1lIjoiVXNlciIsImh0dHA6Ly93c28yLm9yZy9jbGFpbXMvcHJpbWFyeUNoYWxsZW5nZVF1ZXN0aW9uIjoiTi9BIiwiaHR0cDovL3dzbzIub3JnL2NsYWltcy9yb2xlIjoiSW50ZXJuYWwvZXZlcnlvbmUiLCJodHRwOi8vd3NvMi5vcmcvY2xhaW1zL3RpdGxlIjoiTi9BIn0.La3pXNXcBlPIAw07U1AjJZscEWa1u4LTqRKGDVF5oeUCJzzbwUUAJo8NKH6GZR47Mks8BFBCTJGeMBLil90AkJyJpLBcKTGeAXDkcHQbPQYmGa3TYznOl6Nw1oHF6L_MX_7FFz2JDbi4OZUCRBV-f-NpNzZLdwcU1h1nalPZ0zhx5gLn2BrEhcrfw6iV6NG3VVYdXE8bPQ0cybL9RdwEi3VAIxjyxTHzYdMFAEFlHS0qav_ZojKO6r8HQg7qztjxGOjngzBIWZ_ROu8W9Msq0hsjZyX5uVqb0Ef4IoCyNkA8mw67HaeQxWZblRe6s9Z3hOv0GbFsiFgQ5xhMrg_o_Q"  # noqa: E501
-user2JWT = "eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJpc3MiOiJ3c28yLm9yZy9wcm9kdWN0cy9hbSIsImV4cCI6MjM4NDQ4MTcxMzg0MiwiaHR0cDovL3dzbzIub3JnL2NsYWltcy9zdWJzY3JpYmVyIjoidGVzdDIiLCJodHRwOi8vd3NvMi5vcmcvY2xhaW1zL2FwcGxpY2F0aW9uaWQiOiI0NCIsImh0dHA6Ly93c28yLm9yZy9jbGFpbXMvYXBwbGljYXRpb25uYW1lIjoiRGVmYXVsdEFwcGxpY2F0aW9uIiwiaHR0cDovL3dzbzIub3JnL2NsYWltcy9hcHBsaWNhdGlvbnRpZXIiOiJVbmxpbWl0ZWQiLCJodHRwOi8vd3NvMi5vcmcvY2xhaW1zL2FwaWNvbnRleHQiOiIvYXBwcyIsImh0dHA6Ly93c28yLm9yZy9jbGFpbXMvdmVyc2lvbiI6IjIuMCIsImh0dHA6Ly93c28yLm9yZy9jbGFpbXMvdGllciI6IlVubGltaXRlZCIsImh0dHA6Ly93c28yLm9yZy9jbGFpbXMva2V5dHlwZSI6IlBST0RVQ1RJT04iLCJodHRwOi8vd3NvMi5vcmcvY2xhaW1zL3VzZXJ0eXBlIjoiQVBQTElDQVRJT05fVVNFUiIsImh0dHA6Ly93c28yLm9yZy9jbGFpbXMvZW5kdXNlciI6InRlc3QyIiwiaHR0cDovL3dzbzIub3JnL2NsYWltcy9lbmR1c2VyVGVuYW50SWQiOiItOTk5OSIsImh0dHA6Ly93c28yLm9yZy9jbGFpbXMvZW1haWxhZGRyZXNzIjoidGVzdHVzZXIzQHRlc3QuY29tIiwiaHR0cDovL3dzbzIub3JnL2NsYWltcy9mdWxsbmFtZSI6IkRldiBVc2VyIiwiaHR0cDovL3dzbzIub3JnL2NsYWltcy9naXZlbm5hbWUiOiJEZXYiLCJodHRwOi8vd3NvMi5vcmcvY2xhaW1zL2xhc3RuYW1lIjoiVXNlciIsImh0dHA6Ly93c28yLm9yZy9jbGFpbXMvcHJpbWFyeUNoYWxsZW5nZVF1ZXN0aW9uIjoiTi9BIiwiaHR0cDovL3dzbzIub3JnL2NsYWltcy9yb2xlIjoiSW50ZXJuYWwvZXZlcnlvbmUiLCJodHRwOi8vd3NvMi5vcmcvY2xhaW1zL3RpdGxlIjoiTi9BIn0.V6X0E_QDpUaidqjpML7CuEoiykFLXRbS0_2ulFE3CCqgTcAEuuzqOHbDKGW4XAgKpZCtj9wq5cHkIf7vpobi7Sf4HdSNIBOiIZuDWdtaSEkVG5aj7FPuGlI6dmsCq9qXd2RMHuLUGWOADmqdRoYIin_EbID1I12Mk6RqFRBz9T7wG3Pr1jn49xTvGQX2BR36qtCEQpV4FBqNsHpZi6y9oHXA-e6vPs2uQrbjtEIY9_DBE9aCt3DbYbXRFmGP8Mvn4Bm84TXytKbLoxCmncGUMP2CBYg2oRGUdHSX_nivC_1zqBPyAcW3BAIcnZ1j-ppFHAPVWiQKebZ6mOiHu2_bWA"  # noqa: E501
-user3JWT = "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJ3c28yLm9yZy9wcm9kdWN0cy9hbSIsImV4cCI6MjM4NDQ4MTcxMzg0MiwiaHR0cDovL3dzbzIub3JnL2NsYWltcy9zdWJzY3JpYmVyIjoidGVzdDIiLCJodHRwOi8vd3NvMi5vcmcvY2xhaW1zL2FwcGxpY2F0aW9uaWQiOiI0NCIsImh0dHA6Ly93c28yLm9yZy9jbGFpbXMvYXBwbGljYXRpb25uYW1lIjoiRGVmYXVsdEFwcGxpY2F0aW9uIiwiaHR0cDovL3dzbzIub3JnL2NsYWltcy9hcHBsaWNhdGlvbnRpZXIiOiJVbmxpbWl0ZWQiLCJodHRwOi8vd3NvMi5vcmcvY2xhaW1zL2FwaWNvbnRleHQiOiIvYXBwcyIsImh0dHA6Ly93c28yLm9yZy9jbGFpbXMvdmVyc2lvbiI6IjIuMCIsImh0dHA6Ly93c28yLm9yZy9jbGFpbXMvdGllciI6IlVubGltaXRlZCIsImh0dHA6Ly93c28yLm9yZy9jbGFpbXMva2V5dHlwZSI6IlBST0RVQ1RJT04iLCJodHRwOi8vd3NvMi5vcmcvY2xhaW1zL3VzZXJ0eXBlIjoiQVBQTElDQVRJT05fVVNFUiIsImh0dHA6Ly93c28yLm9yZy9jbGFpbXMvZW5kdXNlciI6InRlc3QzIiwiaHR0cDovL3dzbzIub3JnL2NsYWltcy9lbmR1c2VyVGVuYW50SWQiOiItOTk5OSIsImh0dHA6Ly93c28yLm9yZy9jbGFpbXMvZW1haWxhZGRyZXNzIjoidGVzdHVzZXIzQHRlc3QuY29tIiwiaHR0cDovL3dzbzIub3JnL2NsYWltcy9mdWxsbmFtZSI6IkRldiBVc2VyIiwiaHR0cDovL3dzbzIub3JnL2NsYWltcy9naXZlbm5hbWUiOiJEZXYiLCJodHRwOi8vd3NvMi5vcmcvY2xhaW1zL2xhc3RuYW1lIjoiVXNlciIsImh0dHA6Ly93c28yLm9yZy9jbGFpbXMvcHJpbWFyeUNoYWxsZW5nZVF1ZXN0aW9uIjoiTi9BIiwiaHR0cDovL3dzbzIub3JnL2NsYWltcy9yb2xlIjoiSW50ZXJuYWwvZXZlcnlvbmUiLCJodHRwOi8vd3NvMi5vcmcvY2xhaW1zL3RpdGxlIjoiTi9BIn0.RTo3Y1IJhcFXXtQF2kI82rNkMhTck-wE3UXh85QA1L0"  # noqa: E501
 
 
 @pytest.fixture
@@ -43,12 +39,23 @@ def test_client():
 
 @pytest.fixture(autouse=True, scope="function")
 def userdata(test_client):
-    u1 = User(username="test1", jwt=user1JWT, tenant_id="test")
-    u2 = User(username="test2", jwt=user2JWT, tenant_id="test")
-    u3 = User(username="test3", jwt=user3JWT, tenant_id="test")
-    db_session.add_all([u1, u2, u3])
-    db_session.commit()
+    user1JWT = "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiJjY2Q2Y2UwZS0xNTY4LTRjNTItYTVlYy03MGE3YTc2M2M0YTMiLCJpc3MiOiJodHRwczovL2Rlc2lnbnNhZmUudGFwaXMuaW8vdjMvdG9rZW5zIiwic3ViIjoidGVzdDNAZGVzaWduc2FmZSIsInRhcGlzL3RlbmFudF9pZCI6InRlc3QiLCJ0YXBpcy90b2tlbl90eXBlIjoiYWNjZXNzIiwidGFwaXMvZGVsZWdhdGlvbiI6ZmFsc2UsInRhcGlzL2RlbGVnYXRpb25fc3ViIjpudWxsLCJ0YXBpcy91c2VybmFtZSI6InRlc3QxIiwidGFwaXMvYWNjb3VudF90eXBlIjoidXNlciIsImV4cCI6MTcwODExOTU1OCwidGFwaXMvY2xpZW50X2lkIjoiaGF6bWFwcGVyLnRlc3QiLCJ0YXBpcy9ncmFudF90eXBlIjoiaW1wbGljaXQifQ.ILmDPdffMv9BuSbXifiPam4OTMFnUrcrPsgywQK6RSG4PYuZZyJ5IQhcr06bqdv3xieFI623HVOK_wUi4mgrckeFf3sU5eT9Wv6cEjiBxsO1-PT8QNFzAEvBlpVFjlZ_XzimoR6G3Jg636zejkNOhlNkgVIvv7iUta0oLIJHMei_gvIqRYjisTfva8NxhpG5aUBxTgOP_UEpJyM7k0UrEhqc9LtcFgstUp9PemSMMdRfbD4TftxeAD6EKrRrofRpsi3hmpP-aWXOOZRGiqx87GvMCUzZ-5T2uLBBFF7SDcM-JEGY90awC4oAlDk5RIFdWo-oIOzQyuj1f2Wg3USPfhpF0CRqp_ISQ9c4gjFaEQn299nobCq5fKI-BVYOCYfHgh0fsrMhri7g53M_ozhmi9RPUFfRXr4xhlUfvfZVCDE78GyeQfRu_oJcezxgXVLuVyajwQbPfLZ1xJ2952vTj-uA5pAXW0SR5jkIM_0M2YfqhW0JhPyw8xw7lFDaR0C2DFDQ8hqxFnh1keqNM6fWS4jFLLqcnEYnw2-g_BLXE96AIcw18bWtafHmyJ4Zun2OEByvGlywbYtknO3NpJiBUiLXpdNdGELAO9NKvyCIeOjfstXl75SHYi1DC6YAc_ZzL3F0-ZXtz3NASQejn8ceu0awoVESU1mMPXUHu2bJYts"  # noqa: E501
+    user2JWT = "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiJjY2Q2Y2UwZS0xNTY4LTRjNTItYTVlYy03MGE3YTc2M2M0YTMiLCJpc3MiOiJodHRwczovL2Rlc2lnbnNhZmUudGFwaXMuaW8vdjMvdG9rZW5zIiwic3ViIjoidGVzdDNAZGVzaWduc2FmZSIsInRhcGlzL3RlbmFudF9pZCI6InRlc3QiLCJ0YXBpcy90b2tlbl90eXBlIjoiYWNjZXNzIiwidGFwaXMvZGVsZWdhdGlvbiI6ZmFsc2UsInRhcGlzL2RlbGVnYXRpb25fc3ViIjpudWxsLCJ0YXBpcy91c2VybmFtZSI6InRlc3QyIiwidGFwaXMvYWNjb3VudF90eXBlIjoidXNlciIsImV4cCI6MTcwODExOTU1OCwidGFwaXMvY2xpZW50X2lkIjoiaGF6bWFwcGVyLnRlc3QiLCJ0YXBpcy9ncmFudF90eXBlIjoiaW1wbGljaXQifQ.lsa8XEIXkb_4rkzFdVpuwCIcWrwAolLN7Gx0K2V6KdcTVWLrUn_5ZONr5AoCPOeV6SR14Bs5kpZdZB5bxfyf0z7OWIRbsRJgyThSle3LS-bdA8ltflFOW-coZsDd4C_eXfj-8b0RM1JTRHCkS3daFUeJOLL6QDnhoENiY4FlT-1WTydgw_f2T4BRPatqwQPZajBfnOVs9cwlhsS0HuDJVRWV4zh78jckW3jPdZ_JybjwGy9w32cSFm2BTASdvUfuCN4CJfY1QwJP7jlZno377MJnsCypW-CJyF57LbEZ_dqgQVVFVGLWS_zd5zmhctxtDtaC80e8jkS6Ld1F1duNHSU0GUfURBg_aoi1vBzlE6h49MfLxCtX0oOhiysoQeiZpBV4F-ZkNhULw_GrKm7JNUsHvTsRUb61tkje2uVN-YefqsZYQ7apwRQ7S5oU0ccNXubCp_uk6TNSHB7cZMiElnWJalRZlOo0MD7Lx7NXlohCaK_ICh5BMSS1jKzhBxj-ug5O2R3oGIztNkHlUp3F476aWN8bRtVOobFgk4MhRBahWqAgrbpLHbk5OSyCeSQ_brB9avjoNl8e23mJTKQIO6HDc_QqsA586buXT3deb5d4QaqzGWkSwmZs6_kozDnbOItYJC-6E4qm25AX8ew4NHmLrPvtYW66FT-UCI5LiBU"  # noqa: E501
+    user3JWT = "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiJjY2Q2Y2UwZS0xNTY4LTRjNTItYTVlYy03MGE3YTc2M2M0YTMiLCJpc3MiOiJodHRwczovL2Rlc2lnbnNhZmUudGFwaXMuaW8vdjMvdG9rZW5zIiwic3ViIjoidGVzdDNAZGVzaWduc2FmZSIsInRhcGlzL3RlbmFudF9pZCI6InRlc3QiLCJ0YXBpcy90b2tlbl90eXBlIjoiYWNjZXNzIiwidGFwaXMvZGVsZWdhdGlvbiI6ZmFsc2UsInRhcGlzL2RlbGVnYXRpb25fc3ViIjpudWxsLCJ0YXBpcy91c2VybmFtZSI6InRlc3QzIiwidGFwaXMvYWNjb3VudF90eXBlIjoidXNlciIsImV4cCI6MTcwODExOTU1OCwidGFwaXMvY2xpZW50X2lkIjoiaGF6bWFwcGVyLnRlc3QiLCJ0YXBpcy9ncmFudF90eXBlIjoiaW1wbGljaXQifQ.Ojtx5fCZGFHxl7zXdH6j2OPBdVHvp_MCGJMeg_sTNuAqT-gVf_L81h1Zqrh9gdLR4og1n-V4yQp8aYQsUJ_jBv_9OIvF4KuYa2hAN9Bn-FAL0VngJUU1wHvkLYlTpLGmTnhgTdtOi2Xj_geNNKgs3EsWacqZwE7-lUKv0YtsVvjb_Z5fZUjXzjxg4jWIx7FhHqz2bodT8WNU7eMPE2oNgwPFjkouoi5yELLmAHE_8bvudlW4sbIiO16cFGfH3xdzDi7TsfZa_Nmqg1x6BHHQ-n47yB0q87ntJ4MiS7cGio8C0x1j25eohjFkQ0ztj3F3KfQMuVb9nFc3JBjtycDbfqvIIzFIqf7eLso5oWqioPPnAi0DG7THIad2XzRPPB6Ri2jtbc8cDHlVOadwXNndud8fjdPSOQ68mFwMMj4-24ndhxf-Tp8MrvXpo91It66KescGQyFt5tFNGDZtzXdve4L6HUHdP9yaYEPmPEtvAODqUJTLAx088NuIxIcDvSRe_pHWKnkkYNPvdsJcXspw2KYTJjNRrVxjIY5mOLMsCtJQug8VZVWJ6wk7zDnpvnaD8CzFIl2ge5ECZtAuD1MtBfIR45j0shynDs8JiX2vH6-0z03zFU_OWSXXGppZBLIjrgcIJEVIFF0F64na3ZH6Zlt56ZoZngRjNGHypD3XZGA"  # noqa: E501
+
+    user1JWT = create_token_expiry_hours_from_now(user1JWT)
+    user2JWT = create_token_expiry_hours_from_now(user2JWT)
+    user3JWT = create_token_expiry_hours_from_now(user3JWT)
+
+    u1 = UserService.create(db_session, username="test1", access_token=user1JWT, tenant="test")
+    UserService.create(db_session, username="test2", access_token=user2JWT, tenant="test")
+    UserService.create(db_session, username="test3", access_token=user3JWT, tenant="test")
     yield u1
+
+
+@pytest.fixture(autouse=True, scope="function")
+def tapis_url(user1):
+    yield get_tapis_api_server(user1.tenant_id)
 
 
 @pytest.fixture(scope="function")
@@ -64,44 +71,47 @@ def user2(userdata):
 @pytest.fixture(scope="function")
 def projects_fixture():
     """ Project with 1 user and test1 is an admin"""
-    proj = Project(name="test", description="description")
+    project = Project(name="test", description="description")
     u1 = db_session.query(User).filter(User.username == "test1").first()
-    proj.users.append(u1)
+    project.users.append(u1)
 
-    proj.tenant_id = u1.tenant_id
-    db_session.add(proj)
+    project.tenant_id = u1.tenant_id
+    db_session.add(project)
     db_session.commit()
 
-    project_user1 = db_session.query(ProjectUser).filter(ProjectUser.project_id == proj.id).first()
+    project_user1 = db_session.query(ProjectUser).filter(ProjectUser.project_id == project.id).first()
     project_user1.admin = True
     db_session.add(project_user1)
     db_session.commit()
 
-    yield proj
+    yield project
 
-    shutil.rmtree(get_project_asset_dir(proj.id), ignore_errors=True)
+    shutil.rmtree(get_project_asset_dir(project.id), ignore_errors=True)
 
 
 @pytest.fixture(scope="function")
 def projects_fixture2(user1, user2):
     """ Project with 2 users and test1 is creator"""
     ""
-    proj = Project(name="test2", description="description2")
-    proj.users.append(user1)
-    proj.users.append(user2)
-    proj.tenant_id = user1.tenant_id
-    db_session.add(proj)
+    project = Project(name="test2", description="description2")
+    project.users.append(user1)
+    project.users.append(user2)
+    project.tenant_id = user1.tenant_id
+    db_session.add(project)
     db_session.commit()
 
-    project_user1 = db_session.query(ProjectUser).filter(ProjectUser.project_id == proj.id).filter(ProjectUser.user_id == user1.id).first()
+    project_user1 = db_session.query(ProjectUser) \
+        .filter(ProjectUser.project_id == project.id) \
+        .filter(ProjectUser.user_id == user1.id) \
+        .first()
     project_user1.creator = True
 
     db_session.add(project_user1)
     db_session.commit()
 
-    yield proj
+    yield project
 
-    shutil.rmtree(get_project_asset_dir(proj.id), ignore_errors=True)
+    shutil.rmtree(get_project_asset_dir(project.id), ignore_errors=True)
 
 
 @pytest.fixture(scope="function")
@@ -113,35 +123,24 @@ def public_projects_fixture(projects_fixture):
 
 
 @pytest.fixture(scope="function")
-def observable_projects_fixture():
+def watch_content_users_projects_fixture():
     u1 = db_session.query(User).filter(User.username == "test1").first()
-    proj = Project(name="test_observable",
-                   description="description",
-                   tenant_id=u1.tenant_id,
-                   system_id="project-1234",
-                   system_path="/testPath",
-                   system_file="system_file")  # system_file.hazmapper
-    obs = ObservableDataProject(
-        system_id="project-1234",
-        path="/testPath",
-        watch_content=True
-    )
-
-    # Project system_id/system_path really not used except for analytics.
-    # This could be improved; see https://jira.tacc.utexas.edu/browse/WG-185
-    proj.system_id = obs.system_id
-    proj.system_path = obs.path
-
-    obs.project = proj
-    proj.users.append(u1)
-    db_session.add(obs)
-    db_session.add(proj)
+    project = Project(name="test_observable",
+                      description="description",
+                      tenant_id=u1.tenant_id,
+                      system_id="project-1234",
+                      system_path="/testPath",
+                      system_file="system_file",  # system_file.hazmapper
+                      watch_content=True,
+                      watch_users=True)
+    project.users.append(u1)
+    db_session.add(project)
     db_session.commit()
-    proj.project_users[0].creator = True
+    project.project_users[0].creator = True
     db_session.commit()
-    yield obs
+    yield project
 
-    shutil.rmtree(get_project_asset_dir(proj.id), ignore_errors=True)
+    shutil.rmtree(get_project_asset_dir(project.id), ignore_errors=True)
 
 
 @pytest.fixture(scope="function")
@@ -420,21 +419,13 @@ def get_point_cloud_info_mock():
 def agave_file_listings_mock():
     filesListing = [
         AgaveFileListing({
-            "system": "testSystem",
             "path": "/testPath",
             "type": "dir",
-            "length": 4,
-            "_links": "links",
-            "mimeType": "folder",
             "lastModified": "2020-08-31T12:00:00Z"
         }),
         AgaveFileListing({
-            "system": "testSystem",
             "type": "file",
-            "length": 4096,
             "path": "/testPath/file.json",
-            "_links": "links",
-            "mimeType": "application/json",
             "lastModified": "2020-08-31T12:00:00Z"
         })
     ]

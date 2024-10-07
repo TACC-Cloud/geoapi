@@ -41,7 +41,7 @@ def publish(database_session, user: User, params: Dict):
     streetview_service = StreetviewService.getByService(database_session, user, service)
 
     if not streetview_service.token or not streetview_service.service_user:
-        logger.error('Not authenticated to {} for user: {}'.format(params['service'], user.username))
+        logger.exception('Not authenticated to {} for user:{}'.format(params['service'], user.username))
         raise StreetviewAuthException('Not authenticated to {}!'.format(service))
 
     # TODO: Find better solution for limiting uploads.
@@ -93,7 +93,7 @@ def _from_tapis(database_session, user: User, task_uuid: UUID, systemId: str, pa
     :param systemId: str
     :param path: str
     """
-    client = AgaveUtils(user.jwt)
+    client = AgaveUtils(database_session, user)
     listing = client.listing(systemId, path)
     files_in_directory = listing[1:]
 
@@ -153,9 +153,10 @@ def _to_mapillary(database_session, user: User, streetview_instance: StreetviewI
                                             "Uploading to Mapillary")
 
         MapillaryUtils.authenticate(user.id, token, service_user)
-        MapillaryUtils.upload(user.id, task_uuid, service_user, organization_key)
+        MapillaryUtils.upload(database_session, user.id, task_uuid, service_user, organization_key)
     except Exception as e:
-        raise Exception("Errors during mapillary upload task {} for user {}: Error: {}".format(task_uuid, user.username, e))
+        msg = "Errors during mapillary upload task {} for user {}: Error: {}".format(task_uuid, user.username, e)
+        raise Exception(msg)
 
 
 # NOTE: At the time of writing, Mapillary's api does not return the sequence
@@ -214,6 +215,8 @@ def from_tapis_to_streetview(user_id: int,
         try:
             check_existing_upload(session, user, streetview_service, task_uuid, system_id, path)
         except StreetviewExistsException as e:
+            logger.exception(f"Error checking existing upload for user:{user.username} "
+                             f"system_id:{system_id}, path:{path}, {e})")
             NotificationsService.create(session, user, 'warning', str(e))
             return
 
@@ -241,8 +244,9 @@ def from_tapis_to_streetview(user_id: int,
         # TODO: Handle
         except Exception as e:
             error_message = "Error during getting files from tapis system:{} path:{} \
-            for streetview upload task: {} for user: {}. Error Message: {}" \
+            for streetview upload task: {} for user:{}. Error Message: {}" \
                   .format(system_id, path, task_uuid, user.username, e)
+            logger.exception(error_message)
             clean_session(session,
                           streetview_instance,
                           user,
@@ -256,9 +260,10 @@ def from_tapis_to_streetview(user_id: int,
             try:
                 _to_mapillary(session, user, streetview_instance, task_uuid, organization_key)
             except Exception as e:
-                error_message = "Error during uploading to mapillary for streetview task: {} \
-                  for user: {}. Error message: {}" \
+                error_message = "Error during uploading to mapillary for streetview task:{} \
+                  for user:{}. Error message: {}" \
                   .format(task_uuid, user.username, e)
+                logger.exception(error_message)
                 clean_session(session,
                               streetview_instance,
                               user,
@@ -271,10 +276,11 @@ def from_tapis_to_streetview(user_id: int,
             try:
                 _mapillary_finalize(session, user, streetview_instance, task_uuid, organization_key)
             except Exception as e:
-                error_message = "Error during finalization of mapillary upload for streetview task: {} \
-                for user: {}. Error message: {}" \
-                      .format(task_uuid, user.username, e)
-                clean_session(streetview_instance,
+                error_message = ("Error during finalization of mapillary upload for streetview task:{} "
+                                 "for user:{}. Error message: {}").format(task_uuid, user.username, e)
+                logger.exception(error_message)
+                clean_session(session,
+                              streetview_instance,
                               user,
                               task_uuid,
                               'error',

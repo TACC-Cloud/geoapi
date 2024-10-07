@@ -4,8 +4,8 @@ from geoapi.routes import api
 from geoapi.settings import settings as app_settings
 from geoapi.db import db_session
 from geoapi.exceptions import (InvalidGeoJSON, InvalidEXIFData, InvalidCoordinateReferenceSystem,
-                               ObservableProjectAlreadyExists, ApiException, StreetviewAuthException,
-                               StreetviewLimitException)
+                               ProjectSystemPathWatchFilesAlreadyExists, ApiException, StreetviewAuthException,
+                               StreetviewLimitException, AuthenticationIssue)
 
 import logging
 
@@ -48,9 +48,9 @@ def handle_coordinate_reference_system_exception(error: Exception):
     return {'message': 'Invalid data, coordinate reference system could not be found'}, 400
 
 
-@api.errorhandler(ObservableProjectAlreadyExists)
-def handle_observable_project_already_exists_exception(error: Exception):
-    return {'message': 'Conflict, a project for this storage system/path already exists'}, 409
+@api.errorhandler(ProjectSystemPathWatchFilesAlreadyExists)
+def handle_project_system_path_watch_files_already_exists_exception(error: Exception):
+    return {'message': 'Conflict, a project watching files for this storage system/path already exists'}, 409
 
 
 @api.errorhandler(StreetviewAuthException)
@@ -61,6 +61,11 @@ def handle_streetview_auth_exception(error: Exception):
 @api.errorhandler(StreetviewLimitException)
 def handle_streetview_limit_exception(error: Exception):
     return {'message': 'Exceed concurrent streetview publish limit'}, 403
+
+
+@api.errorhandler(AuthenticationIssue)
+def handle_authentication_issue_exception(error: AuthenticationIssue):
+    return {'message': error.message}, 400
 
 
 # ensure SQLAlchemy sessions are properly closed at the end of each request.

@@ -8,7 +8,7 @@ from geoapi.utils.assets import get_project_asset_dir
 
 
 def test_get_projects(test_client, projects_fixture, user1):
-    resp = test_client.get('/projects/', headers={'x-jwt-assertion-test': user1.jwt})
+    resp = test_client.get('/projects/', headers={'X-Tapis-Token': user1.jwt})
     data = resp.get_json()
     assert resp.status_code == 200
     assert len(data) == 1
@@ -16,7 +16,7 @@ def test_get_projects(test_client, projects_fixture, user1):
 
 
 def test_get_projects_but_not_admin_or_creator(test_client, user2, projects_fixture2, projects_fixture):
-    resp = test_client.get('/projects/', headers={'x-jwt-assertion-test': user2.jwt})
+    resp = test_client.get('/projects/', headers={'X-Tapis-Token': user2.jwt})
     data = resp.get_json()
     assert resp.status_code == 200
     assert len(data) == 1
@@ -25,7 +25,7 @@ def test_get_projects_but_not_admin_or_creator(test_client, user2, projects_fixt
 
 
 def test_get_projects_with_multiple(test_client, user1, projects_fixture2, projects_fixture):
-    resp = test_client.get('/projects/', headers={'x-jwt-assertion-test': user1.jwt})
+    resp = test_client.get('/projects/', headers={'X-Tapis-Token': user1.jwt})
     data = resp.get_json()
     assert resp.status_code == 200
     assert len(data) == 2
@@ -44,7 +44,7 @@ def test_get_projects_using_uuids(test_client, projects_fixture, projects_fixtur
     requested_uuids = [str(projects_fixture2.uuid), str(projects_fixture.uuid)]
     resp = test_client.get('/projects/',
                            query_string='uuid={}'.format(','.join(requested_uuids)),
-                           headers={'x-jwt-assertion-test': user1.jwt})
+                           headers={'X-Tapis-Token': user1.jwt})
     data = resp.get_json()
     assert resp.status_code == 200
     assert len(data) == 2
@@ -55,7 +55,7 @@ def test_get_projects_using_uuids(test_client, projects_fixture, projects_fixtur
 def test_get_projects_using_single_uuid(test_client, projects_fixture, projects_fixture2, user1):
     resp = test_client.get('/projects/',
                            query_string='uuid={}'.format(projects_fixture2.uuid),
-                           headers={'x-jwt-assertion-test': user1.jwt})
+                           headers={'X-Tapis-Token': user1.jwt})
     data = resp.get_json()
     assert resp.status_code == 200
     assert len(data) == 1
@@ -63,20 +63,10 @@ def test_get_projects_using_single_uuid(test_client, projects_fixture, projects_
     assert data[0]["deletable"] is True
 
 
-def test_get_projects_using_single_uuid_observable_project(test_client, observable_projects_fixture, user1):
-    resp = test_client.get('/projects/',
-                           query_string='uuid={}'.format(observable_projects_fixture.project.uuid),
-                           headers={'x-jwt-assertion-test': user1.jwt})
-    data = resp.get_json()
-    assert resp.status_code == 200
-    assert len(data) == 1
-    assert data[0]["uuid"] == str(observable_projects_fixture.project.uuid)
-
-
 def test_get_projects_using_single_uuid_that_is_wrong(test_client, user1):
     resp = test_client.get('/projects/',
                            query_string='uuid={}'.format(uuid.uuid4()),
-                           headers={'x-jwt-assertion-test': user1.jwt})
+                           headers={'X-Tapis-Token': user1.jwt})
     assert resp.status_code == 404
 
 
@@ -95,24 +85,24 @@ def test_get_project_using_single_uuid_unauthorized_guest(test_client, projects_
 def test_get_project_using_single_uuid_not_member_of_project(test_client, projects_fixture, user2):
     resp = test_client.get('/projects/',
                            query_string='uuid={}'.format(projects_fixture.uuid),
-                           headers={'x-jwt-assertion-test': user2.jwt})
+                           headers={'X-Tapis-Token': user2.jwt})
     assert resp.status_code == 403
 
 
 def test_project_permissions(test_client, projects_fixture, user2):
-    resp = test_client.get('/projects/', headers={'x-jwt-assertion-test': user2.jwt})
+    resp = test_client.get('/projects/', headers={'X-Tapis-Token': user2.jwt})
     data = resp.get_json()
     assert resp.status_code == 200
     assert len(data) == 0
 
 
 def test_project_protected(test_client, projects_fixture, user2):
-    resp = test_client.get(f'/projects/{projects_fixture.id}/', headers={'x-jwt-assertion-test': user2.jwt})
+    resp = test_client.get(f'/projects/{projects_fixture.id}/', headers={'X-Tapis-Token': user2.jwt})
     assert resp.status_code == 403
 
 
 def test_project_data(test_client, projects_fixture, user1):
-    resp = test_client.get('/projects/', headers={'x-jwt-assertion-test': user1.jwt})
+    resp = test_client.get('/projects/', headers={'X-Tapis-Token': user1.jwt})
     data = resp.get_json()
     assert resp.status_code == 200
     assert data[0]["name"] == projects_fixture.name
@@ -121,7 +111,7 @@ def test_project_data(test_client, projects_fixture, user1):
 
 
 def test_project_data_single(test_client, projects_fixture, user1):
-    resp = test_client.get(f'/projects/{projects_fixture.id}/', headers={'x-jwt-assertion-test': user1.jwt})
+    resp = test_client.get(f'/projects/{projects_fixture.id}/', headers={'X-Tapis-Token': user1.jwt})
     data = resp.get_json()
     assert resp.status_code == 200
     assert data["name"] == projects_fixture.name
@@ -130,7 +120,7 @@ def test_project_data_single(test_client, projects_fixture, user1):
 
 
 def test_project_data_protected(test_client, projects_fixture, user2):
-    resp = test_client.get(f'/projects/{projects_fixture.id}/', headers={'x-jwt-assertion-test': user2.jwt})
+    resp = test_client.get(f'/projects/{projects_fixture.id}/', headers={'X-Tapis-Token': user2.jwt})
     assert resp.status_code == 403
 
 
@@ -138,12 +128,12 @@ def test_project_data_allow_public_access(test_client, public_projects_fixture, 
     resp = test_client.get(f'/projects/{public_projects_fixture.id}/')
     assert resp.status_code == 200
 
-    resp = test_client.get(f'/projects/{public_projects_fixture.id}/', headers={'x-jwt-assertion-test': user2.jwt})
+    resp = test_client.get(f'/projects/{public_projects_fixture.id}/', headers={'X-Tapis-Token': user2.jwt})
     assert resp.status_code == 200
 
 
 def test_delete_empty_project(test_client, projects_fixture, remove_project_assets_mock, user1):
-    resp = test_client.delete(f'/projects/{projects_fixture.id}/', headers={'x-jwt-assertion-test': user1.jwt})
+    resp = test_client.delete(f'/projects/{projects_fixture.id}/', headers={'X-Tapis-Token': user1.jwt})
     assert resp.status_code == 200
     projects = db_session.query(Project).all()
     projectUsers = db_session.query(ProjectUser).all()
@@ -153,7 +143,7 @@ def test_delete_empty_project(test_client, projects_fixture, remove_project_asse
 
 def test_delete_project(test_client, projects_fixture, remove_project_assets_mock, image_feature_fixture, user1):
     assert os.path.isdir(get_project_asset_dir(projects_fixture.id))
-    resp = test_client.delete(f'/projects/{projects_fixture.id}/', headers={'x-jwt-assertion-test': user1.jwt})
+    resp = test_client.delete(f'/projects/{projects_fixture.id}/', headers={'X-Tapis-Token': user1.jwt})
     assert resp.status_code == 200
     projects = db_session.query(Project).all()
     projectUsers = db_session.query(ProjectUser).all()
@@ -163,14 +153,14 @@ def test_delete_project(test_client, projects_fixture, remove_project_assets_moc
 
 
 def test_delete_unauthorized(test_client, projects_fixture, user2):
-    resp = test_client.delete(f'/projects/{projects_fixture.id}/', headers={'x-jwt-assertion-test': user2.jwt})
+    resp = test_client.delete(f'/projects/{projects_fixture.id}/', headers={'X-Tapis-Token': user2.jwt})
     assert resp.status_code == 403
     proj = db_session.query(Project).get(1)
     assert proj is not None
 
 
 def test_delete_project_not_admin_or_creator(test_client, projects_fixture2, projects_fixture, user2):
-    resp = test_client.delete(f'/projects/{projects_fixture2.id}/', headers={'x-jwt-assertion-test': user2.jwt})
+    resp = test_client.delete(f'/projects/{projects_fixture2.id}/', headers={'X-Tapis-Token': user2.jwt})
     assert resp.status_code == 403
 
 
@@ -184,7 +174,7 @@ def test_delete_unauthorized_guest(test_client, projects_fixture):
 def test_get_users(test_client, projects_fixture, user1):
     resp = test_client.get(
         f'/projects/{projects_fixture.id}/users/',
-        headers={'x-jwt-assertion-test': user1.jwt}
+        headers={'X-Tapis-Token': user1.jwt}
     )
     assert resp.status_code == 200
     assert resp.get_json() == [{"id": user1.id, "username": user1.username}]
@@ -194,7 +184,7 @@ def test_add_user(test_client, projects_fixture, user1):
     resp = test_client.post(
         f'/projects/{projects_fixture.id}/users/',
         json={"username": "newUser", "admin": False},
-        headers={'x-jwt-assertion-test': user1.jwt}
+        headers={'X-Tapis-Token': user1.jwt}
     )
     assert resp.status_code == 200
 
@@ -203,7 +193,7 @@ def test_add_user_unauthorized(test_client, projects_fixture, user2):
     resp = test_client.post(
         f'/projects/{projects_fixture.id}/users/',
         json={"username": "newUser"},
-        headers={'x-jwt-assertion-test': user2.jwt}
+        headers={'X-Tapis-Token': user2.jwt}
     )
     assert resp.status_code == 403
 
@@ -218,13 +208,13 @@ def test_add_user_unauthorized_guest(test_client, projects_fixture):
 
 def test_delete_user(test_client, projects_fixture2, user1, user2):
     resp = test_client.delete(f'/projects/{projects_fixture2.id}/users/{user2.username}/',
-                              headers={'x-jwt-assertion-test': user1.jwt})
+                              headers={'X-Tapis-Token': user1.jwt})
     assert resp.status_code == 200
 
 
 def test_delete_user_unauthorized(test_client, projects_fixture, user2):
     resp = test_client.delete(f'/projects/{projects_fixture.id}/users/test1/',
-                              headers={'x-jwt-assertion-test': user2.jwt})
+                              headers={'X-Tapis-Token': user2.jwt})
     assert resp.status_code == 403
 
     test_client.delete('/projects/1/users/test1/')
@@ -235,7 +225,7 @@ def test_upload_gpx(test_client, projects_fixture, gpx_file_fixture, user1):
     resp = test_client.post(
         f'/projects/{projects_fixture.id}/features/files/',
         data={"file": gpx_file_fixture},
-        headers={'x-jwt-assertion-test': user1.jwt}
+        headers={'X-Tapis-Token': user1.jwt}
     )
     assert resp.status_code == 200
 
@@ -244,7 +234,7 @@ def test_upload_image(test_client, projects_fixture, image_file_fixture, user1):
     resp = test_client.post(
         f'/projects/{projects_fixture.id}/features/files/',
         data={"file": image_file_fixture},
-        headers={'x-jwt-assertion-test': user1.jwt}
+        headers={'X-Tapis-Token': user1.jwt}
     )
     assert resp.status_code == 200
 
@@ -253,14 +243,14 @@ def test_import_image_tapis(test_client, projects_fixture, import_file_from_agav
     resp = test_client.post(
         f'/projects/{projects_fixture.id}/features/files/import/',
         json={"files": [{"system": "designsafe.storage.default", "path": "file.jpg"}]},
-        headers={'x-jwt-assertion-test': user1.jwt}
+        headers={'X-Tapis-Token': user1.jwt}
     )
     assert resp.status_code == 200
 
 
 def test_get_point_clouds_listing(test_client, projects_fixture, point_cloud_fixture, user1):
     resp = test_client.get(f'/projects/{projects_fixture.id}/point-cloud/',
-                           headers={'x-jwt-assertion-test': user1.jwt})
+                           headers={'X-Tapis-Token': user1.jwt})
     assert resp.status_code == 200
     data = resp.get_json()
     assert len(data) == 1
@@ -268,13 +258,13 @@ def test_get_point_clouds_listing(test_client, projects_fixture, point_cloud_fix
 
 def test_get_point_cloud(test_client, projects_fixture, point_cloud_fixture, user1):
     resp = test_client.get(f'/projects/{projects_fixture.id}/point-cloud/1/',
-                           headers={'x-jwt-assertion-test': user1.jwt})
+                           headers={'X-Tapis-Token': user1.jwt})
     assert resp.status_code == 200
 
 
 def test_get_project_features_empty(test_client, projects_fixture, user1, caplog):
     resp = test_client.get(f'/projects/{projects_fixture.id}/features/',
-                           headers={'x-jwt-assertion-test': user1.jwt})
+                           headers={'X-Tapis-Token': user1.jwt})
     assert resp.status_code == 200
 
     data = resp.get_json()
@@ -309,7 +299,7 @@ def test_get_project_features_analytics_with_query_params(test_client, public_pr
 
 def test_get_project_features_single_feature(test_client, projects_fixture, feature_fixture, user1):
     resp = test_client.get(f'/projects/{projects_fixture.id}/features/',
-                           headers={'x-jwt-assertion-test': user1.jwt})
+                           headers={'X-Tapis-Token': user1.jwt})
     data = resp.get_json()
     assert resp.status_code == 200
     assert len(data['features']) != 0
@@ -326,7 +316,7 @@ def test_get_project_features_filter_with_assettype(test_client, projects_fixtur
                                                     feature_fixture, image_feature_fixture, user1):
     resp = test_client.get(f'/projects/{projects_fixture.id}/features/',
                            query_string={'assetType': 'image'},
-                           headers={'x-jwt-assertion-test': user1.jwt})
+                           headers={'X-Tapis-Token': user1.jwt})
     data = resp.get_json()
     assert resp.status_code == 200
     assert len(data['features']) == 1
@@ -340,7 +330,7 @@ def test_get_project_features_filter_with_bounding_box(test_client, projects_fix
     u1 = db_session.query(User).get(1)
     resp = test_client.get(f'/projects/{projects_fixture.id}/features/',
                            query_string='bbox={}'.format(','.join(map(str, bbox))),
-                           headers={'x-jwt-assertion-test': u1.jwt})
+                           headers={'X-Tapis-Token': u1.jwt})
     data = resp.get_json()
     assert resp.status_code == 200
     assert len(data['features']) == 1
@@ -352,7 +342,7 @@ def test_get_project_features_filter_with_date_range(test_client, projects_fixtu
     resp = test_client.get(f'/projects/{projects_fixture.id}/features/',
                            query_string={'startDate': start_date,
                                          'endDate': end_date},
-                           headers={'x-jwt-assertion-test': user1.jwt})
+                           headers={'X-Tapis-Token': user1.jwt})
     data = resp.get_json()
     assert resp.status_code == 200
     assert projects_fixture.id == feature_fixture.id
@@ -362,7 +352,7 @@ def test_get_project_features_filter_with_date_range(test_client, projects_fixtu
     resp = test_client.get(f'/projects/{projects_fixture.id}/features/',
                            query_string={'startDate': start_date,
                                          'endDate': end_date},
-                           headers={'x-jwt-assertion-test': user1.jwt})
+                           headers={'X-Tapis-Token': user1.jwt})
     data = resp.get_json()
     assert resp.status_code == 200
     assert len(data['features']) == 0
@@ -372,7 +362,7 @@ def test_import_shapefile_tapis(test_client, projects_fixture, import_file_from_
     resp = test_client.post(
         f'/projects/{projects_fixture.id}/features/files/import/',
         json={"files": [{"system": "designsafe.storage.default", "path": "file.shp"}]},
-        headers={'x-jwt-assertion-test': user1.jwt}
+        headers={'X-Tapis-Token': user1.jwt}
     )
     assert resp.status_code == 200
 
@@ -386,7 +376,7 @@ def test_update_project(test_client, projects_fixture, user1):
     resp = test_client.put(
         f'/projects/{projects_fixture.id}/',
         json=data,
-        headers={'x-jwt-assertion-test': user1.jwt}
+        headers={'X-Tapis-Token': user1.jwt}
     )
     assert resp.status_code == 200
     proj = db_session.query(Project).get(1)
@@ -408,64 +398,62 @@ def test_update_project_unauthorized_guest(test_client, public_projects_fixture)
     assert resp.status_code == 403
 
 
-def test_create_observable_project_already_exists(test_client,
-                                                  projects_fixture,
-                                                  get_system_users_mock,
-                                                  observable_projects_fixture,
-                                                  import_from_agave_mock,
-                                                  agave_utils_with_geojson_file_mock,
-                                                  user1):
+def test_create_project_watch_content_already_exists(test_client,
+                                                     watch_content_users_projects_fixture,
+                                                     get_system_users_mock,
+                                                     import_from_agave_mock,
+                                                     agave_utils_with_geojson_file_mock,
+                                                     user1):
     data = {
-        'name': 'Observable name',
-        'description': 'Observable description',
-        'system_id': observable_projects_fixture.system_id,
-        'system_path': observable_projects_fixture.path,
+        'name': 'Project name',
+        'description': 'Project description',
+        'system_id': watch_content_users_projects_fixture.system_id,
+        'system_path': watch_content_users_projects_fixture.system_path,
         'system_file': 'testFilename',
         'watch_users': True,
-        'watch_content': False
+        'watch_content': True
     }
 
     resp = test_client.post(
         '/projects/',
         json=data,
-        headers={'x-jwt-assertion-test': user1.jwt}
+        headers={'X-Tapis-Token': user1.jwt}
     )
 
     assert resp.status_code == 409
-    assert "Conflict, a project for this storage system/path already exists" in resp.json['message']
+    assert "Conflict, a project watching files for this storage system/path already exists" in resp.json['message']
 
 
-def test_create_observable_project(test_client,
-                                   get_system_users_mock,
-                                   import_from_agave_mock,
-                                   agave_utils_with_geojson_file_mock, user1):
+def test_create_project_with_watch_content_watch_users(test_client,
+                                                       get_system_users_mock,
+                                                       import_from_agave_mock,
+                                                       agave_utils_with_geojson_file_mock, user1):
     data = {
-        'name': 'Observable name',
-        'description': 'Observable description',
+        'name': 'Project name',
+        'description': 'Project description',
         'system_id': 'testSystem',
         'system_path': 'testPath',
         'system_file': 'testFilename',
         'watch_users': True,
         'watch_content': False
     }
-
     resp = test_client.post('/projects/',
                             json=data,
-                            headers={'x-jwt-assertion-test': user1.jwt})
+                            headers={'X-Tapis-Token': user1.jwt})
 
     assert resp.status_code == 200
     data = resp.get_json()
     assert data["deletable"] is True
-    assert data["name"] == "Observable name"
+    assert data["name"] == "Project name"
 
     proj = db_session.query(Project).get(1)
-    assert proj.name == "Observable name"
+    assert proj.name == "Project name"
 
 
-def test_create_observable_project_unauthorized(test_client):
+def test_create_project_unauthorized(test_client):
     data = {
-        'name': 'Observable name',
-        'description': 'Observable description',
+        'name': 'Project name',
+        'description': 'Project description',
         'system_id': 'testSystem',
         'system_path': 'testPath',
         'system_file': 'testFilename',
