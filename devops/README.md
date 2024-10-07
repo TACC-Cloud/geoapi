@@ -15,27 +15,15 @@ See:
 
 Deployment configuration including the tag of which image is deployed is maintained at https://github.com/TACC-Cloud/wma-geospatial-deployments
 
-## Access and Troubleshooting
-The configurations of each of the following are in their associated directories. 
+## Configuration
 
-### VM for nginx:  
+The configurations for each of the following are in their associated directories:
+* [geoapi-services](geoapi-services/) - Main backend services
+* [geoapi-workers](geoapi-workers/) - Workers
+* [database](database/) - geoapi-database
+* [hazmapper](hazmapper/) - hazmapper.tacc.utexas.edu
+* nfs-geoapi - TODO: See https://tacc-main.atlassian.net/browse/WG-226
 
-    hazmapper.tacc.utexas.edu 
-    
-    see hazmapper repo [ngnix.conf] (https://github.com/TACC-Cloud/hazmapper/blob/master/nginx.conf)
+Specific hosts for these services are listed at https://tacc-main.atlassian.net/wiki/spaces/UP/pages/6654513/WMA+Projects+and+Portals+Directory.
 
-### VMs for backend services 
-    dev.geoapi-services.tac.utexas.edu
-    staging.geoapi-services.tac.utexas.edu
-    prod.geoapi-services.tac.utexas.edu
 
-### VMs for Workers
-    129.114.35.63 - used by Hazmapper prod as its worker and is a machine provided to us by Mike Packard 
-    staging.geoapi-workers.tacc.utexas.edu
-    prod.geoapi-workers.tacc.utexas.edu
-
-### VM for Database
-    geoapi-database.tacc.utexas.edu
-
-### VM hosting mounted NFS assets
-    geoapi-nfs.tacc.utexas.edu 
