@@ -95,10 +95,10 @@ Note that images need to be rebuilt before running tests if they have been updat
 ```
 make build
 ```
-## Kubernetes (Production/Staging)
+## Production/Staging
 
-Information on Kubernetes configuration for production and staging environments can be found in the [kube/README.md](kube/README.md) including information
-on kube commands and Jenkins deployment workflows.
+Information on  configuration for production and staging environments can be found in the [devops/README.md](devops/README.md) including information
+on Jenkins deployment workflows.
 
 
 ## Python client
