@@ -89,11 +89,10 @@ APP_ENV=testing pytest
 docker exec -it geoapiworkers bash
 APP_ENV=testing pytest -m "worker"
 ```
+## Production/Staging
 
-## Kubernetes (Production/Staging)
-
-Information on Kubernetes configuration for production and staging environments can be found in the [kube/README.md](kube/README.md) including information
-on kube commands and Jenkins deployment workflows.
+Information on  configuration for production and staging environments can be found in the [devops/README.md](devops/README.md) including information
+on Jenkins deployment workflows.
 
 
 ## Python client
