@@ -67,6 +67,34 @@ class PointCloudProcessingTask(celery.Task):
             session.commit()
 
 
+class PointCloudConversionException(Exception):
+    def __init__(self, message="Unknown error"):
+        self.message = message
+        super().__init__(self.message)
+
+
+def run_potree_converter(pointCloudId,
+                         path_to_original_point_clouds,
+                         path_temp_processed_point_cloud_path,
+                         conversion_parameters=None):
+    """ Run potree converter as external process """
+    command = [
+        "/opt/PotreeConverter/build/PotreeConverter",
+        "--verbose",
+        "-i",
+        path_to_original_point_clouds,
+        "-o",
+        path_temp_processed_point_cloud_path,
+        "--overwrite",
+        "--generate-page",
+        "index"
+    ]
+    if conversion_parameters:
+        command.extend(conversion_parameters.split())
+    logger.info("Processing point cloud (#{}).  command:{}".format(pointCloudId, " ".join(command)))
+    subprocess.run(command, check=True, capture_output=True, text=True)
+
+
 @app.task(bind=True, base=PointCloudProcessingTask)
 def convert_to_potree(self, pointCloudId: int) -> None:
     """
@@ -74,8 +102,12 @@ def convert_to_potree(self, pointCloudId: int) -> None:
 
     Note: this operation is memory-intensive and time-consuming.  Large LAS files (>8 Gb) can use >50gb of memory.
 
+    if process killed (e.g. due to memory constraints), PointCloudTaskException is raised
+
     :param pointCloudId: int
+    :param userId: int
     :return: None
+    :raises PointCloudTaskException: if conversion fails
     """
     from geoapi.models import Feature, FeatureAsset
     from geoapi.services.point_cloud import PointCloudService
@@ -92,22 +124,15 @@ def convert_to_potree(self, pointCloudId: int) -> None:
 
     outline = get_bounding_box_2d(input_files)
 
-    command = [
-        "/opt/PotreeConverter/build/PotreeConverter",
-        "--verbose",
-        "-i",
-        path_to_original_point_clouds,
-        "-o",
-        path_temp_processed_point_cloud_path,
-        "--overwrite",
-        "--generate-page",
-        "index"
-    ]
-    if conversion_parameters:
-        command.extend(conversion_parameters.split())
-    logger.info("Processing point cloud (#{}):  {}".format(pointCloudId, " ".join(command)))
-
-    subprocess.run(command, check=True, capture_output=True, text=True)
+    try:
+        run_potree_converter(pointCloudId, path_to_original_point_clouds, path_temp_processed_point_cloud_path, conversion_parameters)
+    except subprocess.CalledProcessError as e:
+        error_description = "Point cloud conversion failed"
+        if e.returncode == -9:  # SIGKILL; most likely ran out of memory
+            error_description += "; process killed due to insufficient memory"
+        logger.exception(f"Processing point cloud failed (point_cloud:{pointCloudId} "
+                         f"path_to_original_point_clouds:{path_to_original_point_clouds} ).")
+        raise PointCloudConversionException(error_description)
 
     with create_task_session() as session:
         point_cloud = PointCloudService.get(session, pointCloudId)

@@ -2,6 +2,7 @@ from unittest.mock import patch
 import pytest
 import os
 import re
+import subprocess
 
 from geoapi.models import Feature, ImportedFile
 from geoapi.db import db_session, create_task_session
@@ -333,7 +334,34 @@ def test_import_point_clouds_from_agave_conversion_error(MockAgaveUtils,
     db_session.refresh(point_cloud_fixture)
     point_cloud = point_cloud_fixture
     assert point_cloud.task.status == "FAILED"
-    assert point_cloud.task.description == ""
+    assert point_cloud.task.description == "Unknown error occurred"
+    assert len(os.listdir(get_asset_path(point_cloud_fixture.path, PointCloudService.ORIGINAL_FILES_DIR))) == 1
+
+
+@pytest.mark.worker
+@patch("geoapi.tasks.external_data.AgaveUtils")
+@patch("geoapi.tasks.lidar.run_potree_converter")
+def test_import_point_clouds_from_agave_conversion_error_due_to_memory_sigterm(mock_run_potree_converter,
+                                                                               MockAgaveUtils,
+                                                                               user1,
+                                                                               projects_fixture,
+                                                                               point_cloud_fixture,
+                                                                               lidar_las1pt2_file_fixture):
+    MockAgaveUtils().getFile.return_value = lidar_las1pt2_file_fixture
+
+    # Mock subprocess.run to raise CalledProcessError with returncode -9 (SIGKILL)
+    mock_run_potree_converter.side_effect = subprocess.CalledProcessError(
+        returncode=-9,
+        cmd=["/opt/PotreeConverter/build/PotreeConverter", "--verbose", "-i", "/path/to/input", "-o", "/path/to/output"]
+    )
+
+    files = [{"system": "designsafe.storage.default", "path": "file1.las"}]
+    import_point_clouds_from_agave(user1.id, files, point_cloud_fixture.id)
+
+    db_session.refresh(point_cloud_fixture)
+    point_cloud = point_cloud_fixture
+    assert point_cloud.task.status == "FAILED"
+    assert point_cloud.task.description == "Point cloud conversion failed; process killed due to insufficient memory"
     assert len(os.listdir(get_asset_path(point_cloud_fixture.path, PointCloudService.ORIGINAL_FILES_DIR))) == 1
 
 

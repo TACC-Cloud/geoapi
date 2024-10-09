@@ -20,7 +20,7 @@ from geoapi.services.features import FeaturesService
 from geoapi.services.imports import ImportsService
 from geoapi.services.vectors import SHAPEFILE_FILE_ADDITIONAL_FILES
 import geoapi.services.point_cloud as pointcloud
-from geoapi.tasks.lidar import convert_to_potree, check_point_cloud, get_point_cloud_info
+from geoapi.tasks.lidar import convert_to_potree, check_point_cloud, get_point_cloud_info, PointCloudConversionException
 from geoapi.db import create_task_session
 from geoapi.services.notifications import NotificationsService
 from geoapi.services.users import UserService
@@ -154,6 +154,19 @@ def _update_point_cloud_task(database_session, pointCloudId: int, description: s
     database_session.commit()
 
 
+def _handle_point_cloud_conversion_error(pointCloudId, userId, files, error_description):
+    with create_task_session() as session:
+        user = session.query(User).get(userId)
+        logger.exception(
+            f"point cloud:{pointCloudId} conversion failed for user:{user.username} and files:{files}. "
+            f"error:  {error_description}")
+        _update_point_cloud_task(session, pointCloudId, description=error_description, status="FAILED")
+        NotificationsService.create(session,
+                                    user,
+                                    "error",
+                                    f"Processing failed for point cloud ({pointCloudId})!")
+
+
 @app.task(rate_limit="1/s")
 def import_point_clouds_from_agave(userId: int, files, pointCloudId: int):
     with create_task_session() as session:
@@ -220,13 +233,12 @@ def import_point_clouds_from_agave(userId: int, files, pointCloudId: int):
                 NotificationsService.create(session, user, "error", failed_message)
                 return
 
-        _update_point_cloud_task(session, pointCloudId, description="Running potree converter", status="RUNNING")
-
         point_cloud.files_info = get_point_cloud_info(session, pointCloudId)
 
         session.add(point_cloud)
         session.commit()
 
+        _update_point_cloud_task(session, pointCloudId, description="Running potree converter", status="RUNNING")
         NotificationsService.create(session,
                                     user,
                                     "success",
@@ -243,12 +255,12 @@ def import_point_clouds_from_agave(userId: int, files, pointCloudId: int):
                                         user,
                                         "success",
                                         "Completed potree converter (for point cloud {}).".format(pointCloudId))
-    except:  # noqa: E722
-        with create_task_session() as session:
-            user = session.query(User).get(userId)
-            logger.exception(f"point cloud:{pointCloudId} conversion failed for user:{user.username} and files:{files}")
-            _update_point_cloud_task(session, pointCloudId, description="", status="FAILED")
-            NotificationsService.create(session, user, "error", "Processing failed for point cloud ({})!".format(pointCloudId))
+    except PointCloudConversionException as e:
+        error_description = e.message
+        _handle_point_cloud_conversion_error(pointCloudId, userId, files, error_description)
+    except Exception:
+        error_description = "Unknown error occurred"
+        _handle_point_cloud_conversion_error(pointCloudId, userId, files, error_description)
 
 
 @app.task(rate_limit="5/s")
