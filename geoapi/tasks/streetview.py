@@ -199,7 +199,7 @@ def check_existing_upload(session, user, streetview_service, task_uuid, system_i
 
 
 # TODO: Ensure that just user works and not userid (previously took userid)
-@app.task(rate_limit="5/s")
+@app.task(queue='heavy')
 def from_tapis_to_streetview(user_id: int,
                              streetview_service_id: int,
                              system_id: str,
