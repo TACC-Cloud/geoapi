@@ -167,7 +167,7 @@ def _handle_point_cloud_conversion_error(pointCloudId, userId, files, error_desc
                                     f"Processing failed for point cloud ({pointCloudId})!")
 
 
-@app.task(rate_limit="1/s")
+@app.task(queue='heavy')
 def import_point_clouds_from_agave(userId: int, files, pointCloudId: int):
     with create_task_session() as session:
         user = session.query(User).get(userId)

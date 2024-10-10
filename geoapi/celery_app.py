@@ -15,6 +15,14 @@ app = Celery('hello',
              broker=CELERY_CONNECTION_STRING,
              include=['geoapi.tasks'])
 
+# Define the queues
+app.conf.task_queues = {
+    'default': {'exchange': 'default', 'routing_key': 'default'},
+    'heavy': {'exchange': 'heavy', 'routing_key': 'heavy'}
+}
+
+app.conf.task_default_queue = 'default'
+
 app.conf.beat_schedule = {
     'refresh_projects_watch_content': {
         'task': 'geoapi.tasks.external_data.refresh_projects_watch_content',

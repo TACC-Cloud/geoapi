@@ -59,7 +59,12 @@ services:
     tty: true
     container_name: geoapiworkers
     hostname: geoapiworkers
-    command: "celery -A geoapi.celery_app worker -l info"
+    command: >
+      sh -c '
+      celery -A geoapi.celery_app worker -l info -Q default -n default_worker@geoapi &
+      celery -A geoapi.celery_app worker -l info -Q heavy --concurrency=6 -n heavy_worker@geoapi &
+      wait
+      '
 
   celerybeat:
     image: taccaci/geoapi-workers:local
