@@ -57,6 +57,7 @@ class FeatureAsset(Base):
     id = Column(Integer, primary_key=True)
     feature_id = Column(ForeignKey('features.id', ondelete="CASCADE", onupdate="CASCADE"), index=True)
     uuid = Column(UUID(as_uuid=True), default=uuid.uuid4, nullable=False)
+    # system or project id or both
     path = Column(String(), nullable=False)
     original_name = Column(String(), nullable=True)
     original_path = Column(String(), nullable=True, index=True)
