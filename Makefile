@@ -49,9 +49,7 @@ deploy:
 .PHONY: deploy-geoapi
 deploy-geoapi:
 	docker push $(GEOAPI_IMAGE):$(TAG)
-	docker push $(GEOAPI_IMAGE):latest
 
 .PHONY: deploy-workers
 deploy-workers:
 	docker push $(GEOAPI_WORKERS):$(TAG)
-	docker push $(GEOAPI_WORKERS):latest
