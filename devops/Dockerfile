@@ -19,5 +19,6 @@ RUN poetry install
 
 RUN mkdir /app
 COPY geoapi /app/geoapi
-ENV PYTHONPATH "${PYTHONPATH}:/app"
+ENV PYTHONPATH=/app
+
 WORKDIR /app/geoapi
