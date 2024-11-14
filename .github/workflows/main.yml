@@ -64,7 +64,7 @@ jobs:
       - name: Install Python Packages
         run: |
           cd devops
-          poetry install
+          poetry install --with dev,flask
       - name: Run server-side unit tests
         run: |
           cd devops
@@ -94,7 +94,7 @@ jobs:
       - name: Build worker image
         run: |
           docker pull taccaci/geoapi-workers:latest
-          docker build --cache-from taccaci/geoapi-workers:latest -t taccaci/geoapi-workers:latest -f devops/Dockerfile.worker .
+          docker build --cache-from taccaci/geoapi-workers:latest -t taccaci/geoapi-workers:latest -f devops/Dockerfile.worker --target development .
       - name: Run worker test
         run: |
           docker run --network="host" -e APP_ENV='testing' -e DB_HOST='localhost'  taccaci/geoapi-workers:latest pytest -m "worker"
