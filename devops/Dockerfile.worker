@@ -1,4 +1,6 @@
-FROM ubuntu:22.04
+FROM python:3.11-slim AS python-base
+
+LABEL maintainer="DesignSafe-CI <designsafe-ci@tacc.utexas.edu>"
 
 ENV DEBIAN_FRONTEND=noninteractive
 
@@ -16,58 +18,67 @@ RUN apt-get update && apt-get install -y \
     git \
     cmake \
     build-essential \
-    python3.9 \
-    python3-pip \
-    python3-dev \
     ffmpeg \
     unzip \
     wget \
     libc6-dev \
     libtbb-dev\
-    libcgal-dev
+    libcgal-dev \
+    && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /opt
 
 # Install PotreeConverter
 # c2328c4 is v2.1.1 and some additional fixes
-RUN git clone -b develop https://github.com/potree/PotreeConverter.git && cd PotreeConverter && git checkout c2328c4 && \
-mkdir build && cd build && \
-cmake .. -DCMAKE_BUILD_TYPE=Release && \
-make
+RUN git clone -b develop https://github.com/potree/PotreeConverter.git \
+    && cd PotreeConverter \
+    && git checkout c2328c4 \
+    && mkdir build \
+    && cd build \
+    && cmake .. -DCMAKE_BUILD_TYPE=Release \
+    && make
 
 # Setup our page template for PotreeConverter
-ADD devops/misc/potree/page_template/nsf_logo.png /opt/PotreeConverter/build/resources/page_template/
-ADD devops/misc/potree/page_template/nsf_logo_snippet.txt /tmp/
+COPY devops/misc/potree/page_template/nsf_logo.png /opt/PotreeConverter/build/resources/page_template/
+COPY devops/misc/potree/page_template/nsf_logo_snippet.txt /tmp/
+
 #  - add nsf logo
 RUN sed -i '/<body>/r /tmp/nsf_logo_snippet.txt' /opt/PotreeConverter/build/resources/page_template/viewer_template.html
+
 #  - remove reference to background image
 RUN sed -i 's/style="[^"]*background-image:[^"]*"//' /opt/PotreeConverter/build/resources/page_template/viewer_template.html
 
-
 # Install Miniforge for our Python environment (provides easier PDAL installation)
-RUN wget -q -O miniforge.sh https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-Linux-$(uname -m).sh && \
-    sh miniforge.sh -b -p /opt/conda && \
-    rm miniforge.sh
+RUN wget -q -O miniforge.sh https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-Linux-$(uname -m).sh \
+    && sh miniforge.sh -b -p /opt/conda \
+    && rm miniforge.sh
+
 ENV PATH="/opt/conda/bin:${PATH}"
 
-# Create a conda environment with Python 3.9 and activate it
-RUN conda create -n py39env python=3.9 -y
-SHELL ["conda", "run", "-n", "py39env", "/bin/bash", "-c"]
+# Create a conda environment with Python 3.11 and activate it
+RUN conda create -n py311env python=3.11 -y
+SHELL ["conda", "run", "-n", "py311env", "/bin/bash", "-c"]
 
 # Install PDAL using conda
 RUN conda install -c conda-forge pdal -y
 
-# Install needed python packages using poetry
-RUN pip install poetry==1.8.3
-RUN poetry config virtualenvs.create false
-COPY devops/pyproject.toml devops/poetry.lock ./
-RUN poetry install
+# https://python-poetry.org/docs/configuration/#using-environment-variables
+ENV POETRY_VERSION=1.8 \
+    POETRY_HOME="/opt/poetry" \
+    POETRY_VIRTUALENVS_IN_PROJECT=true \
+    PYSETUP_PATH="/opt/pysetup" \
+    VENV_PATH="/opt/pysetup/.venv"
 
-# Populate image with geoapi and set PYTHONPATH
-RUN mkdir app
+ENV PATH="$VENV_PATH/bin:$POETRY_HOME/bin:$PATH"
+
+# Install poetry version $POETRY_VERSION to $POETRY_HOME
+RUN pip3 install --no-cache-dir --upgrade pip setuptools wheel \
+    && python3 -m venv "$POETRY_HOME" \
+    && "$POETRY_HOME/bin/pip" install --no-cache-dir poetry=="$POETRY_VERSION"
+
+COPY devops/pyproject.toml devops/poetry.lock ./
+
 COPY geoapi /app/geoapi
-WORKDIR /app/geoapi
-ENV PYTHONPATH=/app
 
 # Create an entrypoint script that activates our conda environment
 RUN echo '#!/bin/bash' > /usr/local/bin/entrypoint.sh && \
@@ -90,3 +101,21 @@ RUN echo '. /opt/conda/etc/profile.d/conda.sh' >> /root/.bashrc && \
 
 # Set a default command (can be overridden by docker-compose)
 CMD ["bash"]
+
+##############
+# `development` image target is used for local development
+FROM python-base AS development
+
+# Install dev dependencies
+RUN "$POETRY_HOME/bin/poetry" install --with dev,worker
+
+WORKDIR /app/geoapi
+
+##############
+# `production` image target is used for deployed runtime environments
+FROM python-base AS production
+
+# Install runtime dependencies
+RUN "$POETRY_HOME/bin/poetry" install --with worker
+
+WORKDIR /app/geoapi
