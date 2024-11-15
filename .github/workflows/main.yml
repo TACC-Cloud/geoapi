@@ -64,7 +64,7 @@ jobs:
       - name: Install Python Packages
         run: |
           cd devops
-          poetry install --with dev,flask
+          poetry install --with dev,flask,worker
       - name: Run server-side unit tests
         run: |
           cd devops

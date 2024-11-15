@@ -107,7 +107,7 @@ CMD ["bash"]
 FROM python-base AS development
 
 # Install dev dependencies
-RUN "$POETRY_HOME/bin/poetry" install --with dev,worker
+RUN "$POETRY_HOME/bin/poetry" install --with dev,worker,flask
 
 WORKDIR /app/geoapi
 

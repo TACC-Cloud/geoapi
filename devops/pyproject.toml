@@ -16,7 +16,6 @@ gevent = "^24.11.1"
 psycopg2 = "^2.9.10"
 configparser = "^5.2.0"
 sqlalchemy-utils = "^0.41.2"
-laspy = "1.6.0"
 
 [tool.poetry.group.worker]
 optional = true
@@ -28,6 +27,7 @@ pyproj = "^3.3.0"
 Shapely = "^1.8"
 Pillow = "^9.2.0"
 Fiona = "1.10.1"
+laspy = "1.6.0"
 ExifRead = "^2.3.2"
 mapillary-tools = "0.9.5"
 
