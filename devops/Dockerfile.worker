@@ -78,8 +78,6 @@ RUN pip3 install --no-cache-dir --upgrade pip setuptools wheel \
 
 COPY devops/pyproject.toml devops/poetry.lock ./
 
-COPY geoapi /app/geoapi
-
 # Create an entrypoint script that activates our conda environment
 RUN echo '#!/bin/bash' > /usr/local/bin/entrypoint.sh && \
     echo 'set -e' >> /usr/local/bin/entrypoint.sh && \
@@ -107,7 +105,11 @@ CMD ["bash"]
 FROM python-base AS development
 
 # Install dev dependencies
-RUN "$POETRY_HOME/bin/poetry" install --with dev,worker,flask
+RUN "$POETRY_HOME/bin/poetry" install --with dev,flask,worker
+
+COPY geoapi /app/geoapi
+
+ENV PYTHONPATH=/app
 
 WORKDIR /app/geoapi
 
@@ -116,6 +118,10 @@ WORKDIR /app/geoapi
 FROM python-base AS production
 
 # Install runtime dependencies
-RUN "$POETRY_HOME/bin/poetry" install --with worker
+RUN "$POETRY_HOME/bin/poetry" install --with flask,worker
+
+COPY geoapi /app/geoapi
+
+ENV PYTHONPATH=/app
 
 WORKDIR /app/geoapi

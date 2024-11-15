@@ -16,7 +16,7 @@ RUN apt-get update && apt-get install -y \
 # https://python-poetry.org/docs/configuration/#using-environment-variables
 ENV POETRY_VERSION=1.8 \
     POETRY_HOME="/opt/poetry" \
-    POETRY_VIRTUALENVS_IN_PROJECT=false \
+    POETRY_VIRTUALENVS_IN_PROJECT=true \
     PYSETUP_PATH="/opt/pysetup" \
     VENV_PATH="/opt/pysetup/.venv"
 
@@ -37,9 +37,11 @@ COPY devops/poetry.lock devops/pyproject.toml ./
 FROM python-base AS development
 
 # Install dev dependencies
-RUN "$POETRY_HOME/bin/poetry" install --with dev,flask
+RUN "$POETRY_HOME/bin/poetry" install --with dev,flask,worker
 
 COPY geoapi /app/geoapi
+
+ENV PYTHONPATH=/app
 
 WORKDIR /app/geoapi
 
@@ -48,8 +50,10 @@ WORKDIR /app/geoapi
 FROM python-base AS production
 
 # Install runtime dependencies
-RUN "$POETRY_HOME/bin/poetry" install --with flask
+RUN "$POETRY_HOME/bin/poetry" install --with flask,worker
 
 COPY geoapi /app/geoapi
+
+ENV PYTHONPATH=/app
 
 WORKDIR /app/geoapi
