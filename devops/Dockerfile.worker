@@ -86,7 +86,7 @@ RUN echo '#!/bin/bash' > /usr/local/bin/entrypoint.sh && \
     echo '' >> /usr/local/bin/entrypoint.sh && \
     echo '# Activate conda and the specific environment' >> /usr/local/bin/entrypoint.sh && \
     echo '. /opt/conda/etc/profile.d/conda.sh' >> /usr/local/bin/entrypoint.sh && \
-    echo 'conda activate py39env' >> /usr/local/bin/entrypoint.sh && \
+    echo 'conda activate py311env' >> /usr/local/bin/entrypoint.sh && \
     echo '' >> /usr/local/bin/entrypoint.sh && \
     echo '# Execute the passed command' >> /usr/local/bin/entrypoint.sh && \
     echo 'exec "$@"' >> /usr/local/bin/entrypoint.sh && \
@@ -97,7 +97,7 @@ ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
 
 # activate conda (to handle when user starts a bash via docker exec)
 RUN echo '. /opt/conda/etc/profile.d/conda.sh' >> /root/.bashrc && \
-    echo 'conda activate py39env' >> /root/.bashrc
+    echo 'conda activate py311env' >> /root/.bashrc
 
 # Set a default command (can be overridden by docker-compose)
 CMD ["bash"]
