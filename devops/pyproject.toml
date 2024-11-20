@@ -36,12 +36,12 @@ optional = true
 [tool.poetry.group.worker.dependencies]
 ExifRead = "^2.3.2"
 Fiona = "1.10.1"
-geopandas = "^0.10.2"
-laspy = "1.6.0"
-mapillary-tools = "0.9.5"
-Pillow = "^9.2.0"
-pyproj = "^3.3.0"
-Shapely = "^1.8"
+geopandas = "^1.0.1"
+laspy = "^2.5.4"
+mapillary-tools = "^0.11.2"
+pillow = "^11.0.0"
+pyproj = "^3.7.0"
+shapely = "^2.0.6"
 
 [tool.poetry.group.dev]
 optional = true
