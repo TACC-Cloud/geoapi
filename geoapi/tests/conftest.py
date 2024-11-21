@@ -260,9 +260,9 @@ def empty_las_file_path_fixture():
     with tempfile.TemporaryDirectory() as temp_dir:
         empty_las_file_path = os.path.join(temp_dir, "empty.las")
 
-        header = laspy.header.Header()
-        outfile = laspy.file.File(empty_las_file_path, mode="w", header=header)
-        outfile.close()
+        header = laspy.header.LasHeader()
+        outfile = laspy.LasData(header)
+        outfile.write(empty_las_file_path)
         yield empty_las_file_path
 
 
