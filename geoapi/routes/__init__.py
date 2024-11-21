@@ -7,17 +7,11 @@ from .public_projects import api as public_projects
 from .auth import api as auth
 
 api = Api(
-    title='GeoAPI',
-    version='0.2',
-    description='Geospatial API for TAPIS',
-    security=['JWT'],
-    authorizations={
-        'JWT': {
-            'type': 'apiKey',
-            'name': 'X-Tapis-Token',
-            'in': 'header'
-        }
-    }
+    title="GeoAPI",
+    version="0.2",
+    description="Geospatial API for TAPIS",
+    security=["JWT"],
+    authorizations={"JWT": {"type": "apiKey", "name": "X-Tapis-Token", "in": "header"}},
 )
 
 api.add_namespace(projects)

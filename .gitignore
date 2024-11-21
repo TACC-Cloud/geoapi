@@ -133,3 +133,5 @@ client/swagger-codegen/
 
 # celerybeat schedule files
 celerybeat-schedule.*
+
+.vscode/

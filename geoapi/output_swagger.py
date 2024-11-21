@@ -5,7 +5,7 @@ import argparse
 
 def write_openapi_definition(filename):
     with app.test_request_context():
-        with open(filename, 'w') as f:
+        with open(filename, "w") as f:
             f.write(json.dumps(api.__schema__))
 
 

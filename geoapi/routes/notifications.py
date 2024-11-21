@@ -9,30 +9,34 @@ from dateutil import parser, tz
 
 logger = logging.getLogger(__name__)
 
-api = Namespace('notifications', decorators=[jwt_decoder])
+api = Namespace("notifications", decorators=[jwt_decoder])
 
-notification_response = api.model('NotificationResponse', {
-    "status": fields.String(),
-    "message": fields.String(),
-    "created": fields.DateTime(),
-    "viewed": fields.Boolean(),
-    "id": fields.Integer()
-})
+notification_response = api.model(
+    "NotificationResponse",
+    {
+        "status": fields.String(),
+        "message": fields.String(),
+        "created": fields.DateTime(),
+        "viewed": fields.Boolean(),
+        "id": fields.Integer(),
+    },
+)
 
-progress_notification_response = api.model('ProgressNotificationResponse', {
-    "status": fields.String(),
-    "message": fields.String(),
-    "progress": fields.Integer(),
-    "uuid": fields.String(),
-    "created": fields.DateTime(),
-    "viewed": fields.Boolean(),
-    "id": fields.Integer(),
-    "logs": fields.Raw()
-})
+progress_notification_response = api.model(
+    "ProgressNotificationResponse",
+    {
+        "status": fields.String(),
+        "message": fields.String(),
+        "progress": fields.Integer(),
+        "uuid": fields.String(),
+        "created": fields.DateTime(),
+        "viewed": fields.Boolean(),
+        "id": fields.Integer(),
+        "logs": fields.Raw(),
+    },
+)
 
-ok_response = api.model('OkResponse', {
-    "message": fields.String(default="accepted")
-})
+ok_response = api.model("OkResponse", {"message": fields.String(default="accepted")})
 
 
 def utc_datetime(value):
@@ -44,11 +48,14 @@ def utc_datetime(value):
 @api.route("/")
 class Notifications(Resource):
     parser = api.parser()
-    parser.add_argument('startDate', location='args', type=utc_datetime,
-                        help="Only return notifications created more recently than startDate")
+    parser.add_argument(
+        "startDate",
+        location="args",
+        type=utc_datetime,
+        help="Only return notifications created more recently than startDate",
+    )
 
-    @api.doc(id="get",
-             description='Get a list of notifications')
+    @api.doc(id="get", description="Get a list of notifications")
     @api.marshal_with(notification_response, as_list=True)
     @not_anonymous
     def get(self):
@@ -59,15 +66,13 @@ class Notifications(Resource):
 
 @api.route("/progress")
 class ProgressNotifications(Resource):
-    @api.doc(id="get",
-             description='Get a list of progress notifications')
+    @api.doc(id="get", description="Get a list of progress notifications")
     @api.marshal_with(progress_notification_response, as_list=True)
     def get(self):
         u = request.current_user
         return NotificationsService.getProgress(db_session, u)
 
-    @api.doc(id="delete",
-             description='Delete all done progress notifications')
+    @api.doc(id="delete", description="Delete all done progress notifications")
     @api.marshal_with(progress_notification_response, as_list=True)
     def delete(self):
         return NotificationsService.deleteAllDoneProgress(db_session)
@@ -75,14 +80,12 @@ class ProgressNotifications(Resource):
 
 @api.route("/progress/<string:progressUUID>")
 class ProgressNotificationResource(Resource):
-    @api.doc(id="get",
-             description='Get a specific progress notification')
+    @api.doc(id="get", description="Get a specific progress notification")
     @api.marshal_with(progress_notification_response)
     def get(self, progressUUID):
         return NotificationsService.getProgressUUID(db_session, progressUUID)
 
-    @api.doc(id="delete",
-             description='Delete a specific progress notification')
+    @api.doc(id="delete", description="Delete a specific progress notification")
     @api.marshal_with(ok_response)
     def delete(self, progressUUID):
         return NotificationsService.deleteProgress(db_session, progressUUID)

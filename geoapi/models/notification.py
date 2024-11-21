@@ -1,7 +1,4 @@
-from sqlalchemy import (
-    Column, Integer, String,
-    Boolean, DateTime
-)
+from sqlalchemy import Column, Integer, String, Boolean, DateTime
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.sql import func
@@ -10,7 +7,7 @@ from geoapi.db import Base
 
 class Notification(Base):
 
-    __tablename__ = 'notifications'
+    __tablename__ = "notifications"
     id = Column(Integer, primary_key=True)
     username = Column(String, nullable=False, index=True)
     tenant_id = Column(String, nullable=False)
@@ -22,7 +19,7 @@ class Notification(Base):
 
 class ProgressNotification(Base):
 
-    __tablename__ = 'progress_notifications'
+    __tablename__ = "progress_notifications"
     id = Column(Integer, primary_key=True)
     user_id = Column(Integer)
     tenant_id = Column(String)

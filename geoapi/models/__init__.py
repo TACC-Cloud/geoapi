@@ -9,4 +9,9 @@ from .tile_server import TileServer
 from .observable_data import ObservableDataProject
 from .notification import Notification, ProgressNotification
 from .imported_file import ImportedFile
-from .streetview import Streetview, StreetviewInstance, StreetviewSequence, StreetviewOrganization
+from .streetview import (
+    Streetview,
+    StreetviewInstance,
+    StreetviewSequence,
+    StreetviewOrganization,
+)

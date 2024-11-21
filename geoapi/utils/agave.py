@@ -28,11 +28,11 @@ SLEEP_SECONDS_BETWEEN_RETRY = 2
 
 
 class AgaveListingError(Exception):
-    ''' Exception raised when unable to list directory from Agave.
+    """Exception raised when unable to list directory from Agave.
     Attributes:
         response -- response object that caused the error
         message -- explanation of the error
-    '''
+    """
 
     def __init__(self, response, message):
         self.response = response
@@ -44,17 +44,18 @@ class AgaveListingError(Exception):
 
 
 class AgaveFileGetError(Exception):
-    '''' Unable to fetch file from agave
-    '''
+    """' Unable to fetch file from agave"""
+
     pass
 
 
 class RetryableTapisFileError(Exception):
-    """ Tapis file errors which are known to possibly work if retried.
+    """Tapis file errors which are known to possibly work if retried.
 
-        This is raised if we know it is an error that we can re-attempt to get. Note that if we
-        try multiple times, and it still doesn't work, we then raise a AgaveFileGetError exception
+    This is raised if we know it is an error that we can re-attempt to get. Note that if we
+    try multiple times, and it still doesn't work, we then raise a AgaveFileGetError exception
     """
+
     pass
 
 
@@ -70,7 +71,7 @@ class AgaveFileListing:
 
     @property
     def ext(self):
-        return self.path.suffix.lstrip('.').lower()
+        return self.path.suffix.lstrip(".").lower()
 
 
 def get_session(user: User):
@@ -80,14 +81,14 @@ def get_session(user: User):
     :param user: The user object containing the JWT.
     """
     client = requests.Session()
-    client.headers.update({'X-Tapis-Token': user.jwt})
+    client.headers.update({"X-Tapis-Token": user.jwt})
     return client
 
 
 class EnsureValidTokenMeta(type):
     def __new__(cls, name, bases, dct):
         for attr_name, attr in dct.items():
-            if callable(attr) and not attr_name.startswith('_'):
+            if callable(attr) and not attr_name.startswith("_"):
                 dct[attr_name] = cls.wrap_method(attr)
         return super().__new__(cls, name, bases, dct)
 
@@ -97,6 +98,7 @@ class EnsureValidTokenMeta(type):
         def wrapper(self, *args, **kwargs):
             self._ensure_valid_token()
             return method(self, *args, **kwargs)
+
         return wrapper
 
 
@@ -111,6 +113,7 @@ class ApiUtils(metaclass=EnsureValidTokenMeta):
     :param user: The user object containing the JWT.
     :param base_url: The base URL for the API endpoints.
     """
+
     def __init__(self, database_session, user: User, base_url: str):
         self.database_session = database_session
         self.user = user
@@ -118,7 +121,7 @@ class ApiUtils(metaclass=EnsureValidTokenMeta):
         self.client = get_session(user)
 
     def get(self, url, params=None):
-        """ Make get request"""
+        """Make get request"""
         return self.client.get(self.base_url + url, params=params)
 
     def _ensure_valid_token(self):
@@ -133,20 +136,32 @@ class ApiUtils(metaclass=EnsureValidTokenMeta):
         try:
             # if we can refresh token, and our token is about to expire,
             # let's go ahead and refreshit.
-            if (self.user.has_unexpired_refresh_token() and
-                    self.user.auth.access_token
-                    and jwt_utils.token_will_expire_soon(self.user.auth.access_token)):
-                logger.debug(f"user:{self.user} has a token about to expire or has expired; we will refresh it.")
+            if (
+                self.user.has_unexpired_refresh_token()
+                and self.user.auth.access_token
+                and jwt_utils.token_will_expire_soon(self.user.auth.access_token)
+            ):
+                logger.debug(
+                    f"user:{self.user} has a token about to expire or has expired; we will refresh it."
+                )
 
                 UserService.refresh_access_token(self.database_session, self.user)
 
                 # Update the user and then the client after refreshing the token
-                self.user = self.database_session.query(User).filter(User.id == self.user.id).one()
+                self.user = (
+                    self.database_session.query(User)
+                    .filter(User.id == self.user.id)
+                    .one()
+                )
                 self.client = get_session(self.user)
         except RefreshTokenError:
-            logger.error(f"There was a problem refreshing access token of user:{self.user.username}.")
+            logger.error(
+                f"There was a problem refreshing access token of user:{self.user.username}."
+            )
         except Exception:
-            logger.exception(f"Something went wrong when ensuring that token was valid for user:{self.user.username}")
+            logger.exception(
+                f"Something went wrong when ensuring that token was valid for user:{self.user.username}"
+            )
 
         if not self.user.has_valid_token():
             msg = f"Access token of user:{self.user.username} is expired (or invalid)."
@@ -162,16 +177,20 @@ class AgaveUtils(ApiUtils):
 
         This constructor sets up a client session with headers updated for user's JWT.
         """
-        super().__init__(database_session=database_session, user=user, base_url=get_tapis_api_server(user.tenant_id))
+        super().__init__(
+            database_session=database_session,
+            user=user,
+            base_url=get_tapis_api_server(user.tenant_id),
+        )
 
     def systemsGet(self, systemId: str) -> Dict:
-        url = quote('/v3/systems/{}'.format(systemId))
+        url = quote("/v3/systems/{}".format(systemId))
         resp = self.get(url)
         listing = resp.json()
         return listing["result"]
 
     def systemsRolesGet(self, systemId: str) -> Dict:
-        url = quote('/systems/{}/roles'.format(systemId))
+        url = quote("/systems/{}/roles".format(systemId))
         resp = self.get(url)
         listing = resp.json()
         return listing["result"]
@@ -188,7 +207,8 @@ class AgaveUtils(ApiUtils):
             if resp.status_code != 200:
                 e = AgaveListingError(
                     message=f"Unable to perform files listing of {systemId}/{path}. Status code: {resp.status_code}",
-                    response=resp)
+                    response=resp,
+                )
                 raise e
 
             listing = resp.json()
@@ -208,9 +228,9 @@ class AgaveUtils(ApiUtils):
         :param uuid: str
         :return: Dict
         """
-        q = {'associationIds': uuid}
-        qstring = quote(json.dumps(q), safe='')
-        url = '/meta/data?q={}'.format(qstring)
+        q = {"associationIds": uuid}
+        qstring = quote(json.dumps(q), safe="")
+        url = "/meta/data?q={}".format(qstring)
         resp = self.get(url)
         meta = resp.json()
         results = [rec["value"] for rec in meta["result"]]
@@ -236,13 +256,16 @@ class AgaveUtils(ApiUtils):
 
             if r.status_code > 400:
                 if r.status_code != 404:
-                    logger.warning(f"Fetch file ({systemId}/{path}) but got {r.status_code}, {r}: {r.content}")
+                    logger.warning(
+                        f"Fetch file ({systemId}/{path}) but got {r.status_code}, {r}: {r.content}"
+                    )
                     raise RetryableTapisFileError
 
-                raise AgaveFileGetError("Could not fetch file ({}/{}) status_code:{} content:{}".format(systemId,
-                                                                                                        path,
-                                                                                                        r.status_code,
-                                                                                                        r.content))
+                raise AgaveFileGetError(
+                    "Could not fetch file ({}/{}) status_code:{} content:{}".format(
+                        systemId, path, r.status_code, r.content
+                    )
+                )
             tmpFile = NamedTemporaryFile()
             for chunk in r.iter_content(1024 * 1024):
                 tmpFile.write(chunk)
@@ -278,12 +301,16 @@ class AgaveUtils(ApiUtils):
                 return self._get_file(systemId, path)
             except RetryableTapisFileError:
                 allowed_attempts = allowed_attempts - 1
-                logger.error(f"File fetching failed but is retryable: ({systemId}/{path}) ")
+                logger.error(
+                    f"File fetching failed but is retryable: ({systemId}/{path}) "
+                )
                 if allowed_attempts > 0:
                     time.sleep(SLEEP_SECONDS_BETWEEN_RETRY)
                 continue
             except Exception as e:
-                logger.exception(f"Could not fetch file and did not attempt to retry: ({systemId}/{path})")
+                logger.exception(
+                    f"Could not fetch file and did not attempt to retry: ({systemId}/{path})"
+                )
                 raise e
         msg = f"Could not fetch file and no longer retrying.: ({systemId}/{path})"
         logger.exception(msg)
@@ -295,32 +322,34 @@ class AgaveUtils(ApiUtils):
 
     def get_file_to_path(self, system_id: str, path: str, destination_path: str):
         """
-          Download a file from tapis
+        Download a file from tapis
 
-          This method differs from getFile as here we write to non-temporary file
+        This method differs from getFile as here we write to non-temporary file
 
-          :param system_id: str
-          :param path: str
-          :param destination_path: str desired location of file
+        :param system_id: str
+        :param path: str
+        :param destination_path: str desired location of file
 
-          :return: temporary file
+        :return: temporary file
         """
         with self.get_file_context_manager(system_id, path) as file_obj:
-            with open(destination_path, 'wb+') as target_file:
+            with open(destination_path, "wb+") as target_file:
                 shutil.copyfileobj(file_obj, target_file)
 
-    def create_file(self, system_id: str, system_path: str, file_name: str, file_content: str):
+    def create_file(
+        self, system_id: str, system_path: str, file_name: str, file_content: str
+    ):
         """
         Create a file on a Tapis storage system.
         """
-        file_content = file_content.encode('utf-8')
+        file_content = file_content.encode("utf-8")
         file_like_object = io.BytesIO(file_content)
 
-        files = {
-            'file': (file_name, file_like_object, 'plain/text')
-        }
-        file_import_url = self.base_url + quote(f"/v3/files/ops/{system_id}/{system_path}/{file_name}")
-        file_import_url = re.sub(r'(?<!:)/+', '/', file_import_url)
+        files = {"file": (file_name, file_like_object, "plain/text")}
+        file_import_url = self.base_url + quote(
+            f"/v3/files/ops/{system_id}/{system_path}/{file_name}"
+        )
+        file_import_url = re.sub(r"(?<!:)/+", "/", file_import_url)
         response = self.client.post(file_import_url, files=files)
         response.raise_for_status()
 
@@ -328,8 +357,10 @@ class AgaveUtils(ApiUtils):
         """
         Deletes a file on a Tapis storage system.
         """
-        file_delete_url = self.base_url + quote(f"/v3/files/ops/{system_id}/{file_path}")
-        file_delete_url = re.sub(r'(?<!:)/+', '/', file_delete_url)
+        file_delete_url = self.base_url + quote(
+            f"/v3/files/ops/{system_id}/{file_path}"
+        )
+        file_delete_url = re.sub(r"(?<!:)/+", "/", file_delete_url)
         response = self.client.delete(file_delete_url)
         response.raise_for_status()
 
@@ -351,7 +382,9 @@ def get_system_users(database_session, user: User, system_id: str) -> List[Syste
     :param system_id: str
     :return: list of users with admin status
     """
-    return custom_system_user_retrieval[user.tenant_id.upper()](database_session, user, system_id)
+    return custom_system_user_retrieval[user.tenant_id.upper()](
+        database_session, user, system_id
+    )
 
 
 def get_metadata(database_session, user: User, system_id: str, path: str) -> Dict:
@@ -367,8 +400,10 @@ def get_metadata(database_session, user: User, system_id: str, path: str) -> Dic
 
     logger.debug(f"getting metadata. system_id: {system_id}, path:{path}")
 
-    client = ApiUtils(database_session=database_session, user=user, base_url=settings.DESIGNSAFE_URL)
-    response = client.get(url=quote(f'/api/filemeta/{system_id}/{path}'))
+    client = ApiUtils(
+        database_session=database_session, user=user, base_url=settings.DESIGNSAFE_URL
+    )
+    response = client.get(url=quote(f"/api/filemeta/{system_id}/{path}"))
     response.raise_for_status()
     meta_response = response.json()
     meta = meta_response["value"] if "value" in meta_response else {}

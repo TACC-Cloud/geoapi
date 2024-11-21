@@ -13,7 +13,11 @@ from geoapi.utils import geometries
 from geoapi.celery_app import app
 from geoapi.db import create_task_session
 from geoapi.models import Task
-from geoapi.utils.assets import make_project_asset_dir, get_asset_path, get_asset_relative_path
+from geoapi.utils.assets import (
+    make_project_asset_dir,
+    get_asset_path,
+    get_asset_relative_path,
+)
 
 logger = logging.getLogger(__file__)
 
@@ -25,8 +29,13 @@ def get_point_cloud_files(path):
     :return: list of file paths of point cloud files
     """
     from geoapi.services.point_cloud import PointCloudService
-    input_files = [get_asset_path(path, file) for file in os.listdir(path)
-                   if pathlib.Path(file).suffix.lstrip('.').lower() in PointCloudService.LIDAR_FILE_EXTENSIONS]
+
+    input_files = [
+        get_asset_path(path, file)
+        for file in os.listdir(path)
+        if pathlib.Path(file).suffix.lstrip(".").lower()
+        in PointCloudService.LIDAR_FILE_EXTENSIONS
+    ]
     return input_files
 
 
@@ -50,10 +59,12 @@ def get_point_cloud_info(database_session, pointCloudId: int) -> dict:
     from geoapi.services.point_cloud import PointCloudService
 
     point_cloud = PointCloudService.get(database_session, pointCloudId)
-    path_to_original_point_clouds = get_asset_path(point_cloud.path, PointCloudService.ORIGINAL_FILES_DIR)
+    path_to_original_point_clouds = get_asset_path(
+        point_cloud.path, PointCloudService.ORIGINAL_FILES_DIR
+    )
     input_files = get_point_cloud_files(path_to_original_point_clouds)
 
-    return [{'name': os.path.basename(f)} for f in input_files]
+    return [{"name": os.path.basename(f)} for f in input_files]
 
 
 class PointCloudProcessingTask(celery.Task):
@@ -73,11 +84,13 @@ class PointCloudConversionException(Exception):
         super().__init__(self.message)
 
 
-def run_potree_converter(pointCloudId,
-                         path_to_original_point_clouds,
-                         path_temp_processed_point_cloud_path,
-                         conversion_parameters=None):
-    """ Run potree converter as external process """
+def run_potree_converter(
+    pointCloudId,
+    path_to_original_point_clouds,
+    path_temp_processed_point_cloud_path,
+    conversion_parameters=None,
+):
+    """Run potree converter as external process"""
     command = [
         "/opt/PotreeConverter/build/PotreeConverter",
         "--verbose",
@@ -87,11 +100,15 @@ def run_potree_converter(pointCloudId,
         path_temp_processed_point_cloud_path,
         "--overwrite",
         "--generate-page",
-        "index"
+        "index",
     ]
     if conversion_parameters:
         command.extend(conversion_parameters.split())
-    logger.info("Processing point cloud (#{}).  command:{}".format(pointCloudId, " ".join(command)))
+    logger.info(
+        "Processing point cloud (#{}).  command:{}".format(
+            pointCloudId, " ".join(command)
+        )
+    )
     subprocess.run(command, check=True, capture_output=True, text=True)
 
 
@@ -115,33 +132,55 @@ def convert_to_potree(self, pointCloudId: int) -> None:
     with create_task_session() as session:
         point_cloud = PointCloudService.get(session, pointCloudId)
         conversion_parameters = point_cloud.conversion_parameters
-        path_to_original_point_clouds = get_asset_path(point_cloud.path, PointCloudService.ORIGINAL_FILES_DIR)
-        path_temp_processed_point_cloud_path = get_asset_path(point_cloud.path, PointCloudService.PROCESSED_DIR)
+        path_to_original_point_clouds = get_asset_path(
+            point_cloud.path, PointCloudService.ORIGINAL_FILES_DIR
+        )
+        path_temp_processed_point_cloud_path = get_asset_path(
+            point_cloud.path, PointCloudService.PROCESSED_DIR
+        )
 
-    input_files = [get_asset_path(path_to_original_point_clouds, file)
-                   for file in os.listdir(path_to_original_point_clouds)
-                   if pathlib.Path(file).suffix.lstrip('.').lower() in PointCloudService.LIDAR_FILE_EXTENSIONS]
+    input_files = [
+        get_asset_path(path_to_original_point_clouds, file)
+        for file in os.listdir(path_to_original_point_clouds)
+        if pathlib.Path(file).suffix.lstrip(".").lower()
+        in PointCloudService.LIDAR_FILE_EXTENSIONS
+    ]
 
     outline = get_bounding_box_2d(input_files)
 
     try:
-        run_potree_converter(pointCloudId, path_to_original_point_clouds, path_temp_processed_point_cloud_path, conversion_parameters)
+        run_potree_converter(
+            pointCloudId,
+            path_to_original_point_clouds,
+            path_temp_processed_point_cloud_path,
+            conversion_parameters,
+        )
     except subprocess.CalledProcessError as e:
         error_description = "Point cloud conversion failed"
         if e.returncode == -9:  # SIGKILL; most likely ran out of memory
             error_description += "; process killed due to insufficient memory"
-        logger.exception(f"Processing point cloud failed (point_cloud:{pointCloudId} "
-                         f"path_to_original_point_clouds:{path_to_original_point_clouds} ).")
+        logger.exception(
+            f"Processing point cloud failed (point_cloud:{pointCloudId} "
+            f"path_to_original_point_clouds:{path_to_original_point_clouds} )."
+        )
         raise PointCloudConversionException(error_description)
 
     with create_task_session() as session:
         point_cloud = PointCloudService.get(session, pointCloudId)
         # Create preview viewer html (with no menu and now nsf logo)
-        with open(os.path.join(path_temp_processed_point_cloud_path, "preview.html"), 'w+') as preview:
-            with open(os.path.join(path_temp_processed_point_cloud_path, "index.html"), 'r') as viewer:
+        with open(
+            os.path.join(path_temp_processed_point_cloud_path, "preview.html"), "w+"
+        ) as preview:
+            with open(
+                os.path.join(path_temp_processed_point_cloud_path, "index.html"), "r"
+            ) as viewer:
                 content = viewer.read()
-                content = re.sub(r"<div class=\"nsf_logo\"(.+?)</div>", '', content, flags=re.DOTALL)
-                content = content.replace("viewer.toggleSidebar()", "$('.potree_menu_toggle').hide()")
+                content = re.sub(
+                    r"<div class=\"nsf_logo\"(.+?)</div>", "", content, flags=re.DOTALL
+                )
+                content = content.replace(
+                    "viewer.toggleSidebar()", "$('.potree_menu_toggle').hide()"
+                )
                 preview.write(content)
 
             if point_cloud.feature_id:
@@ -158,7 +197,7 @@ def convert_to_potree(self, pointCloudId: int) -> None:
                     asset_type="point_cloud",
                     path=get_asset_relative_path(asset_path),
                     display_path=point_cloud.description,
-                    feature=feature
+                    feature=feature,
                 )
                 feature.assets.append(fa)
                 point_cloud.feature = feature

@@ -10,18 +10,25 @@ from flask_restx import Namespace
 from flask.views import MethodView
 from geoapi.utils.decorators import jwt_decoder
 from geoapi.log import logging
-from geoapi.routes.projects import (ProjectsListing, ProjectResource,
-                                    ProjectFeaturesResource, ProjectFeatureResource,
-                                    ProjectOverlaysResource, ProjectPointCloudResource,
-                                    ProjectPointCloudsResource, ProjectTileServersResource)
+from geoapi.routes.projects import (
+    ProjectsListing,
+    ProjectResource,
+    ProjectFeaturesResource,
+    ProjectFeatureResource,
+    ProjectOverlaysResource,
+    ProjectPointCloudResource,
+    ProjectPointCloudsResource,
+    ProjectTileServersResource,
+)
 
 logger = logging.getLogger(__name__)
 
-api = Namespace('public-projects', decorators=[jwt_decoder])
+api = Namespace("public-projects", decorators=[jwt_decoder])
 
 
 class HideNonPublicMeta(type(MethodView)):
-    """ Metaclass to limit the `methods` (defined in MethodViewType) to just GET """
+    """Metaclass to limit the `methods` (defined in MethodViewType) to just GET"""
+
     def __init__(cls, name, bases, d):
         super().__init__(name, bases, d)
         # provide only GET so that our view no longer provides any potentially
@@ -29,41 +36,51 @@ class HideNonPublicMeta(type(MethodView)):
         cls.methods = ["GET"]
 
 
-@api.route('/')
+@api.route("/")
 class PublicProjectsListing(ProjectsListing, metaclass=HideNonPublicMeta):
     pass
 
 
-@api.route('/<int:projectId>/')
+@api.route("/<int:projectId>/")
 class PublicProjectResource(ProjectResource, metaclass=HideNonPublicMeta):
     pass
 
 
-@api.route('/<int:projectId>/features/')
-class PublicProjectFeaturesResource(ProjectFeaturesResource, metaclass=HideNonPublicMeta):
+@api.route("/<int:projectId>/features/")
+class PublicProjectFeaturesResource(
+    ProjectFeaturesResource, metaclass=HideNonPublicMeta
+):
     pass
 
 
-@api.route('/<int:projectId>/features/<int:featureId>/')
+@api.route("/<int:projectId>/features/<int:featureId>/")
 class PublicProjectFeatureResource(ProjectFeatureResource, metaclass=HideNonPublicMeta):
     pass
 
 
-@api.route('/<int:projectId>/overlays/')
-class PublicProjectOverlaysResource(ProjectOverlaysResource, metaclass=HideNonPublicMeta):
+@api.route("/<int:projectId>/overlays/")
+class PublicProjectOverlaysResource(
+    ProjectOverlaysResource, metaclass=HideNonPublicMeta
+):
     pass
 
 
-@api.route('/<int:projectId>/point-cloud/')
-class PublicProjectPointCloudsResource(ProjectPointCloudsResource, metaclass=HideNonPublicMeta):
+@api.route("/<int:projectId>/point-cloud/")
+class PublicProjectPointCloudsResource(
+    ProjectPointCloudsResource, metaclass=HideNonPublicMeta
+):
     pass
 
 
-@api.route('/<int:projectId>/point-cloud/<int:pointCloudId>/')
-class PublicProjectPointCloudResource(ProjectPointCloudResource, metaclass=HideNonPublicMeta):
+@api.route("/<int:projectId>/point-cloud/<int:pointCloudId>/")
+class PublicProjectPointCloudResource(
+    ProjectPointCloudResource, metaclass=HideNonPublicMeta
+):
     pass
 
 
-@api.route('/<int:projectId>/tile-servers/')
-class PublicProjectTileServersResource(ProjectTileServersResource, metaclass=HideNonPublicMeta):
+@api.route("/<int:projectId>/tile-servers/")
+class PublicProjectTileServersResource(
+    ProjectTileServersResource, metaclass=HideNonPublicMeta
+):
     pass

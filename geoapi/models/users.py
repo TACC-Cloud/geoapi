@@ -10,32 +10,41 @@ from geoapi.utils import jwt_utils
 
 
 class User(Base):
-    __tablename__ = 'users'
+    __tablename__ = "users"
     id = Column(Integer, primary_key=True)
     username = Column(String, unique=True, index=True)
     tenant_id = Column(String, nullable=False)
     created = Column(DateTime(timezone=True), server_default=func.now())
-    auth = relationship('Auth', uselist=False, cascade="all, delete-orphan")
-    streetviews = relationship('Streetview', cascade="all, delete-orphan")
-    projects = relationship('Project',
-                            secondary='projects_users',
-                            back_populates='users', lazy='select',
-                            overlaps="project,project_users")
+    auth = relationship("Auth", uselist=False, cascade="all, delete-orphan")
+    streetviews = relationship("Streetview", cascade="all, delete-orphan")
+    projects = relationship(
+        "Project",
+        secondary="projects_users",
+        back_populates="users",
+        lazy="select",
+        overlaps="project,project_users",
+    )
 
     def __repr__(self):
-        access_token_masked = self.auth.access_token[-5:] if self.auth.access_token else None
-        refresh_token_masked = self.auth.refresh_token[-5:] if self.auth.refresh_token else None
-        return (f'<User(uname={self.username}, '
-                f'id={self.id},'
-                f'tenant={self.tenant_id})'
-                f'access_token={access_token_masked},'
-                f'access_token_expires_at={self.auth.access_token_expires_at},'
-                f'refresh_token={refresh_token_masked},'
-                f'refresh_token_expires_at={self.auth.refresh_token_expires_at})> ')
+        access_token_masked = (
+            self.auth.access_token[-5:] if self.auth.access_token else None
+        )
+        refresh_token_masked = (
+            self.auth.refresh_token[-5:] if self.auth.refresh_token else None
+        )
+        return (
+            f"<User(uname={self.username}, "
+            f"id={self.id},"
+            f"tenant={self.tenant_id})"
+            f"access_token={access_token_masked},"
+            f"access_token_expires_at={self.auth.access_token_expires_at},"
+            f"refresh_token={refresh_token_masked},"
+            f"refresh_token_expires_at={self.auth.refresh_token_expires_at})> "
+        )
 
     @hybrid_property
     def jwt(self):
-        """ Get access token from auth"""
+        """Get access token from auth"""
         return self.auth.access_token
 
     def has_unexpired_refresh_token(self) -> bool:
@@ -52,9 +61,9 @@ class User(Base):
         return current_time <= (self.auth.refresh_token_expires_at - buffer)
 
     def has_valid_token(self) -> bool:
-        """ Check if access_token is valid"""
+        """Check if access_token is valid"""
         return (
-                self.auth and
-                self.auth.access_token and
-                jwt_utils.is_token_valid(self.auth.access_token)
+            self.auth
+            and self.auth.access_token
+            and jwt_utils.is_token_valid(self.auth.access_token)
         )
