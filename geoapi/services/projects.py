@@ -258,14 +258,12 @@ class ProjectsService:
 
         # The sub select that filters only on this projects ID, filters applied below
         sub_select = select(
-            [
-                text(
-                    """feat.*,  array_remove(array_agg(fa), null) as assets
+            text(
+                """feat.*,  array_remove(array_agg(fa), null) as assets
               from features as feat
               LEFT JOIN feature_assets fa on feat.id = fa.feature_id
              """
-                )
-            ]
+            )
         ).where(text("project_id = :projectId"))
 
         if bbox:
@@ -293,8 +291,8 @@ class ProjectsService:
         if len(assetQueries):
             sub_select = sub_select.where(text("(" + " OR ".join(assetQueries) + ")"))
 
-        sub_select = sub_select.group_by(text("feat.id")).alias("tmp")
-        s = select([select_stmt]).select_from(sub_select)
+        sub_select = sub_select.group_by(text("feat.id")).subquery("tmp")
+        s = select(select_stmt).select_from(sub_select)
         result = database_session.execute(s, params)
         out = result.fetchone()
         return out.geojson
