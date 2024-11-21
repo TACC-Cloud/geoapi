@@ -40,6 +40,7 @@ geopandas = "^1.0.1"
 laspy = "^2.5.4"
 mapillary-tools = "^0.11.2"
 pillow = "^11.0.0"
+pyogrio = "^0.10.0"
 pyproj = "^3.7.0"
 shapely = "^2.0.6"
 
