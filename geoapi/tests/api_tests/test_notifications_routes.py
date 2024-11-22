@@ -34,7 +34,7 @@ def test_get_notifications_unauthorized_guest(test_client, projects_fixture):
 
 
 def test_get_notifications(test_client, notifications):
-    u1 = db_session.query(User).get(1)
+    u1 = db_session.get(User, 1)
 
     resp = test_client.get("/notifications/", headers={"X-Tapis-Token": u1.jwt})
     data = resp.get_json()
@@ -43,7 +43,7 @@ def test_get_notifications(test_client, notifications):
 
 
 def test_filter_notifications(test_client, notifications):
-    u1 = db_session.query(User).get(1)
+    u1 = db_session.get(User, 1)
 
     resp = test_client.get(
         "/notifications/?startDate=2222-1-1T12:00:00+00:00",
@@ -55,7 +55,7 @@ def test_filter_notifications(test_client, notifications):
 
 
 def test_filter_notifications_positive(test_client, notifications):
-    u1 = db_session.query(User).get(1)
+    u1 = db_session.get(User, 1)
 
     resp = test_client.get(
         "/notifications/?startDate=1900-1-1T12:00:00+00:00",
@@ -67,7 +67,7 @@ def test_filter_notifications_positive(test_client, notifications):
 
 
 def test_get_progress_notifications(test_client, progress_notifications):
-    u1 = db_session.query(User).get(1)
+    u1 = db_session.get(User, 1)
 
     resp = test_client.get("/notifications/progress", headers={"X-Tapis-Token": u1.jwt})
 
@@ -77,7 +77,7 @@ def test_get_progress_notifications(test_client, progress_notifications):
 
 
 def test_delete_done_progress_notifications(test_client, progress_notifications):
-    u1 = db_session.query(User).get(1)
+    u1 = db_session.get(User, 1)
 
     resp = test_client.delete(
         "/notifications/progress", headers={"X-Tapis-Token": u1.jwt}
@@ -91,7 +91,7 @@ def test_delete_done_progress_notifications(test_client, progress_notifications)
 
 
 def test_get_progress_notification(test_client, progress_notifications):
-    u1 = db_session.query(User).get(1)
+    u1 = db_session.get(User, 1)
 
     resp = test_client.get(
         "/notifications/progress/{}".format(test_uuid1),
@@ -104,7 +104,7 @@ def test_get_progress_notification(test_client, progress_notifications):
 
 
 def test_delete_progress_notification(test_client, progress_notifications):
-    u1 = db_session.query(User).get(1)
+    u1 = db_session.get(User, 1)
 
     resp = test_client.delete(
         "/notifications/progress/{}".format(test_uuid1),

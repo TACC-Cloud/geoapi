@@ -34,7 +34,7 @@ class PointCloudService:
         :param pointCloudId: int
         :return: PointCloud
         """
-        point_cloud = database_session.query(PointCloud).get(pointCloudId)
+        point_cloud = database_session.get(PointCloud, pointCloudId)
         return point_cloud
 
     @staticmethod
@@ -44,7 +44,7 @@ class PointCloudService:
         :param projectId: int
         :return: list[PointCloud]
         """
-        project = database_session.query(Project).get(projectId)
+        project = database_session.get(Project, projectId)
         return project.point_clouds
 
     @staticmethod

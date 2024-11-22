@@ -77,7 +77,7 @@ def test_create_watch_content_project_already_exists(
     import_from_agave_mock,
     get_system_users_mock,
 ):
-    user = db_session.query(User).get(1)
+    user = db_session.get(User, 1)
     data = {
         "name": "test name",
         "description": "test description",

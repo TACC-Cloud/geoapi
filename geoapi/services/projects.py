@@ -151,7 +151,7 @@ class ProjectsService:
         :return: Project
         """
         if project_id is not None:
-            project = database_session.query(Project).get(project_id)
+            project = database_session.get(Project, project_id)
         elif uuid is not None:
             project = (
                 database_session.query(Project).filter(Project.uuid == uuid).first()
@@ -358,7 +358,7 @@ class ProjectsService:
         :return:
         """
 
-        project = database_session.query(Project).get(projectId)
+        project = database_session.get(Project, projectId)
         user = UserService.getOrCreateUser(
             database_session, username, project.tenant_id
         )
@@ -376,7 +376,7 @@ class ProjectsService:
 
     @staticmethod
     def getUsers(database_session, projectId: int) -> List[User]:
-        project = database_session.query(Project).get(projectId)
+        project = database_session.get(Project, projectId)
         return project.users
 
     @staticmethod
@@ -393,7 +393,7 @@ class ProjectsService:
         :param username: str
         :return: None
         """
-        project = database_session.query(Project).get(projectId)
+        project = database_session.get(Project, projectId)
         user = database_session.query(User).filter(User.username == username).first()
 
         if user not in project.users:
