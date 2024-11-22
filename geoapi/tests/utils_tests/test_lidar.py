@@ -51,3 +51,14 @@ def test_get_bounding_box_epsg7030(lidar_las_epsg7030_file_path_fixture):
         " 83.56995766320439 0.0255677576841291,"
         " 83.56995766320439 0.0250710215953847))"
     )
+
+
+@pytest.mark.worker
+def test_get_bounding_box_medium_size_compressed_laz(
+    lidar_medium_size_compressed_las1pt2,
+):
+    bounding_box = get_bounding_box_2d([lidar_medium_size_compressed_las1pt2])
+    assert (
+        str(bounding_box)
+        == "POLYGON ((-105.209138419338 39.66131144844282, -105.20095449180293 39.66131144844282, -105.20095449180293 39.66928201079495, -105.209138419338 39.66928201079495, -105.209138419338 39.66131144844282))"
+    )
