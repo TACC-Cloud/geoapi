@@ -48,6 +48,7 @@ shapely = "^2.0.6"
 optional = true
 
 [tool.poetry.group.dev.dependencies]
+black = "^24.10.0"
 flake8 = "^7.1.1"
 pytest = "^8.3.3"
 pytest-cov = "^6.0.0"
