@@ -1,5 +1,5 @@
 from geoapi.services.vectors import VectorService
-import fiona
+import pyogrio
 import pytest
 
 
@@ -25,7 +25,7 @@ def test_process_shapefile(
 
 
 def test_process_shapefile_missing_additional_files(shapefile_fixture):
-    with pytest.raises(fiona.errors.DriverError):
+    with pytest.raises(pyogrio.errors.DataSourceError):
         _, _ = next(
             VectorService.process_shapefile(shapefile_fixture, additional_files=[])
         )

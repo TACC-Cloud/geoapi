@@ -41,6 +41,7 @@ def setup_unit_test_database():
     # Enable PostGIS
     with test_engine.connect() as connection:
         connection.execute(text("CREATE EXTENSION IF NOT EXISTS postgis"))
+        connection.commit()
         print("PostGIS extension enabled for test database.")
 
     # Create all tables based on the models

@@ -3,8 +3,8 @@
 ## Overview and Architecture
 
 GeoAPI is a restful API to create geospatial features in a PostGIS database. Users create a map "project" then
-can add features to it. The development docker-compose file has 3 containers: 
-* a PostGIS database exposing 5432, 
+can add features to it. The development docker-compose file has 3 containers:
+* a PostGIS database exposing 5432,
 * the api which exposes port 8000 behind gunicorn
 * a nginx server to serve static files and proxy to the api, running on port 8080.
 
@@ -22,7 +22,7 @@ information. An .env file for developers can be found on [UT Stache](https://sta
 The API is built with flask and flask-restplus. It is running in its own container
 under gunicorn on port 8000
 
-`make build`
+`make build-dev`
 `make start`
 
 ###### Initialize the database (for local development and unit testing)
