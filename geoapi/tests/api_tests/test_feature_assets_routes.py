@@ -20,7 +20,7 @@ def test_post_image_feature_asset(
 
     # Have to reload the User from the DB, in app.py in the teardown_appcontext callback
     # the session is removed, which causes u1 above to be undefined AFTER the request above.
-    u1 = db_session.get(User, 1)
+    u1 = db_session.query(User).get(1)
     resp2 = test_client.get(
         "/projects/1/features/1/", headers={"X-Tapis-Token": u1.jwt}
     )
@@ -42,7 +42,7 @@ def test_post_video_feature_asset(
     data = resp.get_json()  # noqa
     assert resp.status_code == 200
 
-    u1 = db_session.get(User, 1)
+    u1 = db_session.query(User).get(1)
     resp2 = test_client.get(
         "/projects/1/features/1/", headers={"X-Tapis-Token": u1.jwt}
     )

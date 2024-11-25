@@ -69,13 +69,14 @@ def get_bounding_box_2d(filePaths: List[str]) -> MultiPolygon:
     for input_file in filePaths:
         proj4 = getProj4(input_file)
 
-        las_file = laspy.read(input_file)
+        las_file = laspy.file.File(input_file, mode="r-")
         min_point = _transform_to_geojson(
-            proj4=proj4, point=tuple(las_file.header.mins[:3])
+            proj4=proj4, point=tuple(las_file.header.min[:3])
         )
         max_point = _transform_to_geojson(
-            proj4=proj4, point=tuple(las_file.header.maxs[:3])
+            proj4=proj4, point=tuple(las_file.header.max[:3])
         )
+        las_file.close()
 
         polygons.append(
             Polygon(
