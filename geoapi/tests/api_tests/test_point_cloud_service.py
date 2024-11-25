@@ -24,7 +24,7 @@ def celery_task_always_eager():
 
 
 def test_add_point_cloud(projects_fixture):
-    u1 = db_session.get(User, 1)
+    u1 = db_session.query(User).get(1)
 
     point_cloud = PointCloudService.create(
         database_session=db_session,
@@ -40,7 +40,7 @@ def test_add_point_cloud(projects_fixture):
 
 
 def test_delete_point_cloud(projects_fixture):
-    u1 = db_session.get(User, 1)
+    u1 = db_session.query(User).get(1)
 
     point_cloud = PointCloudService.create(
         database_session=db_session,
@@ -65,20 +65,20 @@ def test_delete_point_cloud_feature(
 ):
     # create a point cloud feature so we can delete it
     MockAgaveUtils().getFile.return_value = lidar_las1pt2_file_fixture
-    u1 = db_session.get(User, 1)
+    u1 = db_session.query(User).get(1)
     files = [{"system": "designsafe.storage.default", "path": "file1.las"}]
     import_point_clouds_from_agave(u1.id, files, point_cloud_fixture.id)
 
     db_session.refresh(point_cloud_fixture)
 
-    point_cloud = db_session.get(PointCloud, 1)
+    point_cloud = db_session.query(PointCloud).get(1)
     feature_asset_path = get_asset_path(point_cloud.feature.assets[0].path)
 
     # delete point cloud feature
     FeaturesService.delete(db_session, point_cloud.feature.id)
 
     assert db_session.query(PointCloud).count() == 1
-    assert db_session.get(PointCloud, 1).feature is None
+    assert db_session.query(PointCloud).get(1).feature is None
     assert db_session.query(Feature).count() == 0
     assert db_session.query(FeatureAsset).count() == 0
     assert os.path.exists(

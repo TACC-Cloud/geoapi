@@ -44,7 +44,7 @@ class FeaturesService:
         :param featureId: int
         :return: Feature
         """
-        return database_session.get(Feature, featureId)
+        return database_session.query(Feature).get(featureId)
 
     @staticmethod
     def query(q: dict) -> List[Feature]:
@@ -62,7 +62,7 @@ class FeaturesService:
         :param featureId: int
         :return: None
         """
-        feat = database_session.get(Feature, featureId)
+        feat = database_session.query(Feature).get(featureId)
         assets = database_session.query(FeatureAsset).filter(
             FeatureAsset.feature_id == featureId
         )
@@ -79,7 +79,7 @@ class FeaturesService:
         :param props: dict
         :return: Feature
         """
-        feat = database_session.get(Feature, featureId)
+        feat = database_session.query(Feature).get(featureId)
         # TODO: Throw assert if not found?
         # TODO: PROTECT assets and styles attributes
         feat.properties = props
@@ -94,7 +94,7 @@ class FeaturesService:
         :param styles: dict
         :return: Feature
         """
-        feat = database_session.get(Feature, featureId)
+        feat = database_session.query(Feature).get(featureId)
         # TODO: PROTECT assets and styles attributes
         feat.styles = styles
         database_session.commit()
@@ -741,7 +741,7 @@ class FeaturesService:
 
     @staticmethod
     def deleteOverlay(database_session, projectId: int, overlayId: int) -> None:
-        ov = database_session.get(Overlay, overlayId)
+        ov = database_session.query(Overlay).get(overlayId)
         delete_assets(projectId=projectId, uuid=ov.uuid)
         database_session.delete(ov)
         database_session.commit()
@@ -773,13 +773,13 @@ class FeaturesService:
 
     @staticmethod
     def deleteTileServer(database_session, tileServerId: int) -> None:
-        ts = database_session.get(TileServer, tileServerId)
+        ts = database_session.query(TileServer).get(tileServerId)
         database_session.delete(ts)
         database_session.commit()
 
     @staticmethod
     def updateTileServer(database_session, tileServerId: int, data: dict):
-        ts = database_session.get(TileServer, tileServerId)
+        ts = database_session.query(TileServer).get(tileServerId)
         for key, value in data.items():
             setattr(ts, key, value)
         database_session.commit()
@@ -789,7 +789,7 @@ class FeaturesService:
     def updateTileServers(database_session, dataList: List[dict]):
         ret_list = []
         for tsv in dataList:
-            ts = database_session.get(TileServer, int(tsv["id"]))
+            ts = database_session.query(TileServer).get(int(tsv["id"]))
             for key, value in tsv.items():
                 setattr(ts, key, value)
             ret_list.append(ts)

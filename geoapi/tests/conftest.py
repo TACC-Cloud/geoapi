@@ -260,9 +260,9 @@ def empty_las_file_path_fixture():
     with tempfile.TemporaryDirectory() as temp_dir:
         empty_las_file_path = os.path.join(temp_dir, "empty.las")
 
-        header = laspy.header.LasHeader()
-        outfile = laspy.LasData(header)
-        outfile.write(empty_las_file_path)
+        header = laspy.header.Header()
+        outfile = laspy.file.File(empty_las_file_path, mode="w", header=header)
+        outfile.close()
         yield empty_las_file_path
 
 
@@ -475,8 +475,8 @@ def agave_utils_with_geojson_file_mock(agave_file_listings_mock, geojson_file_fi
 
 @pytest.fixture(scope="function")
 def get_system_users_mock(userdata):
-    u1 = db_session.get(User, 1)
-    u2 = db_session.get(User, 2)
+    u1 = db_session.query(User).get(1)
+    u2 = db_session.query(User).get(2)
     users = [
         SystemUser(username=u2.username, admin=False),
         SystemUser(username=u1.username, admin=True),

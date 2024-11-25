@@ -151,7 +151,7 @@ class ProjectsService:
         :return: Project
         """
         if project_id is not None:
-            project = database_session.get(Project, project_id)
+            project = database_session.query(Project).get(project_id)
         elif uuid is not None:
             project = (
                 database_session.query(Project).filter(Project.uuid == uuid).first()
@@ -258,12 +258,14 @@ class ProjectsService:
 
         # The sub select that filters only on this projects ID, filters applied below
         sub_select = select(
-            text(
-                """feat.*,  array_remove(array_agg(fa), null) as assets
+            [
+                text(
+                    """feat.*,  array_remove(array_agg(fa), null) as assets
               from features as feat
               LEFT JOIN feature_assets fa on feat.id = fa.feature_id
              """
-            )
+                )
+            ]
         ).where(text("project_id = :projectId"))
 
         if bbox:
@@ -291,8 +293,8 @@ class ProjectsService:
         if len(assetQueries):
             sub_select = sub_select.where(text("(" + " OR ".join(assetQueries) + ")"))
 
-        sub_select = sub_select.group_by(text("feat.id")).subquery("tmp")
-        s = select(select_stmt).select_from(sub_select)
+        sub_select = sub_select.group_by(text("feat.id")).alias("tmp")
+        s = select([select_stmt]).select_from(sub_select)
         result = database_session.execute(s, params)
         out = result.fetchone()
         return out.geojson
@@ -356,7 +358,7 @@ class ProjectsService:
         :return:
         """
 
-        project = database_session.get(Project, projectId)
+        project = database_session.query(Project).get(projectId)
         user = UserService.getOrCreateUser(
             database_session, username, project.tenant_id
         )
@@ -374,7 +376,7 @@ class ProjectsService:
 
     @staticmethod
     def getUsers(database_session, projectId: int) -> List[User]:
-        project = database_session.get(Project, projectId)
+        project = database_session.query(Project).get(projectId)
         return project.users
 
     @staticmethod
@@ -391,7 +393,7 @@ class ProjectsService:
         :param username: str
         :return: None
         """
-        project = database_session.get(Project, projectId)
+        project = database_session.query(Project).get(projectId)
         user = database_session.query(User).filter(User.username == username).first()
 
         if user not in project.users:

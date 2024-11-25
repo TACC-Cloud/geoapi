@@ -4,7 +4,7 @@ from unittest.mock import patch
 
 
 def test_get_all_point_cloud(test_client, projects_fixture, point_cloud_fixture):
-    u1 = db_session.get(User, 1)
+    u1 = db_session.query(User).get(1)
     resp = test_client.get(
         "/projects/1/point-cloud/", headers={"X-Tapis-Token": u1.jwt}
     )
@@ -14,7 +14,7 @@ def test_get_all_point_cloud(test_client, projects_fixture, point_cloud_fixture)
 
 
 def test_get_point_cloud(test_client, projects_fixture, point_cloud_fixture):
-    u1 = db_session.get(User, 1)
+    u1 = db_session.query(User).get(1)
     resp = test_client.get(
         "/projects/1/point-cloud/1/", headers={"X-Tapis-Token": u1.jwt}
     )
@@ -29,7 +29,7 @@ def test_get_point_cloud_public_access(
 
 
 def test_create_point_cloud(test_client, projects_fixture):
-    u1 = db_session.get(User, 1)
+    u1 = db_session.query(User).get(1)
     data = {"description": "new description", "conversion_parameters": "--scale 5.0"}
     resp = test_client.post(
         "/projects/1/point-cloud/", json=data, headers={"X-Tapis-Token": u1.jwt}
@@ -40,7 +40,7 @@ def test_create_point_cloud(test_client, projects_fixture):
 def test_update_point_cloud(
     test_client, projects_fixture, point_cloud_fixture, convert_to_potree_mock
 ):
-    u1 = db_session.get(User, 1)
+    u1 = db_session.query(User).get(1)
     data = {"description": "new description", "conversion_parameters": "--scale 5.0"}
     resp = test_client.put(
         "/projects/1/point-cloud/1/", json=data, headers={"X-Tapis-Token": u1.jwt}
@@ -49,12 +49,12 @@ def test_update_point_cloud(
 
 
 def test_delete_point_cloud(test_client, projects_fixture, point_cloud_fixture):
-    u1 = db_session.get(User, 1)
+    u1 = db_session.query(User).get(1)
     resp = test_client.delete(
         "/projects/1/point-cloud/1/", headers={"X-Tapis-Token": u1.jwt}
     )
     assert resp.status_code == 200
-    point_cloud = db_session.get(PointCloud, 1)
+    point_cloud = db_session.query(PointCloud).get(1)
     assert point_cloud is None
 
 
@@ -65,7 +65,7 @@ def test_import_lidar_tapis(
     projects_fixture,
     point_cloud_fixture,
 ):
-    u1 = db_session.get(User, 1)
+    u1 = db_session.query(User).get(1)
     resp = test_client.post(
         "/projects/1/point-cloud/1/import/",
         json={"files": [{"system": "designsafe.storage.default", "path": "file.LAS"}]},
@@ -78,7 +78,7 @@ def test_import_lidar_tapis(
 def test_import_lidar_tapis_wrong_file(
     test_client, projects_fixture, point_cloud_fixture
 ):
-    u1 = db_session.get(User, 1)
+    u1 = db_session.query(User).get(1)
     resp = test_client.post(
         "/projects/1/point-cloud/1/import/",
         json={"files": [{"system": "designsafe.storage.default", "path": "file.jpg"}]},

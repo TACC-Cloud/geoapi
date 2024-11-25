@@ -367,7 +367,7 @@ def process_streetview_sequences(
     :param token: str
     :return: processingTask: Task
     """
-    streetview_sequence = database_session.get(StreetviewSequence, sequenceId)
+    streetview_sequence = database_session.query(StreetviewSequence).get(sequenceId)
 
     celery_task_id = celery_uuid()
     task = Task()
@@ -418,7 +418,7 @@ def convert_streetview_sequence_to_feature(self, projectId, sequenceId, token):
     with create_task_session() as session:
 
         feature = Feature()
-        streetview_sequence = session.get(StreetviewSequence, sequenceId)
+        streetview_sequence = session.query(StreetviewSequence).get(sequenceId)
 
         sequence_id = streetview_sequence.sequence_id
         original_dir = streetview_sequence.streetview_instance.path

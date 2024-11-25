@@ -79,7 +79,7 @@ class StreetviewService:
         :param streetview_id: int
         :return: Streetview
         """
-        return database_session.get(Streetview, streetview_id)
+        return database_session.query(Streetview).get(streetview_id)
 
     @staticmethod
     def getByService(database_session, user: User, service: str) -> Streetview:
@@ -145,7 +145,7 @@ class StreetviewService:
         :param id: int
         :return: StreetviewOrganization
         """
-        return database_session.get(StreetviewOrganization, id)
+        return database_session.query(StreetviewOrganization).get(id)
 
     @staticmethod
     def getAllOrganizations(
@@ -233,16 +233,16 @@ class StreetviewService:
 
     @staticmethod
     def getInstances(database_session, projectId: int) -> List[StreetviewInstance]:
-        project = database_session.get(Project, projectId)
+        project = database_session.query(Project).get(projectId)
         return project.streetview_instances
 
     @staticmethod
     def addInstanceToProject(
         database_session, projectId: int, streetview_instance_id: int
     ) -> None:
-        project = database_session.get(Project, projectId)
-        streetview_instance = database_session.get(
-            StreetviewInstance, streetview_instance_id
+        project = database_session.query(Project).get(projectId)
+        streetview_instance = database_session.query(StreetviewInstance).get(
+            streetview_instance_id
         )
         project.streetview_instances.append(streetview_instance)
         database_session.commit()
@@ -281,7 +281,7 @@ class StreetviewService:
         :param id: int
         :return: None
         """
-        sv = database_session.get(StreetviewInstance, id)
+        sv = database_session.query(StreetviewInstance).get(id)
         database_session.delete(sv)
         database_session.commit()
 
@@ -369,7 +369,7 @@ class StreetviewService:
         :param id: int
         :return: StreetviewSequence
         """
-        sequence = database_session.get(StreetviewSequence, id)
+        sequence = database_session.query(StreetviewSequence).get(id)
         return sequence
 
     @staticmethod
@@ -379,7 +379,7 @@ class StreetviewService:
         :param id: int
         :return: None
         """
-        seq = database_session.get(StreetviewSequence, id)
+        seq = database_session.query(StreetviewSequence).get(id)
         database_session.delete(seq)
         database_session.commit()
 
