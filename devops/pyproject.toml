@@ -37,7 +37,7 @@ optional = true
 ExifRead = "^2.3.2"
 Fiona = "1.10.1"
 geopandas = "^1.0.1"
-laspy = "^2.5.4"
+laspy = {extras = ["lazrs"], version = "^2.5.4"}
 mapillary-tools = "^0.11.2"
 pillow = "^11.0.0"
 pyogrio = "^0.10.0"

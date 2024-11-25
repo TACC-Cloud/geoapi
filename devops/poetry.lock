@@ -1243,6 +1243,7 @@ files = [
 ]
 
 [package.dependencies]
+lazrs = {version = ">=0.6.0,<0.7.0", optional = true, markers = "extra == \"lazrs\""}
 numpy = "*"
 
 [package.extras]
@@ -1252,6 +1253,45 @@ laszip = ["laszip (>=0.2.1,<0.3.0)"]
 lazrs = ["lazrs (>=0.6.0,<0.7.0)"]
 pyproj = ["pyproj"]
 requests = ["requests"]
+
+[[package]]
+name = "lazrs"
+version = "0.6.2"
+description = "Python bindings for laz-rs"
+optional = false
+python-versions = "*"
+files = [
+    {file = "lazrs-0.6.2-cp310-cp310-macosx_10_12_x86_64.whl", hash = "sha256:744f85e85736ef07fb19619d4aa419759d476c987c4bf219227e5c43bf09180e"},
+    {file = "lazrs-0.6.2-cp310-cp310-macosx_11_0_arm64.whl", hash = "sha256:739ea362b287dcb9a2c767e35d645e3eb0ce4afb6c41fcca11f0de66528eaaad"},
+    {file = "lazrs-0.6.2-cp310-cp310-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:dbf479264a766a028e52620a599ed9c3ea4ac245df0292b67cd5243c790214b0"},
+    {file = "lazrs-0.6.2-cp310-cp310-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:7000f6dfd7b96769e95b65f17538af96f7f77d24d6560410558cc6e729d055af"},
+    {file = "lazrs-0.6.2-cp310-none-win32.whl", hash = "sha256:165037173149744553d28ceb6670b3681469282e85a97eb6092ba8b9587806cd"},
+    {file = "lazrs-0.6.2-cp310-none-win_amd64.whl", hash = "sha256:c8d5a8d9e9bdd175f2baf7d4e0ee477e35d755ec28cee6140f33834d521fa5d4"},
+    {file = "lazrs-0.6.2-cp311-cp311-macosx_10_12_x86_64.whl", hash = "sha256:e39c92b3dd79ae84f6ffcf0bf680de4b9779e56382eb52eadbaa66388aa45594"},
+    {file = "lazrs-0.6.2-cp311-cp311-macosx_11_0_arm64.whl", hash = "sha256:4bff5e8583e8205edb7bce4930b03ebca9a748ab69d757b6323ff3dcfc4e56e5"},
+    {file = "lazrs-0.6.2-cp311-cp311-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:6c3968853f3c03e7a94aff50af0cfda0b49913b026885d76db5e74d9b10e7a66"},
+    {file = "lazrs-0.6.2-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:c168ab01e9e5b9ff47d92c0b283d3c580dfece57dd85a56181150732ee9b9f3a"},
+    {file = "lazrs-0.6.2-cp311-none-win32.whl", hash = "sha256:95f0a32c418744af55bf30a9fb68d15f64242a0e336502eb5cae343b8929e8a7"},
+    {file = "lazrs-0.6.2-cp311-none-win_amd64.whl", hash = "sha256:cbf2f977a05c0cb70441fd30721819f1978a7bee2a23ef92db81f69657fd0bd7"},
+    {file = "lazrs-0.6.2-cp312-cp312-macosx_10_12_x86_64.whl", hash = "sha256:7de360431adc25a2f283dafa59653f127a4be52d64a1fd6791a3310d7ddc3dfc"},
+    {file = "lazrs-0.6.2-cp312-cp312-macosx_11_0_arm64.whl", hash = "sha256:2678868a9428650b03e5c3f99453b6c0a118082d5f1d880f51d2de039725d3ca"},
+    {file = "lazrs-0.6.2-cp312-cp312-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:62f767986bbea4ba6a7f1be374b4c1aaab34a05040a9518660d4676cf6d632aa"},
+    {file = "lazrs-0.6.2-cp312-cp312-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:905e16279251047d648776b728c68e8f9040f450beb81a49d750d9173e0d76aa"},
+    {file = "lazrs-0.6.2-cp312-none-win32.whl", hash = "sha256:566c1fb46c89ae4ae903f6b45ab58a9c40f8bd85a30bde4b64f3913ca2c42441"},
+    {file = "lazrs-0.6.2-cp312-none-win_amd64.whl", hash = "sha256:bf66df28856c9038b5f84a6c62b497e9588989fa9fab6f0e64cf8e5c73e515ec"},
+    {file = "lazrs-0.6.2-cp313-cp313-macosx_10_12_x86_64.whl", hash = "sha256:99aa92279ae7a036b6940999fcc3569e70ff1f3a69e185e92de02878f6b5fc00"},
+    {file = "lazrs-0.6.2-cp313-cp313-macosx_11_0_arm64.whl", hash = "sha256:d039a8dfe67bcc2aeb2f9e2292297b2c1cbc17decabc14c21233e8c57899d41c"},
+    {file = "lazrs-0.6.2-cp313-cp313-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:0f5243056fd032822664738f8cb8d05f5ea5c892795083e1dabcb1faa53805fe"},
+    {file = "lazrs-0.6.2-cp313-none-win32.whl", hash = "sha256:e98e1aa8c1e1f9a42ad8f9dc6fcf8173bceb71864085a77dd40730c405cfd96b"},
+    {file = "lazrs-0.6.2-cp313-none-win_amd64.whl", hash = "sha256:e61676dc4abc3a75f192202efa8a5202a24140d8b6317d534e8296b0ce41c3c0"},
+    {file = "lazrs-0.6.2-cp39-cp39-macosx_10_12_x86_64.whl", hash = "sha256:0cf52cbec317159b4e8315c940458aefded7d59af07f4d4f30e15b7b2c16b6e3"},
+    {file = "lazrs-0.6.2-cp39-cp39-macosx_11_0_arm64.whl", hash = "sha256:d44c50242025d94749415236ca4342cd89ffdb2f5d2e820bc5de0c5631329070"},
+    {file = "lazrs-0.6.2-cp39-cp39-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:7f5c507bad8ff8156c0d4367b990ab9080a5bb6fb0e3bfe58c3e4518271f8561"},
+    {file = "lazrs-0.6.2-cp39-cp39-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:538d142a9996a4c73b28aa0b595896bc92649885c4e40a5bcfa24754454c6fbf"},
+    {file = "lazrs-0.6.2-cp39-none-win32.whl", hash = "sha256:a294564747a3b45377e959c7988fec5f4ded822088c0e7bcef666f5b129d67df"},
+    {file = "lazrs-0.6.2-cp39-none-win_amd64.whl", hash = "sha256:554b644548e375290f06ae342c5a98d2031a655c34510eb83c0d4dd753e40a37"},
+    {file = "lazrs-0.6.2.tar.gz", hash = "sha256:e8581313c8f438b802baf92654bd0fde3cf4ecb8f881bdf4906934344bda3a9b"},
+]
 
 [[package]]
 name = "mako"
@@ -2592,4 +2632,4 @@ testing = ["coverage[toml]", "zope.event", "zope.testing"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.11"
-content-hash = "f39b09eeab99be63e73348b8b54688feea475cd19b552b40700f9d6ba256e721"
+content-hash = "b131112dd7aac0a16cbb92a503fdd3841ba10e7e2600ba90be4bb4320881e1d2"
