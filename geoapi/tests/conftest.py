@@ -240,7 +240,7 @@ def geojson_file_fixture():
 @pytest.fixture()
 def lidar_las1pt2_file_path_fixture():
     home = os.path.dirname(__file__)
-    return os.path.join(home, "fixtures/lidar_subset_las1pt2.laz")
+    return os.path.join(home, "fixtures/lidar_subset_las1pt2.las")
 
 
 @pytest.fixture()
@@ -252,7 +252,15 @@ def lidar_las_epsg7030_file_path_fixture():
 @pytest.fixture()
 def lidar_las1pt4_file_path_fixture():
     home = os.path.dirname(__file__)
-    return os.path.join(home, "fixtures/lidar_subset_las1pt4.laz")
+    return os.path.join(home, "fixtures/lidar_subset_las1pt4.las")
+
+
+@pytest.fixture()
+def lidar_medium_size_compressed_las1pt2():
+    home = os.path.dirname(__file__)
+    return os.path.join(
+        home, "fixtures/lidar_medium_subset_las1pt2_utmzone13N_compressed.laz"
+    )
 
 
 @pytest.fixture(scope="function")
@@ -260,9 +268,9 @@ def empty_las_file_path_fixture():
     with tempfile.TemporaryDirectory() as temp_dir:
         empty_las_file_path = os.path.join(temp_dir, "empty.las")
 
-        header = laspy.header.Header()
-        outfile = laspy.file.File(empty_las_file_path, mode="w", header=header)
-        outfile.close()
+        header = laspy.header.LasHeader()
+        outfile = laspy.LasData(header)
+        outfile.write(empty_las_file_path)
         yield empty_las_file_path
 
 
@@ -475,8 +483,8 @@ def agave_utils_with_geojson_file_mock(agave_file_listings_mock, geojson_file_fi
 
 @pytest.fixture(scope="function")
 def get_system_users_mock(userdata):
-    u1 = db_session.query(User).get(1)
-    u2 = db_session.query(User).get(2)
+    u1 = db_session.get(User, 1)
+    u2 = db_session.get(User, 2)
     users = [
         SystemUser(username=u2.username, admin=False),
         SystemUser(username=u1.username, admin=True),

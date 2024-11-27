@@ -176,7 +176,7 @@ def import_file_from_agave(userId: int, systemId: str, path: str, projectId: int
     """
     with create_task_session() as session:
         try:
-            user = session.query(User).get(userId)
+            user = session.get(User, userId)
             client = AgaveUtils(session, user)
             temp_file = client.getFile(systemId, path)
             temp_file.filename = Path(path).name
@@ -225,7 +225,7 @@ def _handle_point_cloud_conversion_error(
     pointCloudId, userId, files, error_description
 ):
     with create_task_session() as session:
-        user = session.query(User).get(userId)
+        user = session.get(User, userId)
         logger.exception(
             f"point cloud:{pointCloudId} conversion failed for user:{user.username} and files:{files}. "
             f"error:  {error_description}"
@@ -244,7 +244,7 @@ def _handle_point_cloud_conversion_error(
 @app.task(queue="heavy")
 def import_point_clouds_from_agave(userId: int, files, pointCloudId: int):
     with create_task_session() as session:
-        user = session.query(User).get(userId)
+        user = session.get(User, userId)
         client = AgaveUtils(session, user)
 
         point_cloud = pointcloud.PointCloudService.get(session, pointCloudId)
@@ -348,7 +348,7 @@ def import_point_clouds_from_agave(userId: int, files, pointCloudId: int):
         # this operation is memory-intensive and time-consuming.
         convert_to_potree(pointCloudId)
         with create_task_session() as session:
-            user = session.query(User).get(userId)
+            user = session.get(User, userId)
             logger.info(
                 f"point cloud:{pointCloudId} conversion completed for user:{user.username} and files:{files}"
             )
@@ -402,7 +402,7 @@ def import_files_recursively_from_path(
 
     This method is called by refresh_projects_watch_content() via import_from_agave
     """
-    user = session.query(User).get(userId)
+    user = session.get(User, userId)
     logger.info(
         "Importing for project:{} directory:{}/{} for user:{}".format(
             projectId, systemId, path, user.username

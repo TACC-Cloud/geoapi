@@ -9,16 +9,23 @@ networks:
 services:
 
   rabbitmq:
-    image: rabbitmq:3.12.6
+    image: rabbitmq:3-management
+    ports:
+      - 15672:15672
     networks:
       - geoapi
     environment:
       - RABBITMQ_DEFAULT_USER=dev
       - RABBITMQ_DEFAULT_PASS=dev
       - RABBITMQ_DEFAULT_VHOST=dev
+    healthcheck:
+      test: rabbitmq-diagnostics -q ping
+      interval: 5s
+      timeout: 30s
+      retries: 5
 
   postgres:
-    image: mdillon/postgis:11-alpine
+    image: postgis/postgis:11-3.3-alpine
     volumes:
       - pgdata:/var/lib/postgresql/data
     networks:
@@ -65,6 +72,9 @@ services:
       celery -A geoapi.celery_app worker -l info -Q heavy --concurrency=6 -n heavy_worker@geoapi &
       wait
       '
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
 
   celerybeat:
     image: taccaci/geoapi-workers:local
@@ -83,6 +93,9 @@ services:
     container_name: geoapicelerybeat
     hostname: geoapicelerybeat
     command: "celery -A geoapi.celery_app beat -l info"
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
 
   api:
     image: taccaci/geoapi:local

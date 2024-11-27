@@ -77,7 +77,7 @@ class UserService:
 
     @staticmethod
     def get(database_session, userId: int) -> User:
-        return database_session.query(User).get(userId)
+        return database_session.get(User, userId)
 
     @staticmethod
     def canAccess(database_session, user: User, projectId: int) -> bool:
