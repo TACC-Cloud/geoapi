@@ -1,4 +1,3 @@
-import os
 from sqlalchemy_utils import database_exists, create_database, drop_database
 from sqlalchemy import text, create_engine
 from alembic.config import Config
@@ -19,7 +18,9 @@ def setup_local_dev_database():
     alembic_cfg = Config("alembic.ini")
     try:
         command.upgrade(alembic_cfg, "head")
-        print(f"All migrations have been applied. Database '{settings.DB_NAME}' is now up-to-date.")
+        print(
+            f"All migrations have been applied. Database '{settings.DB_NAME}' is now up-to-date."
+        )
     except Exception as e:
         print(f"Error applying migrations to database '{settings.DB_NAME}': {str(e)}")
         raise

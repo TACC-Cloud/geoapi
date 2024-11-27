@@ -11,15 +11,18 @@ from geoapi.exceptions import ApiException
 from geoapi.models import PointCloud, Project, User, Task
 from geoapi.log import logging
 from geoapi.tasks.lidar import convert_to_potree
-from geoapi.utils.assets import make_project_asset_dir, delete_assets, get_asset_relative_path, get_asset_path
+from geoapi.utils.assets import (
+    make_project_asset_dir,
+    delete_assets,
+    get_asset_relative_path,
+    get_asset_path,
+)
 
 logger = logging.getLogger(__name__)
 
 
 class PointCloudService:
-    LIDAR_FILE_EXTENSIONS = (
-        'las', 'laz'
-    )
+    LIDAR_FILE_EXTENSIONS = ("las", "laz")
     ORIGINAL_FILES_DIR = "original_files"
 
     PROCESSED_DIR = "point_cloud"
@@ -55,8 +58,12 @@ class PointCloudService:
         """
 
         point_cloud_uid = uuid.uuid4()
-        point_cloud_path = os.path.join(make_project_asset_dir(projectId), str(point_cloud_uid))
-        file_point_cloud_path = os.path.join(point_cloud_path, PointCloudService.ORIGINAL_FILES_DIR)
+        point_cloud_path = os.path.join(
+            make_project_asset_dir(projectId), str(point_cloud_uid)
+        )
+        file_point_cloud_path = os.path.join(
+            point_cloud_path, PointCloudService.ORIGINAL_FILES_DIR
+        )
         pathlib.Path(file_point_cloud_path).mkdir(parents=True, exist_ok=True)
 
         point_cloud = PointCloud(**data)
@@ -84,7 +91,10 @@ class PointCloudService:
             setattr(point_cloud, key, value)
         database_session.commit()
 
-        if 'conversion_parameters' in data and previous_conversion_parameters != data['conversion_parameters']:
+        if (
+            "conversion_parameters" in data
+            and previous_conversion_parameters != data["conversion_parameters"]
+        ):
             PointCloudService._process_point_clouds(database_session, pointCloudId)
 
         return point_cloud
@@ -103,27 +113,31 @@ class PointCloudService:
 
     @staticmethod
     def check_file_extension(file_name):
-        """ Checks file extension
+        """Checks file extension
 
         :param filename:
         :raises: ApiException
         """
-        file_ext = pathlib.Path(file_name).suffix.lstrip('.').lower()
+        file_ext = pathlib.Path(file_name).suffix.lstrip(".").lower()
         if file_ext not in PointCloudService.LIDAR_FILE_EXTENSIONS:
             raise ApiException("Invalid file type for point clouds.")
 
     @staticmethod
-    def putPointCloudInOriginalsFileDir(point_cloud_path: str, fileObj: IO, fileName: str):
-        """ Put file object in original files directory
+    def putPointCloudInOriginalsFileDir(
+        point_cloud_path: str, fileObj: IO, fileName: str
+    ):
+        """Put file object in original files directory
 
         :param point_cloud_path: str
         :param fileObj: IO
         :param fileName: str
         :return: path to point cloud
         """
-        file_path = get_asset_path(point_cloud_path,
-                                   PointCloudService.ORIGINAL_FILES_DIR,
-                                   os.path.basename(fileName))
+        file_path = get_asset_path(
+            point_cloud_path,
+            PointCloudService.ORIGINAL_FILES_DIR,
+            os.path.basename(fileName),
+        )
 
         with open(file_path, "wb") as f:
             # set current file position to start so all contents are copied.
@@ -153,8 +167,11 @@ class PointCloudService:
         database_session.add(point_cloud)
         database_session.commit()
 
-        logger.info("Starting potree processing task (#{}:  '{}') for point cloud (#{}).".format(
-            task.id, celery_task_id, pointCloudId))
+        logger.info(
+            "Starting potree processing task (#{}:  '{}') for point cloud (#{}).".format(
+                task.id, celery_task_id, pointCloudId
+            )
+        )
 
         # Process asynchronously lidar file and add a feature asset
         convert_to_potree.apply_async(args=[pointCloudId], task_id=celery_task_id)

@@ -22,7 +22,7 @@ BUFFER_TIME_FOR_EXPIRING_TOKENS = 300  # 5 minutes
 
 
 def generate_rsa_key_pair():
-    """ Generate rsa key pair
+    """Generate rsa key pair
 
     Note: to only be used by unit tests
     """
@@ -36,14 +36,14 @@ def generate_rsa_key_pair():
     private_pem = private_key.private_bytes(
         encoding=serialization.Encoding.PEM,
         format=serialization.PrivateFormat.PKCS8,
-        encryption_algorithm=serialization.NoEncryption()
-    ).decode('utf-8')
+        encryption_algorithm=serialization.NoEncryption(),
+    ).decode("utf-8")
 
     # Serialize public key
     public_pem = public_key.public_bytes(
         encoding=serialization.Encoding.PEM,
-        format=serialization.PublicFormat.SubjectPublicKeyInfo
-    ).decode('utf-8')
+        format=serialization.PublicFormat.SubjectPublicKeyInfo,
+    ).decode("utf-8")
 
     return private_pem, public_pem
 
@@ -52,10 +52,9 @@ PRIVATE_KEY_FOR_TESTING, PUBLIC_KEY_FOR_TESTING = generate_rsa_key_pair()
 
 
 def get_pub_key():
-    """ Get production public key for signed tokens"""
+    """Get production public key for signed tokens"""
     pkey = base64.b64decode(settings.TAPIS_PUB_KEY_FOR_VALIDATION)
-    pub_key = serialization.load_der_public_key(pkey,
-                                                backend=default_backend())
+    pub_key = serialization.load_der_public_key(pkey, backend=default_backend())
     return pub_key
 
 
@@ -154,9 +153,11 @@ def create_token_expiry_hours_from_now(token: str, hours_from_now: int = 4) -> s
         decoded_token = jwt.decode(token, options={"verify_signature": False})
 
         new_expiry = int(time.time()) + hours_from_now * 3600
-        decoded_token['exp'] = new_expiry
+        decoded_token["exp"] = new_expiry
         # Re-encode the token but sign with our testing-only keys
-        modified_token = jwt.encode(decoded_token, PRIVATE_KEY_FOR_TESTING, algorithm='RS256')
+        modified_token = jwt.encode(
+            decoded_token, PRIVATE_KEY_FOR_TESTING, algorithm="RS256"
+        )
         return modified_token
     except jwt.InvalidTokenError:
         raise ValueError("Invalid token provided.")

@@ -4,7 +4,7 @@ from geoapi.settings import settings
 from geoapi.models import User
 
 
-def get_project_data(database_session, user: User,  system_id: str) -> dict:
+def get_project_data(database_session, user: User, system_id: str) -> dict:
     """
     Get project data for a certain system
 
@@ -18,9 +18,9 @@ def get_project_data(database_session, user: User,  system_id: str) -> dict:
 
     logger.debug(f"Getting project metadata for system:{system_id}")
 
-    uuid = system_id[len("project-"):]
+    uuid = system_id[len("project-") :]
     client = ApiUtils(database_session, user, settings.DESIGNSAFE_URL)
-    resp = client.get(f'/api/projects/v2/{uuid}/')
+    resp = client.get(f"/api/projects/v2/{uuid}/")
     resp.raise_for_status()
 
     project = resp.json()["baseProject"]["value"]
@@ -48,17 +48,21 @@ def get_system_users(database_session, user, system_id: str):
     from geoapi.utils.agave import SystemUser
 
     if not system_id.startswith("project-"):
-        raise GetUsersForProjectNotSupported(f"System:{system_id} is not a project so unable to get users")
+        raise GetUsersForProjectNotSupported(
+            f"System:{system_id} is not a project so unable to get users"
+        )
 
     project = get_project_data(database_session, user, system_id)
 
     users = {}
     for u in project["users"]:
         is_admin = u["role"] in ("pi", "co_pi")
-        if (not _is_designsafe_project_guest_user(u) and u["username"] not in users):
+        if not _is_designsafe_project_guest_user(u) and u["username"] not in users:
             users[u["username"]] = SystemUser(username=u["username"], admin=is_admin)
         else:
             # there can be duplicates (seen in v2) so we want to ensure we have the "admin=True" version of a duplicate
             if is_admin:
-                users[u["username"]] = SystemUser(username=u["username"], admin=is_admin)
+                users[u["username"]] = SystemUser(
+                    username=u["username"], admin=is_admin
+                )
     return list(users.values())
