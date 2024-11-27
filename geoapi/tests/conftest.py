@@ -240,7 +240,7 @@ def geojson_file_fixture():
 @pytest.fixture()
 def lidar_las1pt2_file_path_fixture():
     home = os.path.dirname(__file__)
-    return os.path.join(home, "fixtures/lidar_subset_las1pt2.laz")
+    return os.path.join(home, "fixtures/lidar_subset_las1pt2.las")
 
 
 @pytest.fixture()
@@ -252,7 +252,15 @@ def lidar_las_epsg7030_file_path_fixture():
 @pytest.fixture()
 def lidar_las1pt4_file_path_fixture():
     home = os.path.dirname(__file__)
-    return os.path.join(home, "fixtures/lidar_subset_las1pt4.laz")
+    return os.path.join(home, "fixtures/lidar_subset_las1pt4.las")
+
+
+@pytest.fixture()
+def lidar_medium_size_compressed_las1pt2():
+    home = os.path.dirname(__file__)
+    return os.path.join(
+        home, "fixtures/lidar_medium_subset_las1pt2_utmzone13N_compressed.laz"
+    )
 
 
 @pytest.fixture(scope="function")
