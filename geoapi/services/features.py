@@ -16,11 +16,19 @@ import geojson
 from geoapi.services.images import ImageService, ImageData
 from geoapi.services.vectors import VectorService
 from geoapi.models import Feature, FeatureAsset, Overlay, User, TileServer
-from geoapi.exceptions import InvalidGeoJSON, ApiException, InvalidEXIFData, InvalidCoordinateReferenceSystem
-from geoapi.utils.assets import make_project_asset_dir, delete_assets, get_asset_relative_path
+from geoapi.exceptions import (
+    InvalidGeoJSON,
+    ApiException,
+    InvalidEXIFData,
+    InvalidCoordinateReferenceSystem,
+)
+from geoapi.utils.assets import (
+    make_project_asset_dir,
+    delete_assets,
+    get_asset_relative_path,
+)
 from geoapi.log import logging
-from geoapi.utils import (geometries,
-                          features as features_util)
+from geoapi.utils import geometries, features as features_util
 from geoapi.utils.agave import AgaveUtils
 from geoapi.utils.geo_location import GeoLocation, parse_rapid_geolocation
 
@@ -36,7 +44,7 @@ class FeaturesService:
         :param featureId: int
         :return: Feature
         """
-        return database_session.query(Feature).get(featureId)
+        return database_session.get(Feature, featureId)
 
     @staticmethod
     def query(q: dict) -> List[Feature]:
@@ -54,8 +62,10 @@ class FeaturesService:
         :param featureId: int
         :return: None
         """
-        feat = database_session.query(Feature).get(featureId)
-        assets = database_session.query(FeatureAsset).filter(FeatureAsset.feature_id == featureId)
+        feat = database_session.get(Feature, featureId)
+        assets = database_session.query(FeatureAsset).filter(
+            FeatureAsset.feature_id == featureId
+        )
         for asset in assets:
             delete_assets(projectId=feat.project_id, uuid=asset.uuid)
         database_session.delete(feat)
@@ -69,7 +79,7 @@ class FeaturesService:
         :param props: dict
         :return: Feature
         """
-        feat = database_session.query(Feature).get(featureId)
+        feat = database_session.get(Feature, featureId)
         # TODO: Throw assert if not found?
         # TODO: PROTECT assets and styles attributes
         feat.properties = props
@@ -84,14 +94,16 @@ class FeaturesService:
         :param styles: dict
         :return: Feature
         """
-        feat = database_session.query(Feature).get(featureId)
+        feat = database_session.get(Feature, featureId)
         # TODO: PROTECT assets and styles attributes
         feat.styles = styles
         database_session.commit()
         return feat
 
     @staticmethod
-    def addGeoJSON(database_session, projectId: int, feature: Dict, original_path=None) -> List[Feature]:
+    def addGeoJSON(
+        database_session, projectId: int, feature: Dict, original_path=None
+    ) -> List[Feature]:
         """
         Add a GeoJSON feature to a project
         :param projectId: int
@@ -119,7 +131,9 @@ class FeaturesService:
                 database_session.add(feat)
                 features.append(feat)
         else:
-            raise InvalidGeoJSON("Valid GeoJSON must be either a Feature or FeatureCollection.")
+            raise InvalidGeoJSON(
+                "Valid GeoJSON must be either a Feature or FeatureCollection."
+            )
         database_session.commit()
         return features
 
@@ -136,7 +150,9 @@ class FeaturesService:
         return feat
 
     @staticmethod
-    def fromLatLng(database_session, projectId: int, location: GeoLocation, metadata: Dict) -> Feature:
+    def fromLatLng(
+        database_session, projectId: int, location: GeoLocation, metadata: Dict
+    ) -> Feature:
         point = Point(location.longitude, location.latitude)
         f = Feature()
         f.project_id = projectId
@@ -147,7 +163,13 @@ class FeaturesService:
         return f
 
     @staticmethod
-    def fromGPX(database_session, projectId: int, fileObj: IO, metadata: Dict, original_path=None) -> Feature:
+    def fromGPX(
+        database_session,
+        projectId: int,
+        fileObj: IO,
+        metadata: Dict,
+        original_path=None,
+    ) -> Feature:
 
         # TODO: Fiona should support reading from the file directly, this MemoryFile business
         #  should not be needed
@@ -164,7 +186,13 @@ class FeaturesService:
                 return feat
 
     @staticmethod
-    def fromGeoJSON(database_session, projectId: int, fileObj: IO, metadata: Dict, original_path: str = None) -> List[Feature]:
+    def fromGeoJSON(
+        database_session,
+        projectId: int,
+        fileObj: IO,
+        metadata: Dict,
+        original_path: str = None,
+    ) -> List[Feature]:
         """
 
         :param projectId: int
@@ -178,9 +206,15 @@ class FeaturesService:
         return FeaturesService.addGeoJSON(database_session, projectId, data)
 
     @staticmethod
-    def fromShapefile(database_session, projectId: int, fileObj: IO, metadata: Dict, additional_files: List[IO],
-                      original_path=None) -> Feature:
-        """ Create features from shapefile
+    def fromShapefile(
+        database_session,
+        projectId: int,
+        fileObj: IO,
+        metadata: Dict,
+        additional_files: List[IO],
+        original_path=None,
+    ) -> Feature:
+        """Create features from shapefile
 
         :param projectId: int
         :param fileObj: file descriptor
@@ -190,7 +224,9 @@ class FeaturesService:
         :return: Feature
         """
         features = []
-        for geom, properties in VectorService.process_shapefile(fileObj, additional_files):
+        for geom, properties in VectorService.process_shapefile(
+            fileObj, additional_files
+        ):
             feat = Feature()
             feat.project_id = projectId
             feat.the_geom = from_shape(geometries.convert_3D_2D(geom), srid=4326)
@@ -202,8 +238,13 @@ class FeaturesService:
         return features
 
     @staticmethod
-    def from_rapp_questionnaire(database_session, projectId: int, fileObj: IO,
-                                additional_files: List[IO], original_path: str = None) -> Feature:
+    def from_rapp_questionnaire(
+        database_session,
+        projectId: int,
+        fileObj: IO,
+        additional_files: List[IO],
+        original_path: str = None,
+    ) -> Feature:
         """
         Import RAPP questionnaire
 
@@ -220,7 +261,7 @@ class FeaturesService:
         logger.info(f"Processing f{original_path}")
         data = json.loads(fileObj.read())
 
-        location = parse_rapid_geolocation(data.get('geolocation'))
+        location = parse_rapid_geolocation(data.get("geolocation"))
         point = Point(location.longitude, location.latitude)
         feat = Feature()
         feat.project_id = projectId
@@ -230,42 +271,58 @@ class FeaturesService:
         base_filepath = make_project_asset_dir(projectId)
         questionnaire_path = os.path.join(base_filepath, str(asset_uuid))
         pathlib.Path(questionnaire_path).mkdir(parents=True, exist_ok=True)
-        asset_path = os.path.join(questionnaire_path, 'questionnaire.rq')
+        asset_path = os.path.join(questionnaire_path, "questionnaire.rq")
 
         # write questionnaire rq file
-        with open(asset_path, 'w') as tmp:
+        with open(asset_path, "w") as tmp:
             tmp.write(json.dumps(data))
 
         additional_files_properties = []
 
         # write all asset files (i.e jpgs)
         if additional_files is not None:
-            logger.info(f"Processing {len(additional_files)} assets for {original_path}")
+            logger.info(
+                f"Processing {len(additional_files)} assets for {original_path}"
+            )
             for asset_file_obj in additional_files:
                 base_filename = os.path.basename(asset_file_obj.filename)
                 image_asset_path = os.path.join(questionnaire_path, base_filename)
 
                 # save original jpg (i.e. Q1-Photo-001.jpg)
-                with open(image_asset_path, 'wb') as image_asset:
+                with open(image_asset_path, "wb") as image_asset:
                     image_asset.write(asset_file_obj.read())
 
                 # create preview image (i.e. Q1-Photo-001.preview.jpg)
                 processed_asset_image = ImageService.processImage(asset_file_obj)
                 path = pathlib.Path(image_asset_path)
-                processed_asset_image.resized.save(path.with_suffix('.preview' + path.suffix), "JPEG")
+                processed_asset_image.resized.save(
+                    path.with_suffix(".preview" + path.suffix), "JPEG"
+                )
 
                 # gather coordinates information for this asset
-                logger.debug(f"{asset_file_obj.filename} has the geospatial coordinates of {processed_asset_image.coordinates}")
-                additional_files_properties.append({"filename": base_filename,
-                                                    "coordinates": (processed_asset_image.coordinates.longitude,
-                                                                    processed_asset_image.coordinates.latitude)})
+                logger.debug(
+                    f"{asset_file_obj.filename} has the geospatial coordinates of {processed_asset_image.coordinates}"
+                )
+                additional_files_properties.append(
+                    {
+                        "filename": base_filename,
+                        "coordinates": (
+                            processed_asset_image.coordinates.longitude,
+                            processed_asset_image.coordinates.latitude,
+                        ),
+                    }
+                )
                 asset_file_obj.close()
 
         if additional_files_properties:
             # Sort the list of dictionaries based on 'QX' value and then 'PhotoX' value
-            additional_files_properties.sort(key=lambda x: tuple(map(int, re.findall(r'\d+', x['filename']))))
+            additional_files_properties.sort(
+                key=lambda x: tuple(map(int, re.findall(r"\d+", x["filename"])))
+            )
             # add info about assets to properties (i.e. coordinates of asset) for quick retrieval
-            feat.properties = {"_hazmapper": {"questionnaire": {"assets": additional_files_properties}}}
+            feat.properties = {
+                "_hazmapper": {"questionnaire": {"assets": additional_files_properties}}
+            }
 
         fa = FeatureAsset(
             uuid=asset_uuid,
@@ -282,7 +339,13 @@ class FeaturesService:
         return feat
 
     @staticmethod
-    def fromINI(database_session, projectId: int, fileObj: IO, metadata: Dict, original_path: str = None) -> TileServer:
+    def fromINI(
+        database_session,
+        projectId: int,
+        fileObj: IO,
+        metadata: Dict,
+        original_path: str = None,
+    ) -> TileServer:
         """
 
         :param projectId: int
@@ -292,66 +355,119 @@ class FeaturesService:
         :return: Feature
         """
         config = configparser.ConfigParser(allow_no_value=True)
-        config.read_string(fileObj.read().decode('utf-8'))
+        config.read_string(fileObj.read().decode("utf-8"))
 
         tile_server_data = {}
-        tile_server_data['tileOptions'] = {}
-        tile_server_data['uiOptions'] = {}
+        tile_server_data["tileOptions"] = {}
+        tile_server_data["uiOptions"] = {}
 
-        general_config = config['general']
+        general_config = config["general"]
 
-        tile_server_data['name'] = general_config.get('id', '')
-        tile_server_data['type'] = general_config.get('type', '').lower()
+        tile_server_data["name"] = general_config.get("id", "")
+        tile_server_data["type"] = general_config.get("type", "").lower()
 
-        if (config.has_section('license')):
-            attribution = ''
-            for key in config['license']:
-                attribution += config['license'].get(key, '')
-            tile_server_data['attribution'] = attribution
+        if config.has_section("license"):
+            attribution = ""
+            for key in config["license"]:
+                attribution += config["license"].get(key, "")
+            tile_server_data["attribution"] = attribution
         else:
-            tile_server_data['attribution'] = ''
+            tile_server_data["attribution"] = ""
 
-        if (tile_server_data['type'] == 'tms'):
-            tms_config = config['tms']
-            tile_server_data['url'] = tms_config.get('url', fallback='')
-            tile_server_data['tileOptions']['maxZoom'] = tms_config.getint('zmax', fallback=19)
-            tile_server_data['tileOptions']['minZoom'] = tms_config.getint('zmin', fallback=0)
-        elif (tile_server_data['type'] == 'wms'):
-            wms_config = config['wms']
-            tile_server_data['url'] = wms_config.get('url', fallback='')
-            tile_server_data['tileOptions']['layers'] = wms_config.get('layers', fallback='')
-            tile_server_data['tileOptions']['params'] = wms_config.get('params', fallback='')
-            tile_server_data['tileOptions']['format'] = wms_config.get('format', fallback='')
+        if tile_server_data["type"] == "tms":
+            tms_config = config["tms"]
+            tile_server_data["url"] = tms_config.get("url", fallback="")
+            tile_server_data["tileOptions"]["maxZoom"] = tms_config.getint(
+                "zmax", fallback=19
+            )
+            tile_server_data["tileOptions"]["minZoom"] = tms_config.getint(
+                "zmin", fallback=0
+            )
+        elif tile_server_data["type"] == "wms":
+            wms_config = config["wms"]
+            tile_server_data["url"] = wms_config.get("url", fallback="")
+            tile_server_data["tileOptions"]["layers"] = wms_config.get(
+                "layers", fallback=""
+            )
+            tile_server_data["tileOptions"]["params"] = wms_config.get(
+                "params", fallback=""
+            )
+            tile_server_data["tileOptions"]["format"] = wms_config.get(
+                "format", fallback=""
+            )
 
-        tile_server_data['uiOptions']['isActive'] = True
-        tile_server_data['uiOptions']['opacity'] = 1
+        tile_server_data["uiOptions"]["isActive"] = True
+        tile_server_data["uiOptions"]["opacity"] = 1
 
         fileObj.close()
 
-        return FeaturesService.addTileServer(database_session, projectId, tile_server_data)
+        return FeaturesService.addTileServer(
+            database_session, projectId, tile_server_data
+        )
 
     @staticmethod
-    def fromFileObj(database_session, projectId: int, fileObj: IO,
-                    metadata: Dict, original_path: str = None, additional_files=None, location: GeoLocation = None) -> List[Feature]:
+    def fromFileObj(
+        database_session,
+        projectId: int,
+        fileObj: IO,
+        metadata: Dict,
+        original_path: str = None,
+        additional_files=None,
+        location: GeoLocation = None,
+    ) -> List[Feature]:
         ext = pathlib.Path(fileObj.filename).suffix.lstrip(".").lower()
         if ext in features_util.IMAGE_FILE_EXTENSIONS:
-            return [FeaturesService.fromImage(database_session, projectId, fileObj, metadata, original_path, location)]
+            return [
+                FeaturesService.fromImage(
+                    database_session,
+                    projectId,
+                    fileObj,
+                    metadata,
+                    original_path,
+                    location,
+                )
+            ]
         elif ext in features_util.GPX_FILE_EXTENSIONS:
-            return [FeaturesService.fromGPX(database_session, projectId, fileObj, metadata, original_path)]
+            return [
+                FeaturesService.fromGPX(
+                    database_session, projectId, fileObj, metadata, original_path
+                )
+            ]
         elif ext in features_util.GEOJSON_FILE_EXTENSIONS:
-            return FeaturesService.fromGeoJSON(database_session, projectId, fileObj, {}, original_path)
+            return FeaturesService.fromGeoJSON(
+                database_session, projectId, fileObj, {}, original_path
+            )
         elif ext in features_util.SHAPEFILE_FILE_EXTENSIONS:
-            return FeaturesService.fromShapefile(database_session, projectId, fileObj, {}, additional_files, original_path)
+            return FeaturesService.fromShapefile(
+                database_session,
+                projectId,
+                fileObj,
+                {},
+                additional_files,
+                original_path,
+            )
         elif ext in features_util.INI_FILE_EXTENSIONS:
-            return FeaturesService.fromINI(database_session, projectId, fileObj, {}, original_path)
+            return FeaturesService.fromINI(
+                database_session, projectId, fileObj, {}, original_path
+            )
         elif ext in features_util.RAPP_QUESTIONNAIRE_FILE_EXTENSIONS:
-            return FeaturesService.from_rapp_questionnaire(database_session, projectId, fileObj, additional_files, original_path)
+            return FeaturesService.from_rapp_questionnaire(
+                database_session, projectId, fileObj, additional_files, original_path
+            )
         else:
-            raise ApiException("Filetype not supported for direct upload. Create a feature and attach as an asset?")
+            raise ApiException(
+                "Filetype not supported for direct upload. Create a feature and attach as an asset?"
+            )
 
     @staticmethod
-    def fromImage(database_session, projectId: int, fileObj: IO, metadata: Dict,
-                  original_path: str = None, location: GeoLocation = None) -> Feature:
+    def fromImage(
+        database_session,
+        projectId: int,
+        fileObj: IO,
+        metadata: Dict,
+        original_path: str = None,
+        location: GeoLocation = None,
+    ) -> Feature:
         """
         Create a Point feature from a georeferenced image
 
@@ -363,8 +479,12 @@ class FeaturesService:
         :return: None
         """
         try:
-            logger.debug(f"processing image {original_path} known_geolocation:{location} using_exif_geolocation:{location is None}")
-            imdata = ImageService.processImage(fileObj, exif_geolocation=location is None)
+            logger.debug(
+                f"processing image {original_path} known_geolocation:{location} using_exif_geolocation:{location is None}"
+            )
+            imdata = ImageService.processImage(
+                fileObj, exif_geolocation=location is None
+            )
             coordinates = location if location else imdata.coordinates
         except InvalidEXIFData:
             raise InvalidCoordinateReferenceSystem
@@ -376,7 +496,7 @@ class FeaturesService:
 
         asset_uuid = uuid.uuid4()
         base_filepath = make_project_asset_dir(projectId)
-        asset_path = os.path.join(base_filepath, str(asset_uuid) + '.jpeg')
+        asset_path = os.path.join(base_filepath, str(asset_uuid) + ".jpeg")
 
         fa = FeatureAsset(
             uuid=asset_uuid,
@@ -388,7 +508,7 @@ class FeaturesService:
         )
         f.assets.append(fa)
         thumbnail_path = os.path.join(base_filepath, str(asset_uuid) + ".thumb.jpeg")
-        resized_image_path = os.path.join(base_filepath, str(asset_uuid) + '.jpeg')
+        resized_image_path = os.path.join(base_filepath, str(asset_uuid) + ".jpeg")
         try:
             imdata.thumb.save(thumbnail_path, "JPEG")
             imdata.resized.save(resized_image_path, "JPEG")
@@ -405,7 +525,13 @@ class FeaturesService:
         return f
 
     @staticmethod
-    def createFeatureAsset(database_session, projectId: int, featureId: int, fileObj: IO, original_path: str = None) -> Feature:
+    def createFeatureAsset(
+        database_session,
+        projectId: int,
+        featureId: int,
+        fileObj: IO,
+        original_path: str = None,
+    ) -> Feature:
         """
         Create a feature asset and save the static content to the ASSETS_BASE_DIR
         :param projectId: int
@@ -414,11 +540,15 @@ class FeaturesService:
         :return: Feature
         """
         fpath = pathlib.Path(fileObj.filename)
-        ext = fpath.suffix.lstrip('.').lower()
+        ext = fpath.suffix.lstrip(".").lower()
         if ext in features_util.IMAGE_FILE_EXTENSIONS:
-            fa = FeaturesService.createImageFeatureAsset(projectId, fileObj, original_path=original_path)
+            fa = FeaturesService.createImageFeatureAsset(
+                projectId, fileObj, original_path=original_path
+            )
         elif ext in features_util.VIDEO_FILE_EXTENSIONS:
-            fa = FeaturesService.createVideoFeatureAsset(projectId, fileObj, original_path=original_path)
+            fa = FeaturesService.createVideoFeatureAsset(
+                projectId, fileObj, original_path=original_path
+            )
         else:
             raise ApiException("Invalid format for feature assets")
 
@@ -428,7 +558,14 @@ class FeaturesService:
         return feat
 
     @staticmethod
-    def createFeatureAssetFromTapis(database_session, user: User, projectId: int, featureId: int, systemId: str, path: str) -> Feature:
+    def createFeatureAssetFromTapis(
+        database_session,
+        user: User,
+        projectId: int,
+        featureId: int,
+        systemId: str,
+        path: str,
+    ) -> Feature:
         """
         Create a feature asset and save the static content to the ASSETS_BASE_DIR
         :param user: User
@@ -437,31 +574,35 @@ class FeaturesService:
         :param fileObj: file
         :return: Feature
         """
-        client = AgaveUtils(user.jwt)
+        client = AgaveUtils(database_session, user)
         fileObj = client.getFile(systemId, path)
         fileObj.filename = pathlib.Path(path).name
-        return FeaturesService.createFeatureAsset(database_session, projectId, featureId, fileObj, original_path=path)
+        return FeaturesService.createFeatureAsset(
+            database_session, projectId, featureId, fileObj, original_path=path
+        )
 
     @staticmethod
     def featureAssetFromImData(projectId: int, imdata: ImageData) -> FeatureAsset:
         asset_uuid = uuid.uuid4()
         base_filepath = make_project_asset_dir(projectId)
-        asset_path = os.path.join(base_filepath, str(asset_uuid) + '.jpeg')
+        asset_path = os.path.join(base_filepath, str(asset_uuid) + ".jpeg")
         imdata.thumb.save(pathlib.Path(asset_path).with_suffix(".thumb.jpeg"), "JPEG")
         imdata.resized.save(asset_path, "JPEG")
         fa = FeatureAsset(
             uuid=asset_uuid,
             asset_type="image",
-            path=get_asset_relative_path(asset_path)
+            path=get_asset_relative_path(asset_path),
         )
         return fa
 
     @staticmethod
-    def createImageFeatureAsset(projectId: int, fileObj: IO, original_path: str = None) -> FeatureAsset:
+    def createImageFeatureAsset(
+        projectId: int, fileObj: IO, original_path: str = None
+    ) -> FeatureAsset:
         asset_uuid = uuid.uuid4()
         imdata = ImageService.resizeImage(fileObj)
         base_filepath = make_project_asset_dir(projectId)
-        asset_path = os.path.join(base_filepath, str(asset_uuid) + '.jpeg')
+        asset_path = os.path.join(base_filepath, str(asset_uuid) + ".jpeg")
         imdata.thumb.save(pathlib.Path(asset_path).with_suffix(".thumb.jpeg"), "JPEG")
         imdata.resized.save(asset_path, "JPEG")
         fa = FeatureAsset(
@@ -469,12 +610,14 @@ class FeaturesService:
             asset_type="image",
             original_path=original_path,
             display_path=original_path,
-            path=get_asset_relative_path(asset_path)
+            path=get_asset_relative_path(asset_path),
         )
         return fa
 
     @staticmethod
-    def createVideoFeatureAsset(projectId: int, fileObj: IO, original_path: str = None) -> FeatureAsset:
+    def createVideoFeatureAsset(
+        projectId: int, fileObj: IO, original_path: str = None
+    ) -> FeatureAsset:
         """
 
         :param projectId:
@@ -483,14 +626,14 @@ class FeaturesService:
         """
         asset_uuid = uuid.uuid4()
         base_filepath = make_project_asset_dir(projectId)
-        save_path = os.path.join(base_filepath, str(asset_uuid) + '.mp4')
+        save_path = os.path.join(base_filepath, str(asset_uuid) + ".mp4")
         with tempfile.TemporaryDirectory() as tmpdirname:
             tmp_path = os.path.join(tmpdirname, str(asset_uuid))
-            with open(tmp_path, 'wb') as tmp:
+            with open(tmp_path, "wb") as tmp:
                 tmp.write(fileObj.read())
             encoded_path = VideoService.transcode(tmp_path)
-            with open(encoded_path, 'rb') as enc:
-                with open(save_path, 'wb') as f:
+            with open(encoded_path, "rb") as enc:
+                with open(save_path, "wb") as f:
                     f.write(enc.read())
         # clean up the tmp file
         os.remove(encoded_path)
@@ -499,7 +642,7 @@ class FeaturesService:
             original_path=original_path,
             display_path=original_path,
             path=get_asset_relative_path(save_path),
-            asset_type="video"
+            asset_type="video",
         )
         return fa
 
@@ -536,12 +679,16 @@ class FeaturesService:
                       ) as clusters
              ) as features
         """
-        result = database_session.execute(q, {'projectId': projectId, 'numClusters': numClusters}).first()
+        result = database_session.execute(
+            q, {"projectId": projectId, "numClusters": numClusters}
+        ).first()
         clusters = result[0]
         return clusters
 
     @staticmethod
-    def addOverlay(database_session, projectId: int, fileObj: IO, bounds: List[float], label: str) -> Overlay:
+    def addOverlay(
+        database_session, projectId: int, fileObj: IO, bounds: List[float], label: str
+    ) -> Overlay:
         """
 
         :param projectId: int
@@ -560,21 +707,31 @@ class FeaturesService:
         ov.maxLat = bounds[3]
         ov.project_id = projectId
         ov.uuid = uuid.uuid4()
-        asset_path = os.path.join(str(make_project_asset_dir(projectId)), str(ov.uuid) + '.jpeg')
+        asset_path = os.path.join(
+            str(make_project_asset_dir(projectId)), str(ov.uuid) + ".jpeg"
+        )
         ov.path = get_asset_relative_path(asset_path)
-        imdata.original.save(asset_path, 'JPEG')
+        imdata.original.save(asset_path, "JPEG")
         imdata.thumb.save(pathlib.Path(asset_path).with_suffix(".thumb.jpeg"), "JPEG")
         database_session.add(ov)
         database_session.commit()
         return ov
 
     @staticmethod
-    def addOverlayFromTapis(database_session,
-                            user: User, project_id: int, system_id: str,
-                            path: str, bounds: List[float], label: str) -> Overlay:
-        client = AgaveUtils(user.jwt)
+    def addOverlayFromTapis(
+        database_session,
+        user: User,
+        project_id: int,
+        system_id: str,
+        path: str,
+        bounds: List[float],
+        label: str,
+    ) -> Overlay:
+        client = AgaveUtils(database_session, user)
         file_obj = client.getFile(system_id, path)
-        ov = FeaturesService.addOverlay(database_session, project_id, file_obj, bounds, label)
+        ov = FeaturesService.addOverlay(
+            database_session, project_id, file_obj, bounds, label
+        )
         return ov
 
     @staticmethod
@@ -584,7 +741,7 @@ class FeaturesService:
 
     @staticmethod
     def deleteOverlay(database_session, projectId: int, overlayId: int) -> None:
-        ov = database_session.query(Overlay).get(overlayId)
+        ov = database_session.get(Overlay, overlayId)
         delete_assets(projectId=projectId, uuid=ov.uuid)
         database_session.delete(ov)
         database_session.commit()
@@ -609,18 +766,20 @@ class FeaturesService:
 
     @staticmethod
     def getTileServers(database_session, projectId: int) -> List[TileServer]:
-        tile_servers = database_session.query(TileServer).filter_by(project_id=projectId).all()
+        tile_servers = (
+            database_session.query(TileServer).filter_by(project_id=projectId).all()
+        )
         return tile_servers
 
     @staticmethod
     def deleteTileServer(database_session, tileServerId: int) -> None:
-        ts = database_session.query(TileServer).get(tileServerId)
+        ts = database_session.get(TileServer, tileServerId)
         database_session.delete(ts)
         database_session.commit()
 
     @staticmethod
     def updateTileServer(database_session, tileServerId: int, data: dict):
-        ts = database_session.query(TileServer).get(tileServerId)
+        ts = database_session.get(TileServer, tileServerId)
         for key, value in data.items():
             setattr(ts, key, value)
         database_session.commit()
@@ -630,7 +789,7 @@ class FeaturesService:
     def updateTileServers(database_session, dataList: List[dict]):
         ret_list = []
         for tsv in dataList:
-            ts = database_session.query(TileServer).get(int(tsv['id']))
+            ts = database_session.get(TileServer, int(tsv["id"]))
             for key, value in tsv.items():
                 setattr(ts, key, value)
             ret_list.append(ts)

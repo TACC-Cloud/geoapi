@@ -1,14 +1,12 @@
 # GeoAPI
 
-[![PyPI version](https://badge.fury.io/py/geoapi-client.svg)](https://badge.fury.io/py/geoapi-client)
-
 ## Overview and Architecture
 
 GeoAPI is a restful API to create geospatial features in a PostGIS database. Users create a map "project" then
-can add features to it. The development docker-compose file has 3 containers: 
-* a PostGIS database exposing 5432, 
+can add features to it. The development docker-compose file has 3 containers:
+* a PostGIS database exposing 5432,
 * the api which exposes port 8000 behind gunicorn
-* an nginx server to serve static files and proxy to the api, running on port 8080. 
+* a nginx server to serve static files and proxy to the api, running on port 8080.
 
 See https://github.com/TACC-Cloud/hazmapper which is an associated viewer application.
 
@@ -24,36 +22,33 @@ information. An .env file for developers can be found on [UT Stache](https://sta
 The API is built with flask and flask-restplus. It is running in its own container
 under gunicorn on port 8000
 
-`make build`
+`make build-dev`
 `make start`
 
-###### Initialize the database
+###### Initialize the database (for local development and unit testing)
 
 `docker exec -it geoapi python initdb.py`
 
-###### Obtain a JWT
+### Example requests
 
-Refer to the confluence page or ask a colleague for assistance in obtaining a JWT.
+You need a Tapis token for the appropriate tenant.
 
-###### Make some requests
-
-You need to add the following header for authentication:
-
-`X-JWT-Assertion-designsafe` to equal the JWT obtained above
-
-###### Create a new map project
-
-send a POST request to `localhost:8000/projects` with a body like this: 
-
-```json
-{
-  "name": "Awesome Project",
-  "description": "Cool project"
-}
-
+```bash
+export JWT=your_access_token_string
 ```
 
-send a GET request to `localhost:8000/projects` and you should get that back.
+To create a new "map" project, send a POST request:
+
+```
+curl -X POST -H "Content-Type: application/json" -H "X-Tapis-Token: $JWT" http://localhost:8000/projects/ -d '{"name": "Test Project", "description": "This is a test project."}'
+```
+
+To view all projects, including the newly created one, send a GET request:
+
+```
+curl -v -H "Content-Type: application/json" -H "X-Tapis-Token: $JWT" http://localhost:8000/projects/
+```
+
 
 ### Client viewer
 
@@ -69,11 +64,14 @@ First, apply migrations:
 docker exec -it geoapi alembic upgrade head
 ```
 
+**Note:** The above step is also automatically performed when running `initdb.py`
+
 Then, create migrations:
 
 ```
 docker exec -it geoapi /bin/bash
-alembic revision --autogenerate
+# determine a description for the migration like 'add_user_email_column'
+alembic revision --autogenerate -m "add_user_email_column"
 # Then:
 # - remove drop table commands for postgis
 # - add/commit migrations
@@ -81,46 +79,22 @@ alembic revision --autogenerate
 
 ## Testing
 
-Run route/service tests on the `api` container
+Run directly in your running containers:
 ```
-docker-compose -f devops/docker-compose.test.yml -p geoapi_test run api pytest
-```
+# then run tests in api
+docker exec -it geoapi bash
+APP_ENV=testing pytest
 
-Run worker-related tasks on the `workers` container
+# then run tests in worker
+docker exec -it geoapiworkers bash
+APP_ENV=testing pytest -m "worker"
 ```
-docker-compose -f devops/docker-compose.test.yml -p geoapi_test run workers pytest -m "worker"
-```
+## Production/Staging
 
-Note that images need to be rebuilt before running tests if they have been updated (e.g. packages):
-```
-make build
-```
-## Kubernetes (Production/Staging)
-
-Information on Kubernetes configuration for production and staging environments can be found in the [kube/README.md](kube/README.md) including information
-on kube commands and Jenkins deployment workflows.
+Information on  configuration for production and staging environments can be found in the [devops/README.md](devops/README.md) including information
+on Jenkins deployment workflows.
 
 
 ## Python client
 
-The python package can be found at [PyPi](https://pypi.org/project/geoapi-client/)
-
-### Python client generation
-
-Python client is generated from the swagger definition of GeoAPI.  The following steps can be used to get swagger definition:
-```
-docker exec -it geoapi python output_swagger.py swagger.json
-docker cp geoapi:/app/geoapi/swagger.json .
-```
-
-Using the swagger definition, the following steps create python client and upload the python client to PyPi
-```
-git clone --depth 1 https://github.com/swagger-api/swagger-codegen.git client/swagger-codegen
-cp client/*.mustache client/swagger-codegen/modules/swagger-codegen/src/main/resources/python/.
-# Convert
-docker run --rm -v ${PWD}:/local -w=/local swaggerapi/swagger-codegen-cli  generate -i swagger.json -l python -o client/geoapi_client -c client/config.json -t client/swagger-codegen/modules/swagger-codegen/src/main/resources/python/
-cd client/geoapi_client
-python3 setup.py sdist bdist_wheel
-twine check dist/*
-python3 -m twine upload dist/*
-```
+The python package can be found at [PyPi](https://pypi.org/project/geoapi-client/).  More details can be found in [Python Client](./PYTHON_CLIENT.md)

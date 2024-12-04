@@ -1,5 +1,6 @@
 from typing import List, AnyStr, Dict
 
+from geoapi.app import socketio
 from geoapi.models import Notification, ProgressNotification
 from geoapi.models import User
 from uuid import UUID
@@ -12,36 +13,40 @@ class NotificationsService:
 
     @staticmethod
     def getAll(database_session, user: User) -> List[Notification]:
-        return database_session.query(Notification) \
-            .filter(Notification.username == user.username) \
-            .filter(Notification.tenant_id == user.tenant_id) \
-            .order_by(Notification.created.desc()) \
-            .limit(100) \
+        return (
+            database_session.query(Notification)
+            .filter(Notification.username == user.username)
+            .filter(Notification.tenant_id == user.tenant_id)
+            .order_by(Notification.created.desc())
+            .limit(100)
             .all()
+        )
 
     @staticmethod
     def get(database_session, user: User, filters: Dict) -> List[Notification]:
-        q = database_session.query(Notification) \
-            .filter(Notification.username == user.username) \
+        q = (
+            database_session.query(Notification)
+            .filter(Notification.username == user.username)
             .filter(Notification.tenant_id == user.tenant_id)
+        )
         if filters.get("startDate"):
             q = q.filter(Notification.created > filters.get("startDate"))
-        return q.order_by(Notification.created.desc()) \
-            .limit(100).all()
+        return q.order_by(Notification.created.desc()).limit(100).all()
 
     @staticmethod
-    def create(database_session, user: User, status: AnyStr, message: AnyStr) -> Notification:
+    def create(
+        database_session, user: User, status: AnyStr, message: AnyStr
+    ) -> Notification:
         note = Notification(
             username=user.username,
             tenant_id=user.tenant_id,
             status=status,
-            message=message
+            message=message,
         )
         try:
             database_session.add(note)
             database_session.commit()
-            from geoapi.app import socketio
-            socketio.emit('new_notification', {'message': message})
+            socketio.emit("new_notification", {"message": message})
             return note
         except Exception:
             database_session.rollback()
@@ -49,27 +54,38 @@ class NotificationsService:
 
     @staticmethod
     def getProgress(database_session, user: User) -> List[ProgressNotification]:
-        q = database_session.query(ProgressNotification) \
-            .filter(ProgressNotification.user_id == user.id) \
+        q = (
+            database_session.query(ProgressNotification)
+            .filter(ProgressNotification.user_id == user.id)
             .filter(ProgressNotification.tenant_id == user.tenant_id)
-        return q.order_by(ProgressNotification.created.desc()) \
-            .limit(100).all()
+        )
+        return q.order_by(ProgressNotification.created.desc()).limit(100).all()
 
     @staticmethod
     def getProgressUUID(database_session, task_uuid: UUID) -> ProgressNotification:
-        return database_session.query(ProgressNotification) \
-            .filter(ProgressNotification.uuid == task_uuid) \
+        return (
+            database_session.query(ProgressNotification)
+            .filter(ProgressNotification.uuid == task_uuid)
             .first()
+        )
 
     @staticmethod
     def getProgressStatus(database_session, status: str) -> List[ProgressNotification]:
-        return database_session.query(ProgressNotification) \
-            .filter(ProgressNotification.status == status) \
+        return (
+            database_session.query(ProgressNotification)
+            .filter(ProgressNotification.status == status)
             .all()
+        )
 
     @staticmethod
-    def createProgress(database_session, user: User, status: AnyStr, message: AnyStr, task_uuid: UUID,
-                       logs: List = None) -> ProgressNotification:
+    def createProgress(
+        database_session,
+        user: User,
+        status: AnyStr,
+        message: AnyStr,
+        task_uuid: UUID,
+        logs: Dict = None,
+    ) -> ProgressNotification:
         note = ProgressNotification(
             user_id=user.id,
             tenant_id=user.tenant_id,
@@ -77,18 +93,26 @@ class NotificationsService:
             status=status,
             progress=0,
             message=message,
-            logs=logs
+            logs=logs,
         )
         database_session.add(note)
         database_session.commit()
         return note
 
     @staticmethod
-    def updateProgress(database_session, task_uuid: UUID, status: AnyStr = None, message: AnyStr = None, progress: int = None,
-                       logItem: Dict = None):
-        note = database_session.query(ProgressNotification) \
-            .filter(ProgressNotification.uuid == task_uuid) \
+    def updateProgress(
+        database_session,
+        task_uuid: UUID,
+        status: AnyStr = None,
+        message: AnyStr = None,
+        progress: int = None,
+        logItem: Dict = None,
+    ):
+        note = (
+            database_session.query(ProgressNotification)
+            .filter(ProgressNotification.uuid == task_uuid)
             .first()
+        )
         if status is not None:
             note.status = status
         if message is not None:
@@ -103,22 +127,30 @@ class NotificationsService:
 
     @staticmethod
     def deleteProgress(database_session, task_uuid: UUID):
-        notes = database_session.query(ProgressNotification) \
-            .filter(ProgressNotification.uuid == task_uuid)
+        notes = database_session.query(ProgressNotification).filter(
+            ProgressNotification.uuid == task_uuid
+        )
         for i in notes:
             database_session.delete(i)
         database_session.commit()
 
     @staticmethod
     def deleteAllDoneProgress(database_session):
-        note = database_session.query(ProgressNotification) \
-            .filter(ProgressNotification.status == 'success')
+        note = database_session.query(ProgressNotification).filter(
+            ProgressNotification.status == "success"
+        )
         for pn in note:
             database_session.delete(pn)
         database_session.commit()
 
     @staticmethod
     def emit_socketio_event(event: str, message: str, socketio):
-        logger.info('Emitting socketio event: %s', event)
-        socketio.emit(event, {'message': message})
-        logger.info('Socketio event emitted: %s', event)
+        logger.info("Emitting socketio event: %s", event)
+        socketio.emit(event, {"message": message})
+        logger.info("Socketio event emitted: %s", event)
+
+    @staticmethod
+    def emit_socketio_event(event: str, message: str, socketio):
+        logger.info("Emitting socketio event: %s", event)
+        socketio.emit(event, {"message": message})
+        logger.info("Socketio event emitted: %s", event)

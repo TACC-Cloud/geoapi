@@ -1,21 +1,27 @@
-from geoapi.custom.designsafe.project import on_project_creation, on_project_deletion, DESIGNSAFE_URL
+from geoapi.custom.designsafe.project import on_project_creation, on_project_deletion
 from geoapi.services.features import FeaturesService
+from geoapi.settings import settings
 from geoapi.db import db_session
-from geoapi.utils.agave import AgaveUtils
 from urllib.parse import quote
 import json
 import os
 
 
-def test_on_project_creation(requests_mock, user1, observable_projects_fixture):
-    project = observable_projects_fixture.project
-    create_file_url = AgaveUtils.BASE_URL + quote(f"/files/media/system/{project.system_id}{project.system_path}/")
+def test_on_project_creation(
+    tapis_url, requests_mock, user1, watch_content_users_projects_fixture
+):
+    project = watch_content_users_projects_fixture
+    create_file_url = tapis_url + quote(
+        f"/files/media/system/{project.system_id}{project.system_path}/"
+    )
     requests_mock.post(create_file_url)
 
-    designsafe_uuid = project.system_id[len("project-"):]
+    designsafe_uuid = project.system_id[len("project-") :]
 
-    metadata_url = DESIGNSAFE_URL + f"api/projects/{designsafe_uuid}/"
-    requests_mock.get(metadata_url, json={"value": {"hazmapperMaps": []}})
+    metadata_url = settings.DESIGNSAFE_URL + f"/api/projects/v2/{designsafe_uuid}/"
+    requests_mock.get(
+        metadata_url, json={"baseProject": {"value": {"hazmapperMaps": []}}}
+    )
     requests_mock.post(metadata_url)
 
     on_project_creation(db_session, user1, project)
@@ -24,31 +30,57 @@ def test_on_project_creation(requests_mock, user1, observable_projects_fixture):
 
     assert len(requests_mock.request_history) == 3
     update_metadata_request = requests_mock.request_history[2]
-    assert json.loads(update_metadata_request.text) == {'hazmapperMaps':
-                                                        [{"name": project.name,
-                                                          "uuid": str(project.uuid),
-                                                          "path": project.system_path,
-                                                          "deployment": os.getenv("APP_ENV")}]}
+    assert json.loads(update_metadata_request.text) == {
+        "patchMetadata": {
+            "hazmapperMaps": [
+                {
+                    "name": project.name,
+                    "uuid": str(project.uuid),
+                    "path": project.system_path,
+                    "deployment": os.getenv("APP_ENV"),
+                }
+            ]
+        }
+    }
 
 
-def test_on_project_deletion(requests_mock, user1, observable_projects_fixture):
-    project = observable_projects_fixture.project
+def test_on_project_deletion(
+    tapis_url, requests_mock, user1, watch_content_users_projects_fixture
+):
+    project = watch_content_users_projects_fixture
     file_path = f"{project.system_path}/{project.system_file}.hazmapper"
 
-    delete_file_url = AgaveUtils.BASE_URL + quote(f"/files/media/system/{project.system_id}{file_path}")
+    delete_file_url = tapis_url + quote(
+        f"/files/media/system/{project.system_id}{file_path}"
+    )
     requests_mock.delete(delete_file_url)
 
-    designsafe_uuid = project.system_id[len("project-"):]
+    designsafe_uuid = project.system_id[len("project-") :]
 
-    metadata_url = DESIGNSAFE_URL + f"api/projects/{designsafe_uuid}/"
-    requests_mock.get(metadata_url, json={"value": {"hazmapperMaps": [{"name": project.name,
-                                                                       "uuid": str(project.uuid),
-                                                                       "path": project.system_path,
-                                                                       "deployment": os.getenv("APP_ENV")}]}})
+    metadata_url = settings.DESIGNSAFE_URL + f"/api/projects/v2/{designsafe_uuid}/"
+    requests_mock.get(
+        metadata_url,
+        json={
+            "baseProject": {
+                "value": {
+                    "hazmapperMaps": [
+                        {
+                            "name": project.name,
+                            "uuid": str(project.uuid),
+                            "path": project.system_path,
+                            "deployment": os.getenv("APP_ENV"),
+                        }
+                    ]
+                }
+            }
+        },
+    )
     requests_mock.post(metadata_url)
 
-    on_project_deletion(user1, project)
+    on_project_deletion(db_session, user1, project)
 
     assert len(requests_mock.request_history) == 3
     update_metadata_request = requests_mock.request_history[2]
-    assert json.loads(update_metadata_request.text) == {'hazmapperMaps': []}
+    assert json.loads(update_metadata_request.text) == {
+        "patchMetadata": {"hazmapperMaps": []}
+    }

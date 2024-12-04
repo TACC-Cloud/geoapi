@@ -1,6 +1,4 @@
 ---
-version: "3"
-
 volumes:
   assets:
   pgdata:
@@ -11,16 +9,23 @@ networks:
 services:
 
   rabbitmq:
-    image: rabbitmq:3.12.6
+    image: rabbitmq:3-management
+    ports:
+      - 15672:15672
     networks:
       - geoapi
     environment:
       - RABBITMQ_DEFAULT_USER=dev
       - RABBITMQ_DEFAULT_PASS=dev
       - RABBITMQ_DEFAULT_VHOST=dev
+    healthcheck:
+      test: rabbitmq-diagnostics -q ping
+      interval: 5s
+      timeout: 30s
+      retries: 5
 
   postgres:
-    image: mdillon/postgis:11-alpine
+    image: postgis/postgis:11-3.3-alpine
     volumes:
       - pgdata:/var/lib/postgresql/data
     networks:
@@ -51,16 +56,25 @@ services:
       - ../:/app
       - assets:/assets
     environment:
-      - MAPILLARY_CLIENT_TOKEN=${MAPILLARY_CLIENT_TOKEN}
+      - MAPILLARY_CLIENT_TOKEN
       - FLASK_APP=/app/geoapi/app.py
       - APP_ENV=local
       - ASSETS_BASE_DIR=/assets
-      - TENANT=${TENANT}
+      - DESIGNSAFE_URL=${DESIGNSAFE_URL}
+
     stdin_open: true
     tty: true
     container_name: geoapiworkers
     hostname: geoapiworkers
-    command: "celery -A geoapi.celery_app worker -l info"
+    command: >
+      sh -c '
+      celery -A geoapi.celery_app worker -l info -Q default -n default_worker@geoapi &
+      celery -A geoapi.celery_app worker -l info -Q heavy --concurrency=6 -n heavy_worker@geoapi &
+      wait
+      '
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
 
   celerybeat:
     image: taccaci/geoapi-workers:local
@@ -79,6 +93,9 @@ services:
     container_name: geoapicelerybeat
     hostname: geoapicelerybeat
     command: "celery -A geoapi.celery_app beat -l info"
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
 
   api:
     image: taccaci/geoapi:local
@@ -93,11 +110,14 @@ services:
       - 8.8.8.8
       - 8.8.4.4
     environment:
-      - MAPILLARY_CLIENT_TOKEN=${MAPILLARY_CLIENT_TOKEN}
+      - MAPILLARY_CLIENT_TOKEN
       - FLASK_APP=/app/geoapi/app.py
       - APP_ENV=local
       - ASSETS_BASE_DIR=/assets
-      - TENANT=${TENANT}
+      - DESIGNSAFE_URL
+      - FLASK_SESSION_SECRET_KEY
+      - TAPIS_CLIENT_ID
+      - TAPIS_CLIENT_KEY
     stdin_open: true
     tty: true
     container_name: geoapi

@@ -4,8 +4,8 @@ from geoapi.models import User
 
 
 def test_get_all_tasks(test_client, projects_fixture, task_fixture):
-    u1 = db_session.query(User).get(1)
-    resp = test_client.get('/projects/1/tasks/', headers={'x-jwt-assertion-test': u1.jwt})
+    u1 = db_session.get(User, 1)
+    resp = test_client.get("/projects/1/tasks/", headers={"X-Tapis-Token": u1.jwt})
     assert resp.status_code == 200
     data = resp.get_json()
     assert len(data) == 1

@@ -1,9 +1,14 @@
-from geoapi.services.notifications import NotificationsService
 from typing import List, Dict
 from datetime import datetime
-import uuid
 
-from geoapi.models import User, Streetview, StreetviewInstance, StreetviewSequence, StreetviewOrganization, Project, Task
+from geoapi.models import (
+    User,
+    Streetview,
+    StreetviewInstance,
+    StreetviewSequence,
+    StreetviewOrganization,
+    Project,
+)
 from geoapi.log import logging
 
 
@@ -18,14 +23,15 @@ class StreetviewService:
         :param user: User
         :return: List[Streetview]
         """
-        streetviews = database_session.query(Streetview) \
-            .join(User.streetviews) \
-            .filter(User.username == user.username) \
-            .filter(User.tenant_id == user.tenant_id) \
+        streetviews = (
+            database_session.query(Streetview)
+            .join(User.streetviews)
+            .filter(User.username == user.username)
+            .filter(User.tenant_id == user.tenant_id)
             .all()
+        )
 
         return streetviews
-
 
     @staticmethod
     def update(database_session, id: int, data: Dict) -> Streetview:
@@ -44,7 +50,6 @@ class StreetviewService:
 
         return sv
 
-
     @staticmethod
     def create(database_session, user: User, data: Dict) -> Streetview:
         """
@@ -53,8 +58,8 @@ class StreetviewService:
         :param data: Dict
         :return: Streetview
         """
-        if StreetviewService.getByService(database_session, user, data['service']):
-            StreetviewService.deleteByService(database_session, user, data['service'])
+        if StreetviewService.getByService(database_session, user, data["service"]):
+            StreetviewService.deleteByService(database_session, user, data["service"])
 
         sv = Streetview()
         sv.user_id = user.id
@@ -74,7 +79,7 @@ class StreetviewService:
         :param streetview_id: int
         :return: Streetview
         """
-        return database_session.query(Streetview).get(streetview_id)
+        return database_session.get(Streetview, streetview_id)
 
     @staticmethod
     def getByService(database_session, user: User, service: str) -> Streetview:
@@ -84,13 +89,17 @@ class StreetviewService:
         :param service: str
         :return: Streetview
         """
-        return database_session.query(Streetview)\
-            .filter(Streetview.user_id == user.id)\
-            .filter(Streetview.service == service)\
+        return (
+            database_session.query(Streetview)
+            .filter(Streetview.user_id == user.id)
+            .filter(Streetview.service == service)
             .first()
+        )
 
     @staticmethod
-    def updateByService(database_session, user: User, service: str, data: Dict) -> Streetview:
+    def updateByService(
+        database_session, user: User, service: str, data: Dict
+    ) -> Streetview:
         """
         Update a single Streetview Service by service name
         :param user: User
@@ -136,10 +145,12 @@ class StreetviewService:
         :param id: int
         :return: StreetviewOrganization
         """
-        return database_session.query(StreetviewOrganization).get(id)
+        return database_session.get(StreetviewOrganization, id)
 
     @staticmethod
-    def getAllOrganizations(database_session, user: User, service: str) -> List[StreetviewOrganization]:
+    def getAllOrganizations(
+        database_session, user: User, service: str
+    ) -> List[StreetviewOrganization]:
         """
         Get all the Streetview Organization objects for a service.
         :param user: User
@@ -150,7 +161,9 @@ class StreetviewService:
         return sv.organizations
 
     @staticmethod
-    def createOrganization(database_session, user: User, service: str, data: Dict) -> StreetviewOrganization:
+    def createOrganization(
+        database_session, user: User, service: str, data: Dict
+    ) -> StreetviewOrganization:
         """
         Create a Streetview Organization object
         :param service: str
@@ -160,16 +173,18 @@ class StreetviewService:
         sv = StreetviewService.getByService(database_session, user, service)
         svo = StreetviewOrganization()
         svo.streetview_id = sv.id
-        svo.key = data.get('key')
-        svo.name = data.get('name')
-        svo.slug = data.get('slug')
+        svo.key = data.get("key")
+        svo.name = data.get("name")
+        svo.slug = data.get("slug")
         database_session.add(svo)
         database_session.commit()
 
         return svo
 
     @staticmethod
-    def updateOrganization(database_session, id: int, data: Dict) -> StreetviewOrganization:
+    def updateOrganization(
+        database_session, id: int, data: Dict
+    ) -> StreetviewOrganization:
         """
         Update a Streetview Organization object
         :param id: int
@@ -197,7 +212,9 @@ class StreetviewService:
         database_session.commit()
 
     @staticmethod
-    def createInstance(database_session, streetview_id: int, system_id: str, path: str) -> StreetviewInstance:
+    def createInstance(
+        database_session, streetview_id: int, system_id: str, path: str
+    ) -> StreetviewInstance:
         """
         Create a Streetview Instance object.
         :param streetview_id: int
@@ -216,24 +233,32 @@ class StreetviewService:
 
     @staticmethod
     def getInstances(database_session, projectId: int) -> List[StreetviewInstance]:
-        proj = database_session.query(Project).get(projectId)
-        return proj.streetview_instances
+        project = database_session.get(Project, projectId)
+        return project.streetview_instances
 
     @staticmethod
-    def addInstanceToProject(database_session, projectId: int, streetview_instance_id: int) -> None:
-        proj = database_session.query(Project).get(projectId)
-        streetview_instance = database_session.query(StreetviewInstance).get(streetview_instance_id)
-        proj.streetview_instances.append(streetview_instance)
+    def addInstanceToProject(
+        database_session, projectId: int, streetview_instance_id: int
+    ) -> None:
+        project = database_session.get(Project, projectId)
+        streetview_instance = database_session.get(
+            StreetviewInstance, streetview_instance_id
+        )
+        project.streetview_instances.append(streetview_instance)
         database_session.commit()
 
     @staticmethod
     def sequenceFromFeature(database_session, featureId: int):
-        return database_session.query(StreetviewSequence)\
-            .filter(StreetviewSequence.feature.id == featureId)\
+        return (
+            database_session.query(StreetviewSequence)
+            .filter(StreetviewSequence.feature.id == featureId)
             .first()
+        )
 
     @staticmethod
-    def getInstanceFromSystemPath(database_session, streetview_id: int, system_id: str, path: str) -> StreetviewInstance:
+    def getInstanceFromSystemPath(
+        database_session, streetview_id: int, system_id: str, path: str
+    ) -> StreetviewInstance:
         """
         Get a Streetview instance object for a system and path.
         :param streetview_id: int
@@ -241,11 +266,13 @@ class StreetviewService:
         :param path: str
         :return: StreetviewInstance
         """
-        return database_session.query(StreetviewInstance)\
-                         .filter(StreetviewInstance.streetview_id == streetview_id)\
-                         .filter(StreetviewInstance.system_id == system_id)\
-                         .filter(StreetviewInstance.path == path)\
-                         .first()
+        return (
+            database_session.query(StreetviewInstance)
+            .filter(StreetviewInstance.streetview_id == streetview_id)
+            .filter(StreetviewInstance.system_id == system_id)
+            .filter(StreetviewInstance.path == path)
+            .first()
+        )
 
     @staticmethod
     def deleteInstance(database_session, id: int) -> None:
@@ -254,7 +281,7 @@ class StreetviewService:
         :param id: int
         :return: None
         """
-        sv = database_session.query(StreetviewInstance).get(id)
+        sv = database_session.get(StreetviewInstance, id)
         database_session.delete(sv)
         database_session.commit()
 
@@ -266,24 +293,35 @@ class StreetviewService:
         :param data: Dict
         :return: None
         """
-        dir = data['dir']
-        svi = StreetviewService.getInstanceFromSystemPath(database_session, data['streetviewId'], dir['system'], dir['path'])
+        dir = data["dir"]
+        svi = StreetviewService.getInstanceFromSystemPath(
+            database_session, data["streetviewId"], dir["system"], dir["path"]
+        )
 
         if not svi:
-            svi = StreetviewService.createInstance(database_session, data['streetviewId'], dir['system'], dir['path'])
+            svi = StreetviewService.createInstance(
+                database_session, data["streetviewId"], dir["system"], dir["path"]
+            )
 
-        sequence = StreetviewService.createSequence(database_session, streetview_instance=svi, sequence_id=data['sequenceId'], organization_id=data['organizationId'])
+        sequence = StreetviewService.createSequence(
+            database_session,
+            streetview_instance=svi,
+            sequence_id=data["sequenceId"],
+            organization_id=data["organizationId"],
+        )
         svi.sequences.append(sequence)
         database_session.commit()
 
     @staticmethod
-    def createSequence(database_session,
-                       streetview_instance: StreetviewInstance,
-                       start_date: datetime=None,
-                       end_date: datetime=None,
-                       bbox: str=None,
-                       organization_id: str=None,
-                       sequence_id: str=None) -> StreetviewSequence:
+    def createSequence(
+        database_session,
+        streetview_instance: StreetviewInstance,
+        start_date: datetime = None,
+        end_date: datetime = None,
+        bbox: str = None,
+        organization_id: str = None,
+        sequence_id: str = None,
+    ) -> StreetviewSequence:
         """
         Create a Streetview Sequence to link to a Streetview Instance.
         :param streetview_instance_id: int
@@ -317,9 +355,11 @@ class StreetviewService:
         :param sequence_id: str
         :return: StreetviewSequence
         """
-        sequence = database_session.query(StreetviewSequence)\
-            .filter(StreetviewSequence.sequence_id == sequence_id)\
+        sequence = (
+            database_session.query(StreetviewSequence)
+            .filter(StreetviewSequence.sequence_id == sequence_id)
             .first()
+        )
         return sequence
 
     @staticmethod
@@ -329,7 +369,7 @@ class StreetviewService:
         :param id: int
         :return: StreetviewSequence
         """
-        sequence = database_session.query(StreetviewSequence).get(id)
+        sequence = database_session.get(StreetviewSequence, id)
         return sequence
 
     @staticmethod
@@ -339,7 +379,7 @@ class StreetviewService:
         :param id: int
         :return: None
         """
-        seq = database_session.query(StreetviewSequence).get(id)
+        seq = database_session.get(StreetviewSequence, id)
         database_session.delete(seq)
         database_session.commit()
 

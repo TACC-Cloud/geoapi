@@ -1,5 +1,4 @@
 ---
-version: "3"
 services:
   workers:
     image: taccaci/geoapi-workers:${GEOAPI_TAG}
@@ -10,7 +9,7 @@ services:
     environment:
       - FLASK_APP=/app/geoapi/app.py
       - ASSETS_BASE_DIR=/assets
-      - GEOAPI_TAG=ENV_GEOAPI_TAG
+      - DESIGNSAFE_URL=${DESIGNSAFE_URL}
     stdin_open: true
     tty: true
     container_name: geoapiworkers
@@ -19,7 +18,12 @@ services:
       driver: syslog
       options:
         tag: geoapi_workers
-    command: "celery -A geoapi.celery_app worker -l info"
+    command:  >
+      sh -c '
+      celery -A geoapi.celery_app worker -l info -Q default -n default_worker@geoapi &
+      celery -A geoapi.celery_app worker -l info -Q heavy --concurrency=6 -n heavy_worker@geoapi &
+      wait
+      '
 
   watchtower:
     image: containrrr/watchtower:1.7.1

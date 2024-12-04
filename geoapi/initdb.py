@@ -1,32 +1,56 @@
-import random
-from geoapi.db import Base, engine, db_session
-from geoapi.models import *
-from shapely.geometry import Point
-from geoalchemy2.shape import from_shape
+from sqlalchemy_utils import database_exists, create_database, drop_database
+from sqlalchemy import text, create_engine
+from alembic.config import Config
+from alembic import command
+from geoapi.settings import settings, UnitTestingConfig
+from geoapi.db import Base, engine, get_db_connection_string
 
 
-def initDB():
-    Base.metadata.drop_all(bind=engine)
-    Base.metadata.create_all(bind=engine)
+def setup_local_dev_database():
+    db_url = get_db_connection_string(settings)
 
-def dropDB():
-    Base.metadata.drop_all(bind=engine)
+    # Create database if it doesn't exist
+    if not database_exists(db_url):
+        create_database(db_url)
+        print(f"Database '{settings.DB_NAME}' created.")
 
-
-def addRandomMarkers():
-    proj = Project(name="test", description="test", tenant_id="designsafe")
-    user = db_session.query(User).filter(User.username == "jmeiring").first()
-    proj.users.append(user)
-    db_session.add(user)
-    for i in range(0, 10000):
-        p = Point(random.uniform(-180, 180), random.uniform(-90, 90))
-        feat = Feature(
-            the_geom=from_shape(p, srid=4326),
+    # Run all migrations
+    alembic_cfg = Config("alembic.ini")
+    try:
+        command.upgrade(alembic_cfg, "head")
+        print(
+            f"All migrations have been applied. Database '{settings.DB_NAME}' is now up-to-date."
         )
-        feat.project = proj
-        db_session.add(feat)
-    db_session.commit()
+    except Exception as e:
+        print(f"Error applying migrations to database '{settings.DB_NAME}': {str(e)}")
+        raise
+
+
+def setup_unit_test_database():
+    db_url = get_db_connection_string(UnitTestingConfig)
+
+    # Drop the database if it exists and recreate it
+    if database_exists(db_url):
+        drop_database(db_url)
+    create_database(db_url)
+    print(f"Test database '{UnitTestingConfig.DB_NAME}' created.")
+
+    # Create a new engine connected to the test database
+    test_engine = create_engine(db_url)
+
+    # Enable PostGIS
+    with test_engine.connect() as connection:
+        connection.execute(text("CREATE EXTENSION IF NOT EXISTS postgis"))
+        connection.commit()
+        print("PostGIS extension enabled for test database.")
+
+    # Create all tables based on the models
+    Base.metadata.create_all(test_engine)
+    print("All tables created in the test database based on current models.")
+
+    return engine
+
 
 if __name__ == "__main__":
-    initDB()
-    # addRandomMarkers()
+    setup_local_dev_database()
+    setup_unit_test_database()

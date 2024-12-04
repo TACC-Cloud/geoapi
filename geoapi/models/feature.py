@@ -1,8 +1,5 @@
 import uuid
-from sqlalchemy import (
-    Column, Integer, String,
-    ForeignKey, Index, DateTime
-)
+from sqlalchemy import Column, Integer, String, ForeignKey, Index, DateTime
 import shapely
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import relationship
@@ -15,14 +12,16 @@ from geoapi.utils import geometries
 
 
 class Feature(Base):
-    __tablename__ = 'features'
+    __tablename__ = "features"
     __table_args__ = (
-        Index('ix_features_properties', 'properties', postgresql_using="gin"),
+        Index("ix_features_properties", "properties", postgresql_using="gin"),
     )
 
     id = Column(Integer, primary_key=True)
-    project_id = Column(ForeignKey('projects.id', ondelete="CASCADE", onupdate="CASCADE"), index=True)
-    the_geom = Column(Geometry(geometry_type='GEOMETRY', srid=4326), nullable=False)
+    project_id = Column(
+        ForeignKey("projects.id", ondelete="CASCADE", onupdate="CASCADE"), index=True
+    )
+    the_geom = Column(Geometry(geometry_type="GEOMETRY", srid=4326), nullable=False)
     properties = Column(JSONB, default={})
     styles = Column(JSONB, default={})
     created_date = Column(DateTime(timezone=True), server_default=func.now())
@@ -30,7 +29,7 @@ class Feature(Base):
     project = relationship("Project", overlaps="features")
 
     def __repr__(self):
-        return '<Feature(id={})>'.format(self.id)
+        return "<Feature(id={})>".format(self.id)
 
     @classmethod
     def fromGeoJSON(cls, data: dict):
@@ -53,16 +52,19 @@ class Feature(Base):
 
 
 class FeatureAsset(Base):
-    __tablename__ = 'feature_assets'
+    __tablename__ = "feature_assets"
     id = Column(Integer, primary_key=True)
-    feature_id = Column(ForeignKey('features.id', ondelete="CASCADE", onupdate="CASCADE"), index=True)
+    feature_id = Column(
+        ForeignKey("features.id", ondelete="CASCADE", onupdate="CASCADE"), index=True
+    )
     uuid = Column(UUID(as_uuid=True), default=uuid.uuid4, nullable=False)
+    # system or project id or both
     path = Column(String(), nullable=False)
     original_name = Column(String(), nullable=True)
     original_path = Column(String(), nullable=True, index=True)
     display_path = Column(String(), nullable=True)
     asset_type = Column(String(), nullable=False, default="image")
-    feature = relationship('Feature', overlaps="assets")
+    feature = relationship("Feature", overlaps="assets")
 
     def __repr__(self):
-        return '<FeatureAsset(id={})>'.format(self.id)
+        return "<FeatureAsset(id={})>".format(self.id)

@@ -1,11 +1,10 @@
 [flake8]
+# E203: Whitespace before ':'.
+# H101: Use TODO(NAME)
+# W503: line break before binary operator.
+ignore  = E203, H101, W503
 max-line-length = 140
-exclude = 
-    geoapi/migrations/
+exclude =
     geoapi/models/__init__.py
     geoapi/tasks/__init__.py
     geoapi/schemas/__init__.py
-    # Files below are tied with https://jira.tacc.utexas.edu/browse/DES-2267
-    geoapi/initdb.py
-    geoapi/utils/streetview.py
-    geoapi/services/streetview.py

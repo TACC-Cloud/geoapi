@@ -1,17 +1,19 @@
-from pathlib import Path
 from typing import List, Optional
 
-from sqlalchemy import desc
-from geoapi.models import Project, ProjectUser, User, ObservableDataProject
+from sqlalchemy import desc, exists
+from geoapi.models import Project, ProjectUser, User
 from sqlalchemy.sql import select, text
-from sqlalchemy.exc import IntegrityError
 from geoapi.services.users import UserService
 from geoapi.utils.agave import AgaveUtils, get_system_users
 from geoapi.utils.users import is_anonymous
 from geoapi.tasks.external_data import import_from_agave
 from geoapi.tasks.projects import remove_project_assets
 from geoapi.log import logger
-from geoapi.exceptions import ApiException, ObservableProjectAlreadyExists
+from geoapi.exceptions import (
+    ApiException,
+    GetUsersForProjectNotSupported,
+    ProjectSystemPathWatchFilesAlreadyExists,
+)
 from geoapi.custom import custom_on_project_creation, custom_on_project_deletion
 
 
@@ -28,28 +30,36 @@ class ProjectsService:
         :param user: User
         :return: Project
         """
-        watch_content = data.pop("watch_content", False)
-        watch_users = data.pop("watch_users", False)
+        # Check that a storage system is there
+        if data.get("system_id"):
+            AgaveUtils(database_session, user).systemsGet(data.get("system_id"))
+
+        system_id = data.get("system_id")
+        system_path = data.get("system_path")
+
+        # Check that there is no other matching projects if watch_content is True
+        if data.get(
+            "watch_content"
+        ) and ProjectsService.is_project_watching_content_on_system_path(
+            database_session, system_id, system_path
+        ):
+            logger.exception(
+                f"User:{user.username} tried to create a project with watch_content although there is "
+                f"a project for that  system_id={system_id} and system_path={system_path}"
+            )
+            raise ProjectSystemPathWatchFilesAlreadyExists(
+                f"'{system_id}/{system_path}' project already exists"
+            )
 
         project = Project(**data)
-
         project.tenant_id = user.tenant_id
         project.users.append(user)
-
-        if watch_users or watch_content:
-            try:
-                ProjectsService.makeObservable(database_session,
-                                               project,
-                                               user,
-                                               watch_content)
-            except Exception as e:
-                logger.exception("{}".format(e))
-                raise e
 
         database_session.add(project)
         database_session.commit()
 
-        # set the user to be the creator
+        # Now after the above commit, we have project_users,
+        # and we can now mark the creator.
         for project_user in project.project_users:
             if project_user.user_id == user.id:
                 project_user.creator = True
@@ -60,61 +70,53 @@ class ProjectsService:
 
         # Run any custom on-project-creation actions
         if user.tenant_id.upper() in custom_on_project_creation:
-            custom_on_project_creation[user.tenant_id.upper()](database_session, user, project)
+            custom_on_project_creation[user.tenant_id.upper()](
+                database_session, user, project
+            )
 
-        setattr(project, 'deletable', True)
+        if project.system_id:
+            try:
+                system_users = get_system_users(
+                    database_session, user, project.system_id
+                )
+                logger.info(
+                    f"Initial update of project_id:{project.id} system_id:{project.system_id} "
+                    f"system_path:{project.system_path} to have the following users: {system_users}"
+                )
+                users = [
+                    UserService.getOrCreateUser(
+                        database_session, user.username, project.tenant_id
+                    )
+                    for user in system_users
+                ]
+                project.users = users
+
+                if system_users:
+                    # Initialize the admin status
+                    users_dict = {user.username: user for user in system_users}
+                    for project_user in project.project_users:
+                        project_user.admin = users_dict[
+                            project_user.user.username
+                        ].admin
+                database_session.add(project)
+                database_session.commit()
+            except GetUsersForProjectNotSupported:
+                logger.info(
+                    f"Not getting users for project_id:{project.id} system:{project.system_id}"
+                )
+
+        if project.watch_content:
+            import_from_agave.apply_async(
+                args=[
+                    project.tenant_id,
+                    user.id,
+                    project.system_id,
+                    project.system_path,
+                    project.id,
+                ]
+            )
+        setattr(project, "deletable", True)
         return project
-
-    @staticmethod
-    def makeObservable(database_session,
-                       proj: Project,
-                       user: User,
-                       watch_content: bool):
-        """
-        Makes a project an observable project
-        Requires project's system_path, system_id, tenant_id to exist
-        :param proj: Project
-        :param user: User
-        :param watch_content: bool
-        :return: None
-        """
-        folder_name = Path(proj.system_path).name
-        name = proj.system_id + '/' + folder_name
-
-        # TODO: Handle no storage system found
-        AgaveUtils(user.jwt).systemsGet(proj.system_id)
-
-        obs = ObservableDataProject(
-            system_id=proj.system_id,
-            path=proj.system_path,
-            watch_content=watch_content
-        )
-
-        system_users = get_system_users(proj.tenant_id, user.jwt, proj.system_id)
-        logger.info("Initial update of project:{} to have the following users: {}".format(name, system_users))
-        users = [UserService.getOrCreateUser(database_session, u.username, tenant=proj.tenant_id) for u in system_users]
-        proj.users = users
-
-        obs.project = proj
-
-        try:
-            database_session.add(obs)
-            database_session.commit()
-        except IntegrityError as e:
-            database_session.rollback()
-            if 'unique_system_id_path' in str(e.orig):
-                logger.exception("User:{} tried to create an observable project that already exists: '{}'".format(user.username, name))
-                raise ObservableProjectAlreadyExists("'{}' project already exists".format(name))
-            else:
-                raise e
-
-        # Initialize the admin status
-        users_dict = {u.username: u for u in system_users}
-        for u in obs.project.project_users:
-            u.admin = users_dict[u.user.username].admin
-
-        if watch_content:
-            import_from_agave.apply_async(args=[obs.project.tenant_id, user.id, obs.system_id, obs.path, obs.project_id])
 
     @staticmethod
     def list(database_session, user: User) -> List[Project]:
@@ -123,19 +125,25 @@ class ProjectsService:
         :param user: User
         :return: List[Project]
         """
-        projects_and_project_user = database_session.query(Project, ProjectUser) \
-            .join(ProjectUser) \
-            .filter(ProjectUser.user_id == user.id) \
-            .order_by(desc(Project.created)) \
+        projects_and_project_user = (
+            database_session.query(Project, ProjectUser)
+            .join(ProjectUser)
+            .filter(ProjectUser.user_id == user.id)
+            .order_by(desc(Project.created))
             .all()
-
+        )
         for p, u in projects_and_project_user:
-            setattr(p, 'deletable', u.admin or u.creator)
+            setattr(p, "deletable", u.admin or u.creator)
 
         return [p for p, _ in projects_and_project_user]
 
     @staticmethod
-    def get(database_session, project_id: Optional[int] = None, uuid: Optional[str] = None, user: User = None) -> Project:
+    def get(
+        database_session,
+        project_id: Optional[int] = None,
+        uuid: Optional[str] = None,
+        user: User = None,
+    ) -> Project:
         """
         Get the metadata associated with a project
         :param project_id: int
@@ -143,18 +151,25 @@ class ProjectsService:
         :return: Project
         """
         if project_id is not None:
-            project = database_session.query(Project).get(project_id)
+            project = database_session.get(Project, project_id)
         elif uuid is not None:
-            project = database_session.query(Project).filter(Project.uuid == uuid).first()
+            project = (
+                database_session.query(Project).filter(Project.uuid == uuid).first()
+            )
         else:
             raise ValueError("project_id or uid is required")
 
         if project and user and not is_anonymous(user):
-            project_user = database_session.query(ProjectUser)\
-                .filter(ProjectUser.project_id == project.id)\
-                .filter(ProjectUser.user_id == user.id).one_or_none()
+            project_user = (
+                database_session.query(ProjectUser)
+                .filter(ProjectUser.project_id == project.id)
+                .filter(ProjectUser.user_id == user.id)
+                .one_or_none()
+            )
             if project_user:
-                setattr(project, 'deletable', project_user.admin or project_user.creator)
+                setattr(
+                    project, "deletable", project_user.admin or project_user.creator
+                )
         return project
 
     @staticmethod
@@ -201,19 +216,22 @@ class ProjectsService:
         startDate = query.get("startDate")
         endDate = query.get("endDate")
 
-        params = {'projectId': projectId,
-                  'startDate': startDate,
-                  'endDate': endDate}
+        params = {"projectId": projectId, "startDate": startDate, "endDate": endDate}
 
-        assetTypes = assetType.split(',') if assetType else []
+        assetTypes = assetType.split(",") if assetType else []
         assetQueries = []
 
         for asset in assetTypes:
             if asset:
                 params[asset] = asset
-                assetQueries.append('fa is null' if asset == 'no_asset_vector' else 'fa.asset_type = :' + asset)
+                assetQueries.append(
+                    "fa is null"
+                    if asset == "no_asset_vector"
+                    else "fa.asset_type = :" + asset
+                )
 
-        select_stmt = text("""
+        select_stmt = text(
+            """
         json_build_object(
             'type', 'FeatureCollection',
             'crs',  json_build_object(
@@ -235,55 +253,72 @@ class ProjectsService:
                     )
                 ), '[]'::json)
         ) as geojson
-        """)
+        """
+        )
 
         # The sub select that filters only on this projects ID, filters applied below
-        sub_select = select([
-            text("""feat.*,  array_remove(array_agg(fa), null) as assets
+        sub_select = select(
+            text(
+                """feat.*,  array_remove(array_agg(fa), null) as assets
               from features as feat
               LEFT JOIN feature_assets fa on feat.id = fa.feature_id
-             """)
-        ]).where(text("project_id = :projectId"))
+             """
+            )
+        ).where(text("project_id = :projectId"))
 
         if bbox:
             sub_select = sub_select.where(
-                text("""feat.the_geom &&
+                text(
+                    """feat.the_geom &&
                 ST_MakeEnvelope (:bbox_xmin, :bbox_ymin, :bbox_xmax, :bbox_ymax)
-                """))
-            params.update({"bbox_xmin": bbox[0],
-                           "bbox_ymin": bbox[1],
-                           "bbox_xmax": bbox[2],
-                           "bbox_ymax": bbox[3]})
+                """
+                )
+            )
+            params.update(
+                {
+                    "bbox_xmin": bbox[0],
+                    "bbox_ymin": bbox[1],
+                    "bbox_xmax": bbox[2],
+                    "bbox_ymax": bbox[3],
+                }
+            )
 
         if startDate and endDate:
-            sub_select = sub_select.where(text("feat.created_date BETWEEN :startDate AND :endDate"))
+            sub_select = sub_select.where(
+                text("feat.created_date BETWEEN :startDate AND :endDate")
+            )
 
         if len(assetQueries):
-            sub_select = sub_select.where(text('(' + ' OR '.join(assetQueries) + ')'))
+            sub_select = sub_select.where(text("(" + " OR ".join(assetQueries) + ")"))
 
-        sub_select = sub_select.group_by(text("feat.id")).alias("tmp")
-        s = select([select_stmt]).select_from(sub_select)
+        sub_select = sub_select.group_by(text("feat.id")).subquery("tmp")
+        s = select(select_stmt).select_from(sub_select)
         result = database_session.execute(s, params)
         out = result.fetchone()
         return out.geojson
 
     @staticmethod
-    def update(database_session, user: User, projectId: int, data: dict) -> Project:
+    def update(database_session, projectId: int, data: dict) -> Project:
         """
-        Update the metadata associated with a project
+        Update the metadata associated with a project.
+
+        Only `name`, `description` and `public` can be updated.
+
         :param projectId: int
         :param data: dict
         :return: Project
         """
-        proj = ProjectsService.get(database_session=database_session, project_id=projectId)
+        project = ProjectsService.get(
+            database_session=database_session, project_id=projectId
+        )
 
-        proj.name = data.get('name', proj.name)
-        proj.description = data.get('description', proj.description)
-        proj.public = data.get('public', proj.public)
+        project.name = data.get("name", project.name)
+        project.description = data.get("description", project.description)
+        project.public = data.get("public", project.public)
 
         database_session.commit()
 
-        return proj
+        return project
 
     @staticmethod
     def delete(database_session, user: User, projectId: int) -> dict:
@@ -294,8 +329,12 @@ class ProjectsService:
         """
         # Run any custom on-project-deletion actions
         if user.tenant_id.upper() in custom_on_project_deletion:
-            project = database_session.query(Project).filter(Project.id == projectId).one()
-            custom_on_project_deletion[user.tenant_id.upper()](user, project)
+            project = (
+                database_session.query(Project).filter(Project.id == projectId).one()
+            )
+            custom_on_project_deletion[user.tenant_id.upper()](
+                database_session, user, project
+            )
 
         # TODO move the database remove call to celery (https://tacc-main.atlassian.net/browse/WG-235)
         database_session.query(Project).filter(Project.id == projectId).delete()
@@ -306,7 +345,9 @@ class ProjectsService:
         return {"status": "ok"}
 
     @staticmethod
-    def addUserToProject(database_session, projectId: int, username: str, admin: bool) -> None:
+    def addUserToProject(
+        database_session, projectId: int, username: str, admin: bool
+    ) -> None:
         """
         Add a user to a project
         :param projectId: int
@@ -315,21 +356,26 @@ class ProjectsService:
         :return:
         """
 
-        proj = database_session.query(Project).get(projectId)
-        user = UserService.getOrCreateUser(database_session, username, proj.tenant_id)
-        proj.users.append(user)
+        project = database_session.get(Project, projectId)
+        user = UserService.getOrCreateUser(
+            database_session, username, project.tenant_id
+        )
+        project.users.append(user)
         database_session.commit()
 
-        project_user = database_session.query(ProjectUser)\
-            .filter(ProjectUser.project_id == projectId)\
-            .filter(ProjectUser.user_id == user.id).one()
+        project_user = (
+            database_session.query(ProjectUser)
+            .filter(ProjectUser.project_id == projectId)
+            .filter(ProjectUser.user_id == user.id)
+            .one()
+        )
         project_user.admin = admin
         database_session.commit()
 
     @staticmethod
     def getUsers(database_session, projectId: int) -> List[User]:
-        proj = database_session.query(Project).get(projectId)
-        return proj.users
+        project = database_session.get(Project, projectId)
+        return project.users
 
     @staticmethod
     def getUser(database_session, projectId: int, username: str) -> User:
@@ -345,21 +391,38 @@ class ProjectsService:
         :param username: str
         :return: None
         """
-        proj = database_session.query(Project).get(projectId)
+        project = database_session.get(Project, projectId)
         user = database_session.query(User).filter(User.username == username).first()
-        observable_project = database_session.query(ObservableDataProject) \
-            .filter(ObservableDataProject.id == projectId).first()
 
-        if user not in proj.users:
+        if user not in project.users:
             raise ApiException("User is not in project")
 
-        if len(proj.users) == 1:
+        if len(project.users) == 1:
             raise ApiException("Unable to remove last user of project")
 
-        if observable_project:
-            number_of_potential_observers = len([u for u in proj.users if u.jwt])
+        if project.watch_content or project.watch_users:
+            number_of_potential_observers = len(
+                [user for user in project.users if user.jwt]
+            )
             if user.jwt and number_of_potential_observers == 1:
-                raise ApiException("Unable to remove last user of observable project who can observe file system")
+                raise ApiException(
+                    "Unable to remove last user of project who can observe file system or users"
+                )
 
-        proj.users.remove(user)
+        project.users.remove(user)
         database_session.commit()
+
+    @staticmethod
+    def is_project_watching_content_on_system_path(
+        database_session, system_id, system_path
+    ) -> bool:
+        """
+        Check if any project is watching content at the specified system path.
+        """
+        return database_session.query(
+            exists().where(
+                Project.system_id == system_id,
+                Project.system_path == system_path,
+                Project.watch_content,
+            )
+        ).scalar()
