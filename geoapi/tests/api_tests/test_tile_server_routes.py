@@ -8,18 +8,20 @@ def _get_tile_server_data():
         "name": "Test",
         "type": "tms",
         "url": "www.test.com",
-        "attribution": "contributors"
+        "attribution": "contributors",
     }
 
     return data
 
 
 def test_add_tile_server(test_client, projects_fixture):
-    u1 = db_session.query(User).get(1)
+    u1 = db_session.get(User, 1)
 
-    resp = test_client.post('/projects/1/tile-servers/',
-                            json=_get_tile_server_data(),
-                            headers={'X-Tapis-Token': u1.jwt})
+    resp = test_client.post(
+        "/projects/1/tile-servers/",
+        json=_get_tile_server_data(),
+        headers={"X-Tapis-Token": u1.jwt},
+    )
     data = resp.get_json()
     assert resp.status_code == 200
     assert data["name"] == "Test"
@@ -29,74 +31,87 @@ def test_add_tile_server(test_client, projects_fixture):
 
 
 def test_delete_tile_server(test_client, projects_fixture):
-    u1 = db_session.query(User).get(1)
-    test_client.post('/projects/1/tile-servers/',
-                     json=_get_tile_server_data(),
-                     headers={'X-Tapis-Token': u1.jwt})
+    u1 = db_session.get(User, 1)
+    test_client.post(
+        "/projects/1/tile-servers/",
+        json=_get_tile_server_data(),
+        headers={"X-Tapis-Token": u1.jwt},
+    )
 
-    resp = test_client.delete('/projects/1/tile-servers/1/',
-                              headers={'X-Tapis-Token': u1.jwt})
+    resp = test_client.delete(
+        "/projects/1/tile-servers/1/", headers={"X-Tapis-Token": u1.jwt}
+    )
     assert resp.status_code == 200
-    proj = db_session.query(TileServer).get(1)
+    proj = db_session.get(TileServer, 1)
     assert proj is None
 
 
 def test_update_tile_server(test_client, projects_fixture):
-    u1 = db_session.query(User).get(1)
+    u1 = db_session.get(User, 1)
 
-    resp = test_client.post('/projects/1/tile-servers/',
-                            json=_get_tile_server_data(),
-                            headers={'X-Tapis-Token': u1.jwt})
+    resp = test_client.post(
+        "/projects/1/tile-servers/",
+        json=_get_tile_server_data(),
+        headers={"X-Tapis-Token": u1.jwt},
+    )
 
     data = {
         "name": "NewTestName",
     }
 
     resp = test_client.put(
-        '/projects/1/tile-servers/1/',
-        json=data,
-        headers={'X-Tapis-Token': u1.jwt}
+        "/projects/1/tile-servers/1/", json=data, headers={"X-Tapis-Token": u1.jwt}
     )
 
     assert resp.status_code == 200
-    tsv = db_session.query(TileServer).get(1)
+    tsv = db_session.get(TileServer, 1)
     assert tsv.name == "NewTestName"
 
 
 def test_update_tile_servers(test_client, projects_fixture):
-    u1 = db_session.query(User).get(1)
+    u1 = db_session.get(User, 1)
 
-    resp1 = test_client.post('/projects/1/tile-servers/',
-                             json=_get_tile_server_data(),
-                             headers={'X-Tapis-Token': u1.jwt})
+    resp1 = test_client.post(
+        "/projects/1/tile-servers/",
+        json=_get_tile_server_data(),
+        headers={"X-Tapis-Token": u1.jwt},
+    )
 
-    resp2 = test_client.post('/projects/1/tile-servers/',
-                             json=_get_tile_server_data(),
-                             headers={'X-Tapis-Token': u1.jwt})
+    resp2 = test_client.post(
+        "/projects/1/tile-servers/",
+        json=_get_tile_server_data(),
+        headers={"X-Tapis-Token": u1.jwt},
+    )
 
-    updated_data = [{"id": resp1.get_json()['id'], "name": "NewTestName1"},
-                    {"id": resp2.get_json()['id'], "name": "NewTestName2"}]
+    updated_data = [
+        {"id": resp1.get_json()["id"], "name": "NewTestName1"},
+        {"id": resp2.get_json()["id"], "name": "NewTestName2"},
+    ]
 
     resp = test_client.put(
-        '/projects/1/tile-servers/',
+        "/projects/1/tile-servers/",
         json=updated_data,
-        headers={'X-Tapis-Token': u1.jwt}
+        headers={"X-Tapis-Token": u1.jwt},
     )
 
     assert resp.status_code == 200
 
-    my_tsv1 = db_session.query(TileServer).get(1)
+    my_tsv1 = db_session.get(TileServer, 1)
     assert my_tsv1.name == "NewTestName1"
 
-    my_tsv2 = db_session.query(TileServer).get(2)
+    my_tsv2 = db_session.get(TileServer, 2)
     assert my_tsv2.name == "NewTestName2"
 
 
-def test_import_tile_server__tapis(test_client, projects_fixture, import_file_from_agave_mock):
-    u1 = db_session.query(User).get(1)
+def test_import_tile_server__tapis(
+    test_client, projects_fixture, import_file_from_agave_mock
+):
+    u1 = db_session.get(User, 1)
     resp = test_client.post(
-        '/projects/1/features/files/import/',
-        json={"files": [{"system": "designsafe.storage.default", "path": "metadata.ini"}]},
-        headers={'X-Tapis-Token': u1.jwt}
+        "/projects/1/features/files/import/",
+        json={
+            "files": [{"system": "designsafe.storage.default", "path": "metadata.ini"}]
+        },
+        headers={"X-Tapis-Token": u1.jwt},
     )
     assert resp.status_code == 200

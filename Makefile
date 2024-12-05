@@ -53,3 +53,10 @@ deploy-geoapi:
 .PHONY: deploy-workers
 deploy-workers:
 	docker push $(GEOAPI_WORKERS):$(TAG)
+
+.PHONY: build-dev
+build-dev:
+	docker build -t $(GEOAPI_IMAGE):$(TAG) --target development -f devops/Dockerfile .
+	docker build -t $(GEOAPI_WORKERS):$(TAG) --target development -f devops/Dockerfile.worker .
+	docker tag $(GEOAPI_WORKERS):$(TAG) $(GEOAPI_WORKERS):local
+	docker tag $(GEOAPI_IMAGE):$(TAG) $(GEOAPI_IMAGE):local

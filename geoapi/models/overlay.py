@@ -1,17 +1,16 @@
 import uuid
-from sqlalchemy import (
-    Column, Integer, String, Numeric,
-    ForeignKey
-)
+from sqlalchemy import Column, Integer, String, Numeric, ForeignKey
 from sqlalchemy.orm import relationship
 from sqlalchemy.dialects.postgresql import UUID
 from geoapi.db import Base
 
 
 class Overlay(Base):
-    __tablename__ = 'overlays'
+    __tablename__ = "overlays"
     id = Column(Integer, primary_key=True)
-    project_id = Column(ForeignKey('projects.id', ondelete="CASCADE", onupdate="CASCADE"), index=True)
+    project_id = Column(
+        ForeignKey("projects.id", ondelete="CASCADE", onupdate="CASCADE"), index=True
+    )
     path = Column(String(), nullable=False)
     minLat = Column(Numeric(), nullable=False)
     minLon = Column(Numeric(), nullable=False)
@@ -20,7 +19,7 @@ class Overlay(Base):
     label = Column(String(), nullable=False)
     uuid = Column(UUID(as_uuid=True), default=uuid.uuid4, nullable=False)
 
-    project = relationship('Project')
+    project = relationship("Project")
 
     def __repr__(self):
-        return '<Overlay(id={})>'.format(self.id)
+        return "<Overlay(id={})>".format(self.id)

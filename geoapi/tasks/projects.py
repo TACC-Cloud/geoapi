@@ -18,5 +18,7 @@ def remove_project_assets(project_id):
         shutil.rmtree(assets_folder)
         logger.info(f"Deleting project:{project_id} finished")
     except FileNotFoundError:
-        logger.info(f"Deleting project:{project_id} completed but caught FileNotFoundError")
+        logger.info(
+            f"Deleting project:{project_id} completed but caught FileNotFoundError"
+        )
         pass

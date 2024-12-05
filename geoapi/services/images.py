@@ -33,11 +33,11 @@ class ImageService:
 
     @staticmethod
     def processBase64(encoded: AnyStr) -> ImageData:
-        image_data = re.sub('^data:image/.+;base64,', '', encoded)
+        image_data = re.sub("^data:image/.+;base64,", "", encoded)
         thumb = Image.open(io.BytesIO(base64.b64decode(image_data)))
         thumb.thumbnail(ImageService.THUMBSIZE)
         resized = Image.open(io.BytesIO(base64.b64decode(image_data)))
-        resized.thumbnail(ImageService.RESIZE, PIL.Image.ANTIALIAS)
+        resized.thumbnail(ImageService.RESIZE, PIL.Image.LANCZOS)
         imdata = ImageData(thumb, resized, (0, 0))
         return imdata
 
@@ -67,7 +67,7 @@ class ImageService:
         thumb = _fix_orientation(fileObj)
         thumb.thumbnail(ImageService.THUMBSIZE)
         resized = _fix_orientation(fileObj)
-        resized.thumbnail(ImageService.RESIZE, PIL.Image.ANTIALIAS)
+        resized.thumbnail(ImageService.RESIZE, PIL.Image.LANCZOS)
         imdata = ImageData(thumb, resized, (0, 0))
         return imdata
 
@@ -163,18 +163,18 @@ def get_exif_location(image) -> GeoLocation:
     lat = None
     lon = None
 
-    gps_latitude = _get_if_exist(exif_data, 'GPS GPSLatitude')
-    gps_latitude_ref = _get_if_exist(exif_data, 'GPS GPSLatitudeRef')
-    gps_longitude = _get_if_exist(exif_data, 'GPS GPSLongitude')
-    gps_longitude_ref = _get_if_exist(exif_data, 'GPS GPSLongitudeRef')
+    gps_latitude = _get_if_exist(exif_data, "GPS GPSLatitude")
+    gps_latitude_ref = _get_if_exist(exif_data, "GPS GPSLatitudeRef")
+    gps_longitude = _get_if_exist(exif_data, "GPS GPSLongitude")
+    gps_longitude_ref = _get_if_exist(exif_data, "GPS GPSLongitudeRef")
 
     if gps_latitude and gps_latitude_ref and gps_longitude and gps_longitude_ref:
         lat = _convert_to_degress(gps_latitude)
-        if gps_latitude_ref.values[0] != 'N':
+        if gps_latitude_ref.values[0] != "N":
             lat = 0 - lat
 
         lon = _convert_to_degress(gps_longitude)
-        if gps_longitude_ref.values[0] != 'E':
+        if gps_longitude_ref.values[0] != "E":
             lon = 0 - lon
 
     if not lat or not lon:

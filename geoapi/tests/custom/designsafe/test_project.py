@@ -7,15 +7,21 @@ import json
 import os
 
 
-def test_on_project_creation(tapis_url, requests_mock, user1, watch_content_users_projects_fixture):
+def test_on_project_creation(
+    tapis_url, requests_mock, user1, watch_content_users_projects_fixture
+):
     project = watch_content_users_projects_fixture
-    create_file_url = tapis_url + quote(f"/files/media/system/{project.system_id}{project.system_path}/")
+    create_file_url = tapis_url + quote(
+        f"/files/media/system/{project.system_id}{project.system_path}/"
+    )
     requests_mock.post(create_file_url)
 
-    designsafe_uuid = project.system_id[len("project-"):]
+    designsafe_uuid = project.system_id[len("project-") :]
 
     metadata_url = settings.DESIGNSAFE_URL + f"/api/projects/v2/{designsafe_uuid}/"
-    requests_mock.get(metadata_url, json={"baseProject": {"value": {"hazmapperMaps": []}}})
+    requests_mock.get(
+        metadata_url, json={"baseProject": {"value": {"hazmapperMaps": []}}}
+    )
     requests_mock.post(metadata_url)
 
     on_project_creation(db_session, user1, project)
@@ -26,27 +32,30 @@ def test_on_project_creation(tapis_url, requests_mock, user1, watch_content_user
     update_metadata_request = requests_mock.request_history[2]
     assert json.loads(update_metadata_request.text) == {
         "patchMetadata": {
-            'hazmapperMaps':
-                [
-                    {
-                        "name": project.name,
-                        "uuid": str(project.uuid),
-                        "path": project.system_path,
-                        "deployment": os.getenv("APP_ENV")
-                    }
-                ]
+            "hazmapperMaps": [
+                {
+                    "name": project.name,
+                    "uuid": str(project.uuid),
+                    "path": project.system_path,
+                    "deployment": os.getenv("APP_ENV"),
+                }
+            ]
         }
     }
 
 
-def test_on_project_deletion(tapis_url, requests_mock, user1, watch_content_users_projects_fixture):
+def test_on_project_deletion(
+    tapis_url, requests_mock, user1, watch_content_users_projects_fixture
+):
     project = watch_content_users_projects_fixture
     file_path = f"{project.system_path}/{project.system_file}.hazmapper"
 
-    delete_file_url = tapis_url + quote(f"/files/media/system/{project.system_id}{file_path}")
+    delete_file_url = tapis_url + quote(
+        f"/files/media/system/{project.system_id}{file_path}"
+    )
     requests_mock.delete(delete_file_url)
 
-    designsafe_uuid = project.system_id[len("project-"):]
+    designsafe_uuid = project.system_id[len("project-") :]
 
     metadata_url = settings.DESIGNSAFE_URL + f"/api/projects/v2/{designsafe_uuid}/"
     requests_mock.get(
@@ -59,12 +68,12 @@ def test_on_project_deletion(tapis_url, requests_mock, user1, watch_content_user
                             "name": project.name,
                             "uuid": str(project.uuid),
                             "path": project.system_path,
-                            "deployment": os.getenv("APP_ENV")
+                            "deployment": os.getenv("APP_ENV"),
                         }
                     ]
                 }
             }
-        }
+        },
     )
     requests_mock.post(metadata_url)
 
@@ -73,8 +82,5 @@ def test_on_project_deletion(tapis_url, requests_mock, user1, watch_content_user
     assert len(requests_mock.request_history) == 3
     update_metadata_request = requests_mock.request_history[2]
     assert json.loads(update_metadata_request.text) == {
-        "patchMetadata":
-            {
-                'hazmapperMaps': []
-            }
+        "patchMetadata": {"hazmapperMaps": []}
     }

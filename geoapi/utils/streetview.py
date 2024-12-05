@@ -17,6 +17,8 @@ from geoapi.log import logging
 
 
 logger = logging.getLogger(__file__)
+
+
 def make_project_streetview_dir(userId: int, task_uuid: UUID) -> str:
     """
     Creates a directory for a temporary streetview paths in the STREETVIEW_DIR location
@@ -88,24 +90,27 @@ class MapillaryUtils:
             return
 
         command = [
-            '/opt/conda/bin/mapillary_tools',
-            'authenticate',
-            '--user_name',
+            "/opt/conda/bin/mapillary_tools",
+            "authenticate",
+            "--user_name",
             service_user,
-            '--jwt',
-            jwt
+            "--jwt",
+            jwt,
         ]
 
         try:
-            subprocess.run(command,
-                           check=True,
-                           env={
-                               'MAPILLARY_CLIENT_TOKEN': settings.MAPILLARY_CLIENT_TOKEN,
-                               'MAPILLARY_CONFIG_PATH': MapillaryUtils.get_auth_file(userId)
-                           })
+            subprocess.run(
+                command,
+                check=True,
+                env={
+                    "MAPILLARY_CLIENT_TOKEN": settings.MAPILLARY_CLIENT_TOKEN,
+                    "MAPILLARY_CONFIG_PATH": MapillaryUtils.get_auth_file(userId),
+                },
+            )
         except subprocess.CalledProcessError as e:
-            error_message = "Errors occurred during Mapillary authentication for user with userId: {}. {}"\
-                .format(userId, e)
+            error_message = "Errors occurred during Mapillary authentication for user with userId: {}. {}".format(
+                userId, e
+            )
             raise ApiException(error_message)
 
     @staticmethod
@@ -113,107 +118,122 @@ class MapillaryUtils:
         pass
 
     @staticmethod
-    def upload(database_session, userId: int, task_uuid: UUID, service_user: str, organization_key: str):
+    def upload(
+        database_session,
+        userId: int,
+        task_uuid: UUID,
+        service_user: str,
+        organization_key: str,
+    ):
         command = [
-            '/opt/conda/bin/mapillary_tools',
-            'process_and_upload',
+            "/opt/conda/bin/mapillary_tools",
+            "process_and_upload",
             get_project_streetview_dir(userId, task_uuid),
-            '--user_name',
+            "--user_name",
             service_user,
-            '--organization_key',
+            "--organization_key",
             organization_key,
         ]
 
         try:
-            prog = subprocess.Popen(command,
-                                    stdout=subprocess.PIPE,
-                                    stdin=subprocess.PIPE,
-                                    stderr=subprocess.STDOUT,
-                                    env={
-                                        'MAPILLARY_CLIENT_TOKEN': settings.MAPILLARY_CLIENT_ID,
-                                        'MAPILLARY_CONFIG_PATH': MapillaryUtils.get_auth_file(userId)
-                                    },
-                                    text=True)
-            NotificationsService.updateProgress(database_session,
-                                                task_uuid,
-                                                "created",
-                                                "Uploading to Mapillary")
+            prog = subprocess.Popen(
+                command,
+                stdout=subprocess.PIPE,
+                stdin=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                env={
+                    "MAPILLARY_CLIENT_TOKEN": settings.MAPILLARY_CLIENT_ID,
+                    "MAPILLARY_CONFIG_PATH": MapillaryUtils.get_auth_file(userId),
+                },
+                text=True,
+            )
+            NotificationsService.updateProgress(
+                database_session, task_uuid, "created", "Uploading to Mapillary"
+            )
 
-            for line in iter(prog.stdout.readline, b''):
-                if line == '':
+            for line in iter(prog.stdout.readline, b""):
+                if line == "":
                     break
 
-                catch_upload_status = re.compile(r'(.*): (\d+(?=%))')
+                catch_upload_status = re.compile(r"(.*): (\d+(?=%))")
                 upload_status_match = re.search(catch_upload_status, str(line.rstrip()))
                 if upload_status_match:
-                    NotificationsService.updateProgress(database_session,
-                                                        task_uuid,
-                                                        "in_progress",
-                                                        upload_status_match.group(1),
-                                                        int(float(upload_status_match.group(2))))
+                    NotificationsService.updateProgress(
+                        database_session,
+                        task_uuid,
+                        "in_progress",
+                        upload_status_match.group(1),
+                        int(float(upload_status_match.group(2))),
+                    )
                 else:
-                    NotificationsService.updateProgress(database_session,
-                                                        task_uuid,
-                                                        "created",
-                                                        "Processing upload...")
+                    NotificationsService.updateProgress(
+                        database_session, task_uuid, "created", "Processing upload..."
+                    )
 
         except Exception as e:
-            error_message = "Error occurred mapillary_tools upload task for user with id: {} \n {}"\
-                          .format(userId, str(e))
+            error_message = "Error occurred mapillary_tools upload task for user with id: {} \n {}".format(
+                userId, str(e)
+            )
             logger.error(error_message)
             raise Exception(error_message)
         else:
-            logger.info('Subprocess finished')
+            logger.info("Subprocess finished")
             return
 
     @staticmethod
     def extract_uploaded_sequences(user: User, task_uuid: UUID) -> List:
-        desc_path = os.path.join(get_project_streetview_dir(user.id, task_uuid),
-                                 'mapillary_image_description.json');
+        desc_path = os.path.join(
+            get_project_streetview_dir(user.id, task_uuid),
+            "mapillary_image_description.json",
+        )
 
         mapped_sequences = {}
         uploaded_sequences = []
 
         if os.path.isfile(desc_path):
             with open(desc_path, "rb") as jf:
-                 descs = json.load(jf)
-                 for desc in descs:
-                     seq = desc['MAPSequenceUUID']
-                     lat = desc['MAPLatitude']
-                     lon = desc['MAPLongitude']
-                     time = datetime.datetime.strptime(desc['MAPCaptureTime'], "%Y_%m_%d_%H_%M_%S_%f")
+                descs = json.load(jf)
+                for desc in descs:
+                    seq = desc["MAPSequenceUUID"]
+                    lat = desc["MAPLatitude"]
+                    lon = desc["MAPLongitude"]
+                    time = datetime.datetime.strptime(
+                        desc["MAPCaptureTime"], "%Y_%m_%d_%H_%M_%S_%f"
+                    )
 
-                     try:
-                         mapped_sequences[seq]
-                     except KeyError:
-                         mapped_sequences[seq] = {}
+                    try:
+                        mapped_sequences[seq]
+                    except KeyError:
+                        mapped_sequences[seq] = {}
 
-                     try:
-                         mapped_sequences[seq]['lat']
-                     except KeyError:
-                         mapped_sequences[seq]['lat'] = []
+                    try:
+                        mapped_sequences[seq]["lat"]
+                    except KeyError:
+                        mapped_sequences[seq]["lat"] = []
 
-                     try:
-                         mapped_sequences[seq]['lon']
-                     except KeyError:
-                         mapped_sequences[seq]['lon'] = []
+                    try:
+                        mapped_sequences[seq]["lon"]
+                    except KeyError:
+                        mapped_sequences[seq]["lon"] = []
 
-                     try:
-                         mapped_sequences[seq]['time']
-                     except KeyError:
-                         mapped_sequences[seq]['time'] = []
+                    try:
+                        mapped_sequences[seq]["time"]
+                    except KeyError:
+                        mapped_sequences[seq]["time"] = []
 
-                     mapped_sequences[seq]['lat'].append(lat)
-                     mapped_sequences[seq]['lon'].append(lon)
-                     mapped_sequences[seq]['time'].append(time)
+                    mapped_sequences[seq]["lat"].append(lat)
+                    mapped_sequences[seq]["lon"].append(lon)
+                    mapped_sequences[seq]["time"].append(time)
 
             for key, val in mapped_sequences.items():
-                uploaded_sequences.append({
-                    'start_date': min(val['time']),
-                    'end_date': max(val['time']),
-                    'lat_max': max(val['lat']),
-                    'lat_min': min(val['lat']),
-                    'lon_max': max(val['lon']),
-                    'lon_min': min(val['lon'])
-                })
+                uploaded_sequences.append(
+                    {
+                        "start_date": min(val["time"]),
+                        "end_date": max(val["time"]),
+                        "lat_max": max(val["lat"]),
+                        "lat_min": min(val["lat"]),
+                        "lon_max": max(val["lon"]),
+                        "lon_min": min(val["lon"]),
+                    }
+                )
         return uploaded_sequences

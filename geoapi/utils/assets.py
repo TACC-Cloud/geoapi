@@ -55,7 +55,9 @@ def delete_assets(projectId: int, uuid: str):
     :param uuid: str
     :return:
     """
-    for asset_file in glob.glob('{}/*{}*'.format(get_project_asset_dir(projectId), uuid)):
+    for asset_file in glob.glob(
+        "{}/*{}*".format(get_project_asset_dir(projectId), uuid)
+    ):
         if os.path.isfile(asset_file):
             os.remove(asset_file)
         else:

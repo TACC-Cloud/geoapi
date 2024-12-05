@@ -2,71 +2,46 @@ name: CI
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
   pull_request:
-    branches: [ '**' ]
+    branches: ["**"]
 jobs:
   Linting:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
+
+      - name: Fetch base and install Poetry
+        run: |
+          git fetch origin ${{github.base_ref}}
+          pipx install poetry
+
       - name: Setup Python
         uses: actions/setup-python@v4
         with:
-          python-version: 3.9
-      - name: Install flake8
-        run: pip install flake8
+          python-version: "3.11"
+          cache: "poetry"
+
+      - name: Install Python Packages
+        run: |
+          cd devops
+          poetry install --only dev
+
       - name: Run flake8
-        run: flake8 geoapi
+        run: |
+          cd devops
+          poetry run flake8 ../geoapi
+
+      - name: Formatting with black
+        run: |
+          cd devops
+          poetry run black --check ../geoapi
+
   Geoapi_Unit_Tests:
     runs-on: ubuntu-latest
     env:
       APP_ENV: testing
       DB_HOST: localhost
-    services:
-      postgres:
-        image: mdillon/postgis:11-alpine
-        env:
-          POSTGRES_USER: dev
-          POSTGRES_PASSWORD: dev
-          POSTGRES_DB: test
-        ports:
-          -  5432:5432
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-    steps:
-    - uses: actions/checkout@v3
-    - name: Setup Python
-      uses: actions/setup-python@v4
-      with:
-        python-version: 3.9
-    - name: Install ffmpeg
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y ffmpeg
-    - name: Setup Poetry
-      uses: abatilo/actions-poetry@v2.0.0
-      with:
-        poetry-version: 1.8.3
-    - uses: actions/cache@v1
-      with:
-        path: ~/.cache/pypoetry/virtualenvs
-        key: ${{ runner.os }}-poetry-${{ hashFiles('**/poetry.lock') }}
-        restore-keys: |
-          ${{ runner.os }}-poetry-
-    - name: Install Python Packages
-      run: |
-        cd devops
-        poetry install
-    - name: Run server-side unit tests
-      run: |
-        cd devops
-        poetry run pytest ../geoapi
-  Workers_Unit_Tests:
-    runs-on: ubuntu-latest
     services:
       postgres:
         image: mdillon/postgis:11-alpine
@@ -82,15 +57,60 @@ jobs:
           --health-timeout 5s
           --health-retries 5
     steps:
-    - uses: actions/checkout@v3
-    - uses: docker/login-action@v1
-      with:
-        password: ${{ secrets.DOCKER_PASSWORD }}
-        username: ${{ secrets.DOCKER_USER  }}
-    - name: Build worker image
-      run: |
-        docker pull taccaci/geoapi-workers:latest
-        docker build --cache-from taccaci/geoapi-workers:latest -t taccaci/geoapi-workers:latest -f devops/Dockerfile.worker .
-    - name: Run worker test
-      run: |
-        docker run --network="host" -e APP_ENV='testing' -e DB_HOST='localhost'  taccaci/geoapi-workers:latest pytest -m "worker"
+      - uses: actions/checkout@v4
+
+      - name: Fetch base and install Poetry
+        run: |
+          git fetch origin ${{github.base_ref}}
+          pipx install poetry
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.11"
+          cache: "poetry"
+
+      - name: Install ffmpeg
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg
+
+      - name: Install Python Packages
+        run: |
+          cd devops
+          poetry install --with dev,flask,worker
+
+      - name: Run server-side unit tests
+        run: |
+          cd devops
+          poetry run pytest ../geoapi
+
+  Workers_Unit_Tests:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgis/postgis:11-3.3-alpine
+        env:
+          POSTGRES_USER: dev
+          POSTGRES_PASSWORD: dev
+          POSTGRES_DB: test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/login-action@v1
+        with:
+          password: ${{ secrets.DOCKER_PASSWORD }}
+          username: ${{ secrets.DOCKER_USER  }}
+      - name: Build worker image
+        run: |
+          docker pull taccaci/geoapi-workers:latest
+          docker build --cache-from taccaci/geoapi-workers:latest -t taccaci/geoapi-workers:latest -f devops/Dockerfile.worker --target development .
+      - name: Run worker test
+        run: |
+          docker run --network="host" -e APP_ENV='testing' -e DB_HOST='localhost'  taccaci/geoapi-workers:latest pytest -m "worker"

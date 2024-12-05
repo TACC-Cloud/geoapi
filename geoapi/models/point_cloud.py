@@ -1,7 +1,4 @@
-from sqlalchemy import (
-    Column, Integer, String,
-    ForeignKey, DateTime, JSON
-)
+from sqlalchemy import Column, Integer, String, ForeignKey, DateTime, JSON
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from sqlalchemy.dialects.postgresql import UUID
@@ -10,13 +7,17 @@ from geoapi.db import Base
 
 
 class PointCloud(Base):
-    __tablename__ = 'point_clouds'
+    __tablename__ = "point_clouds"
 
     id = Column(Integer, primary_key=True)
     uuid = Column(UUID(as_uuid=True), default=uuid.uuid4, nullable=False)
-    feature_id = Column(ForeignKey('features.id', ondelete="SET NULL", onupdate="CASCADE"), index=True)
-    project_id = Column(ForeignKey('projects.id', ondelete="CASCADE", onupdate="CASCADE"), index=True)
-    task_id = Column(ForeignKey('tasks.id'), index=True)
+    feature_id = Column(
+        ForeignKey("features.id", ondelete="SET NULL", onupdate="CASCADE"), index=True
+    )
+    project_id = Column(
+        ForeignKey("projects.id", ondelete="CASCADE", onupdate="CASCADE"), index=True
+    )
+    task_id = Column(ForeignKey("tasks.id"), index=True)
     description = Column(String)
     conversion_parameters = Column(String)
     files_info = Column(JSON)
@@ -29,5 +30,7 @@ class PointCloud(Base):
     task = relationship("Task", lazy="joined")
 
     def __repr__(self):
-        return (f'<PointCloud(id={self.id} description={self.description}) '
-                f'project_id={self.project_id}  feature_id={self.feature_id} task={self.task_id}>')
+        return (
+            f"<PointCloud(id={self.id} description={self.description}) "
+            f"project_id={self.project_id}  feature_id={self.feature_id} task={self.task_id}>"
+        )
