@@ -18,8 +18,8 @@ Deployment configuration including the tag of which image is deployed is maintai
 ## Configuration
 
 The configurations for each of the following are in their associated directories:
-* [geoapi-services](geoapi-services/) - Main backend services
-* [geoapi-workers](geoapi-workers/) - Workers
+* geoapi-services - Main backend services (deployed by Camino, see [here](https://github.com/TACC/Core-Portal-Deployments/tree/main/geoapi-workers/camino))
+* geoapi-workers - Workers (deployed by Camino, see [here](https://github.com/TACC/Core-Portal-Deployments/tree/main/geoapi-services/camino))
 * [database](database/) - geoapi-database
 * [hazmapper](hazmapper/) - hazmapper.tacc.utexas.edu
 * nfs-geoapi - TODO: See https://tacc-main.atlassian.net/browse/WG-226
