@@ -1,6 +1,26 @@
 # Changelog
 
-## [Unreleased]
+## [2.19] - 2024-12-05
+
+### Changed
+
+- WG-295, WG-179,WG-185: Improve projects with duplicate system path constraints (#216)
+- WG-161: Remove Kube doc/devops files (#183)
+- WG-383: Add queue for heavy tasks (#220)
+- WG-285: Update potree converter (#218)
+- Improve database initialization (#217)
+
+
+## [2.18] - 2024-08-07
+
+### Changed
+
+- Add support for Tapis V3 (#177, #179, #180, #181, #193, #198, #199, #202, #206, #207, #208)
+
+### Added
+
+- Add nginx conf for hazmapper.tacc.utexas.edu (#192)
+- WG-270: use certs on geoapi-services (#188)
 
 ## [2.17] - 2024-4-29
 
@@ -14,7 +34,7 @@
 
 ### Fixed
 
-- fix watchtower (#184)
+- Fix watchtower (#184)
 
 ## [2.16] - 2023-12-19
 
@@ -197,7 +217,9 @@
 - DES-1687: Add rollingback to worker tasks (#30)
 - DES-1663: Fix image rotations (#36)
 
-[unreleased]: https://github.com/TACC-Cloud/geoapi/compare/v2.17...HEAD
+[unreleased]: https://github.com/TACC-Cloud/geoapi/compare/v2.19...HEAD
+[2.19]: https://github.com/TACC-Cloud/geoapi/releases/tag/v2.19
+[2.18]: https://github.com/TACC-Cloud/geoapi/releases/tag/v2.18
 [2.17]: https://github.com/TACC-Cloud/geoapi/releases/tag/v2.17
 [2.16]: https://github.com/TACC-Cloud/geoapi/releases/tag/v2.16
 [2.15]: https://github.com/TACC-Cloud/geoapi/releases/tag/v2.15
