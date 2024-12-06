@@ -1,9 +1,10 @@
 from typing import List, AnyStr, Dict
-
+from flask import current_app
 from geoapi.models import Notification, ProgressNotification
 from geoapi.models import User
 from uuid import UUID
 from geoapi.log import logging
+from geoapi.signals import create_notification
 
 logger = logging.getLogger(__file__)
 
@@ -42,9 +43,12 @@ class NotificationsService:
             status=status,
             message=message,
         )
+        logger.debug("Creating notification: %s", message)
         try:
             database_session.add(note)
             database_session.commit()
+            logger.debug("Notification created: %s", message)
+            create_notification.send(current_app._get_current_object(), message=message)
             return note
         except Exception:
             database_session.rollback()

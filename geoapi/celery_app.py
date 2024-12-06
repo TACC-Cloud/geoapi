@@ -11,7 +11,7 @@ CELERY_CONNECTION_STRING = "amqp://{user}:{pwd}@{hostname}/{vhost}".format(
 )
 
 app = Celery(
-    "hello", backend="rpc", broker=CELERY_CONNECTION_STRING, include=["geoapi.tasks"]
+    "geoapi", backend="rpc", broker=CELERY_CONNECTION_STRING, include=["geoapi.tasks"]
 )
 
 # Define the queues
