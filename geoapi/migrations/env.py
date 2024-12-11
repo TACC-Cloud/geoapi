@@ -1,5 +1,5 @@
 from logging.config import fileConfig
-from geoapi.db import Base
+from geoapi.log import logger
 from alembic import context
 
 # this is the Alembic Config object, which provides
@@ -12,8 +12,8 @@ fileConfig(config.config_file_name)
 
 # add your model's MetaData object here
 # for 'autogenerate' support
-# from myapp import mymodel
-# target_metadata = mymodel.Base.metadata
+from geoapi.models import *  # important; do not delete
+from geoapi.db import Base
 
 target_metadata = Base.metadata
 
