@@ -1,6 +1,8 @@
 from logging.config import fileConfig
 from geoapi.log import logger
 from alembic import context
+from geoapi.models import *  # noqa: F401, F403 important to include all models for autogenerate support; do not delete
+from geoapi.db import Base
 
 
 # this is the Alembic Config object, which provides
@@ -11,11 +13,7 @@ config = context.config
 # This line sets up loggers basically.
 fileConfig(config.config_file_name)
 
-# add your model's MetaData object here
-# for 'autogenerate' support
-from geoapi.models import *  # important; do not delete
-from geoapi.db import Base
-
+# add your model's MetaData object
 target_metadata = Base.metadata
 
 # other values from the config, defined by the needs of env.py,
