@@ -21,7 +21,9 @@ class Feature(Base):
     project_id = Column(
         ForeignKey("projects.id", ondelete="CASCADE", onupdate="CASCADE"), index=True
     )
-    the_geom = Column(Geometry(geometry_type="GEOMETRY", srid=4326), nullable=False)
+    the_geom = Column(
+        Geometry(geometry_type="GEOMETRY", srid=4326), nullable=False
+    )  # Spatial index included by default
     properties = Column(JSONB, default={})
     styles = Column(JSONB, default={})
     created_date = Column(DateTime(timezone=True), server_default=func.now())
