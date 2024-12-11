@@ -1,6 +1,7 @@
 from functools import wraps
 from flask import abort
 from flask import request
+from flask_socketio import disconnect
 from geoapi.services.users import UserService
 from geoapi.services.projects import ProjectsService
 from geoapi.services.features import FeaturesService
@@ -50,6 +51,19 @@ def jwt_decoder(fn):
                 UserService.update_access_token(db_session, user, token)
         request.current_user = user
         return fn(*args, **kwargs)
+
+    return wrapper
+
+
+def jwt_socket_decoder(fn):
+    @wraps(fn)
+    def wrapper(auth=None):
+        token = auth.get("token") if auth else None
+
+        if not token:
+            logger.error("No token provided.")
+            disconnect()
+            return
 
     return wrapper
 
