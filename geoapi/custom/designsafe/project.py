@@ -1,12 +1,9 @@
 import json
-from flask import current_app
-from flask_socketio import SocketIO
 from geoapi.log import logger
 from geoapi.settings import settings
 from geoapi.custom.designsafe.default_basemap_layers import default_layers
 from geoapi.models import User, Project
 from geoapi.services.notifications import NotificationsService
-from geoapi.signals import create_notification
 
 
 def on_project_creation(database_session, user: User, project: Project):
@@ -14,16 +11,6 @@ def on_project_creation(database_session, user: User, project: Project):
     NotificationsService.create(
         database_session, user, "success", f"Project {project.name} created"
     )
-    # create_notification.send(
-    #     current_app._get_current_object(), message=f"Project {project.name} created"
-    # )
-    # logger.debug("Project created: %s", project.name)
-    # socketio = SocketIO(
-    #     message_queue=f"redis://{settings.REDIS_HOSTNAME}:6379",
-    #     logger=True,
-    #     engineio_logger=True,
-    # )
-    # socketio.emit("trigger_notification", {"data": "foo"})
 
     try:
         logger.debug(

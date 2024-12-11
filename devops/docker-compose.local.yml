@@ -21,7 +21,7 @@ services:
       retries: 5
 
   rabbitmq:
-    image: rabbitmq:3-management
+    image: rabbitmq:4-management
     ports:
       - 15672:15672
     networks:
@@ -50,7 +50,7 @@ services:
       - POSTGRES_DB=dev
 
   nginx:
-    image: nginx
+    image: nginx:stable
     ports:
       - 8888:80
     volumes:
@@ -59,7 +59,7 @@ services:
     networks:
       - geoapi
     depends_on:
-      - flask
+      - backend
 
   workers:
     image: taccaci/geoapi-workers:local
@@ -81,8 +81,8 @@ services:
     hostname: geoapiworkers
     command: >
       sh -c '
-      celery -A geoapi.celery_app worker -l info -Q default -n default_worker@geoapi &
-      celery -A geoapi.celery_app worker -l info -Q heavy --concurrency=6 -n heavy_worker@geoapi &
+      celery -A geoapi.celery_app worker -l info -Q default -n default_worker@geoapi --uid=nobody --gid=nogroup &
+      celery -A geoapi.celery_app worker -l info -Q heavy --concurrency=6 -n heavy_worker@geoapi --uid=nobody --gid=nogroup &
       wait
       '
     depends_on:
@@ -103,12 +103,12 @@ services:
       - ASSETS_BASE_DIR=/assets
     container_name: geoapicelerybeat
     hostname: geoapicelerybeat
-    command: "celery -A geoapi.celery_app beat -l info"
+    command: "celery -A geoapi.celery_app beat -l info --uid=nobody --gid=nogroup"
     depends_on:
       rabbitmq:
         condition: service_healthy
 
-  flask:
+  backend:
     image: taccaci/geoapi:local
     networks:
       - geoapi
@@ -129,7 +129,6 @@ services:
     stdin_open: true
     tty: true
     scale: 4
-    # container_name: geoapi
     hostname: geoapi
     command: "gunicorn -w 1 -b 0.0.0.0:8000 geoapi.app:app -k geventwebsocket.gunicorn.workers.GeventWebSocketWorker --reload --timeout 300"
     extra_hosts:
