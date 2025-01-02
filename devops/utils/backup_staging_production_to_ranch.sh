@@ -1,7 +1,7 @@
 #!/bin/bash
 set -ex
 
-echo "Removing backups older than 6 weeks (i.e. 42 days) (STAGING)"
+echo "Removing backups older than 2 weeks (i.e. 14 days) (STAGING)"
 ssh -o StrictHostKeyChecking=no tg458981@ranch.tacc.utexas.edu 'find /stornext/ranch_01/ranch/projects/DesignSafe-Community/geoapi_assets_backup/staging/ -mtime +42 -type f -exec rm {} +'
 
 echo "Backing up staging"
