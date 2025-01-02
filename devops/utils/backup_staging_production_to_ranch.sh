@@ -2,7 +2,7 @@
 set -ex
 
 echo "Removing backups older than 2 weeks (i.e. 14 days) (STAGING)"
-ssh -o StrictHostKeyChecking=no tg458981@ranch.tacc.utexas.edu 'find /stornext/ranch_01/ranch/projects/DesignSafe-Community/geoapi_assets_backup/staging/ -mtime +42 -type f -exec rm {} +'
+ssh -o StrictHostKeyChecking=no tg458981@ranch.tacc.utexas.edu 'find /stornext/ranch_01/ranch/projects/DesignSafe-Community/geoapi_assets_backup/staging/ -mtime +14 -type f -exec rm {} +'
 
 echo "Backing up staging"
 ssh -o StrictHostKeyChecking=no portal@staging.geoapi-services.tacc.utexas.edu "
