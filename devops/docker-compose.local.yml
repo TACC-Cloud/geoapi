@@ -6,6 +6,25 @@ volumes:
 networks:
   geoapi:
 
+x-worker-base: &worker-base  # Base template for workers
+  image: taccaci/geoapi-workers:local
+  networks:
+    - geoapi
+  volumes:
+    - ../:/app
+    - assets:/assets
+  environment:
+    - MAPILLARY_CLIENT_TOKEN
+    - FLASK_APP=/app/geoapi/app.py
+    - APP_ENV=local
+    - ASSETS_BASE_DIR=/assets
+    - DESIGNSAFE_URL=${DESIGNSAFE_URL}
+  stdin_open: true
+  tty: true
+  depends_on:
+    rabbitmq:
+      condition: service_healthy
+
 services:
 
   rabbitmq:
@@ -47,34 +66,17 @@ services:
     networks:
       - geoapi
 
-
   workers:
-    image: taccaci/geoapi-workers:local
-    networks:
-      - geoapi
-    volumes:
-      - ../:/app
-      - assets:/assets
-    environment:
-      - MAPILLARY_CLIENT_TOKEN
-      - FLASK_APP=/app/geoapi/app.py
-      - APP_ENV=local
-      - ASSETS_BASE_DIR=/assets
-      - DESIGNSAFE_URL=${DESIGNSAFE_URL}
-
-    stdin_open: true
-    tty: true
+    <<: *worker-base
     container_name: geoapiworkers
     hostname: geoapiworkers
-    command: >
-      sh -c '
-      celery -A geoapi.celery_app worker -l info -Q default -n default_worker@geoapi &
-      celery -A geoapi.celery_app worker -l info -Q heavy --concurrency=6 -n heavy_worker@geoapi &
-      wait
-      '
-    depends_on:
-      rabbitmq:
-        condition: service_healthy
+    command: celery -A geoapi.celery_app worker -l info -Q default -n default_worker@geoapi
+
+  workers-heavy:
+    <<: *worker-base
+    container_name: geoapiworkers-heavy
+    hostname: geoapiworkers-heavy
+    command: celery -A geoapi.celery_app worker -l info -Q heavy --concurrency=6
 
   celerybeat:
     image: taccaci/geoapi-workers:local
