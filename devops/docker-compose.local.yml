@@ -1,19 +1,27 @@
----
+name: geoapi
+
 volumes:
   assets:
   pgdata:
 
-networks:
-  geoapi:
-
 services:
+  redis:
+    image: redis:7-bookworm
+    command: redis-server --loglevel warning
+    container_name: geoapi_redis
+    hostname: geoapi_redis
+    healthcheck:
+      test: redis-cli ping
+      interval: 5s
+      timeout: 30s
+      retries: 5
 
   rabbitmq:
-    image: rabbitmq:3-management
+    image: rabbitmq:4-management
     ports:
       - 15672:15672
-    networks:
-      - geoapi
+    container_name: geoapi_rabbitmq
+    hostname: geoapi_rabbitmq
     environment:
       - RABBITMQ_DEFAULT_USER=dev
       - RABBITMQ_DEFAULT_PASS=dev
@@ -28,8 +36,6 @@ services:
     image: postgis/postgis:11-3.3-alpine
     volumes:
       - pgdata:/var/lib/postgresql/data
-    networks:
-      - geoapi
     container_name: geoapi_postgres
     hostname: geoapi_postgres
     environment:
@@ -38,20 +44,18 @@ services:
       - POSTGRES_DB=dev
 
   nginx:
-    image: nginx
+    image: nginx:stable
     ports:
       - 8888:80
     volumes:
       - assets:/assets
       - ./local_conf/nginx.conf:/etc/nginx/nginx.conf
-    networks:
-      - geoapi
-
+    container_name: geoapi_nginx
+    depends_on:
+      - backend
 
   workers:
     image: taccaci/geoapi-workers:local
-    networks:
-      - geoapi
     volumes:
       - ../:/app
       - assets:/assets
@@ -64,12 +68,12 @@ services:
 
     stdin_open: true
     tty: true
-    container_name: geoapiworkers
-    hostname: geoapiworkers
+    container_name: geoapi_workers
+    hostname: geoapi_workers
     command: >
       sh -c '
-      celery -A geoapi.celery_app worker -l info -Q default -n default_worker@geoapi &
-      celery -A geoapi.celery_app worker -l info -Q heavy --concurrency=6 -n heavy_worker@geoapi &
+      celery -A geoapi.celery_app worker -l info -Q default -n default_worker@geoapi --uid=nobody --gid=nogroup &
+      celery -A geoapi.celery_app worker -l info -Q heavy --concurrency=6 -n heavy_worker@geoapi --uid=nobody --gid=nogroup &
       wait
       '
     depends_on:
@@ -78,8 +82,6 @@ services:
 
   celerybeat:
     image: taccaci/geoapi-workers:local
-    networks:
-      - geoapi
     volumes:
       - ../:/app
       - assets:/assets
@@ -88,27 +90,20 @@ services:
       - FLASK_APP=/app/geoapi/app.py
       - APP_ENV=local
       - ASSETS_BASE_DIR=/assets
-    stdin_open: true
-    tty: true
-    container_name: geoapicelerybeat
-    hostname: geoapicelerybeat
-    command: "celery -A geoapi.celery_app beat -l info"
+    container_name: geoapi_celerybeat
+    hostname: geoapi_celerybeat
+    command: "celery -A geoapi.celery_app beat -l info --uid=nobody --gid=nogroup"
     depends_on:
       rabbitmq:
         condition: service_healthy
 
-  api:
+  backend:
     image: taccaci/geoapi:local
-    networks:
-      - geoapi
     volumes:
       - ../:/app
       - assets:/assets
     ports:
-      - 8000:8000
-    dns:
-      - 8.8.8.8
-      - 8.8.4.4
+      - 8000-8003:8000
     environment:
       - MAPILLARY_CLIENT_TOKEN
       - FLASK_APP=/app/geoapi/app.py
@@ -120,8 +115,11 @@ services:
       - TAPIS_CLIENT_KEY
     stdin_open: true
     tty: true
-    container_name: geoapi
-    hostname: geoapi
-    command: "gunicorn -w 4 -b 0.0.0.0:8000 geoapi.app:app -k gevent --reload --timeout 300"
+    scale: 4
+    hostname: geoapi_backend
+    command: "gunicorn -w 1 -b 0.0.0.0:8000 geoapi.app:app -k geventwebsocket.gunicorn.workers.GeventWebSocketWorker --reload --timeout 300"
     extra_hosts:
       - "host.docker.internal:host-gateway"
+    depends_on:
+      redis:
+        condition: service_healthy

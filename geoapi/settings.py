@@ -33,6 +33,7 @@ class DeployedConfig(Config):
     RABBITMQ_PASSWD = os.environ.get("RABBITMQ_PASSWD")
     RABBITMQ_VHOST = os.environ.get("RABBITMQ_VHOST")
     RABBITMQ_HOSTNAME = os.environ.get("RABBITMQ_HOSTNAME")
+    REDIS_HOSTNAME = os.environ.get("REDIS_HOSTNAME")
     MAPILLARY_CLIENT_ID = os.environ.get(
         "MAPILLARY_CLIENT_ID", "MLY|5156692464392931|4f1118aa1b06f051a44217cb56bedf79"
     )
@@ -45,6 +46,7 @@ class LocalDevelopmentConfig(Config):
     RABBITMQ_PASSWD = "dev"
     RABBITMQ_VHOST = "dev"
     RABBITMQ_HOSTNAME = "rabbitmq"
+    REDIS_HOSTNAME = "geoapi_redis"
     DB_USERNAME = "dev"
     DB_NAME = "dev"
     DB_PASSWD = "dev"

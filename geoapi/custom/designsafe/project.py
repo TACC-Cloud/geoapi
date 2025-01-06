@@ -3,9 +3,15 @@ from geoapi.log import logger
 from geoapi.settings import settings
 from geoapi.custom.designsafe.default_basemap_layers import default_layers
 from geoapi.models import User, Project
+from geoapi.services.notifications import NotificationsService
 
 
 def on_project_creation(database_session, user: User, project: Project):
+
+    NotificationsService.create(
+        database_session, user, "success", f"Project {project.name} created"
+    )
+
     try:
         logger.debug(
             f"Creating .hazmapper file for user:{user.username}"
