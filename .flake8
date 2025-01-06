@@ -8,3 +8,5 @@ exclude =
     geoapi/models/__init__.py
     geoapi/tasks/__init__.py
     geoapi/schemas/__init__.py
+per-file-ignores =
+    ../geoapi/app.py:E402
