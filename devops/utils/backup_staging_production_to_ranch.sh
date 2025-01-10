@@ -1,8 +1,8 @@
 #!/bin/bash
 set -ex
 
-echo "Removing backups older than 6 weeks (i.e. 42 days) (STAGING)"
-ssh -o StrictHostKeyChecking=no tg458981@ranch.tacc.utexas.edu 'find /stornext/ranch_01/ranch/projects/DesignSafe-Community/geoapi_assets_backup/staging/ -mtime +42 -type f -exec rm {} +'
+echo "Removing backups older than 2 weeks (i.e. 14 days) (STAGING)"
+ssh -o StrictHostKeyChecking=no tg458981@ranch.tacc.utexas.edu 'find /stornext/ranch_01/ranch/projects/DesignSafe-Community/geoapi_assets_backup/staging/ -mtime +14 -type f -exec rm {} +'
 
 echo "Backing up staging"
 ssh -o StrictHostKeyChecking=no portal@staging.geoapi-services.tacc.utexas.edu "
@@ -17,8 +17,8 @@ echo "Finished with STAGING and beginning PRODUCTION"
 echo "--------------------------------------------------"
 echo "--------------------------------------------------"
 
-echo "Removing backups older than 6 weeks (i.e. 42 days) (PRODUCTION)"
-ssh -o StrictHostKeyChecking=no tg458981@ranch.tacc.utexas.edu 'find /stornext/ranch_01/ranch/projects/DesignSafe-Community/geoapi_assets_backup/production/ -mtime +42 -type f -exec rm {} +'
+echo "Removing backups older than 4 weeks (i.e. 28 days) (PRODUCTION)"
+ssh -o StrictHostKeyChecking=no tg458981@ranch.tacc.utexas.edu 'find /stornext/ranch_01/ranch/projects/DesignSafe-Community/geoapi_assets_backup/production/ -mtime +28 -type f -exec rm {} +'
 
 echo "Backing up production"
 ssh -o StrictHostKeyChecking=no portal@prod.geoapi-services.tacc.utexas.edu "
