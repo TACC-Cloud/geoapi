@@ -6,7 +6,8 @@ volumes:
 networks:
   geoapi:
 
-x-worker-base: &worker-base  # Base template for workers
+x-worker-base: &worker-base  # Base fragment for worker services
+  # See: https://docs.docker.com/reference/compose-file/fragments/
   image: taccaci/geoapi-workers:local
   networks:
     - geoapi
@@ -67,13 +68,13 @@ services:
       - geoapi
 
   workers:
-    <<: *worker-base
+    <<: *worker-base  # Reuses worker-base fragment defined at start
     container_name: geoapiworkers
     hostname: geoapiworkers
     command: celery -A geoapi.celery_app worker -l info -Q default -n default_worker@geoapi
 
   workers-heavy:
-    <<: *worker-base
+    <<: *worker-base  # Reuses worker-base fragment defined at start
     container_name: geoapiworkers-heavy
     hostname: geoapiworkers-heavy
     command: celery -A geoapi.celery_app worker -l info -Q heavy --concurrency=6
