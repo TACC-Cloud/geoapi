@@ -83,6 +83,15 @@ def test_get_projects_using_single_uuid_that_is_wrong(test_client, user1):
     )
     assert resp.status_code == 404
 
+    # a non-uuid should return 404
+    resp = test_client.get(
+        "/projects/",
+        query_string="uuid={}".format("dummy"),
+        headers={"X-Tapis-Token": user1.jwt},
+    )
+    assert resp.status_code == 404
+    assert "Invalid project UUID" in resp.text
+
 
 def test_get_public_project_using_single_uuid(test_client, public_projects_fixture):
     resp = test_client.get(

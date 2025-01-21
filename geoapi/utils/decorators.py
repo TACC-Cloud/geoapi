@@ -1,6 +1,7 @@
 from functools import wraps
 from flask import abort
 from flask import request
+from uuid import UUID
 from geoapi.services.users import UserService
 from geoapi.services.projects import ProjectsService
 from geoapi.services.features import FeaturesService
@@ -65,6 +66,13 @@ def check_access_and_get_project(
     :param allow_public_use: boolean
     :return: project: Project
     """
+    # Validate UUID format if uuid is provided
+    if uuid is not None:
+        try:
+            UUID(uuid)
+        except ValueError:
+            abort(404, "Invalid project UUID")
+
     proj = (
         ProjectsService.get(db_session, user=current_user, project_id=project_id)
         if project_id
