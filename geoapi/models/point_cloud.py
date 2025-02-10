@@ -33,4 +33,5 @@ class PointCloud(Base):
         return (
             f"<PointCloud(id={self.id} description={self.description}) "
             f"project_id={self.project_id}  feature_id={self.feature_id} task={self.task_id}>"
+            f"path={self.path} updated={self.updated}"
         )
