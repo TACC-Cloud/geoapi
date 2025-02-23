@@ -29,7 +29,7 @@ from geoapi.utils.assets import (
 )
 from geoapi.log import logging
 from geoapi.utils import geometries, features as features_util
-from geoapi.utils.agave import AgaveUtils
+from geoapi.utils.external_apis import TapisUtils
 from geoapi.utils.geo_location import GeoLocation, parse_rapid_geolocation
 
 
@@ -574,7 +574,7 @@ class FeaturesService:
         :param fileObj: file
         :return: Feature
         """
-        client = AgaveUtils(database_session, user)
+        client = TapisUtils(database_session, user)
         fileObj = client.getFile(systemId, path)
         fileObj.filename = pathlib.Path(path).name
         return FeaturesService.createFeatureAsset(
@@ -727,7 +727,7 @@ class FeaturesService:
         bounds: List[float],
         label: str,
     ) -> Overlay:
-        client = AgaveUtils(database_session, user)
+        client = TapisUtils(database_session, user)
         file_obj = client.getFile(system_id, path)
         ov = FeaturesService.addOverlay(
             database_session, project_id, file_obj, bounds, label

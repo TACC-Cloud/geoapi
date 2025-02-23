@@ -72,7 +72,7 @@ def test_get_point_cloud_public_access(
 
 
 def test_post_feature_import_not_found(
-    test_client, projects_fixture, import_file_from_agave_mock
+    test_client, projects_fixture, import_file_from_tapis_mock
 ):
     resp = test_client.post(
         "/public-projects/1/features/files/import/",

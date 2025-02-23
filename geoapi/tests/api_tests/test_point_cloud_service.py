@@ -8,7 +8,7 @@ from geoapi.services.features import FeaturesService
 from geoapi.models import User, Feature, FeatureAsset, PointCloud
 from geoapi.utils.assets import get_project_asset_dir, get_asset_path
 from geoapi.celery_app import app
-from geoapi.tasks.external_data import import_point_clouds_from_agave
+from geoapi.tasks.external_data import import_point_clouds_from_tapis
 
 POINT_CLOUD_DATA = {
     "description": "description",
@@ -55,19 +55,19 @@ def test_delete_point_cloud(projects_fixture):
 
 
 @pytest.mark.worker
-@patch("geoapi.tasks.external_data.AgaveUtils")
+@patch("geoapi.tasks.external_data.TapisUtils")
 def test_delete_point_cloud_feature(
-    MockAgaveUtils,
+    MockTapisUtils,
     celery_task_always_eager,
     projects_fixture,
     point_cloud_fixture,
     lidar_las1pt2_file_fixture,
 ):
     # create a point cloud feature so we can delete it
-    MockAgaveUtils().getFile.return_value = lidar_las1pt2_file_fixture
+    MockTapisUtils().getFile.return_value = lidar_las1pt2_file_fixture
     u1 = db_session.get(User, 1)
     files = [{"system": "designsafe.storage.default", "path": "file1.las"}]
-    import_point_clouds_from_agave(u1.id, files, point_cloud_fixture.id)
+    import_point_clouds_from_tapis(u1.id, files, point_cloud_fixture.id)
 
     db_session.refresh(point_cloud_fixture)
 

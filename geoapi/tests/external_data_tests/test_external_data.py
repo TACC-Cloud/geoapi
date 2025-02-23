@@ -7,14 +7,14 @@ import subprocess
 from geoapi.models import Feature, ImportedFile
 from geoapi.db import db_session, create_task_session
 from geoapi.tasks.external_data import (
-    import_from_agave,
-    import_point_clouds_from_agave,
+    import_from_tapis,
+    import_point_clouds_from_tapis,
     refresh_projects_watch_content,
     refresh_projects_watch_users,
     get_additional_files,
 )
 from geoapi.utils.features import is_member_of_rapp_project_folder
-from geoapi.utils.agave import AgaveFileListing, SystemUser
+from geoapi.utils.external_apis import TapisFileListing, SystemUser
 from geoapi.utils.assets import get_project_asset_dir, get_asset_path
 from geoapi.exceptions import InvalidCoordinateReferenceSystem
 from geoapi.services.point_cloud import PointCloudService
@@ -68,11 +68,11 @@ def task_session_commit_throws_exception():
 
 
 @pytest.fixture(scope="function")
-def agave_utils_with_geojson_file(geojson_file_fixture):
-    with patch("geoapi.tasks.external_data.AgaveUtils") as MockAgaveUtils:
-        with patch("geoapi.utils.agave.AgaveUtils") as MockAgaveUtilsInUtils:
+def tapis_utils_with_geojson_file(geojson_file_fixture):
+    with patch("geoapi.tasks.external_data.TapisUtils") as MockTapisUtils:
+        with patch("geoapi.utils.external_apis.TapisUtils") as MockTapisUtilsInUtils:
             filesListing = [
-                AgaveFileListing(
+                TapisFileListing(
                     {
                         "type": "file",
                         "path": "/testPath/file.json",
@@ -80,19 +80,19 @@ def agave_utils_with_geojson_file(geojson_file_fixture):
                     }
                 )
             ]
-            MockAgaveUtils().listing.return_value = filesListing
-            MockAgaveUtils().getFile.return_value = geojson_file_fixture
-            MockAgaveUtilsInUtils().listing.return_value = filesListing
-            MockAgaveUtilsInUtils().getFile.return_value = geojson_file_fixture
-            yield MockAgaveUtils()
+            MockTapisUtils().listing.return_value = filesListing
+            MockTapisUtils().getFile.return_value = geojson_file_fixture
+            MockTapisUtilsInUtils().listing.return_value = filesListing
+            MockTapisUtilsInUtils().getFile.return_value = geojson_file_fixture
+            yield MockTapisUtils()
 
 
 @pytest.fixture(scope="function")
-def agave_utils_with_bad_image_file(image_file_no_location_fixture):
-    with patch("geoapi.tasks.external_data.AgaveUtils") as MockAgaveUtils:
-        with patch("geoapi.utils.agave.AgaveUtils") as MockAgaveUtilsInUtils:
+def tapis_utils_with_bad_image_file(image_file_no_location_fixture):
+    with patch("geoapi.tasks.external_data.TapisUtils") as MockTapisUtils:
+        with patch("geoapi.utils.external_apis.TapisUtils") as MockTapisUtilsInUtils:
             filesListing = [
-                AgaveFileListing(
+                TapisFileListing(
                     {
                         "type": "file",
                         "path": "/testPath/file_no_location_data.jpg",
@@ -100,26 +100,26 @@ def agave_utils_with_bad_image_file(image_file_no_location_fixture):
                     }
                 )
             ]
-            MockAgaveUtils().listing.return_value = filesListing
-            MockAgaveUtils().getFile.return_value = image_file_no_location_fixture
-            MockAgaveUtilsInUtils().listing.return_value = filesListing
-            MockAgaveUtilsInUtils().getFile.return_value = (
+            MockTapisUtils().listing.return_value = filesListing
+            MockTapisUtils().getFile.return_value = image_file_no_location_fixture
+            MockTapisUtilsInUtils().listing.return_value = filesListing
+            MockTapisUtilsInUtils().getFile.return_value = (
                 image_file_no_location_fixture
             )
 
-            class MockAgave:
-                client_in_utils = MockAgaveUtilsInUtils()
-                client_in_external_data = MockAgaveUtils()
+            class MockTapis:
+                client_in_utils = MockTapisUtilsInUtils()
+                client_in_external_data = MockTapisUtils()
 
-            yield MockAgave
+            yield MockTapis
 
 
 @pytest.fixture(scope="function")
-def agave_utils_with_image_file_from_rapp_folder(
+def tapis_utils_with_image_file_from_rapp_folder(
     metadata_geolocation_30long_20lat_fixture, requests_mock, image_file_fixture
 ):
     filesListing = [
-        AgaveFileListing(
+        TapisFileListing(
             {
                 "type": "file",
                 "path": "/RApp/file.jpg",
@@ -128,29 +128,29 @@ def agave_utils_with_image_file_from_rapp_folder(
         )
     ]
 
-    with patch("geoapi.utils.agave.AgaveUtils.listing") as mock_listing_utils, patch(
-        "geoapi.utils.agave.AgaveUtils.getFile"
+    with patch("geoapi.utils.external_apis.TapisUtils.listing") as mock_listing_utils, patch(
+        "geoapi.utils.external_apis.TapisUtils.getFile"
     ) as mock_get_file_utils, patch(
-        "geoapi.tasks.external_data.AgaveUtils.listing"
+        "geoapi.tasks.external_data.TapisUtils.listing"
     ) as mock_listing_external_data, patch(
-        "geoapi.tasks.external_data.AgaveUtils.getFile"
+        "geoapi.tasks.external_data.TapisUtils.getFile"
     ) as mock_get_file_external_data:
         mock_listing_utils.return_value = filesListing
         mock_get_file_utils.return_value = image_file_fixture
         mock_listing_external_data.return_value = filesListing
         mock_get_file_external_data.return_value = image_file_fixture
 
-        class MockAgave:
+        class MockTapis:
             listing_utils = mock_listing_utils
             get_file_utils = mock_get_file_utils
             listing_external_data = mock_listing_external_data
             get_file_external_data = mock_get_file_external_data
 
-        yield MockAgave
+        yield MockTapis
 
 
 @pytest.fixture(scope="function")
-def agave_utils_listing_with_single_trash_folder_of_image(image_file_fixture):
+def tapis_utils_listing_with_single_trash_folder_of_image(image_file_fixture):
     """
     Creates a file listing for a single .Trash folder with a file in it:
     * /
@@ -159,12 +159,12 @@ def agave_utils_listing_with_single_trash_folder_of_image(image_file_fixture):
     """
 
     top_level_file_listing = [
-        AgaveFileListing(
+        TapisFileListing(
             {"path": ".Trash", "type": "dir", "lastModified": "2020-08-31T12:00:00Z"}
         )
     ]
     subfolder_file_listing = [
-        AgaveFileListing(
+        TapisFileListing(
             {
                 "type": "file",
                 "path": ".Trash/file.jpg",
@@ -172,24 +172,24 @@ def agave_utils_listing_with_single_trash_folder_of_image(image_file_fixture):
             }
         )
     ]
-    with patch("geoapi.utils.agave.AgaveUtils") as MockAgaveUtilsInUtils:
-        MockAgaveUtilsInUtils().listing.side_effect = [
+    with patch("geoapi.utils.external_apis.TapisUtils") as MockTapisUtilsInUtils:
+        MockTapisUtilsInUtils().listing.side_effect = [
             top_level_file_listing,
             subfolder_file_listing,
         ]
-        MockAgaveUtilsInUtils().getFile.return_value = image_file_fixture
-        with patch("geoapi.tasks.external_data.AgaveUtils") as MockAgaveUtils:
-            MockAgaveUtils().listing.side_effect = [
+        MockTapisUtilsInUtils().getFile.return_value = image_file_fixture
+        with patch("geoapi.tasks.external_data.TapisUtils") as MockTapisUtils:
+            MockTapisUtils().listing.side_effect = [
                 top_level_file_listing,
                 subfolder_file_listing,
             ]
-            MockAgaveUtils().getFile.return_value = image_file_fixture
+            MockTapisUtils().getFile.return_value = image_file_fixture
 
-            class MockAgave:
-                client_in_utils = MockAgaveUtilsInUtils()
-                client_in_external_data = MockAgaveUtils()
+            class MockTapis:
+                client_in_utils = MockTapisUtilsInUtils()
+                client_in_external_data = MockTapisUtils()
 
-            yield MockAgave
+            yield MockTapis
 
 
 @pytest.mark.worker
@@ -197,9 +197,9 @@ def test_external_data_good_files(
     metadata_geolocation_30long_20lat_fixture,
     user1,
     projects_fixture,
-    agave_utils_with_geojson_file,
+    tapis_utils_with_geojson_file,
 ):
-    import_from_agave(
+    import_from_tapis(
         projects_fixture.tenant_id,
         user1.id,
         "testSystem",
@@ -214,12 +214,12 @@ def test_external_data_good_files(
 
     # This should only have been called once, since there is only
     # one FILE in the listing
-    agave_utils_with_geojson_file.getFile.assert_called_once()
+    tapis_utils_with_geojson_file.getFile.assert_called_once()
 
-    agave_utils_with_geojson_file.reset_mock()
+    tapis_utils_with_geojson_file.reset_mock()
 
     # run import again (to mimic the periodically scheduled refresh_projects_watch_content)
-    import_from_agave(
+    import_from_tapis(
         projects_fixture.tenant_id,
         user1.id,
         "testSystem",
@@ -228,14 +228,14 @@ def test_external_data_good_files(
     )
     # This should only have been called once, since there is only
     # one FILE in the listing
-    agave_utils_with_geojson_file.getFile.assert_not_called()
+    tapis_utils_with_geojson_file.getFile.assert_not_called()
 
 
 @pytest.mark.worker
 def test_external_data_bad_files(
-    metadata_none_fixture, user1, projects_fixture, agave_utils_with_bad_image_file
+    metadata_none_fixture, user1, projects_fixture, tapis_utils_with_bad_image_file
 ):
-    import_from_agave(
+    import_from_tapis(
         projects_fixture.tenant_id,
         user1.id,
         "testSystem",
@@ -245,14 +245,14 @@ def test_external_data_bad_files(
     features = db_session.query(Feature).all()
     assert len(features) == 0
     assert not os.path.exists(get_project_asset_dir(projects_fixture.id))
-    agave_utils_with_bad_image_file.client_in_external_data.getFile.assert_called_once()
+    tapis_utils_with_bad_image_file.client_in_external_data.getFile.assert_called_once()
     imported_file = db_session.query(ImportedFile).first()
     assert not imported_file.successful_import
 
-    agave_utils_with_bad_image_file.client_in_external_data.reset_mock()
+    tapis_utils_with_bad_image_file.client_in_external_data.reset_mock()
 
     # run import again (to mimic the periodically scheduled refresh_projects_watch_content)
-    import_from_agave(
+    import_from_tapis(
         projects_fixture.tenant_id,
         user1.id,
         "testSystem",
@@ -261,15 +261,15 @@ def test_external_data_bad_files(
     )
     # Getting the file should only have been called once, since there is only
     # one FILE in the listing, and we already attempted to import it in the first call
-    # to import_from_agave
-    agave_utils_with_bad_image_file.client_in_external_data.getFile.assert_not_called()
+    # to import_from_tapis
+    tapis_utils_with_bad_image_file.client_in_external_data.getFile.assert_not_called()
 
 
 @pytest.mark.worker
 def test_external_data_no_files_except_for_trash(
-    user1, projects_fixture, agave_utils_listing_with_single_trash_folder_of_image
+    user1, projects_fixture, tapis_utils_listing_with_single_trash_folder_of_image
 ):
-    import_from_agave(
+    import_from_tapis(
         projects_fixture.tenant_id, user1.id, "testSystem", "/", projects_fixture.id
     )
 
@@ -277,18 +277,18 @@ def test_external_data_no_files_except_for_trash(
     # just a .Trash dir so nothing to import and only top level listing should occur
     assert len(features) == 0
     assert (
-        agave_utils_listing_with_single_trash_folder_of_image.client_in_external_data.listing.call_count
+        tapis_utils_listing_with_single_trash_folder_of_image.client_in_external_data.listing.call_count
         == 1
     )
-    agave_utils_listing_with_single_trash_folder_of_image.client_in_external_data.getFile.assert_not_called()
-    agave_utils_listing_with_single_trash_folder_of_image.client_in_utils.getFile.assert_not_called()
+    tapis_utils_listing_with_single_trash_folder_of_image.client_in_external_data.getFile.assert_not_called()
+    tapis_utils_listing_with_single_trash_folder_of_image.client_in_utils.getFile.assert_not_called()
 
 
 @pytest.mark.worker
 def test_external_data_rapp(
-    user1, projects_fixture, agave_utils_with_image_file_from_rapp_folder
+    user1, projects_fixture, tapis_utils_with_image_file_from_rapp_folder
 ):
-    import_from_agave(
+    import_from_tapis(
         projects_fixture.tenant_id, user1.id, "testSystem", "/Rapp", projects_fixture.id
     )
     features = db_session.query(Feature).all()
@@ -299,17 +299,17 @@ def test_external_data_rapp(
         len(os.listdir(get_project_asset_dir(features[0].project_id))) == 2
     )  # processed image + thumbnail
     # This should only have been called once, since there is only one FILE in the listing
-    agave_utils_with_image_file_from_rapp_folder.get_file_external_data.assert_called_once()
+    tapis_utils_with_image_file_from_rapp_folder.get_file_external_data.assert_called_once()
 
 
 @pytest.mark.worker
 def test_external_data_rapp_missing_geospatial_metadata(
     user1,
     projects_fixture,
-    agave_utils_with_image_file_from_rapp_folder,
+    tapis_utils_with_image_file_from_rapp_folder,
     metadata_but_no_geolocation_fixture,
 ):
-    import_from_agave(
+    import_from_tapis(
         projects_fixture.tenant_id, user1.id, "testSystem", "/Rapp", projects_fixture.id
     )
     features = db_session.query(Feature).all()
@@ -317,18 +317,18 @@ def test_external_data_rapp_missing_geospatial_metadata(
 
 
 @pytest.mark.worker
-@patch("geoapi.tasks.external_data.AgaveUtils")
-def test_import_point_clouds_from_agave(
-    MockAgaveUtils,
+@patch("geoapi.tasks.external_data.TapisUtils")
+def test_import_point_clouds_from_tapis(
+    MockTapisUtils,
     user1,
     projects_fixture,
     point_cloud_fixture,
     lidar_las1pt2_file_fixture,
 ):
-    MockAgaveUtils().getFile.return_value = lidar_las1pt2_file_fixture
+    MockTapisUtils().getFile.return_value = lidar_las1pt2_file_fixture
 
     files = [{"system": "designsafe.storage.default", "path": "file1.las"}]
-    import_point_clouds_from_agave(user1.id, files, point_cloud_fixture.id)
+    import_point_clouds_from_tapis(user1.id, files, point_cloud_fixture.id)
 
     db_session.refresh(point_cloud_fixture)
     point_cloud = point_cloud_fixture
@@ -373,20 +373,20 @@ def test_import_point_clouds_from_agave(
 
 @pytest.mark.worker
 @patch("geoapi.tasks.external_data.check_point_cloud")
-@patch("geoapi.tasks.external_data.AgaveUtils")
-def test_import_point_clouds_from_agave_check_point_cloud_missing_crs(
-    MockAgaveUtils,
+@patch("geoapi.tasks.external_data.TapisUtils")
+def test_import_point_clouds_from_tapis_check_point_cloud_missing_crs(
+    MockTapisUtils,
     check_mock,
     user1,
     projects_fixture,
     point_cloud_fixture,
     lidar_las1pt2_file_fixture,
 ):
-    MockAgaveUtils().getFile.return_value = lidar_las1pt2_file_fixture
+    MockTapisUtils().getFile.return_value = lidar_las1pt2_file_fixture
     check_mock.side_effect = InvalidCoordinateReferenceSystem()
 
     files = [{"system": "designsafe.storage.default", "path": "file1.las"}]
-    import_point_clouds_from_agave(user1.id, files, point_cloud_fixture.id)
+    import_point_clouds_from_tapis(user1.id, files, point_cloud_fixture.id)
 
     db_session.refresh(point_cloud_fixture)
     point_cloud = point_cloud_fixture
@@ -407,20 +407,20 @@ def test_import_point_clouds_from_agave_check_point_cloud_missing_crs(
 
 @pytest.mark.worker
 @patch("geoapi.tasks.external_data.check_point_cloud")
-@patch("geoapi.tasks.external_data.AgaveUtils")
-def test_import_point_clouds_from_agave_check_point_cloud_unknown(
-    MockAgaveUtils,
+@patch("geoapi.tasks.external_data.TapisUtils")
+def test_import_point_clouds_from_tapis_check_point_cloud_unknown(
+    MockTapisUtils,
     check_mock,
     user1,
     projects_fixture,
     point_cloud_fixture,
     lidar_las1pt2_file_fixture,
 ):
-    MockAgaveUtils().getFile.return_value = lidar_las1pt2_file_fixture
+    MockTapisUtils().getFile.return_value = lidar_las1pt2_file_fixture
     check_mock.side_effect = Exception("dummy")
 
     files = [{"system": "designsafe.storage.default", "path": "file1.las"}]
-    import_point_clouds_from_agave(user1.id, files, point_cloud_fixture.id)
+    import_point_clouds_from_tapis(user1.id, files, point_cloud_fixture.id)
 
     db_session.refresh(point_cloud_fixture)
     point_cloud = point_cloud_fixture
@@ -443,20 +443,20 @@ def test_import_point_clouds_from_agave_check_point_cloud_unknown(
 
 @pytest.mark.worker
 @patch("geoapi.tasks.external_data.convert_to_potree")
-@patch("geoapi.tasks.external_data.AgaveUtils")
-def test_import_point_clouds_from_agave_conversion_error(
-    MockAgaveUtils,
+@patch("geoapi.tasks.external_data.TapisUtils")
+def test_import_point_clouds_from_tapis_conversion_error(
+    MockTapisUtils,
     convert_mock,
     user1,
     projects_fixture,
     point_cloud_fixture,
     lidar_las1pt2_file_fixture,
 ):
-    MockAgaveUtils().getFile.return_value = lidar_las1pt2_file_fixture
+    MockTapisUtils().getFile.return_value = lidar_las1pt2_file_fixture
     convert_mock.side_effect = Exception("dummy")
 
     files = [{"system": "designsafe.storage.default", "path": "file1.las"}]
-    import_point_clouds_from_agave(user1.id, files, point_cloud_fixture.id)
+    import_point_clouds_from_tapis(user1.id, files, point_cloud_fixture.id)
 
     db_session.refresh(point_cloud_fixture)
     point_cloud = point_cloud_fixture
@@ -475,17 +475,17 @@ def test_import_point_clouds_from_agave_conversion_error(
 
 
 @pytest.mark.worker
-@patch("geoapi.tasks.external_data.AgaveUtils")
+@patch("geoapi.tasks.external_data.TapisUtils")
 @patch("geoapi.tasks.lidar.run_potree_converter")
-def test_import_point_clouds_from_agave_conversion_error_due_to_memory_sigterm(
+def test_import_point_clouds_from_tapis_conversion_error_due_to_memory_sigterm(
     mock_run_potree_converter,
-    MockAgaveUtils,
+    MockTapisUtils,
     user1,
     projects_fixture,
     point_cloud_fixture,
     lidar_las1pt2_file_fixture,
 ):
-    MockAgaveUtils().getFile.return_value = lidar_las1pt2_file_fixture
+    MockTapisUtils().getFile.return_value = lidar_las1pt2_file_fixture
 
     # Mock subprocess.run to raise CalledProcessError with returncode -9 (SIGKILL)
     mock_run_potree_converter.side_effect = subprocess.CalledProcessError(
@@ -501,7 +501,7 @@ def test_import_point_clouds_from_agave_conversion_error_due_to_memory_sigterm(
     )
 
     files = [{"system": "designsafe.storage.default", "path": "file1.las"}]
-    import_point_clouds_from_agave(user1.id, files, point_cloud_fixture.id)
+    import_point_clouds_from_tapis(user1.id, files, point_cloud_fixture.id)
 
     db_session.refresh(point_cloud_fixture)
     point_cloud = point_cloud_fixture
@@ -523,9 +523,9 @@ def test_import_point_clouds_from_agave_conversion_error_due_to_memory_sigterm(
 
 
 @pytest.mark.worker
-@patch("geoapi.tasks.external_data.AgaveUtils")
+@patch("geoapi.tasks.external_data.TapisUtils")
 def test_import_point_clouds_failed_dbsession_rollback(
-    MockAgaveUtils,
+    MockTapisUtils,
     user1,
     projects_fixture,
     point_cloud_fixture,
@@ -533,26 +533,26 @@ def test_import_point_clouds_failed_dbsession_rollback(
     task_session_commit_throws_exception,
     caplog,
 ):
-    MockAgaveUtils().getFile.return_value = lidar_las1pt2_file_fixture
+    MockTapisUtils().getFile.return_value = lidar_las1pt2_file_fixture
 
     files = [{"system": "designsafe.storage.default", "path": "file1.las"}]
 
     with pytest.raises(Exception):
-        import_point_clouds_from_agave(user1.id, files, point_cloud_fixture.id)
+        import_point_clouds_from_tapis(user1.id, files, point_cloud_fixture.id)
 
     assert "rollback" in caplog.text
 
 
 @pytest.mark.worker
-def test_import_from_agave_failed_dbsession_rollback(
-    agave_utils_with_geojson_file,
+def test_import_from_tapis_failed_dbsession_rollback(
+    tapis_utils_with_geojson_file,
     user1,
     projects_fixture,
     task_session_commit_throws_exception,
     caplog,
 ):
     with pytest.raises(Exception):
-        import_from_agave(
+        import_from_tapis(
             projects_fixture.tenant_id,
             user1.id,
             "testSystem",
@@ -567,7 +567,7 @@ def test_refresh_projects_watch_users(
     metadata_but_no_geolocation_fixture,
     user1,
     user2,
-    agave_utils_with_geojson_file,
+    tapis_utils_with_geojson_file,
     watch_content_users_projects_fixture,
     get_system_users_mock,
     caplog,
@@ -595,7 +595,7 @@ def test_refresh_projects_watch_users(
 @pytest.mark.worker
 def test_refresh_projects_watch_content(
     metadata_but_no_geolocation_fixture,
-    agave_utils_with_geojson_file,
+    tapis_utils_with_geojson_file,
     watch_content_users_projects_fixture,
     get_system_users_mock,
     caplog,
@@ -612,7 +612,7 @@ def test_refresh_projects_watch_content(
 
 @pytest.mark.worker
 def test_refresh_projects_watch_content_dbsession_rollback(
-    agave_utils_with_geojson_file,
+    tapis_utils_with_geojson_file,
     watch_content_users_projects_fixture,
     get_system_users_mock,
     task_session_commit_throws_exception,
@@ -630,29 +630,29 @@ def test_is_member_of_rapp_project_folder():
     assert not is_member_of_rapp_project_folder("/something/test.jpg")
 
 
-def test_get_additional_files_none(shapefile_fixture, agave_utils_with_geojson_file):
+def test_get_additional_files_none(shapefile_fixture, tapis_utils_with_geojson_file):
     assert not get_additional_files(
         shapefile_fixture,
         "testSystem",
         "/testPath/file.jpg",
-        agave_utils_with_geojson_file,
+        tapis_utils_with_geojson_file,
     )
 
 
 def test_get_additional_files_shapefiles(
-    shapefile_fixture, agave_utils_with_geojson_file
+    shapefile_fixture, tapis_utils_with_geojson_file
 ):
     files = get_additional_files(
         shapefile_fixture,
         "testSystem",
         "/testPath/file.shp",
-        agave_utils_with_geojson_file,
+        tapis_utils_with_geojson_file,
     )
     assert len(files) == 14
 
 
 def test_get_additional_files_shapefiles_with_available_files(
-    shapefile_fixture, agave_utils_with_geojson_file
+    shapefile_fixture, tapis_utils_with_geojson_file
 ):
     available_files = [
         "/testPath/file.shx",
@@ -674,7 +674,7 @@ def test_get_additional_files_shapefiles_with_available_files(
         shapefile_fixture,
         "testSystem",
         "/testPath/file.shp",
-        agave_utils_with_geojson_file,
+        tapis_utils_with_geojson_file,
         available_files=available_files,
     )
     assert len(files) == 14
@@ -684,14 +684,14 @@ def test_get_additional_files_shapefiles_with_available_files(
         shapefile_fixture,
         "testSystem",
         "/testPath/file.shp",
-        agave_utils_with_geojson_file,
+        tapis_utils_with_geojson_file,
         available_files=available_files,
     )
     assert len(files) == 3
 
 
 def test_get_additional_files_shapefiles_missing_prj(
-    shapefile_fixture, agave_utils_with_geojson_file
+    shapefile_fixture, tapis_utils_with_geojson_file
 ):
     available_files_missing_prj = ["/testPath/file.shx", "/testPath/file.dbf"]
     with pytest.raises(Exception):
@@ -699,30 +699,30 @@ def test_get_additional_files_shapefiles_missing_prj(
             shapefile_fixture,
             "testSystem",
             "/testPath/file.shp",
-            agave_utils_with_geojson_file,
+            tapis_utils_with_geojson_file,
             available_files=available_files_missing_prj,
         )
 
 
 def test_get_additional_files_rapid_questionnaire_with_assets(
-    questionnaire_file_with_assets_fixture, agave_utils_with_geojson_file
+    questionnaire_file_with_assets_fixture, tapis_utils_with_geojson_file
 ):
     files = get_additional_files(
         questionnaire_file_with_assets_fixture,
         "testSystem",
         questionnaire_file_with_assets_fixture.filename,
-        agave_utils_with_geojson_file,
+        tapis_utils_with_geojson_file,
     )
     assert len(files) == 1
 
 
 def test_get_additional_files_rapid_questionnaire_no_assets(
-    questionnaire_file_without_assets_fixture, agave_utils_with_geojson_file
+    questionnaire_file_without_assets_fixture, tapis_utils_with_geojson_file
 ):
     files = get_additional_files(
         questionnaire_file_without_assets_fixture,
         "testSystem",
         questionnaire_file_without_assets_fixture.filename,
-        agave_utils_with_geojson_file,
+        tapis_utils_with_geojson_file,
     )
     assert files == []

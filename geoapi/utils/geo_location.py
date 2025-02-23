@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from geoapi.utils.agave import get_metadata
+from geoapi.utils.external_apis import get_metadata
 from geoapi.models import User
 from typing import Optional
 

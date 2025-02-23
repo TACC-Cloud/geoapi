@@ -14,9 +14,9 @@ def on_project_creation(database_session, user: User, project: Project):
         deployment = settings.APP_ENV
         file_content = json.dumps({"uuid": str(project.uuid), "deployment": deployment})
         file_name = f"{project.system_file}.hazmapper"
-        from geoapi.utils.agave import AgaveUtils
+        from geoapi.utils.external_apis import TapisUtils
 
-        tapis = AgaveUtils(database_session, user)
+        tapis = TapisUtils(database_session, user)
         tapis.create_file(
             system_id=project.system_id,
             system_path=project.system_path,
@@ -73,9 +73,9 @@ def on_project_deletion(database_session, user: User, project: Project):
             f" during deletion of project:{project.id} project_uuid:{project.uuid}"
             f"system_id:{project.system_id} file_path:{file_path}"
         )
-        from geoapi.utils.agave import AgaveUtils
+        from geoapi.utils.external_apis import TapisUtils
 
-        tapis = AgaveUtils(database_session, user)
+        tapis = TapisUtils(database_session, user)
         tapis.delete_file(system_id=project.system_id, file_path=file_path)
     except Exception:
         logger.exception(
@@ -106,7 +106,7 @@ def update_designsafe_project_hazmapper_metadata(
 ):
     designsafe_uuid = project.system_id[len("project-") :]
 
-    from geoapi.utils.agave import get_session
+    from geoapi.utils.external_apis import get_session
 
     client = get_session(user)
     response = client.get(

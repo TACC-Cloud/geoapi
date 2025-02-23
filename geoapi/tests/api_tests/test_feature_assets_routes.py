@@ -4,11 +4,11 @@ from geoapi.models.users import User
 from geoapi.db import db_session
 
 
-@patch("geoapi.services.features.AgaveUtils")
+@patch("geoapi.services.features.TapisUtils")
 def test_post_image_feature_asset(
-    MockAgaveUtils, test_client, projects_fixture, feature_fixture, image_file_fixture
+    MockTapisUtils, test_client, projects_fixture, feature_fixture, image_file_fixture
 ):
-    MockAgaveUtils().getFile.return_value = image_file_fixture
+    MockTapisUtils().getFile.return_value = image_file_fixture
     u1 = db_session.query(User).filter(User.username == "test1").first()
     resp = test_client.post(
         "/projects/1/features/1/assets/",
@@ -28,11 +28,11 @@ def test_post_image_feature_asset(
     assert len(feat["assets"]) == 1
 
 
-@patch("geoapi.services.features.AgaveUtils")
+@patch("geoapi.services.features.TapisUtils")
 def test_post_video_feature_asset(
-    MockAgaveUtils, test_client, projects_fixture, feature_fixture, video_file_fixture
+    MockTapisUtils, test_client, projects_fixture, feature_fixture, video_file_fixture
 ):
-    MockAgaveUtils().getFile.return_value = video_file_fixture
+    MockTapisUtils().getFile.return_value = video_file_fixture
     u1 = db_session.query(User).filter(User.username == "test1").first()
     resp = test_client.post(
         "/projects/1/features/1/assets/",

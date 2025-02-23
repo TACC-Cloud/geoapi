@@ -300,7 +300,7 @@ def test_upload_image(test_client, projects_fixture, image_file_fixture, user1):
 
 
 def test_import_image_tapis(
-    test_client, projects_fixture, import_file_from_agave_mock, user1
+    test_client, projects_fixture, import_file_from_tapis_mock, user1
 ):
     resp = test_client.post(
         f"/projects/{projects_fixture.id}/features/files/import/",
@@ -460,7 +460,7 @@ def test_get_project_features_filter_with_date_range(
 
 
 def test_import_shapefile_tapis(
-    test_client, projects_fixture, import_file_from_agave_mock, user1
+    test_client, projects_fixture, import_file_from_tapis_mock, user1
 ):
     resp = test_client.post(
         f"/projects/{projects_fixture.id}/features/files/import/",
@@ -494,8 +494,8 @@ def test_create_project_watch_content_already_exists(
     test_client,
     watch_content_users_projects_fixture,
     get_system_users_mock,
-    import_from_agave_mock,
-    agave_utils_with_geojson_file_mock,
+    import_from_tapis_mock,
+    tapis_utils_with_geojson_file_mock,
     user1,
 ):
     data = {
@@ -522,8 +522,8 @@ def test_create_project_watch_content_already_exists(
 def test_create_project_with_watch_content_watch_users(
     test_client,
     get_system_users_mock,
-    import_from_agave_mock,
-    agave_utils_with_geojson_file_mock,
+    import_from_tapis_mock,
+    tapis_utils_with_geojson_file_mock,
     user1,
 ):
     data = {
