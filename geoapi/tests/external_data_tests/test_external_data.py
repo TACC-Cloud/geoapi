@@ -128,7 +128,9 @@ def tapis_utils_with_image_file_from_rapp_folder(
         )
     ]
 
-    with patch("geoapi.utils.external_apis.TapisUtils.listing") as mock_listing_utils, patch(
+    with patch(
+        "geoapi.utils.external_apis.TapisUtils.listing"
+    ) as mock_listing_utils, patch(
         "geoapi.utils.external_apis.TapisUtils.getFile"
     ) as mock_get_file_utils, patch(
         "geoapi.tasks.external_data.TapisUtils.listing"

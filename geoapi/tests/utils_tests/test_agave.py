@@ -8,7 +8,9 @@ from geoapi.db import db_session
 
 @pytest.fixture(scope="function")
 def retry_sleep_seconds_mock():
-    with patch("geoapi.utils.external_apis.SLEEP_SECONDS_BETWEEN_RETRY", 0) as sleep_mock:
+    with patch(
+        "geoapi.utils.external_apis.SLEEP_SECONDS_BETWEEN_RETRY", 0
+    ) as sleep_mock:
         yield sleep_mock
 
 
