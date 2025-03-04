@@ -350,9 +350,7 @@ def test_get_project_features_empty(test_client, projects_fixture, user1, caplog
 def test_get_project_features_empty_public_access(
     test_client, public_projects_fixture, caplog
 ):
-    resp = test_client.get(
-        "/projects/{}/features/".format(public_projects_fixture.id)
-    )
+    resp = test_client.get("/projects/{}/features/".format(public_projects_fixture.id))
     assert resp.status_code == 200
     data = resp.get_json()
     assert len(data["features"]) == 0
