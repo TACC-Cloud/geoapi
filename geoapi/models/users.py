@@ -30,8 +30,12 @@ class User(Base):
         refresh_token_masked = None
 
         if self.auth:
-            access_token_masked = self.auth.access_token[-5:] if self.auth.access_token else None
-            refresh_token_masked = self.auth.refresh_token[-5:] if self.auth.refresh_token else None
+            access_token_masked = (
+                self.auth.access_token[-5:] if self.auth.access_token else None
+            )
+            refresh_token_masked = (
+                self.auth.refresh_token[-5:] if self.auth.refresh_token else None
+            )
 
         return (
             f"<User(uname={self.username}, "
