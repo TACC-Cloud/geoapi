@@ -50,11 +50,11 @@ def test_post_overlay(test_client, projects_fixture, image_file_fixture):
     assert data["path"] is not None
 
 
-@patch("geoapi.services.features.AgaveUtils")
+@patch("geoapi.services.features.TapisUtils")
 def test_post_overlay_import_tapis(
-    MockAgaveUtils, test_client, projects_fixture, image_file_fixture
+    MockTapisUtils, test_client, projects_fixture, image_file_fixture
 ):
-    MockAgaveUtils().getFile.return_value = image_file_fixture
+    MockTapisUtils().getFile.return_value = image_file_fixture
     u1 = db_session.get(User, 1)
     resp = test_client.post(
         "/projects/1/overlays/import/",

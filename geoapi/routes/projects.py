@@ -532,7 +532,7 @@ class ProjectFeaturesFileImportResource(Resource):
             )
         )
         for file in request.json["files"]:
-            external_data.import_file_from_agave.delay(
+            external_data.import_file_from_tapis.delay(
                 u.id, file["system"], file["path"], projectId
             )
         return {"message": "accepted"}
@@ -765,7 +765,7 @@ class ProjectPointCloudsFileImportResource(Resource):
         for file in files:
             PointCloudService.check_file_extension(file["path"])
 
-        external_data.import_point_clouds_from_agave.delay(u.id, files, pointCloudId)
+        external_data.import_point_clouds_from_tapis.delay(u.id, files, pointCloudId)
         return {"message": "accepted"}
 
 

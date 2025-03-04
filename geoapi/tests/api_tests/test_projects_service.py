@@ -36,8 +36,8 @@ def test_delete_project(projects_fixture, remove_project_assets_mock, user1):
 def test_create_watch_users_watch_content_project(
     user1,
     get_system_users_mock,
-    agave_utils_with_geojson_file_mock,
-    import_from_agave_mock,
+    tapis_utils_with_geojson_file_mock,
+    import_from_tapis_mock,
 ):
     data = {
         "name": "test name",
@@ -73,8 +73,8 @@ def test_create_watch_users_watch_content_project(
 
 def test_create_watch_content_project_already_exists(
     watch_content_users_projects_fixture,
-    agave_utils_with_geojson_file_mock,
-    import_from_agave_mock,
+    tapis_utils_with_geojson_file_mock,
+    import_from_tapis_mock,
     get_system_users_mock,
 ):
     user = db_session.get(User, 1)

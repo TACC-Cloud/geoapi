@@ -104,7 +104,7 @@ def test_update_tile_servers(test_client, projects_fixture):
 
 
 def test_import_tile_server__tapis(
-    test_client, projects_fixture, import_file_from_agave_mock
+    test_client, projects_fixture, import_file_from_tapis_mock
 ):
     u1 = db_session.get(User, 1)
     resp = test_client.post(
