@@ -4,9 +4,9 @@ from sqlalchemy import desc, exists
 from geoapi.models import Project, ProjectUser, User
 from sqlalchemy.sql import select, text
 from geoapi.services.users import UserService
-from geoapi.utils.agave import AgaveUtils, get_system_users
+from geoapi.utils.external_apis import TapisUtils, get_system_users
 from geoapi.utils.users import is_anonymous
-from geoapi.tasks.external_data import import_from_agave
+from geoapi.tasks.external_data import import_from_tapis
 from geoapi.tasks.projects import remove_project_assets
 from geoapi.log import logger
 from geoapi.exceptions import (
@@ -32,7 +32,7 @@ class ProjectsService:
         """
         # Check that a storage system is there
         if data.get("system_id"):
-            AgaveUtils(database_session, user).systemsGet(data.get("system_id"))
+            TapisUtils(database_session, user).systemsGet(data.get("system_id"))
 
         system_id = data.get("system_id")
         system_path = data.get("system_path")
@@ -106,7 +106,7 @@ class ProjectsService:
                 )
 
         if project.watch_content:
-            import_from_agave.apply_async(
+            import_from_tapis.apply_async(
                 args=[
                     project.tenant_id,
                     user.id,

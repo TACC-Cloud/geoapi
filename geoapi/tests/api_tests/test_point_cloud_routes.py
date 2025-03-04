@@ -67,9 +67,9 @@ def test_delete_point_cloud(test_client, projects_fixture, point_cloud_fixture):
     assert point_cloud is None
 
 
-@patch("geoapi.tasks.external_data.import_point_clouds_from_agave")
+@patch("geoapi.tasks.external_data.import_point_clouds_from_tapis")
 def test_import_lidar_tapis(
-    import_point_clouds_from_agave_mock,
+    import_point_clouds_from_tapis_mock,
     test_client,
     projects_fixture,
     point_cloud_fixture,
@@ -81,7 +81,7 @@ def test_import_lidar_tapis(
         headers={"X-Tapis-Token": u1.jwt},
     )
     assert resp.status_code == 200
-    import_point_clouds_from_agave_mock.delay.assert_called_once()
+    import_point_clouds_from_tapis_mock.delay.assert_called_once()
 
 
 def test_import_lidar_tapis_wrong_file(

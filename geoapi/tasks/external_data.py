@@ -15,13 +15,13 @@ from geoapi.exceptions import (
     GetUsersForProjectNotSupported,
 )
 from geoapi.models import Project, User, ProjectUser, Task
-from geoapi.utils.agave import (
-    AgaveUtils,
+from geoapi.utils.external_apis import (
+    TapisUtils,
     SystemUser,
     get_system_users,
     get_metadata,
-    AgaveFileGetError,
-    AgaveListingError,
+    TapisFileGetError,
+    TapisListingError,
 )
 from geoapi.utils import features as features_util
 from geoapi.log import logger
@@ -93,7 +93,7 @@ def get_additional_files(
             if available_files and str(additional_file_path) not in available_files:
                 if required:
                     logger.error(
-                        f"Could not import required shapefile-related file: agave: {system_id}/{additional_file_path}"
+                        f"Could not import required shapefile-related file: tapis: {system_id}/{additional_file_path}"
                     )
                     raise Exception(
                         f"Required file ({system_id}/{additional_file_path}) missing"
@@ -146,7 +146,7 @@ def get_additional_files(
             if not result_file and required:
                 logger.error(
                     f"Could not import a required {file_suffix}-related file: "
-                    f"agave: {system_id} :: {additional_file_path}   ---- error: {error}"
+                    f"tapis: {system_id} :: {additional_file_path}   ---- error: {error}"
                 )
                 raise Exception(
                     f"Required file ({system_id}/{additional_file_path}) missing"
@@ -154,7 +154,7 @@ def get_additional_files(
             if not result_file:
                 logger.error(
                     f"Unable to get non-required {file_suffix}-related file: "
-                    f"agave: {system_id} :: {additional_file_path}   ---- error: {error}"
+                    f"tapis: {system_id} :: {additional_file_path}   ---- error: {error}"
                 )
 
                 continue
@@ -167,7 +167,7 @@ def get_additional_files(
 
 
 @app.task(rate_limit="10/s")
-def import_file_from_agave(userId: int, systemId: str, path: str, projectId: int):
+def import_file_from_tapis(userId: int, systemId: str, path: str, projectId: int):
     """
     Import file from TAPIS system
 
@@ -177,7 +177,7 @@ def import_file_from_agave(userId: int, systemId: str, path: str, projectId: int
     with create_task_session() as session:
         try:
             user = session.get(User, userId)
-            client = AgaveUtils(session, user)
+            client = TapisUtils(session, user)
             temp_file = client.getFile(systemId, path)
             temp_file.filename = Path(path).name
             additional_files = get_additional_files(temp_file, systemId, path, client)
@@ -201,7 +201,7 @@ def import_file_from_agave(userId: int, systemId: str, path: str, projectId: int
             temp_file.close()
         except Exception as e:  # noqa: E722
             logger.exception(
-                "Could not import file from agave: {} :: {}".format(systemId, path)
+                "Could not import file from tapis: {} :: {}".format(systemId, path)
             )
             NotificationsService.create(
                 session, user, "error", "Error importing {f}".format(f=path)
@@ -242,10 +242,10 @@ def _handle_point_cloud_conversion_error(
 
 
 @app.task(queue="heavy")
-def import_point_clouds_from_agave(userId: int, files, pointCloudId: int):
+def import_point_clouds_from_tapis(userId: int, files, pointCloudId: int):
     with create_task_session() as session:
         user = session.get(User, userId)
-        client = AgaveUtils(session, user)
+        client = TapisUtils(session, user)
 
         point_cloud = pointcloud.PointCloudService.get(session, pointCloudId)
         celery_task_id = celery_uuid()
@@ -371,7 +371,7 @@ def import_point_clouds_from_agave(userId: int, files, pointCloudId: int):
 
 
 @app.task(rate_limit="5/s")
-def import_from_agave(
+def import_from_tapis(
     tenant_id: str, userId: int, systemId: str, path: str, projectId: int
 ):
     """
@@ -400,7 +400,7 @@ def import_files_recursively_from_path(
     contained in specific-file-format metadata (e.g. exif for images) but instead the location is stored in Tapis
     metadata.
 
-    This method is called by refresh_projects_watch_content() via import_from_agave
+    This method is called by refresh_projects_watch_content() via import_from_tapis
     """
     user = session.get(User, userId)
     logger.info(
@@ -408,11 +408,11 @@ def import_files_recursively_from_path(
             projectId, systemId, path, user.username
         )
     )
-    client = AgaveUtils(session, user)
+    client = TapisUtils(session, user)
 
     try:
         listing = client.listing(systemId, path)
-    except AgaveListingError:
+    except TapisListingError:
         logger.exception(
             f"Unable to perform file listing on {systemId}/{path} when importing for project:{projectId}"
         )
@@ -553,11 +553,11 @@ def import_files_recursively_from_path(
                 )
                 import_state = (
                     ImportState.FAILURE
-                    if e is not AgaveFileGetError
+                    if e is not TapisFileGetError
                     else ImportState.RETRYABLE_FAILURE
                 )
                 logger.exception(
-                    f"Could not import for user:{user.username} from agave:{systemId}/{item_system_path} "
+                    f"Could not import for user:{user.username} from tapis:{systemId}/{item_system_path} "
                     f"(while recursively importing files from {systemId}/{path}). "
                     f"retryable={import_state == ImportState.RETRYABLE_FAILURE}"
                 )

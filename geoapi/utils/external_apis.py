@@ -27,8 +27,8 @@ logger = logging.getLogger(__name__)
 SLEEP_SECONDS_BETWEEN_RETRY = 2
 
 
-class AgaveListingError(Exception):
-    """Exception raised when unable to list directory from Agave.
+class TapisListingError(Exception):
+    """Exception raised when unable to list directory from Tapis.
     Attributes:
         response -- response object that caused the error
         message -- explanation of the error
@@ -43,8 +43,8 @@ class AgaveListingError(Exception):
         return f"{self.message} | Response: {self.response}"
 
 
-class AgaveFileGetError(Exception):
-    """' Unable to fetch file from agave"""
+class TapisFileGetError(Exception):
+    """' Unable to fetch file from Tapis"""
 
     pass
 
@@ -53,13 +53,13 @@ class RetryableTapisFileError(Exception):
     """Tapis file errors which are known to possibly work if retried.
 
     This is raised if we know it is an error that we can re-attempt to get. Note that if we
-    try multiple times, and it still doesn't work, we then raise a AgaveFileGetError exception
+    try multiple times, and it still doesn't work, we then raise a TapisFileGetError exception
     """
 
     pass
 
 
-class AgaveFileListing:
+class TapisFileListing:
 
     def __init__(self, data: Dict):
         self.type = data["type"]
@@ -67,7 +67,7 @@ class AgaveFileListing:
         self.lastModified = parser.parse(data["lastModified"])
 
     def __repr__(self):
-        return "<AgaveFileListing {}>".format(self.path)
+        return "<TapisFileListing {}>".format(self.path)
 
     @property
     def ext(self):
@@ -169,8 +169,7 @@ class ApiUtils(metaclass=EnsureValidTokenMeta):
             raise ExpiredTokenError(msg)
 
 
-# TODO_TAPISV3 rename AgaveUtils to TapisUtils:  rename agave.py to external_api(?)
-class AgaveUtils(ApiUtils):
+class TapisUtils(ApiUtils):
     def __init__(self, database_session, user: User):
         """
         Initializes the client session for a user.
@@ -195,7 +194,7 @@ class AgaveUtils(ApiUtils):
         listing = resp.json()
         return listing["result"]
 
-    def listing(self, systemId: str, path: str) -> List[AgaveFileListing]:
+    def listing(self, systemId: str, path: str) -> List[TapisFileListing]:
         listings = []
         offset = 0
         limit = 1000  # Set the limit for each request
@@ -205,14 +204,14 @@ class AgaveUtils(ApiUtils):
             url = quote(f"/v3/files/ops/{systemId}/{path}")
             resp = self.get(url, params={"offset": offset, "limit": limit})
             if resp.status_code != 200:
-                e = AgaveListingError(
+                e = TapisListingError(
                     message=f"Unable to perform files listing of {systemId}/{path}. Status code: {resp.status_code}",
                     response=resp,
                 )
                 raise e
 
             listing = resp.json()
-            fetched_listings = [AgaveFileListing(d) for d in listing["result"]]
+            fetched_listings = [TapisFileListing(d) for d in listing["result"]]
             listings.extend(fetched_listings)
             total_fetched += len(fetched_listings)
 
@@ -243,7 +242,7 @@ class AgaveUtils(ApiUtils):
 
         :raises
             RetryableTapisFileError: If tapis error occurs where its possible to retry
-            AgaveFileGetError: Raised if tapis error occurs and uncertain if we can retry
+            TapisFileGetError: Raised if tapis error occurs and uncertain if we can retry
 
         :param systemId:
         :param path:
@@ -261,7 +260,7 @@ class AgaveUtils(ApiUtils):
                     )
                     raise RetryableTapisFileError
 
-                raise AgaveFileGetError(
+                raise TapisFileGetError(
                     "Could not fetch file ({}/{}) status_code:{} content:{}".format(
                         systemId, path, r.status_code, r.content
                     )
@@ -283,12 +282,12 @@ class AgaveUtils(ApiUtils):
 
         We attempt to get the file multiple times in case tapis is having issues (like if we see CS-196/DES-2236
         where tapis hits an ssh limits and then we get a a 500 or a file with 0 bytes). Eventually
-        we will raise AgaveFileGetError if we can't get the file.
+        we will raise TapisFileGetError if we can't get the file.
 
         User needs to ensure they call `close()` on the returned temp file
 
         :raises
-            AgaveFileGetError: Raised if unable to get file via tapis.
+            TapisFileGetError: Raised if unable to get file via tapis.
 
         :param systemId: str
         :param path: str
@@ -314,7 +313,7 @@ class AgaveUtils(ApiUtils):
                 raise e
         msg = f"Could not fetch file and no longer retrying.: ({systemId}/{path})"
         logger.exception(msg)
-        raise AgaveFileGetError(msg)
+        raise TapisFileGetError(msg)
 
     def get_file_context_manager(self, system_id: str, path: str) -> IO:
         tmpFile = self.getFile(system_id, path)

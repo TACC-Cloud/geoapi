@@ -20,7 +20,7 @@ from geoapi.exceptions import (
     StreetviewExistsException,
 )
 from geoapi.models import User, StreetviewInstance, StreetviewSequence, Task
-from geoapi.utils.agave import AgaveUtils
+from geoapi.utils.external_apis import TapisUtils
 from geoapi.utils.streetview import (
     get_project_streetview_dir,
     make_project_streetview_dir,
@@ -108,7 +108,7 @@ def _from_tapis(
     :param systemId: str
     :param path: str
     """
-    client = AgaveUtils(database_session, user)
+    client = TapisUtils(database_session, user)
     listing = client.listing(systemId, path)
     files_in_directory = listing[1:]
 
@@ -151,7 +151,7 @@ def _from_tapis(
 
         except Exception as e:
             done_files -= 1
-            error_message = "Could not import file from agave: {} :: {}, {}".format(
+            error_message = "Could not import file from tapis: {} :: {}, {}".format(
                 systemId, path, e
             )
             logger.exception(error_message)

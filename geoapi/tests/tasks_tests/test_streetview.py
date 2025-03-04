@@ -1,5 +1,5 @@
 from geoapi.tasks.streetview import _from_tapis
-from geoapi.utils.agave import AgaveFileListing
+from geoapi.utils.external_apis import TapisFileListing
 from geoapi.utils.streetview import (
     get_project_streetview_dir,
     remove_project_streetview_dir,
@@ -12,19 +12,19 @@ import uuid
 
 
 @pytest.fixture(scope="function")
-def agave_utils_with_image_file(image_file_fixture):
-    with patch("geoapi.tasks.streetview.AgaveUtils.listing") as mock_listing, patch(
-        "geoapi.tasks.streetview.AgaveUtils.get_file_context_manager"
+def tapis_utils_with_image_file(image_file_fixture):
+    with patch("geoapi.tasks.streetview.TapisUtils.listing") as mock_listing, patch(
+        "geoapi.tasks.streetview.TapisUtils.get_file_context_manager"
     ) as mock_get_file_context_manager:
         filesListing = [
-            AgaveFileListing(
+            TapisFileListing(
                 {
                     "path": "/testPath",
                     "type": "dir",
                     "lastModified": "2020-08-31T12:00:00Z",
                 }
             ),
-            AgaveFileListing(
+            TapisFileListing(
                 {
                     "type": "file",
                     "path": "/testPath/file.jpg",
@@ -48,7 +48,7 @@ def mock_notifications_service():
 
 
 def test_get_file_to_path(
-    user1, task_fixture, mock_notifications_service, agave_utils_with_image_file
+    user1, task_fixture, mock_notifications_service, tapis_utils_with_image_file
 ):
     system_id = "foo"
     path = "path/"

@@ -17,7 +17,7 @@ from geoapi.services.features import FeaturesService
 from geoapi.services.users import UserService
 from geoapi.app import app
 from geoapi.utils.assets import get_project_asset_dir
-from geoapi.utils.agave import AgaveFileListing, SystemUser
+from geoapi.utils.external_apis import TapisFileListing, SystemUser
 from geoapi.utils.tenants import get_tapis_api_server
 from geoapi.utils.jwt_utils import create_token_expiry_hours_from_now
 from geoapi.exceptions import InvalidCoordinateReferenceSystem
@@ -395,16 +395,16 @@ def image_feature_fixture(image_file_fixture):
 
 
 @pytest.fixture(scope="function")
-def import_file_from_agave_mock():
+def import_file_from_tapis_mock():
     with patch(
-        "geoapi.tasks.external_data.import_file_from_agave"
-    ) as import_file_from_agave:
-        yield import_file_from_agave
+        "geoapi.tasks.external_data.import_file_from_tapis"
+    ) as import_file_from_tapis:
+        yield import_file_from_tapis
 
 
 @pytest.fixture(scope="function")
-def import_from_agave_mock():
-    with patch("geoapi.services.projects.import_from_agave") as mock_import:
+def import_from_tapis_mock():
+    with patch("geoapi.services.projects.import_from_tapis") as mock_import:
         yield mock_import
 
 
@@ -452,12 +452,12 @@ def get_point_cloud_info_mock():
 
 
 @pytest.fixture(scope="function")
-def agave_file_listings_mock():
+def tapis_file_listings_mock():
     filesListing = [
-        AgaveFileListing(
+        TapisFileListing(
             {"path": "/testPath", "type": "dir", "lastModified": "2020-08-31T12:00:00Z"}
         ),
-        AgaveFileListing(
+        TapisFileListing(
             {
                 "type": "file",
                 "path": "/testPath/file.json",
@@ -469,16 +469,16 @@ def agave_file_listings_mock():
 
 
 @pytest.fixture(scope="function")
-def agave_utils_with_geojson_file_mock(agave_file_listings_mock, geojson_file_fixture):
-    with patch("geoapi.services.projects.AgaveUtils") as MockAgaveUtils:
-        MockAgaveUtils().listing.return_value = agave_file_listings_mock
-        MockAgaveUtils().getFile.return_value = geojson_file_fixture
-        MockAgaveUtils().systemsGet.return_value = {
+def tapis_utils_with_geojson_file_mock(tapis_file_listings_mock, geojson_file_fixture):
+    with patch("geoapi.services.projects.TapisUtils") as MockTapisUtils:
+        MockTapisUtils().listing.return_value = tapis_file_listings_mock
+        MockTapisUtils().getFile.return_value = geojson_file_fixture
+        MockTapisUtils().systemsGet.return_value = {
             "id": "testSystem",
             "description": "System Description",
             "name": "System Name",
         }
-        yield MockAgaveUtils()
+        yield MockTapisUtils()
 
 
 @pytest.fixture(scope="function")

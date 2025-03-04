@@ -14,7 +14,7 @@ def get_project_data(database_session, user: User, system_id: str) -> dict:
     :return: project data
 
     """
-    from geoapi.utils.agave import ApiUtils
+    from geoapi.utils.external_apis import ApiUtils
 
     logger.debug(f"Getting project metadata for system:{system_id}")
 
@@ -45,7 +45,7 @@ def get_system_users(database_session, user, system_id: str):
     :return: A list of SystemUser instances, each with a username and an admin status
     """
 
-    from geoapi.utils.agave import SystemUser
+    from geoapi.utils.external_apis import SystemUser
 
     if not system_id.startswith("project-"):
         raise GetUsersForProjectNotSupported(
