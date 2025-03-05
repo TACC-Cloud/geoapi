@@ -14,6 +14,9 @@ def _get_tile_server_data():
     return data
 
 
+# TODO add tile server listing and public listing test
+
+
 def test_add_tile_server(test_client, projects_fixture):
     u1 = db_session.get(User, 1)
 

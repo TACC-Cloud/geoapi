@@ -21,6 +21,15 @@ def test_get_point_cloud(test_client, projects_fixture, point_cloud_fixture):
     assert resp.status_code == 200
 
 
+def test_get_point_clouds_listing_public_access(
+    test_client, public_projects_fixture, point_cloud_fixture
+):
+    resp = test_client.get("/projects/1/point-cloud/")
+    assert resp.status_code == 200
+    data = resp.get_json()
+    assert len(data) == 1
+
+
 def test_get_point_cloud_public_access(
     test_client, public_projects_fixture, point_cloud_fixture
 ):
