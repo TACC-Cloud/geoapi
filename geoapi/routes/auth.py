@@ -150,8 +150,7 @@ class Callback(Resource):
             response_json = response.json()["result"]
 
             access_token = response_json["access_token"]["access_token"]
-            access_token_expires_in = response_json["access_token"]["expires_in"]
-            access_token_expires_at = response_json["access_token"]["expires_at"]
+            access_token_expires_at = response_json["access_token"]["expires_at"] # note: not using "expires_in"
             refresh_token = response_json["refresh_token"]["refresh_token"]
             refresh_token_expires_at = response_json["refresh_token"]["expires_at"]
 
