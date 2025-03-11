@@ -375,17 +375,8 @@ class ProjectFeaturesResource(Resource):
     @project_permissions_allow_public
     def get(self, projectId: int):
         # Following log is for analytics, see https://confluence.tacc.utexas.edu/display/DES/Hazmapper+Logging
-        application = request.headers.get("X-Geoapi-Application")
-        if application is None:
-            #  Check if in query parameters due to https://tacc-main.atlassian.net/browse/WG-192 and WG-191 */
-            application = request.args.get("application")
-
-            if application is None:
-                application = "Unknown"
-
-        from geoapi.routes.public_projects import PublicProjectFeaturesResource
-
-        is_public_view = issubclass(self.__class__, PublicProjectFeaturesResource)
+        application = request.headers.get("X-Geoapi-Application", "Unknown")
+        is_public_view = request.headers.get("X-Geoapi-IsPublicView", "Unknown")
 
         prj = ProjectsService.get(
             db_session, project_id=projectId, user=request.current_user

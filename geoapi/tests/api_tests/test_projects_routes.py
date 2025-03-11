@@ -340,7 +340,7 @@ def test_get_project_features_empty(test_client, projects_fixture, user1, caplog
     data = resp.get_json()
     assert len(data["features"]) == 0
     log_statement_for_analytics = (
-        f"Get features of project for user:{user1.username} application:Unknown public_view:False "
+        f"Get features of project for user:{user1.username} application:Unknown public_view:Unknown "
         f"project_uuid:{projects_fixture.uuid} project:{projects_fixture.id} "
         f"tapis_system_id:None tapis_system_path:None"
     )
@@ -350,29 +350,29 @@ def test_get_project_features_empty(test_client, projects_fixture, user1, caplog
 def test_get_project_features_empty_public_access(
     test_client, public_projects_fixture, caplog
 ):
-    resp = test_client.get(
-        "/public-projects/{}/features/".format(public_projects_fixture.id)
-    )
+    resp = test_client.get("/projects/{}/features/".format(public_projects_fixture.id))
     assert resp.status_code == 200
     data = resp.get_json()
     assert len(data["features"]) == 0
     log_statement_for_analytics = (
-        f"Get features of project for user:Guest_Unknown application:Unknown public_view:True "
+        f"Get features of project for user:Guest_Unknown application:Unknown public_view:Unknown "
         f"project_uuid:{public_projects_fixture.uuid} project:{public_projects_fixture.id} "
         f"tapis_system_id:None tapis_system_path:None"
     )
     assert log_statement_for_analytics in caplog.text
 
 
-def test_get_project_features_analytics_with_query_params(
+def test_get_project_features_analytics_with_headers(
     test_client, public_projects_fixture, caplog
 ):
-    # send analytics-related params to projects endpoint only (until we use headers again
-    # in https://tacc-main.atlassian.net/browse/WG-192)
-    query = {"application": "hazmapper", "guest_uuid": "1234"}
+    headers = {
+        "X-Geoapi-Application": "hazmapper",
+        "X-Geoapi-IsPublicView": "True",
+        "X-Guest-UUID": "1234",
+    }
     test_client.get(
-        "/public-projects/{}/features/".format(public_projects_fixture.id),
-        query_string=query,
+        "/projects/{}/features/".format(public_projects_fixture.id),
+        headers=headers,
     )
     log_statement_for_analytics = (
         f"Get features of project for user:Guest_1234 application:hazmapper public_view:True "
