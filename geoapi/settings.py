@@ -1,5 +1,7 @@
 import os
-
+from geoapi.db import db_session
+from geoapi.models.flask_session import FlaskSession
+from datetime import timedelta
 
 class Config(object):
     # Flask settings
@@ -21,6 +23,17 @@ class Config(object):
     STREETVIEW_DIR = os.environ.get("STREETVIEW_DIR", "/assets/streetview")
     DESIGNSAFE_URL = os.environ.get("DESIGNSAFE_URL")
     APP_ENV = os.environ.get("APP_ENV")
+
+    # Session settings
+    SESSION_TYPE = "sqlalchemy"
+    SESSION_SQLALCHEMY = db_session
+    SESSION_SQLALCHEMY_MODEL = FlaskSession
+    SESSION_COOKIE_SECURE = True
+    SESSION_COOKIE_HTTPONLY = True
+    SESSION_COOKIE_SAMESITE = "None"
+    SESSION_USE_SIGNER = True
+    SESSION_PERMANENT = True
+    PERMANENT_SESSION_LIFETIME = timedelta(days=1)
 
 
 class DeployedConfig(Config):
@@ -68,7 +81,6 @@ class UnitTestingConfig(LocalDevelopmentConfig):
     SECRET_KEY = os.environ.get(
         "FLASK_SESSION_SECRET_KEY", "flask_session_secret_key_1234"
     )
-
 
 APP_ENV = os.environ.get("APP_ENV", "").lower()
 if (

@@ -3,13 +3,13 @@ from flask_restx import Resource, Namespace, fields
 
 from geoapi.db import db_session
 from geoapi.log import logging
-from geoapi.utils.decorators import jwt_decoder, not_anonymous
+from geoapi.utils.decorators import jwt_or_session_decoder, not_anonymous
 from geoapi.services.notifications import NotificationsService
 from dateutil import parser, tz
 
 logger = logging.getLogger(__name__)
 
-api = Namespace("notifications", decorators=[jwt_decoder])
+api = Namespace("notifications", decorators=[jwt_or_session_decoder])
 
 notification_response = api.model(
     "NotificationResponse",

@@ -1,4 +1,4 @@
-from flask import redirect, request, session
+from flask import redirect, request, session, abort, session
 from flask_restx import Resource, Namespace
 import requests
 import secrets
@@ -8,9 +8,10 @@ from geoapi.settings import settings
 from geoapi.log import logging
 from geoapi.db import db_session
 from geoapi.utils import jwt_utils
-from geoapi.services.users import UserService
+from geoapi.services.users import UserService, ExpiredTokenError
 from geoapi.utils.tenants import get_tapis_api_server
 from geoapi.exceptions import AuthenticationIssue, ApiException
+from geoapi.utils.decorators import valid_user_session
 
 
 logger = logging.getLogger(__name__)
@@ -180,12 +181,56 @@ class Callback(Resource):
             # commit changes before redirect in case there was an error
             db_session.commit()
 
-            params = {
-                "access_token": access_token,
-                "expires_in": access_token_expires_in,
-                "expires_at": access_token_expires_at,
-                "to": to,
-            }
-            encoded_params = urllib.parse.urlencode(params)
+            # Store user information in session
+            session['username'] = username
+            session['tenant'] = tenant
+
+            encoded_params = urllib.parse.urlencode({"to": to})
             client_redirect_uri = f"{client_base_url}/handle-login?{encoded_params}"
             return redirect(client_redirect_uri)
+
+
+@api.route("/csrf-token")
+class CSRFToken(Resource):
+    @api.doc(id="get-csrf-token", description="Get CSRF token for the current session")
+    @valid_user_session
+    def get(self):
+        if 'csrf_token' not in session:
+            session['csrf_token'] = secrets.token_hex(32)
+
+        return {
+            "csrf_token": session['csrf_token']
+        }
+
+
+@api.route("/tapis/token")
+class GetTapisToken(Resource):
+    @api.doc(id="get-tapis-token", description="Retrieve Tapis token for the authenticated user")
+    @valid_user_session
+    def get(self):
+        u = request.current_user
+        try:
+            UserService.check_and_refresh_access_token(database_session=db_session, user=u)
+
+            return {
+                "token": u.auth.access_token,
+                "username": session['username'],
+                "tenant": session['tenant']
+            }
+        except ExpiredTokenError as e:
+            # should not happen as our session should expire before refresh token expires
+            logger.exception(f"Unexpected token issue: {e}")
+            session.clear()
+            abort(401, "Invalid or expired token")
+
+
+@api.route("/logout")
+class Logout(Resource):
+    def get(self):
+        client_base_url = session.pop("clientBaseUrl")
+
+        # Clear the sessions
+        session.clear()
+
+        # Create response that clears the token cookie
+        return redirect(client_base_url + "logout")

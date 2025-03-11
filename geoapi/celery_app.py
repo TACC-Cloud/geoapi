@@ -31,4 +31,8 @@ app.conf.beat_schedule = {
         "task": "geoapi.tasks.external_data.refresh_projects_watch_users",
         "schedule": timedelta(minutes=30),
     },
+    "cleanup_expired_sessions": {
+        "task": "geoapi.tasks.flask_sessions.cleanup_expired_sessions",
+        "schedule": timedelta(days=1),
+    },
 }

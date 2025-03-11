@@ -11,7 +11,7 @@ from geoapi.tasks import external_data, streetview
 from geoapi.db import db_session
 from geoapi.models import Task
 from geoapi.utils.decorators import (
-    jwt_decoder,
+    jwt_or_session_decoder,
     project_permissions_allow_public,
     project_permissions,
     project_feature_exists,
@@ -24,7 +24,7 @@ from geoapi.utils.decorators import (
 )
 
 
-api = Namespace("projects", decorators=[jwt_decoder])
+api = Namespace("projects", decorators=[jwt_or_session_decoder])
 
 ok_response = api.model("OkResponse", {"message": fields.String(default="accepted")})
 

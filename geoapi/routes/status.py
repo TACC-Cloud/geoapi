@@ -1,10 +1,10 @@
 from flask_restx import Resource, Namespace, fields
 from geoapi.log import logging
-from geoapi.utils.decorators import jwt_decoder
+from geoapi.utils.decorators import jwt_or_session_decoder
 
 logger = logging.getLogger(__name__)
 
-api = Namespace("status", decorators=[jwt_decoder])
+api = Namespace("status", decorators=[jwt_or_session_decoder])
 
 status_response = api.model(
     "StatusResponse",

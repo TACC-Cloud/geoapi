@@ -257,3 +257,39 @@ class UserService:
                 f"Error during token refresh for user:{user.username}: {str(e)}"
             )
             raise RefreshTokenError from e
+
+    @staticmethod
+    def check_and_refresh_access_token(database_session, user: User):
+        """
+        Check that there is valid token and refresh if needed.
+
+        Raises:
+            ExpiredTokenError: If unable to ensure there is a valid token
+        """
+        try:
+            # if we can refresh token, and our token is about to expire,
+            # let's go ahead and refresh it.
+            if (
+                user.has_unexpired_refresh_token()
+                and user.auth.access_token
+                and jwt_utils.token_will_expire_soon(user.auth.access_token)
+            ):
+                logger.debug(
+                    f"user:{user} has a token about to expire or has expired; we will refresh it."
+                )
+
+                UserService.refresh_access_token(database_session, user)
+
+        except RefreshTokenError:
+            logger.error(
+                f"There was a problem refreshing access token of user:{user.username}."
+            )
+        except Exception:
+            logger.exception(
+                f"Something went wrong when ensuring that token was valid for user:{user.username}"
+            )
+
+        if not user.has_valid_token():
+            msg = f"Access token of user:{user.username} is expired (or invalid)."
+            logger.error(msg)
+            raise ExpiredTokenError(msg)

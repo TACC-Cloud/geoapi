@@ -126,47 +126,17 @@ class ApiUtils(metaclass=EnsureValidTokenMeta):
 
     def _ensure_valid_token(self):
         """
-        Ensures there is a valid token.
-
-        Method checks if we need to refresh token
-
-        Raises:
-            ExpiredTokenError: If unable to ensure there is a valid token
+        Ensures there is a valid token and that client is configured
         """
-        try:
-            # if we can refresh token, and our token is about to expire,
-            # let's go ahead and refreshit.
-            if (
-                self.user.has_unexpired_refresh_token()
-                and self.user.auth.access_token
-                and jwt_utils.token_will_expire_soon(self.user.auth.access_token)
-            ):
-                logger.debug(
-                    f"user:{self.user} has a token about to expire or has expired; we will refresh it."
-                )
+        UserService.check_and_refresh_access_token(self.database_session, self.user)
 
-                UserService.refresh_access_token(self.database_session, self.user)
-
-                # Update the user and then the client after refreshing the token
-                self.user = (
-                    self.database_session.query(User)
-                    .filter(User.id == self.user.id)
-                    .one()
-                )
-                self.client = get_session(self.user)
-        except RefreshTokenError:
-            logger.error(
-                f"There was a problem refreshing access token of user:{self.user.username}."
-            )
-        except Exception:
-            logger.exception(
-                f"Something went wrong when ensuring that token was valid for user:{self.user.username}"
-            )
-
-        if not self.user.has_valid_token():
-            msg = f"Access token of user:{self.user.username} is expired (or invalid)."
-            logger.error(msg)
-            raise ExpiredTokenError(msg)
+        # Update the client after refreshing the token
+        self.user = (
+            self.database_session.query(User)
+            .filter(User.id == self.user.id)
+            .one()
+        )
+        self.client = get_session(self.user)
 
 
 class TapisUtils(ApiUtils):

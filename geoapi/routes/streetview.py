@@ -1,7 +1,7 @@
 from geoapi.services.streetview import StreetviewService
 from geoapi.tasks import streetview
 from geoapi.log import logging
-from geoapi.utils.decorators import jwt_decoder
+from geoapi.utils.decorators import jwt_or_session_decoder
 from geoapi.db import db_session
 from flask_restx import Namespace, Resource, fields
 from flask_restx.marshalling import marshal_with
@@ -10,7 +10,7 @@ from flask import request
 
 logger = logging.getLogger(__name__)
 
-api = Namespace("streetview", decorators=[jwt_decoder])
+api = Namespace("streetview", decorators=[jwt_or_session_decoder])
 
 streetview_service_resource_param = api.model(
     "StreetviewParams",

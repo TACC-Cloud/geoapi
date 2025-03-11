@@ -1,6 +1,5 @@
 from functools import wraps
-from flask import abort
-from flask import request
+from flask import abort, request, session
 from uuid import UUID
 from geoapi.services.users import UserService
 from geoapi.services.projects import ProjectsService
@@ -13,41 +12,79 @@ from geoapi.log import logger
 from geoapi.settings import settings
 
 
-def jwt_decoder(fn):
+
+def valid_user_session(fn):
+    @wraps(fn)
+    def wrapper(*args, **kwargs):
+        # Check if user is authenticated via session
+        if 'user_id' not in session or 'username' not in session:
+            abort(401, "Not authenticated")
+
+        # Verify CSRF token
+        csrf_token = request.headers.get('X-CSRF-Token')
+        if not csrf_token or csrf_token != session.get('csrf_token'):
+            abort(403, "CSRF token missing or invalid")
+
+        # Check user exists
+        user = UserService.getUser(db_session, username=session["username"], tenant=session["tenant"])
+        if not user:
+            session.clear()
+            abort(401, "Invalid session")
+        request.current_user = user
+        return fn(*args, **kwargs)
+    return wrapper
+
+
+def jwt_or_session_decoder(fn):
     @wraps(fn)
     def wrapper(*args, **kwargs):
         user = None
-        token = None
-        try:
-            token = jwt_utils.get_jwt(request.headers)
-        except ValueError:
-            # if not JWT information is provided in header, then this is a guest user
-            guest_uuid = request.headers.get("X-Guest-UUID")
-            user = AnonymousUser(guest_unique_id=guest_uuid)
-        if user is None:
-            try:
-                decoded = jwt_utils.decode_token(token, verify=not settings.TESTING)
-                username = decoded["tapis/username"]
-                tenant = decoded["tapis/tenant_id"]
-            # Exceptions
-            except Exception as e:
-                logger.exception(f"There is an issue decoding the JWT: {e}")
-                abort(400, f"There is an issue decoding the JWT: {e}")
 
-            user = UserService.getUser(db_session, username, tenant)
-            if not user:
-                user = UserService.create(
-                    db_session, username=username, access_token=token, tenant=tenant
-                )
-            else:
-                # Update the jwt access token
-                #   (It is more common that user will be using an auth flow were hazmapper will auth
-                #   with geoapi to get the token. BUT we can't assume that as it is also possible that
-                #   user just uses geoapi as a service with token generated somewhere else. So we need
-                #   to get/update just their access token for these cases)
-                UserService.update_access_token(db_session, user, token)
-        request.current_user = user
-        return fn(*args, **kwargs)
+        # First check if user is already authenticated via session
+        if 'user_id' in session and 'username' in session and 'tenant' in session:
+            user = UserService.getUser(db_session, session['username'], session['tenant'])
+            csrf_token = request.headers.get('X-CSRF-Token')
+            if not csrf_token or csrf_token != session.get('csrf_token'):
+                abort(403, "CSRF token missing or invalid")
+            if user:
+                UserService.check_and_refresh_access_token(database_session=db_session, user=user)
+                request.current_user = user
+                return fn(*args, **kwargs)
+        else:
+            # If not session, then check jwt in header
+            token = None
+            try:
+                token = jwt_utils.get_jwt(request.headers)
+            except ValueError:
+                # if not JWT information is provided in header, then this is a guest user
+                guest_uuid = request.headers.get("X-Guest-UUID")
+                user = AnonymousUser(guest_unique_id=guest_uuid)
+            if user is None:
+                try:
+                    decoded = jwt_utils.decode_token(token, verify=not settings.TESTING)
+                    username = decoded["tapis/username"]
+                    tenant = decoded["tapis/tenant_id"]
+                # Exceptions
+                except Exception as e:
+                    logger.exception(f"There is an issue decoding the JWT: {e}")
+                    abort(400, f"There is an issue decoding the JWT: {e}")
+
+                user = UserService.getUser(db_session, username, tenant)
+                if not user:
+                    user = UserService.create(
+                        db_session, username=username, access_token=token, tenant=tenant
+                    )
+                else:
+                    # Update just the jwt access token
+                    #   (It is more common that user will be using an auth flow were hazmapper will auth
+                    #   with geoapi to get the token and user will be in a session. BUT we can't assume
+                    #   that as it is also possible that user just uses geoapi as a service with token
+                    #   generated somewhere else. So we need to get/update just their access token for these cases)
+                    UserService.update_access_token(db_session, user, token)
+
+            UserService.check_and_refresh_access_token(database_session=db_session, user=user)
+            request.current_user = user
+            return fn(*args, **kwargs)
 
     return wrapper
 
