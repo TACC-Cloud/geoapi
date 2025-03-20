@@ -78,6 +78,7 @@ streetview_service = api.model(
         "id": fields.Integer(),
         "user_id": fields.Integer(),
         "token": fields.String(),
+        "token_expires_at": fields.String(),
         "service": fields.String(),
         "service_user": fields.String(),
         "organizations": fields.List(
@@ -100,6 +101,7 @@ class StreetviewServiceResources(Resource):
         logger.info("Get all streetview objects user:{}".format(u.username))
         return StreetviewService.list(db_session, u)
 
+    # TODO after angular version is retired, remove this as auth occurs now in backend
     @api.doc(
         id="createStreetviewServiceResource",
         description="Create streetview service object for a user",
