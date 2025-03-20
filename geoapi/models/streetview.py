@@ -4,6 +4,13 @@ from geoapi.db import Base
 
 
 class Streetview(Base):
+    """
+    Represents a user's access to a streetview-related service (e.g., Mapillary).
+
+    This model stores user credentials, service information, and associated organizations
+    and instances of streetview data. Each `Streetview` entry is tied to a specific user
+    and contains authentication details required for interacting with the streetview service.
+    """
     __tablename__ = "streetview"
 
     id = Column(Integer, primary_key=True)
