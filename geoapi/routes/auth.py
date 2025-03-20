@@ -132,5 +132,5 @@ class Callback(Resource):
                 "to": to,
             }
             encoded_params = urllib.parse.urlencode(params)
-            client_redirect_uri = f"{client_base_url}/handle-login?{encoded_params}"
+            client_redirect_uri = f"{client_base_url}/handle-login#{encoded_params}"
             return redirect(client_redirect_uri)
