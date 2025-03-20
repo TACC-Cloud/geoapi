@@ -1,3 +1,14 @@
+"""
+Streetview API Endpoints
+
+This module defines the API endpoints for managing Streetview services, instances,
+sequences, and organizations.
+
+**Note:** Currently, only the 'mapillary' service is supported. The API was originally
+designed to support both Mapillary and Google Street View, which is why it follows
+this structure.
+"""
+
 from geoapi.services.streetview import StreetviewService
 from geoapi.tasks import streetview
 from geoapi.log import logging
