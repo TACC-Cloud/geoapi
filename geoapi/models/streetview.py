@@ -12,13 +12,17 @@ class Streetview(Base):
     )
     user = relationship("User", overlaps="streetviews")
     token = Column(String())
+    token_expires_at = Column(DateTime(timezone=True))
     service = Column(String())
     service_user = Column(String())
     organizations = relationship("StreetviewOrganization", cascade="all, delete-orphan")
     instances = relationship("StreetviewInstance", cascade="all, delete-orphan")
 
     def __repr__(self):
-        return "<Streetview(id={})>".format(self.id)
+        token_masked = self.token[-5:] if self.token else None
+        return (f"<Streetview(id={self.id}, user:{self.user.username},"
+                f"service:{self.service}, service_user:{self.service_user}),"
+                f"token:{token_masked}, token_expires_at:{self.token_expires_at}>")
 
 
 class StreetviewOrganization(Base):
