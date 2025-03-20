@@ -11,6 +11,7 @@ class Streetview(Base):
     and instances of streetview data. Each `Streetview` entry is tied to a specific user
     and contains authentication details required for interacting with the streetview service.
     """
+
     __tablename__ = "streetview"
 
     id = Column(Integer, primary_key=True)
@@ -27,9 +28,11 @@ class Streetview(Base):
 
     def __repr__(self):
         token_masked = self.token[-5:] if self.token else None
-        return (f"<Streetview(id={self.id}, user:{self.user.username},"
-                f"service:{self.service}, service_user:{self.service_user}),"
-                f"token:{token_masked}, token_expires_at:{self.token_expires_at}>")
+        return (
+            f"<Streetview(id={self.id}, user:{self.user.username},"
+            f"service:{self.service}, service_user:{self.service_user}),"
+            f"token:{token_masked}, token_expires_at:{self.token_expires_at}>"
+        )
 
 
 class StreetviewOrganization(Base):
