@@ -31,7 +31,7 @@ api = Namespace("streetview_auth", path="/streetview/auth")
 
 
 # TODO: this is a work around for lack of sessions
-#  endpoint can be removed once sessions are completed. See WG-XXX
+#  endpoint can be removed once sessions are completed. See WG-472
 @api.route("/mapillary/prepare")
 class MapillaryLoginPrepare(Resource):
     @jwt_decoder
@@ -50,7 +50,7 @@ class MapillaryLoginPrepare(Resource):
 class MapillaryLogin(Resource):
     def get(self):
         # TODO Using temp token as query parameter; this can be removed once auth sessions
-        #  are used and then we can just use request.current_user. See WG-XXX
+        #  are used and then we can just use request.current_user. See WG-472
         temp_token = request.args.get("temp_token")
         try:
             # Decode and verify the JWT
