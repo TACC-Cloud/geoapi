@@ -42,6 +42,7 @@ def test_list_streetview_service_resource(
             "id": 1,
             "user_id": 1,
             "token": "my_token",
+            "token_expires_at": None,
             "service": "my_service",
             "service_user": None,
             "organizations": [],
@@ -68,6 +69,7 @@ def test_create_streetview_service_resource(test_client):
         "service": "service",
         "service_user": "some_username",
         "token": "my_token",
+        "token_expires_at": None,
         "user_id": 1,
     }
 
@@ -85,6 +87,7 @@ def test_get_streetview_service_resource(
         "id": 1,
         "user_id": 1,
         "token": "my_token",
+        "token_expires_at": None,
         "service": "my_service",
         "service_user": None,
         "organizations": [],
