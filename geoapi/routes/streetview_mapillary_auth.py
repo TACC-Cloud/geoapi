@@ -33,7 +33,7 @@ api = Namespace("streetview_auth", path="/streetview/auth")
 # TODO: this is a work around for lack of sessions
 #  endpoint can be removed once sessions are completed. See WG-XXX
 @api.route("/mapillary/prepare")
-class MapillaryLogin(Resource):
+class MapillaryLoginPrepare(Resource):
     @jwt_decoder
     def post(self):
         payload = {
