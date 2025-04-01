@@ -1,7 +1,6 @@
 import datetime
 import uuid
 import os
-import json
 from geoapi.db import db_session
 from geoapi.models.users import User
 from geoapi.models.project import Project, ProjectUser

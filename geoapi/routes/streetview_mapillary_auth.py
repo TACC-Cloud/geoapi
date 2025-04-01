@@ -16,8 +16,8 @@ from geoapi.utils.client_backend import (
     get_client_url,
     get_deployed_geoapi_url,
 )
-from flask_restx import Namespace, Resource, fields
-from flask import Flask, request, redirect, session, jsonify, url_for, abort
+from flask_restx import Namespace, Resource
+from flask import request, redirect, session, jsonify, abort
 import jwt
 
 
