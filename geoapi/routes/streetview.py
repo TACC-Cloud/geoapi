@@ -1,3 +1,14 @@
+"""
+Streetview API Endpoints
+
+This module defines the API endpoints for managing Streetview services, instances,
+sequences, and organizations.
+
+**Note:** Currently, only the 'mapillary' service is supported. The API was originally
+designed to support both Mapillary and Google Street View, which is why it follows
+this structure.
+"""
+
 from geoapi.services.streetview import StreetviewService
 from geoapi.tasks import streetview
 from geoapi.log import logging
@@ -78,6 +89,7 @@ streetview_service = api.model(
         "id": fields.Integer(),
         "user_id": fields.Integer(),
         "token": fields.String(),
+        "token_expires_at": fields.String(),
         "service": fields.String(),
         "service_user": fields.String(),
         "organizations": fields.List(
@@ -100,6 +112,7 @@ class StreetviewServiceResources(Resource):
         logger.info("Get all streetview objects user:{}".format(u.username))
         return StreetviewService.list(db_session, u)
 
+    # TODO after angular version is retired, remove this as auth occurs now in backend
     @api.doc(
         id="createStreetviewServiceResource",
         description="Create streetview service object for a user",

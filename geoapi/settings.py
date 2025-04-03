@@ -15,6 +15,14 @@ class Config(object):
     TAPIS_CLIENT_ID = os.environ.get("TAPIS_CLIENT_ID")
     TAPIS_CLIENT_KEY = os.environ.get("TAPIS_CLIENT_KEY")
 
+    # Mapillary-related settings
+    MAPILLARY_CLIENT_ID = os.environ.get("MAPILLARY_CLIENT_ID")
+    MAPILLARY_CLIENT_SECRET = os.environ.get("MAPILLARY_CLIENT_SECRET")
+    MAPILLARY_CLIENT_TOKEN = os.environ.get("MAPILLARY_CLIENT_TOKEN")
+    MAPILLARY_AUTH_URL = "https://www.mapillary.com/connect"
+    MAPILLARY_API_URL = "https://graph.mapillary.com"
+    MAPILLARY_SCOPE = "user:email+user:read+user:write+public:write+public:upload+private:read+private:write+private:upload"
+
     # Other settings
     ASSETS_BASE_DIR = os.environ.get("ASSETS_BASE_DIR", "/assets")
     TENANT = os.environ.get("TENANT")
@@ -49,9 +57,6 @@ class LocalDevelopmentConfig(Config):
     DB_NAME = "dev"
     DB_PASSWD = "dev"
     DB_HOST = "postgres"
-    MAPILLARY_CLIENT_ID = os.environ.get(
-        "MAPILLARY_CLIENT_ID", "MLY|4866220476802272|cedfb10deac752ca3ddf83997cef60a4"
-    )
 
 
 class UnitTestingConfig(LocalDevelopmentConfig):

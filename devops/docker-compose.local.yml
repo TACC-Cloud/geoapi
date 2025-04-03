@@ -15,6 +15,8 @@ x-worker-base: &worker-base  # Base fragment for worker services
     - ../:/app
     - assets:/assets
   environment:
+    - MAPILLARY_CLIENT_ID
+    - MAPILLARY_CLIENT_SECRET
     - MAPILLARY_CLIENT_TOKEN
     - FLASK_APP=/app/geoapi/app.py
     - APP_ENV=local
@@ -87,7 +89,6 @@ services:
       - ../:/app
       - assets:/assets
     environment:
-      - MAPILLARY_CLIENT_TOKEN=4866220476802272
       - FLASK_APP=/app/geoapi/app.py
       - APP_ENV=local
       - ASSETS_BASE_DIR=/assets
@@ -113,7 +114,6 @@ services:
       - 8.8.8.8
       - 8.8.4.4
     environment:
-      - MAPILLARY_CLIENT_TOKEN
       - FLASK_APP=/app/geoapi/app.py
       - APP_ENV=local
       - ASSETS_BASE_DIR=/assets
@@ -121,6 +121,9 @@ services:
       - FLASK_SESSION_SECRET_KEY
       - TAPIS_CLIENT_ID
       - TAPIS_CLIENT_KEY
+      - MAPILLARY_CLIENT_ID
+      - MAPILLARY_CLIENT_SECRET
+      - MAPILLARY_CLIENT_TOKEN
     stdin_open: true
     tty: true
     container_name: geoapi

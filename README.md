@@ -77,6 +77,11 @@ alembic revision --autogenerate -m "add_user_email_column"
 # - add/commit migrations
 ```
 
+Then, you will need to manually apply the new migration after creating it:
+```
+docker exec -it geoapi alembic upgrade head
+```
+
 ## Testing
 
 Run directly in your running containers:
