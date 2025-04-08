@@ -4,6 +4,14 @@ from geoapi.db import Base
 
 
 class Streetview(Base):
+    """
+    Represents a user's access to a streetview-related service (e.g., Mapillary).
+
+    This model stores user credentials, service information, and associated organizations
+    and instances of streetview data. Each `Streetview` entry is tied to a specific user
+    and contains authentication details required for interacting with the streetview service.
+    """
+
     __tablename__ = "streetview"
 
     id = Column(Integer, primary_key=True)
@@ -12,13 +20,19 @@ class Streetview(Base):
     )
     user = relationship("User", overlaps="streetviews")
     token = Column(String())
+    token_expires_at = Column(DateTime(timezone=True))
     service = Column(String())
     service_user = Column(String())
     organizations = relationship("StreetviewOrganization", cascade="all, delete-orphan")
     instances = relationship("StreetviewInstance", cascade="all, delete-orphan")
 
     def __repr__(self):
-        return "<Streetview(id={})>".format(self.id)
+        token_masked = self.token[-5:] if self.token else None
+        return (
+            f"<Streetview(id={self.id}, user:{self.user.username},"
+            f"service:{self.service}, service_user:{self.service_user}),"
+            f"token:{token_masked}, token_expires_at:{self.token_expires_at}>"
+        )
 
 
 class StreetviewOrganization(Base):

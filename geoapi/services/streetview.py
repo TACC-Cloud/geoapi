@@ -17,6 +17,36 @@ logger = logging.getLogger(__name__)
 
 class StreetviewService:
     @staticmethod
+    def nullify_expired_tokens(
+        database_session, streetviews: List[Streetview]
+    ) -> List[Streetview]:
+        """
+        Check a list of streetview objects for expired tokens and nullify them
+        Commits changes to the database if any tokens were nullified
+        """
+        changes_made = False
+        for streetview in streetviews:
+            if streetview.token_expires_at is not None:
+                now_with_tz = datetime.now().astimezone(
+                    streetview.token_expires_at.tzinfo
+                )
+                if streetview.token_expires_at < now_with_tz:
+                    logger.debug(
+                        f"Token expired for streetview service {streetview.service}, nullifying token info"
+                    )
+
+                    streetview.token = None
+                    streetview.token_expires_at = None
+
+                    changes_made = True
+        if changes_made:
+            database_session.commit()
+            for streetview in streetviews:
+                database_session.refresh(streetview)
+
+        return streetviews
+
+    @staticmethod
     def list(database_session, user: User) -> List[Streetview]:
         """
         Get all streetview objects for a user
@@ -31,24 +61,7 @@ class StreetviewService:
             .all()
         )
 
-        return streetviews
-
-    @staticmethod
-    def update(database_session, id: int, data: Dict) -> Streetview:
-        """
-        Update a Streetview object for a user.
-        :param id: int
-        :param data: Dict
-        :return: Streetview
-        """
-        sv = StreetviewService.get(database_session, id)
-
-        for key, value in data.items():
-            setattr(sv, key, value)
-
-        database_session.commit()
-
-        return sv
+        return StreetviewService.nullify_expired_tokens(database_session, streetviews)
 
     @staticmethod
     def create(database_session, user: User, data: Dict) -> Streetview:
@@ -75,26 +88,34 @@ class StreetviewService:
     @staticmethod
     def get(database_session, streetview_id: int) -> Streetview:
         """
-        Retreive a single Streetview Service
+        Retrieve a single Streetview Service
         :param streetview_id: int
         :return: Streetview
         """
-        return database_session.get(Streetview, streetview_id)
+        streetview = database_session.get(Streetview, streetview_id)
+        if streetview:
+            StreetviewService.nullify_expired_tokens(database_session, [streetview])
+        return streetview
 
     @staticmethod
     def getByService(database_session, user: User, service: str) -> Streetview:
         """
-        Retreive a single Streetview Service by service name
+        Retrieve a single Streetview Service by service name
         :param user: User
         :param service: str
         :return: Streetview
         """
-        return (
+        streetview = (
             database_session.query(Streetview)
             .filter(Streetview.user_id == user.id)
             .filter(Streetview.service == service)
             .first()
         )
+
+        # Check for expired token and nullify if needed
+        if streetview:
+            StreetviewService.nullify_expired_tokens(database_session, [streetview])
+        return streetview
 
     @staticmethod
     def updateByService(
@@ -126,6 +147,20 @@ class StreetviewService:
         sv = StreetviewService.getByService(database_session, user, service)
         database_session.delete(sv)
         database_session.commit()
+
+    @staticmethod
+    def deleteAuthByService(database_session, user: User, service: str):
+        """
+        Removes auth for a single Streetview Service by service name
+        :param user: User
+        :param service: str
+        :return: None
+        """
+        sv = StreetviewService.getByService(database_session, user, service)
+        if sv:
+            sv.token = None
+            sv.token_expires_at = None
+            database_session.commit()
 
     @staticmethod
     def delete(database_session, id: int) -> None:

@@ -488,6 +488,7 @@ def test_update_project_unauthorized_guest(test_client, public_projects_fixture)
     data = {"name": "Renamed Project", "description": "New Description", "public": True}
     resp = test_client.put(f"/projects/{public_projects_fixture.id}/", json=data)
     assert resp.status_code == 403
+    assert resp.get_json() == {"message": "Access denied"}
 
 
 def test_create_project_watch_content_already_exists(
