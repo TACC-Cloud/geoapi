@@ -17,14 +17,21 @@ def jwt_decoder(fn):
     @wraps(fn)
     def wrapper(*args, **kwargs):
         user = None
-        token = None
         try:
+            # Get JWT from header first
             token = jwt_utils.get_jwt(request.headers)
         except ValueError:
-            # if not JWT information is provided in header, then this is a guest user
+            # Try cookie fallback; Cookies are being used pre-WG-472 for
+            # nginx-related access check of /assets
+            token = request.cookies.get("X-Tapis-Token")
+
+        # If still no token, check for guest UUID
+        if not token:
+            # if JWT is not provided in header/cookie, then this is a guest user
+            # and if hazmapper/taggit, a guest uuid is provided in the header
             guest_uuid = request.headers.get("X-Guest-UUID")
             user = AnonymousUser(guest_unique_id=guest_uuid)
-        if user is None:
+        else:
             try:
                 decoded = jwt_utils.decode_token(token, verify=not settings.TESTING)
                 username = decoded["tapis/username"]

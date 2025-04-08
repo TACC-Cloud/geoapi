@@ -299,6 +299,19 @@ class ProjectResource(Resource):
         return ProjectsService.update(db_session, projectId=projectId, data=api.payload)
 
 
+@api.route("/<int:projectId>/check-access/")
+class ProjectCheckAccessResource(Resource):
+    @api.doc(
+        id="checkUser",
+        description="Check if user or guest can access this project",
+    )
+    @project_permissions_allow_public
+    def get(self, projectId: int):
+        # Access granted by `project_permissions_allow_public` decorator — so just
+        # returning 200 here
+        return "", 200
+
+
 @api.route("/<int:projectId>/users/")
 class ProjectUsersResource(Resource):
     @api.marshal_with(user, as_list=True)
