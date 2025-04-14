@@ -29,11 +29,12 @@ def streetview_service_resource_expired_fixture(streetview_service_resource_fixt
 
 
 @pytest.fixture(scope="function")
-def streetview_service_resource_missing_token_expires_at_fixture(
+def streetview_service_resource_nulled_token_fixture(
     streetview_service_resource_fixture,
 ):
     sv = streetview_service_resource_fixture
     sv.token_expires_at = None
+    sv.token = None
     db_session.commit()
     return sv
 
@@ -104,7 +105,7 @@ def test_list_streetview_service_expired_resource(
 
 
 def test_list_streetview_service_missing_token_expires_at_resource(
-    test_client, streetview_service_resource_missing_token_expires_at_fixture
+    test_client, streetview_service_resource_nulled_token_fixture
 ):
     u1 = db_session.get(User, 1)
     resp = test_client.get("/streetview/services/", headers={"X-Tapis-Token": u1.jwt})
@@ -125,7 +126,7 @@ def test_list_streetview_service_missing_token_expires_at_resource(
     # Assert token was nulled in DB
     sv = (
         db_session.query(Streetview)
-        .filter_by(id=streetview_service_resource_missing_token_expires_at_fixture.id)
+        .filter_by(id=streetview_service_resource_nulled_token_fixture.id)
         .first()
     )
     assert sv is not None

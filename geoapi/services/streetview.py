@@ -26,14 +26,7 @@ class StreetviewService:
         """
         changes_made = False
         for streetview in streetviews:
-            if streetview.token_expires_at is None and streetview.token is not None:
-                logger.info(
-                    f"Token missing token_expires_at so for streetview service {streetview.service}, so nullifying token info"
-                )
-                streetview.token = None
-                streetview.token_expires_at = None
-                changes_made = True
-            else:
+            if streetview.token_expires_at is not None:
                 now_with_tz = datetime.now().astimezone(
                     streetview.token_expires_at.tzinfo
                 )
