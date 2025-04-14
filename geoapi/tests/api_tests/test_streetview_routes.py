@@ -29,7 +29,9 @@ def streetview_service_resource_expired_fixture(streetview_service_resource_fixt
 
 
 @pytest.fixture(scope="function")
-def streetview_service_resource_missing_token_expires_at_fixture(streetview_service_resource_fixture):
+def streetview_service_resource_missing_token_expires_at_fixture(
+    streetview_service_resource_fixture,
+):
     sv = streetview_service_resource_fixture
     sv.token_expires_at = None
     db_session.commit()
@@ -60,7 +62,9 @@ def test_list_streetview_service_resource(
             "id": 1,
             "user_id": 1,
             "token": streetview_service_resource_fixture.token,
-            "token_expires_at": str(streetview_service_resource_fixture.token_expires_at),
+            "token_expires_at": str(
+                streetview_service_resource_fixture.token_expires_at
+            ),
             "service": "my_service",
             "service_user": None,
             "organizations": [],
@@ -89,7 +93,11 @@ def test_list_streetview_service_expired_resource(
     ]
 
     # Assert token was nulled in DB
-    sv = db_session.query(Streetview).filter_by(id=streetview_service_resource_expired_fixture.id).first()
+    sv = (
+        db_session.query(Streetview)
+        .filter_by(id=streetview_service_resource_expired_fixture.id)
+        .first()
+    )
     assert sv is not None
     assert sv.token is None
     assert sv.token_expires_at is None
@@ -115,7 +123,11 @@ def test_list_streetview_service_missing_token_expires_at_resource(
     ]
 
     # Assert token was nulled in DB
-    sv = db_session.query(Streetview).filter_by(id=streetview_service_resource_missing_token_expires_at_fixture.id).first()
+    sv = (
+        db_session.query(Streetview)
+        .filter_by(id=streetview_service_resource_missing_token_expires_at_fixture.id)
+        .first()
+    )
     assert sv is not None
     assert sv.token is None
     assert sv.token_expires_at is None
