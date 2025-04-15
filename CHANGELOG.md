@@ -1,5 +1,25 @@
 # Changelog
 
+## [2.20] - 2025-04-15
+
+### Changed
+
+- Return 404 if project uuid is invalid (#236)
+- WG-392: move mapillary auth to backend (#242, #245, #244) 
+- WG-379: upgrade python to 3.11, upgrade dependencies (#231)
+- WG-377: drop deprecated ObservableDataProject table (#232) 
+- Remove deperecated backend public route (#241) 
+- Use separate worker service for each queue (#235) 
+- Update nginx conf copy with gzip settings (#239)
+
+### Other
+
+- Improve logging (#237) 
+- Rename agave to tapis (#240) 
+- Enfore formatting via black and flake8 (#223) 
+- Keep 2 weeks of staging backups (#234) 
+- WI-166: update devops after switch to camino (#229) 
+
 ## [2.19] - 2024-12-05
 
 ### Changed
@@ -217,7 +237,8 @@
 - DES-1687: Add rollingback to worker tasks (#30)
 - DES-1663: Fix image rotations (#36)
 
-[unreleased]: https://github.com/TACC-Cloud/geoapi/compare/v2.19...HEAD
+[unreleased]: https://github.com/TACC-Cloud/geoapi/compare/v2.20...HEAD
+[2.20]: https://github.com/TACC-Cloud/geoapi/releases/tag/v2.20
 [2.19]: https://github.com/TACC-Cloud/geoapi/releases/tag/v2.19
 [2.18]: https://github.com/TACC-Cloud/geoapi/releases/tag/v2.18
 [2.17]: https://github.com/TACC-Cloud/geoapi/releases/tag/v2.17
