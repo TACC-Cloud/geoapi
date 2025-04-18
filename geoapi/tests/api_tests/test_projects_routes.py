@@ -563,3 +563,32 @@ def test_create_project_unauthorized(test_client):
     resp = test_client.post("/projects/", json=data)
 
     assert resp.status_code == 403
+
+
+def test_project_check_access(test_client, user1, projects_fixture):
+    resp = test_client.get(
+        f"/projects/{projects_fixture.id}/check-access/",
+    )
+    assert resp.status_code == 403
+
+    resp = test_client.get(
+        f"/projects/{projects_fixture.id}/check-access/",
+        headers={"X-Tapis-Token": user1.jwt},
+    )
+    assert resp.status_code == 200
+
+    test_client.set_cookie(domain="localhost", key="X-Tapis-Token", value=user1.jwt)
+
+    resp = test_client.get(
+        f"/projects/{projects_fixture.id}/check-access/",
+    )
+    assert resp.status_code == 200
+
+
+def test_project_check_access_public_project(
+    test_client, user1, public_projects_fixture
+):
+    resp = test_client.get(
+        f"/projects/{public_projects_fixture.id}/check-access/",
+    )
+    assert resp.status_code == 200

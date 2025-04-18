@@ -73,6 +73,14 @@ def test_callback(test_client, requests_mock, user1):
     )
     assert "to=%2Fsomewhere" in resp.location
 
+    # Test X-Tapis-Token cookie is set correctly
+    xTapisTokenCookie = resp.headers.getlist("Set-Cookie")[0]
+    assert xTapisTokenCookie.startswith("X-Tapis-Token=")
+    assert access_token in xTapisTokenCookie
+    assert "Path=/" in xTapisTokenCookie
+    assert f"Max-Age={access_token_expires_in}" in xTapisTokenCookie
+    assert "SameSite=Lax" in xTapisTokenCookie
+
     with test_client.session_transaction() as sess:
         assert "auth_state" not in sess
         assert "to" not in sess
