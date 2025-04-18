@@ -31,13 +31,12 @@ class StreetviewService:
                     streetview.token_expires_at.tzinfo
                 )
                 if streetview.token_expires_at < now_with_tz:
-                    logger.debug(
+                    logger.info(
                         f"Token expired for streetview service {streetview.service}, nullifying token info"
                     )
 
                     streetview.token = None
                     streetview.token_expires_at = None
-
                     changes_made = True
         if changes_made:
             database_session.commit()
