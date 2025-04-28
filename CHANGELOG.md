@@ -1,5 +1,26 @@
 # Changelog
 
+## [2.20] - 2025-04-15
+
+What's Changed
+
+* python black formatting; flake8 by @rstijerina in https://github.com/TACC-Cloud/geoapi/pull/223
+* task/WG-379: upgrade python to 3.11; reorg Dockerfiles; reorg `pyproject.toml` (first pass) by @rstijerina in https://github.com/TACC-Cloud/geoapi/pull/225
+* task/WI-166 update devops after switch to camino by @nathanfranklin in https://github.com/TACC-Cloud/geoapi/pull/229
+* update CHANGELOG.md for V2.18 and V2.19 by @nathanfranklin in https://github.com/TACC-Cloud/geoapi/pull/230
+* task/WG-396: sqlachemy-update follow on by @nathanfranklin in https://github.com/TACC-Cloud/geoapi/pull/231
+* task/WG-377: drop deprecated ObservableDataProject table by @nathanfranklin in https://github.com/TACC-Cloud/geoapi/pull/232
+* hotfix: keep only 2 weeks of staging backups by @nathanfranklin in https://github.com/TACC-Cloud/geoapi/pull/234
+* update: use separate worker service for each queue by @nathanfranklin in https://github.com/TACC-Cloud/geoapi/pull/235
+* hotfix: return 404 if project uuid is invalid by @nathanfranklin in https://github.com/TACC-Cloud/geoapi/pull/236
+* task/WG-435 - Update nginx conf to use compression by @nathanfranklin in https://github.com/TACC-Cloud/geoapi/pull/239
+* hotfix: improve logging by @nathanfranklin in https://github.com/TACC-Cloud/geoapi/pull/237
+* Hotfix/rename agave to tapis by @nathanfranklin in https://github.com/TACC-Cloud/geoapi/pull/240
+* hotfix/remove public route by @nathanfranklin in https://github.com/TACC-Cloud/geoapi/pull/241
+* task/wg 392 add Mapillary auth2 by @nathanfranklin in https://github.com/TACC-Cloud/geoapi/pull/242
+* hotfix: fix nullifying of streetview tokens by @nathanfranklin in https://github.com/TACC-Cloud/geoapi/pull/244
+* hotfix: use migration to nullify streetview tokens by @nathanfranklin in https://github.com/TACC-Cloud/geoapi/pull/245
+
 ## [2.19] - 2024-12-05
 
 ### Changed
@@ -217,7 +238,8 @@
 - DES-1687: Add rollingback to worker tasks (#30)
 - DES-1663: Fix image rotations (#36)
 
-[unreleased]: https://github.com/TACC-Cloud/geoapi/compare/v2.19...HEAD
+[unreleased]: https://github.com/TACC-Cloud/geoapi/compare/v2.20...HEAD
+[2.20]: https://github.com/TACC-Cloud/geoapi/releases/tag/v2.20
 [2.19]: https://github.com/TACC-Cloud/geoapi/releases/tag/v2.19
 [2.18]: https://github.com/TACC-Cloud/geoapi/releases/tag/v2.18
 [2.17]: https://github.com/TACC-Cloud/geoapi/releases/tag/v2.17
