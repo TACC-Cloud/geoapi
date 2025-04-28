@@ -1,4 +1,4 @@
-from flask import redirect, request, session
+from flask import redirect, request, session, make_response
 from flask_restx import Resource, Namespace
 import requests
 import secrets
@@ -25,6 +25,31 @@ api = Namespace("auth")
 
 def get_auth_state():
     return secrets.token_hex(24)
+
+
+def set_token_cookie(response, token: str, expires_in: str):
+    """
+    Set the X-Tapis-Token cookie with correct settings:
+    - JS-readable
+    - SameSite=Lax (okay for same-origin iframe and GETs)
+    - Secure only in production
+
+    Can be reworked or replaced by session work in https://tacc-main.atlassian.net/browse/WG-472
+    """
+    # Detect if dev (localhost) to decide if cookie's `secure`
+    is_local = request.host.startswith("localhost")
+
+    # Set the cookie
+    response.set_cookie(
+        "X-Tapis-Token",
+        token,
+        path="/",
+        max_age=int(expires_in),
+        samesite="Lax",
+        secure=not is_local,
+        httponly=False,
+    )
+    return response
 
 
 @api.route("/login")
@@ -133,4 +158,13 @@ class Callback(Resource):
             }
             encoded_params = urllib.parse.urlencode(params)
             client_redirect_uri = f"{client_base_url}/handle-login#{encoded_params}"
-            return redirect(client_redirect_uri)
+
+            # Build response with redirect
+            redirect_response = make_response(redirect(client_redirect_uri))
+
+            # Set the cookie before returning the response:
+            #  - This cookie is used for nginx-controlled access to /assets
+            #  - This can be reworked/replaced in https://tacc-main.atlassian.net/browse/WG-472
+            set_token_cookie(redirect_response, access_token, access_token_expires_in)
+
+            return redirect_response
