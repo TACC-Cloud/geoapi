@@ -20,7 +20,7 @@ class ProjectUser(Base):
     project = relationship(
         "Project", backref=backref("project_users", cascade="all, delete-orphan")
     )
-    user = relationship("User", viewonly=True)
+    user = relationship("User", viewonly=True, back_populates="project_users")
 
     def __repr__(self):
         return f"<ProjectUser(user_id={self.user_id}, project_id={self.project_id}, admin={self.admin}, creator={self.creator})>"

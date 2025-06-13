@@ -1,22 +1,21 @@
-from flask_restx import Api
-from .projects import api as projects
-from .status import api as status
-from .streetview import api as streetview
-from .streetview_mapillary_auth import api as streetview_mapillary_auth
-from .notifications import api as notifications
-from .auth import api as auth
+from litestar import Router
 
-api = Api(
-    title="GeoAPI",
-    version="0.2",
-    description="Geospatial API for TAPIS",
-    security=["JWT"],
-    authorizations={"JWT": {"type": "apiKey", "name": "X-Tapis-Token", "in": "header"}},
+from .projects import projects_router
+from .status import StatusController
+from .streetview import StreetviewController
+from .streetview_mapillary_auth import StreetviewMapillaryAuthController
+from .notifications import NotificationsController
+from .auth import AuthController
+
+
+api_router = Router(
+    path="/",
+    route_handlers=[
+        projects_router,
+        NotificationsController,
+        StatusController,
+        StreetviewController,
+        StreetviewMapillaryAuthController,
+        AuthController,
+    ],
 )
-
-api.add_namespace(projects)
-api.add_namespace(notifications)
-api.add_namespace(status)
-api.add_namespace(streetview)
-api.add_namespace(streetview_mapillary_auth)
-api.add_namespace(auth)

@@ -5,7 +5,7 @@ from geoapi.db import Base
 from sqlalchemy.orm import relationship
 from datetime import datetime, timedelta
 import pytz
-
+from litestar.plugins.sqlalchemy import base
 from geoapi.utils import jwt_utils
 
 
@@ -24,6 +24,7 @@ class User(Base):
         lazy="select",
         overlaps="project,project_users",
     )
+    project_users = relationship("ProjectUser", back_populates="user")
 
     def __repr__(self):
         access_token_masked = None

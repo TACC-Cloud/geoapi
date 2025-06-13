@@ -1,4 +1,5 @@
----
+name: geoapi
+
 volumes:
   assets:
   pgdata:
@@ -9,8 +10,6 @@ networks:
 x-worker-base: &worker-base  # Base fragment for worker services
   # See: https://docs.docker.com/reference/compose-file/fragments/
   image: taccaci/geoapi-workers:local
-  networks:
-    - geoapi
   volumes:
     - ../:/app
     - assets:/assets
@@ -18,7 +17,6 @@ x-worker-base: &worker-base  # Base fragment for worker services
     - MAPILLARY_CLIENT_ID
     - MAPILLARY_CLIENT_SECRET
     - MAPILLARY_CLIENT_TOKEN
-    - FLASK_APP=/app/geoapi/app.py
     - APP_ENV=local
     - ASSETS_BASE_DIR=/assets
     - DESIGNSAFE_URL=${DESIGNSAFE_URL}
@@ -29,13 +27,23 @@ x-worker-base: &worker-base  # Base fragment for worker services
       condition: service_healthy
 
 services:
+  redis:
+    image: redis:7
+    ports:
+      - "6379:6379"
+    command: redis-server --loglevel warning
+    container_name: geoapi_redis
+    healthcheck:
+      test: redis-cli ping
+      interval: 5s
+      timeout: 30s
+      retries: 5
 
   rabbitmq:
-    image: rabbitmq:3-management
+    image: rabbitmq:4-management
     ports:
       - 15672:15672
-    networks:
-      - geoapi
+    container_name: geoapi_rabbitmq
     environment:
       - RABBITMQ_DEFAULT_USER=dev
       - RABBITMQ_DEFAULT_PASS=dev
@@ -50,84 +58,61 @@ services:
     image: postgis/postgis:11-3.3-alpine
     volumes:
       - pgdata:/var/lib/postgresql/data
-    networks:
-      - geoapi
     container_name: geoapi_postgres
-    hostname: geoapi_postgres
     environment:
       - POSTGRES_PASSWORD=dev
       - POSTGRES_USER=dev
       - POSTGRES_DB=dev
 
   nginx:
-    image: nginx
+    image: nginx:stable
     ports:
       - 8888:80
     volumes:
       - assets:/assets
       - ./local_conf/nginx.conf:/etc/nginx/nginx.conf
-    networks:
-      - geoapi
+    container_name: geoapi_nginx
+    depends_on:
+      - backend
 
   workers:
     <<: *worker-base  # Reuses worker-base fragment defined at start
-    container_name: geoapiworkers
-    hostname: geoapiworkers
-    command: celery -A geoapi.celery_app worker -l info -Q default -n default_worker@geoapi
+    container_name: geoapi_workers
+    command: celery -A geoapi.celery_app worker -l info -Q default -n default_worker@geoapi --uid=nobody --gid=nogroup
 
   workers-heavy:
     <<: *worker-base  # Reuses worker-base fragment defined at start
-    container_name: geoapiworkers-heavy
-    hostname: geoapiworkers-heavy
-    command: celery -A geoapi.celery_app worker -l info -Q heavy --concurrency=6
+    container_name: geoapi_workers_heavy
+    command: celery -A geoapi.celery_app worker -l info -Q heavy --concurrency=6 --uid=nobody --gid=nogroup
 
   celerybeat:
-    image: taccaci/geoapi-workers:local
-    networks:
-      - geoapi
-    volumes:
-      - ../:/app
-      - assets:/assets
-    environment:
-      - FLASK_APP=/app/geoapi/app.py
-      - APP_ENV=local
-      - ASSETS_BASE_DIR=/assets
-    stdin_open: true
-    tty: true
-    container_name: geoapicelerybeat
-    hostname: geoapicelerybeat
-    command: "celery -A geoapi.celery_app beat -l info"
-    depends_on:
-      rabbitmq:
-        condition: service_healthy
+    <<: *worker-base  # Reuses worker-base fragment defined at start
+    container_name: geoapi_celerybeat
+    command: "celery -A geoapi.celery_app beat -l info --uid=nobody --gid=nogroup"
 
-  api:
+  backend:
     image: taccaci/geoapi:local
-    networks:
-      - geoapi
     volumes:
       - ../:/app
       - assets:/assets
     ports:
       - 8000:8000
-    dns:
-      - 8.8.8.8
-      - 8.8.4.4
     environment:
-      - FLASK_APP=/app/geoapi/app.py
       - APP_ENV=local
       - ASSETS_BASE_DIR=/assets
       - DESIGNSAFE_URL
-      - FLASK_SESSION_SECRET_KEY
       - TAPIS_CLIENT_ID
       - TAPIS_CLIENT_KEY
       - MAPILLARY_CLIENT_ID
       - MAPILLARY_CLIENT_SECRET
       - MAPILLARY_CLIENT_TOKEN
+      - LITESTAR_WARN_IMPLICIT_SYNC_TO_THREAD=0
     stdin_open: true
     tty: true
-    container_name: geoapi
-    hostname: geoapi
-    command: "gunicorn -w 4 -b 0.0.0.0:8000 geoapi.app:app -k gevent --reload --timeout 300"
+    container_name: geoapi_backend
+    command: "litestar run --reload --host 0.0.0.0 --port 8000 --debug"
     extra_hosts:
       - "host.docker.internal:host-gateway"
+    depends_on:
+      redis:
+        condition: service_healthy
