@@ -15,6 +15,10 @@ class Config(object):
     TAPIS_CLIENT_ID = os.environ.get("TAPIS_CLIENT_ID")
     TAPIS_CLIENT_KEY = os.environ.get("TAPIS_CLIENT_KEY")
 
+    # TODO Remove see https://tacc-main.atlassian.net/browse/WG-513
+    TMP_TAPIS_CLIENT_ID = os.environ.get("TMP_TAPIS_CLIENT_ID")
+    TMP_TAPIS_CLIENT_KEY = os.environ.get("TMP_TAPIS_CLIENT_KEY")
+
     # Mapillary-related settings
     MAPILLARY_CLIENT_ID = os.environ.get("MAPILLARY_CLIENT_ID")
     MAPILLARY_CLIENT_SECRET = os.environ.get("MAPILLARY_CLIENT_SECRET")
