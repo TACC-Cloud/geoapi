@@ -64,6 +64,7 @@ def get_adjusted_geoapi_url():
 
 
 def get_client_id_key():
+    logger.info(f"Getting client id/key for host:{request.host}")
     if "hazmapper-tmp" in request.host:
         return settings.TMP_TAPIS_CLIENT_ID, settings.TMP_TAPIS_CLIENT_KEY
     return settings.TAPIS_CLIENT_ID, settings.TAPIS_CLIENT_KEY
@@ -135,7 +136,7 @@ class Callback(Resource):
 
             # TODO Remove see https://tacc-main.atlassian.net/browse/WG-513
             client_id, client_key = get_client_id_key()
-            logger.debug(f"client_id: {client_id} client_secret:{client_key}")
+            logger.info(f"Using client_id ({client_id}) and key for auth flow")
 
             body = {
                 "grant_type": "authorization_code",

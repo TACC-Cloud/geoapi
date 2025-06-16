@@ -6,13 +6,17 @@ def test_valid_client_urls():
         "http://localhost:4200/",
         "http://hazmapper.local:4200/",
         "https://hazmapper.tacc.utexas.edu/hazmapper/",
+        "https://hazmapper.tacc.utexas.edu/hazmapper",
         "https://hazmapper.tacc.utexas.edu/staging/",
+        "https://hazmapper.tacc.utexas.edu/staging",
         "https://hazmapper.tacc.utexas.edu/dev/",
         "https://hazmapper.tacc.utexas.edu/taggit/",
         "https://hazmapper.tacc.utexas.edu/taggit-staging/",
         "https://hazmapper.tacc.utexas.edu/taggit-dev/",
         "https://hazmapper-tmp.tacc.utexas.edu/hazmapper/",
+        "https://hazmapper-tmp.tacc.utexas.edu/hazmapper",
         "https://hazmapper-tmp.tacc.utexas.edu/staging/",
+        "https://hazmapper-tmp.tacc.utexas.edu/staging",
         "https://hazmapper-tmp.tacc.utexas.edu/dev/",
         "https://hazmapper-tmp.tacc.utexas.edu/taggit/",
         "https://hazmapper-tmp.tacc.utexas.edu/taggit-staging/",
@@ -20,7 +24,7 @@ def test_valid_client_urls():
     ]
 
     for url in valid_urls:
-        fake_path = url + "some-page"
+        fake_path = url.rstrip("/") + "/some-page"
         result = get_client_url(fake_path)
         assert result == url.rstrip("/"), f"Expected match for {url}, got {result}"
 

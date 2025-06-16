@@ -23,6 +23,8 @@ def get_client_url(url):
     This function checks if the provided URL starts with any of the predefined client URLs. If a match is found,
     it returns the matching client URL. If no match is found, it returns None
     """
+
+    logger.info(f"Getting client url from request: {url}")
     local_urls = [
         "http://localhost:4200/",
         "http://hazmapper.local:4200/",
@@ -43,13 +45,13 @@ def get_client_url(url):
     ]
 
     client_urls = local_urls + [
-        f"{domain}/{path}/" if path else f"{domain}/"
-        for domain in base_domains
-        for path in base_domain_paths
+        f"{domain}/{path}/" for domain in base_domains for path in base_domain_paths
     ]
 
+    normalized_url = url if url.endswith("/") else url + "/"
+
     for client in client_urls:
-        if url.startswith(client):
+        if normalized_url.startswith(client):
             return client.rstrip("/")
     return None
 
