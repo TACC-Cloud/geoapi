@@ -66,7 +66,6 @@ def get_deployed_geoapi_url():
         "production": "https://hazmapper.tacc.utexas.edu/geoapi",
         "staging": "https://hazmapper.tacc.utexas.edu/geoapi-staging",
         "dev": "https://hazmapper.tacc.utexas.edu/geoapi-dev",
-        "experimental": "https://hazmapper.tacc.utexas.edu/geoapi-experimental",
         "testing": "http://test:8888",
     }
     if settings.APP_ENV in geoapi_urls:
