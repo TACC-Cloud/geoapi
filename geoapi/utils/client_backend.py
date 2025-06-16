@@ -42,10 +42,13 @@ def get_client_url(url):
         "taggit",
         "taggit-staging",
         "taggit-dev",
+        ""
     ]
 
     client_urls = local_urls + [
-        f"{domain}/{path}/" for domain in base_domains for path in base_domain_paths
+        f"{domain}/{path}/" if path else f"{domain}/"
+        for domain in base_domains
+        for path in base_domain_paths
     ]
 
     normalized_url = url if url.endswith("/") else url + "/"
