@@ -148,7 +148,9 @@ class Callback(Resource):
                 auth=(client_id, client_key),
             )
             if not response.ok:
-                logger.error(f"Token request failed: {response.status_code} - {response.text}")
+                logger.error(
+                    f"Token request failed: {response.status_code} - {response.text}"
+                )
                 raise AuthenticationIssue("OAuth token exchange failed")
 
             response_json = response.json()["result"]
