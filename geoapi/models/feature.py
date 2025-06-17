@@ -1,8 +1,9 @@
 import uuid
-from sqlalchemy import Column, Integer, String, ForeignKey, Index, DateTime
+from sqlalchemy import Integer, String, ForeignKey, Index, DateTime
 import shapely
+from litestar.dto import dto_field
 from sqlalchemy.dialects.postgresql import JSONB
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import relationship, mapped_column, Mapped
 from sqlalchemy.sql import func
 from sqlalchemy.dialects.postgresql import UUID
 from geoalchemy2 import Geometry
@@ -17,16 +18,17 @@ class Feature(Base):
         Index("ix_features_properties", "properties", postgresql_using="gin"),
     )
 
-    id = Column(Integer, primary_key=True)
-    project_id = Column(
+    id = mapped_column(Integer, primary_key=True)
+    project_id = mapped_column(
         ForeignKey("projects.id", ondelete="CASCADE", onupdate="CASCADE"), index=True
     )
-    the_geom = Column(
-        Geometry(geometry_type="GEOMETRY", srid=4326), nullable=False
+    the_geom: Mapped[shapely.GeometryType] = mapped_column(
+        Geometry(geometry_type="GEOMETRY", srid=4326),
+        info=dto_field("private"),
     )  # Spatial index included by default
-    properties = Column(JSONB, default={})
-    styles = Column(JSONB, default={})
-    created_date = Column(DateTime(timezone=True), server_default=func.now())
+    properties = mapped_column(JSONB, default={})
+    styles = mapped_column(JSONB, default={})
+    created_date = mapped_column(DateTime(timezone=True), server_default=func.now())
     assets = relationship("FeatureAsset", cascade="all, delete-orphan", lazy="joined")
     project = relationship("Project", overlaps="features")
 
@@ -55,17 +57,17 @@ class Feature(Base):
 
 class FeatureAsset(Base):
     __tablename__ = "feature_assets"
-    id = Column(Integer, primary_key=True)
-    feature_id = Column(
+    id = mapped_column(Integer, primary_key=True)
+    feature_id = mapped_column(
         ForeignKey("features.id", ondelete="CASCADE", onupdate="CASCADE"), index=True
     )
-    uuid = Column(UUID(as_uuid=True), default=uuid.uuid4, nullable=False)
+    uuid = mapped_column(UUID(as_uuid=True), default=uuid.uuid4, nullable=False)
     # system or project id or both
-    path = Column(String(), nullable=False)
-    original_name = Column(String(), nullable=True)
-    original_path = Column(String(), nullable=True, index=True)
-    display_path = Column(String(), nullable=True)
-    asset_type = Column(String(), nullable=False, default="image")
+    path = mapped_column(String(), nullable=False)
+    original_name = mapped_column(String(), nullable=True)
+    original_path = mapped_column(String(), nullable=True, index=True)
+    display_path = mapped_column(String(), nullable=True)
+    asset_type = mapped_column(String(), nullable=False, default="image")
     feature = relationship("Feature", overlaps="assets")
 
     def __repr__(self):

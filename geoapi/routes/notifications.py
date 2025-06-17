@@ -21,6 +21,8 @@ def utc_datetime(value):
 
 
 class NotificationResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     status: str
     message: str
     created: datetime
@@ -29,6 +31,8 @@ class NotificationResponse(BaseModel):
 
 
 class ProgressNotificationResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     status: str
     message: str
     progress: int
@@ -43,10 +47,8 @@ class OkResponse(BaseModel):
     message: str = "accepted"
 
 
-class NotificationsQuery(TypedDict, total=False):
-    __pydantic_config__ = ConfigDict(extra="forbid")
-
-    startDate: datetime | None
+class NotificationsQuery(BaseModel):
+    startDate: datetime | None = None
 
 
 class NotificationsController(Controller):
@@ -61,11 +63,11 @@ class NotificationsController(Controller):
         guards=[not_anonymous_guard],
     )
     def get_notifications(
-        self, request: Request, query: dict[NotificationsQuery], db_session: "Session"
+        self, request: Request, query: NotificationsQuery, db_session: "Session"
     ) -> list[NotificationResponse]:
         """Get a list of notifications."""
         u = request.user
-        return NotificationsService.get(db_session, u, query)
+        return NotificationsService.get(db_session, u, query.model_dump())
 
     @get(
         "/progress",

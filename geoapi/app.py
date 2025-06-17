@@ -20,7 +20,7 @@ from litestar.stores.registry import StoreRegistry
 from litestar.exceptions import InternalServerException
 from litestar.connection import ASGIConnection
 from litestar.security.jwt import JWTAuth, Token
-from litestar.plugins.sqlalchemy import SQLAlchemyPlugin
+from litestar.plugins.sqlalchemy import SQLAlchemyPlugin, SQLAlchemySerializationPlugin
 from geoapi.models import User
 from geoapi.routes import api_router
 from geoapi.settings import settings
@@ -266,7 +266,7 @@ app = Litestar(
         # jwt_auth.middleware,
         session_auth_config.middleware,
     ],
-    plugins=[alchemy],
+    plugins=[alchemy, SQLAlchemySerializationPlugin()],
     on_startup=[get_db_connection],
     on_shutdown=[close_db_connection],
     stores=StoreRegistry(default_factory=root_store.with_namespace),

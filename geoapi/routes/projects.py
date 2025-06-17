@@ -6,6 +6,8 @@ from litestar.datastructures import UploadFile
 from litestar.params import Body
 from litestar.enums import RequestEncodingType
 from litestar.exceptions import HTTPException
+from litestar.plugins.sqlalchemy import SQLAlchemyDTO
+from litestar.dto import DTOConfig
 from geojson_pydantic import Feature as GeoJSONFeature
 from geoapi.log import logger
 from geoapi.services.features import FeaturesService
@@ -13,7 +15,7 @@ from geoapi.services.streetview import StreetviewService
 from geoapi.services.point_cloud import PointCloudService
 from geoapi.services.projects import ProjectsService
 from geoapi.tasks import external_data, streetview
-from geoapi.models import Task, Project
+from geoapi.models import Task, Project, Feature, TileServer
 from geoapi.utils.decorators import (
     jwt_decoder_prehandler,
     project_permissions_allow_public_guard,
@@ -36,6 +38,8 @@ class OkResponse(BaseModel):
 
 
 class AssetModel(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: int | None = None
     path: str | None = None
     uuid: str | None = None
@@ -46,6 +50,8 @@ class AssetModel(BaseModel):
 
 
 class FeatureModel(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     project_id: int
     geometry: dict
@@ -53,6 +59,20 @@ class FeatureModel(BaseModel):
     properties: dict | None = None
     styles: dict | None = None
     assets: list[AssetModel] | None = None
+
+
+class FeatureReturnDTO(SQLAlchemyDTO[Feature]):
+    config = DTOConfig(
+        include={
+            "id",
+            "project_id",
+            "geometry",
+            "type",
+            "properties",
+            "styles",
+            "assets",
+        }
+    )
 
 
 class FeatureCollectionModel(BaseModel):
@@ -77,19 +97,25 @@ class ProjectUpdatePayloadModel(BaseModel):
     public: bool | None = None
 
 
-class ProjectResponseModel(BaseModel):
-    id: int | None = None
-    uuid: str | None = None
-    name: str | None = None
-    description: str | None = None
-    public: bool | None = None
-    system_file: str | None = None
-    system_id: str | None = None
-    system_path: str | None = None
-    deletable: bool | None = None
+class ProjectDTO(SQLAlchemyDTO[Project]):
+    config = DTOConfig(
+        include={
+            "id",
+            "uuid",
+            "name",
+            "description",
+            "public",
+            "system_file",
+            "system_id",
+            "system_path",
+            "deletable",
+        },
+    )
 
 
 class UserModel(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     username: str
     id: int | None = None
 
@@ -107,6 +133,8 @@ class TaskModel(BaseModel):
 
 
 class PointCloudModel(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     files_info: dict
     id: int | None = None
     description: str | None = None
@@ -117,6 +145,8 @@ class PointCloudModel(BaseModel):
 
 
 class OverlayModel(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     uuid: str
     minLon: float
@@ -129,6 +159,8 @@ class OverlayModel(BaseModel):
 
 
 class TileServerModel(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: int | None = None
     name: str | None = None
     type: str | None = None
@@ -180,6 +212,7 @@ class TapisOverlayImportBody(OverlayPostBody):
 
 class ProjectsListingController(Controller):
     path = "/"
+    return_dto = ProjectDTO
 
     @get(
         tags=["projects"],
@@ -227,6 +260,7 @@ class ProjectsListingController(Controller):
 
 class ProjectResourceController(Controller):
     path = "/{project_id:int}/"
+    return_dto = ProjectDTO
 
     @get(
         tags=["projects"],
@@ -398,13 +432,14 @@ class ProjectFeaturesResourceController(Controller):
                 request.user.username, project_id
             )
         )
-        return ProjectsService.getFeatures(db_session, project_id, query)
+        return ProjectsService.getFeatures(db_session, project_id, query.model_dump())
 
     @post(
         tags=["projects"],
         operation_id="add_geojson_feature",
         description="Add a GeoJSON feature to a project",
         guards=[project_permissions_guard],
+        return_dto=FeatureReturnDTO,
     )
     def add_geojson_feature(
         self,
@@ -430,6 +465,7 @@ class ProjectFeatureResourceController(Controller):
         operation_id="get_feature",
         description="GET a feature of a project as GeoJSON",
         guards=[project_permissions_allow_public_guard],
+        return_dto=FeatureReturnDTO,
     )
     def get_feature(
         self, request: Request, db_session: "Session", project_id: int, feature_id: int
@@ -467,6 +503,7 @@ class ProjectFeaturePropertiesResourceController(Controller):
         summary="Update the properties of a feature.",
         description="Update the properties of a feature. This will replace any existing properties previously associated with the feature",
         guards=[project_permissions_guard, project_feature_exists_guard],
+        return_dto=FeatureReturnDTO,
     )
     def update_feature_properties(
         self,
@@ -494,6 +531,7 @@ class ProjectFeatureStylesResourceController(Controller):
         summary="Update the styles of a feature.",
         description="Update the styles of a feature. This will replace any styles previously associated with the feature.",
         guards=[project_permissions_guard, project_feature_exists_guard],
+        return_dto=FeatureReturnDTO,
     )
     def update_feature_styles(
         self,
@@ -520,6 +558,7 @@ class ProjectFeaturesCollectionResourceController(Controller):
         operation_id="add_feature_asset",
         description="Add a static asset to a collection. Must be an image or video at the moment",
         guards=[project_permissions_guard, project_feature_exists_guard],
+        return_dto=FeatureReturnDTO,
     )
     def add_feature_asset(
         self,
@@ -554,6 +593,7 @@ class ProjectFeaturesFilsResourceController(Controller):
           Current allowed file types are GeoJSON, georeferenced image (jpeg) or gpx track.
           Any additional key/value pairs in the form will also be placed in the feature(s) metadata""",
         guards=[project_permissions_guard],
+        return_dto=FeatureReturnDTO,
     )
     def upload_feature_file(
         self,
@@ -753,6 +793,7 @@ class ProjectStreetviewFeatureResourceController(Controller):
         operation_id="get_streetview_sequence_from_feature",
         description="Get streetview sequence from a project feature",
         guards=[project_permissions_guard],
+        return_dto=FeatureReturnDTO,
     )
     def get_streetview_sequence_from_feature(
         self,
@@ -821,7 +862,7 @@ class ProjectPointCloudsResourceController(Controller):
 
 
 class ProjectPointCloudResourceController(Controller):
-    path = " /{project_id:int}/point-cloud/{point_cloud_id:int}/"
+    path = "/{project_id:int}/point-cloud/{point_cloud_id:int}/"
 
     @get(
         tags=["projects"],
@@ -992,7 +1033,7 @@ class ProjectTileServersResourceController(Controller):
     )
     def get_tile_servers(
         self, request: Request, db_session: "Session", project_id: int
-    ) -> list[TileServerModel]:
+    ) -> list[TileServer]:
         """Get a list of tile servers for a project."""
         logger.info(
             "Get tile servers for project:{} for user:{}".format(
@@ -1051,6 +1092,20 @@ class ProjectTileServerResourceController(Controller):
         )
 
 
+def feature_enc_hook(feature: Feature) -> FeatureModel:
+    """Encode Feature to a dictionary."""
+
+    return FeatureModel(
+        id=feature.id,
+        project_id=feature.project_id,
+        geometry=feature.geometry,
+        type=feature.type,
+        properties=feature.properties,
+        styles=feature.styles,
+        assets=feature.assets,
+    )
+
+
 projects_router = Router(
     path="/projects",
     route_handlers=[
@@ -1079,4 +1134,5 @@ projects_router = Router(
         ProjectTileServerResourceController,
     ],
     before_request=jwt_decoder_prehandler,
+    # type_encoders={Feature: feature_enc_hook},
 )

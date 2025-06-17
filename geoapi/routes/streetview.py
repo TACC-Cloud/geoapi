@@ -10,7 +10,7 @@ this structure.
 """
 
 from datetime import datetime
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from litestar import Controller, get, Request, post, delete, put
 from typing import TYPE_CHECKING
 from geoapi.services.streetview import StreetviewService
@@ -47,6 +47,8 @@ class TapisFolderImport(BaseModel):
 
 
 class StreetviewSequence(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     streetview_instance_id: int
     start_date: datetime | None = None  # rfc822
@@ -57,6 +59,8 @@ class StreetviewSequence(BaseModel):
 
 
 class StreetviewOrganization(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: int | None = None
     streetview_id: int | None = None
     name: str | None = None
@@ -65,6 +69,8 @@ class StreetviewOrganization(BaseModel):
 
 
 class StreetviewInstance(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     streetview_id: int
     system_id: str
@@ -73,6 +79,8 @@ class StreetviewInstance(BaseModel):
 
 
 class Streetview(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     user_id: int
     token: str
@@ -96,7 +104,7 @@ class StreetviewController(Controller):
     ) -> list[Streetview]:
         u = request.user
         logger.info("Get all streetview objects user:{}".format(u.username))
-        return StreetviewService.list(request.db_session, u)
+        return StreetviewService.list(db_session, u)
 
     @post(
         "/services",

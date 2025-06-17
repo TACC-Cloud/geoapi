@@ -1,6 +1,6 @@
 import uuid
-from sqlalchemy import Column, Integer, String, ForeignKey, Boolean, DateTime
-from sqlalchemy.orm import relationship, backref
+from sqlalchemy import Integer, String, ForeignKey, Boolean, DateTime
+from sqlalchemy.orm import relationship, backref, mapped_column
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.sql import func
 from geoapi.db import Base
@@ -10,14 +10,14 @@ from geoapi.models.users import User
 class ProjectUser(Base):
     __tablename__ = "projects_users"
 
-    user_id = Column(
+    user_id = mapped_column(
         Integer, ForeignKey("users.id", ondelete="CASCADE"), primary_key=True
     )
-    project_id = Column(
+    project_id = mapped_column(
         Integer, ForeignKey("projects.id", ondelete="CASCADE"), primary_key=True
     )
-    creator = Column(Boolean, nullable=False, default=False)
-    admin = Column(Boolean, nullable=False, default=False)
+    creator = mapped_column(Boolean, nullable=False, default=False)
+    admin = mapped_column(Boolean, nullable=False, default=False)
     project = relationship(
         "Project", backref=backref("project_users", cascade="all, delete-orphan")
     )
@@ -30,20 +30,20 @@ class ProjectUser(Base):
 class Project(Base):
     __tablename__ = "projects"
 
-    id = Column(Integer, primary_key=True)
-    uuid = Column(UUID(as_uuid=True), default=uuid.uuid4, nullable=False)
-    tenant_id = Column(String, nullable=False)
+    id = mapped_column(Integer, primary_key=True)
+    uuid = mapped_column(UUID(as_uuid=True), default=uuid.uuid4, nullable=False)
+    tenant_id = mapped_column(String, nullable=False)
     # associated tapis system id
-    system_id = Column(String, nullable=True)
+    system_id = mapped_column(String, nullable=True)
     # associated tapis system path
-    system_path = Column(String, nullable=True)
+    system_path = mapped_column(String, nullable=True)
     # associated tapis system file
-    system_file = Column(String, nullable=True)
-    name = Column(String, nullable=False)
-    description = Column(String)
-    public = Column(Boolean, default=False)
-    created = Column(DateTime(timezone=True), server_default=func.now())
-    updated = Column(DateTime(timezone=True), onupdate=func.now())
+    system_file = mapped_column(String, nullable=True)
+    name = mapped_column(String, nullable=False)
+    description = mapped_column(String)
+    public = mapped_column(Boolean, default=False)
+    created = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated = mapped_column(DateTime(timezone=True), onupdate=func.now())
     features = relationship("Feature", cascade="all, delete-orphan")
 
     users = relationship(
@@ -55,10 +55,10 @@ class Project(Base):
     point_clouds = relationship("PointCloud", cascade="all, delete-orphan")
 
     # watch content of tapis directory location (system_id and system_path)
-    watch_content = Column(Boolean, default=False)
+    watch_content = mapped_column(Boolean, default=False)
 
     # watch user of tapis system (system_id)
-    watch_users = Column(Boolean, default=False)
+    watch_users = mapped_column(Boolean, default=False)
 
     def __repr__(self):
         return (

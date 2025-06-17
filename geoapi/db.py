@@ -1,10 +1,7 @@
-from sqlalchemy.orm import sessionmaker, declarative_base
+from sqlalchemy.orm import sessionmaker, DeclarativeBase
 from sqlalchemy import create_engine, Engine
 from litestar import Litestar
-from litestar.plugins.sqlalchemy import (
-    SyncSessionConfig,
-    SQLAlchemySyncConfig,
-)
+from litestar.plugins.sqlalchemy import SyncSessionConfig, SQLAlchemySyncConfig, base
 from typing import cast
 from contextlib import asynccontextmanager, contextmanager
 from collections.abc import AsyncGenerator
@@ -57,7 +54,10 @@ def create_engine_for_context(context=None):
 
 engine = create_engine_for_context()
 
-Base = declarative_base()
+
+# class Base(DeclarativeBase):
+#     pass
+Base = base.DefaultBase
 
 
 @contextmanager

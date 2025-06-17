@@ -1,19 +1,19 @@
-from sqlalchemy import Column, Integer, String, DateTime
+import pytz
+from datetime import datetime, timedelta
+from sqlalchemy import Integer, String, DateTime
 from sqlalchemy.sql import func
 from sqlalchemy.ext.hybrid import hybrid_property
+from sqlalchemy.orm import relationship, mapped_column
 from geoapi.db import Base
-from sqlalchemy.orm import relationship
-from datetime import datetime, timedelta
-import pytz
 from geoapi.utils import jwt_utils
 
 
 class User(Base):
     __tablename__ = "users"
-    id = Column(Integer, primary_key=True)
-    username = Column(String, unique=True, index=True)
-    tenant_id = Column(String, nullable=False)
-    created = Column(DateTime(timezone=True), server_default=func.now())
+    id = mapped_column(Integer, primary_key=True)
+    username = mapped_column(String, unique=True, index=True)
+    tenant_id = mapped_column(String, nullable=False)
+    created = mapped_column(DateTime(timezone=True), server_default=func.now())
     auth = relationship("Auth", uselist=False, cascade="all, delete-orphan")
     streetviews = relationship("Streetview", cascade="all, delete-orphan")
     projects = relationship(

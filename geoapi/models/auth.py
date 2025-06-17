@@ -1,17 +1,18 @@
-from sqlalchemy import Column, Integer, String, DateTime, ForeignKey
+from sqlalchemy import Integer, String, DateTime, ForeignKey
 from geoapi.db import Base
+from sqlalchemy.orm import mapped_column
 
 
 class Auth(Base):
     __tablename__ = "auth"
-    id = Column(Integer, primary_key=True)
-    user_id = Column(
+    id = mapped_column(Integer, primary_key=True)
+    user_id = mapped_column(
         Integer, ForeignKey("users.id", ondelete="CASCADE"), unique=True, nullable=False
     )
-    access_token = Column(String(2048))  # Tapis access token
-    access_token_expires_at = Column(DateTime(timezone=True))
-    refresh_token = Column(String(2048))  # Tapis refresh token
-    refresh_token_expires_at = Column(DateTime(timezone=True))
+    access_token = mapped_column(String(2048))  # Tapis access token
+    access_token_expires_at = mapped_column(DateTime(timezone=True))
+    refresh_token = mapped_column(String(2048))  # Tapis refresh token
+    refresh_token_expires_at = mapped_column(DateTime(timezone=True))
 
     def __repr__(self):
         access_token_masked = self.access_token[-5:] if self.access_token else None

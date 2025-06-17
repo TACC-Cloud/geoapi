@@ -117,7 +117,9 @@ def project_permissions_guard(connection: ASGIConnection, _: BaseRouteHandler) -
 
     This is used in the ASGI app to check permissions before processing the request.
     """
-    db_session: "Session" = connection.scope.get("db_session")
+    db_session: "Session" = sqlalchemy_config.provide_session(
+        connection.app.state, connection.scope
+    )
     project_id = connection.path_params["project_id"]
 
     check_access_and_get_project(
@@ -136,7 +138,9 @@ def project_permissions_allow_public_guard(
 
     This is used in the ASGI app to check permissions before processing the request.
     """
-    db_session: "Session" = connection.scope.get("db_session")
+    db_session: "Session" = sqlalchemy_config.provide_session(
+        connection.app.state, connection.scope
+    )
     project_id = connection.path_params["project_id"]
 
     check_access_and_get_project(
@@ -155,7 +159,9 @@ def project_admin_or_creator_permissions_guard(
 
     This is used in the ASGI app to check permissions before processing the request.
     """
-    db_session: "Session" = connection.scope.get("db_session")
+    db_session: "Session" = sqlalchemy_config.provide_session(
+        connection.app.state, connection.scope
+    )
     project_id = connection.path_params["project_id"]
 
     check_access_and_get_project(
@@ -176,7 +182,9 @@ def project_feature_exists_guard(
 
     This is used in the ASGI app to check permissions before processing the request.
     """
-    db_session: "Session" = connection.scope.get("db_session")
+    db_session: "Session" = sqlalchemy_config.provide_session(
+        connection.app.state, connection.scope
+    )
     project_id = connection.path_params["project_id"]
     feature_id = connection.path_params["featureId"]
 
@@ -199,7 +207,9 @@ def project_point_cloud_exists_guard(
 
     This is used in the ASGI app to check permissions before processing the request.
     """
-    db_session: "Session" = connection.scope.get("db_session")
+    db_session: "Session" = sqlalchemy_config.provide_session(
+        connection.app.state, connection.scope
+    )
     project_id = connection.path_params["project_id"]
     point_cloud_id = connection.path_params["point_cloud_id"]
 
@@ -222,7 +232,9 @@ def project_point_cloud_not_processing_guard(
 
     This is used in the ASGI app to check permissions before processing the request.
     """
-    db_session: "Session" = connection.scope.get("db_session")
+    db_session: "Session" = sqlalchemy_config.provide_session(
+        connection.app.state, connection.scope
+    )
     point_cloud_id = connection.path_params["point_cloud_id"]
 
     point_cloud = PointCloudService.get(db_session, point_cloud_id)
