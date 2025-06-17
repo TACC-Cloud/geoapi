@@ -42,7 +42,7 @@ def get_client_url(url):
         "taggit",
         "taggit-staging",
         "taggit-dev",
-        ""
+        "",
     ]
 
     client_urls = local_urls + [
