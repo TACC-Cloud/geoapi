@@ -5,7 +5,6 @@ from geoapi.db import Base
 from sqlalchemy.orm import relationship
 from datetime import datetime, timedelta
 import pytz
-from litestar.plugins.sqlalchemy import base
 from geoapi.utils import jwt_utils
 
 

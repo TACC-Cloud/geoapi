@@ -9,14 +9,14 @@ designed to support both Mapillary and Google Street View, which is why it follo
 this structure.
 """
 
-from dataclasses import dataclass
 from datetime import datetime
+from pydantic import BaseModel
 from litestar import Controller, get, Request, post, delete, put
 from typing import TYPE_CHECKING
 from geoapi.services.streetview import StreetviewService
 from geoapi.tasks import streetview
 from geoapi.log import logging
-from geoapi.utils.decorators import jwt_decoder_guard
+from geoapi.utils.decorators import jwt_decoder_prehandler
 
 logger = logging.getLogger(__name__)
 
@@ -25,33 +25,28 @@ if TYPE_CHECKING:
     from sqlalchemy.orm import Session
 
 
-@dataclass
-class StreetviewServiceParams:
+class StreetviewServiceParams(BaseModel):
     service: str | None = None
     service_user: str | None = None
     token: str | None = None
 
 
-@dataclass
-class OkResponse:
+class OkResponse(BaseModel):
     message: str = "accepted"
 
 
-@dataclass
-class TapisFile:
+class TapisFile(BaseModel):
     system: str
     path: str
 
 
-@dataclass
-class TapisFolderImport:
+class TapisFolderImport(BaseModel):
     service: TapisFile
     system_id: str
     path: str
 
 
-@dataclass
-class StreetviewSequence:
+class StreetviewSequence(BaseModel):
     id: int
     streetview_instance_id: int
     start_date: datetime | None = None  # rfc822
@@ -61,8 +56,7 @@ class StreetviewSequence:
     organization_id: str | None = None
 
 
-@dataclass
-class StreetviewOrganization:
+class StreetviewOrganization(BaseModel):
     id: int | None = None
     streetview_id: int | None = None
     name: str | None = None
@@ -70,8 +64,7 @@ class StreetviewOrganization:
     key: str | None = None
 
 
-@dataclass
-class StreetviewInstance:
+class StreetviewInstance(BaseModel):
     id: int
     streetview_id: int
     system_id: str
@@ -79,8 +72,7 @@ class StreetviewInstance:
     sequences: list[StreetviewSequence] | None = None
 
 
-@dataclass
-class Streetview:
+class Streetview(BaseModel):
     id: int
     user_id: int
     token: str
@@ -92,7 +84,7 @@ class Streetview:
 
 class StreetviewController(Controller):
     path = "streetview"
-    guards = [jwt_decoder_guard]
+    before_request = jwt_decoder_prehandler
 
     @get(
         "/services",
@@ -115,13 +107,13 @@ class StreetviewController(Controller):
         self, request: Request, db_session: "Session", data: StreetviewServiceParams
     ) -> Streetview:
         u = request.user
-        service = data.get("service")
+        service = data.service
         logger.info(
             "Create streetview object for user:{} and service:{}".format(
                 u.username, service
             )
         )
-        return StreetviewService.create(db_session, u, data)
+        return StreetviewService.create(db_session, u, data.model_dump())
 
     @get(
         "/services/<service>/",
@@ -173,7 +165,9 @@ class StreetviewController(Controller):
                 service, u.username
             )
         )
-        return StreetviewService.updateByService(db_session, u, service, data)
+        return StreetviewService.updateByService(
+            db_session, u, service, data.model_dump()
+        )
 
     @get(
         "/services/<service>/organization/", operation_id="get_streetview_organizations"
@@ -206,7 +200,9 @@ class StreetviewController(Controller):
                 service, u.username
             )
         )
-        return StreetviewService.createOrganization(db_session, u, service, data)
+        return StreetviewService.createOrganization(
+            db_session, u, service, data.model_dump()
+        )
 
     @delete(
         "/services/<service>/organization/<organization_id>/",
@@ -247,7 +243,9 @@ class StreetviewController(Controller):
                 service, u.username, organization_id
             )
         )
-        return StreetviewService.updateOrganization(db_session, organization_id, data)
+        return StreetviewService.updateOrganization(
+            db_session, organization_id, data.model_dump()
+        )
 
     @delete(
         "/instances/<instance_id>/",
@@ -279,7 +277,7 @@ class StreetviewController(Controller):
                 u.username, data.sequence_id
             )
         )
-        StreetviewService.addSequenceToInstance(db_session, u, data)
+        StreetviewService.addSequenceToInstance(db_session, u, data.model_dump())
 
     @get(
         "/sequences/<sequence_id>/",
@@ -331,7 +329,9 @@ class StreetviewController(Controller):
                 sequence_id, u.username
             )
         )
-        return StreetviewService.updateSequence(db_session, sequence_id, data)
+        return StreetviewService.updateSequence(
+            db_session, sequence_id, data.model_dump()
+        )
 
     @post(
         "/publish/",
@@ -346,5 +346,5 @@ class StreetviewController(Controller):
     ) -> OkResponse:
         u = request.user
         logger.info("Publish images to streetview for user:{}".format(u.username))
-        streetview.publish(db_session, u, data)
+        streetview.publish(db_session, u, data.model_dump())
         return OkResponse(message="accepted")

@@ -5,6 +5,7 @@ from typing import Any, TYPE_CHECKING
 from os import urandom
 from litestar import Litestar, Request, Response, status_codes
 from litestar.config.csrf import CSRFConfig
+from litestar.config.cors import CORSConfig
 from litestar.logging.config import LoggingConfig
 from litestar.middleware.logging import LoggingMiddlewareConfig
 from litestar.middleware.session.server_side import (
@@ -19,14 +20,15 @@ from litestar.stores.registry import StoreRegistry
 from litestar.exceptions import InternalServerException
 from litestar.connection import ASGIConnection
 from litestar.security.jwt import JWTAuth, Token
-from litestar.plugins.sqlalchemy import (
-    SyncSessionConfig,
-    SQLAlchemySyncConfig,
-    SQLAlchemyPlugin,
-)
+from litestar.plugins.sqlalchemy import SQLAlchemyPlugin
+from geoapi.models import User
 from geoapi.routes import api_router
 from geoapi.settings import settings
-from geoapi.db import get_db_connection, close_db_connection, get_db_connection_string
+from geoapi.db import (
+    get_db_connection,
+    close_db_connection,
+    sqlalchemy_config,
+)
 from geoapi.exceptions import (
     InvalidGeoJSON,
     InvalidEXIFData,
@@ -43,9 +45,6 @@ from geoapi.utils.jwt_utils import get_pub_key, PUBLIC_KEY_FOR_TESTING
 
 if TYPE_CHECKING:
     from sqlalchemy.orm import Session
-    from geoapi.models import User
-
-logging.basicConfig(format="%(asctime)s %(message)s", level=logging.INFO)
 
 
 # Exception handlers for Litestar
@@ -149,9 +148,7 @@ exception_handlers = {
 }
 
 
-csrf_config = CSRFConfig(
-    secret="my-secret", cookie_name="some-cookie-name", header_name="some-header-name"
-)
+csrf_config = CSRFConfig(secret="my-secret")
 
 logging_middleware_config = LoggingMiddlewareConfig()
 
@@ -173,11 +170,15 @@ openapi_config = OpenAPIConfig(
 async def retrieve_jwt_user_handler(
     token: Token,
     connection: ASGIConnection[Any, Any, Any, Any],
-    db_session: "Session",
-) -> "User":
+) -> User | AnonymousUser:
     """Used by the JWTAuth Middleware to retrieve the user from the JWT token."""
-    # logic here to retrieve the user instance
-    user = None
+
+    if connection.user:
+        return connection.user
+
+    db_session: "Session" = sqlalchemy_config.provide_session(
+        connection.app.state, connection.scope
+    )
 
     # If no token, check for guest UUID
     if not token:
@@ -225,35 +226,35 @@ jwt_auth = JWTAuth["User"](
 async def retrieve_session_user_handler(
     session: dict[str, Any],
     connection: ASGIConnection[Any, Any, Any, Any],
-) -> "User":
+) -> User | None:
     """Used by the SessionAuth Middleware to retrieve the user from the session."""
     username = session.get("username")
     tenant = session.get("tenant")
-    db_session = connection.scope.get("db_session")
+    db_session = sqlalchemy_config.provide_session(
+        connection.app.state, connection.scope
+    )
+
     if not username or not tenant:
-        guest_uuid = connection.headers.get("X-Guest-UUID")
-        return AnonymousUser(guest_unique_id=guest_uuid)
+        return None
     return UserService.getUser(
         database_session=db_session, username=username, tenant=tenant
     )
 
 
+session_auth_config = ServerSideSessionConfig(httponly=False, secure=True)
 session_auth = SessionAuth["User", ServerSideSessionBackend](
     retrieve_user_handler=retrieve_session_user_handler,
     # we must pass a config for a session backend.
     # all session backends are supported
-    session_backend_config=ServerSideSessionConfig(),
+    session_backend_config=session_auth_config,
     # exclude any URLs that should not have authentication.
     # We exclude the documentation URLs, signup and login.
     exclude=["/auth/login", "/schema"],
 )
 
-db_session_config = SyncSessionConfig(expire_on_commit=False, autoflush=False)
-sqlalchemy_config = SQLAlchemySyncConfig(
-    connection_string=get_db_connection_string(settings),
-    session_config=db_session_config,
-)
+alchemy = SQLAlchemyPlugin(config=sqlalchemy_config)
 
+cors_config = CORSConfig(allow_origins=["*"], allow_credentials=True)
 
 # Create Litestar app
 app = Litestar(
@@ -261,11 +262,11 @@ app = Litestar(
     middleware=[
         # TapisTokenRefreshMiddleware,
         logging_middleware_config.middleware,
-        cookie_session_config.middleware,
-        ServerSideSessionConfig().middleware,
-        session_auth.middleware,
+        # cookie_session_config.middleware,
+        # jwt_auth.middleware,
+        session_auth_config.middleware,
     ],
-    plugins=[SQLAlchemyPlugin(config=sqlalchemy_config)],
+    plugins=[alchemy],
     on_startup=[get_db_connection],
     on_shutdown=[close_db_connection],
     stores=StoreRegistry(default_factory=root_store.with_namespace),
@@ -275,14 +276,14 @@ app = Litestar(
         root={"level": "DEBUG", "handlers": ["console"]},
         formatters={
             "standard": {
-                "format": "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+                "format": "%(asctime)s :: %(levelname)s :: [%(filename)s:%(lineno)d] :: %(message)s"
             }
         },
         log_exceptions="always",
     ),
     on_app_init=[
-        session_auth.on_app_init,
-        # jwt_auth.on_app_init
+        # jwt_auth.on_app_init,
+        session_auth.on_app_init
     ],
     openapi_config=openapi_config,
     debug=settings.DEBUG if hasattr(settings, "DEBUG") else False,

@@ -1,12 +1,12 @@
-from pydantic import BaseModel
+from typing import TypedDict
+from pydantic import BaseModel, ConfigDict
 from dateutil import parser, tz
 from datetime import datetime
 from typing import TYPE_CHECKING
 from litestar import Controller, get, delete, Request
 from geoapi.log import logging
-from geoapi.utils.decorators import jwt_decoder_guard, not_anonymous_guard
+from geoapi.utils.decorators import jwt_decoder_prehandler, not_anonymous_guard
 from geoapi.services.notifications import NotificationsService
-from dataclasses import dataclass
 
 logger = logging.getLogger(__name__)
 
@@ -43,14 +43,15 @@ class OkResponse(BaseModel):
     message: str = "accepted"
 
 
-@dataclass
-class NotificationsQuery:
-    startDate: datetime | None = None
+class NotificationsQuery(TypedDict, total=False):
+    __pydantic_config__ = ConfigDict(extra="forbid")
+
+    startDate: datetime | None
 
 
 class NotificationsController(Controller):
     path = "/notifications"
-    guards = [jwt_decoder_guard]
+    before_request = jwt_decoder_prehandler
 
     @get(
         "/",

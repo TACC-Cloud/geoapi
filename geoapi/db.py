@@ -1,6 +1,10 @@
 from sqlalchemy.orm import sessionmaker, declarative_base
 from sqlalchemy import create_engine, Engine
 from litestar import Litestar
+from litestar.plugins.sqlalchemy import (
+    SyncSessionConfig,
+    SQLAlchemySyncConfig,
+)
 from typing import cast
 from contextlib import asynccontextmanager, contextmanager
 from collections.abc import AsyncGenerator
@@ -76,3 +80,10 @@ def create_task_session():
         raise
     finally:
         session.close()
+
+
+db_session_config = SyncSessionConfig(expire_on_commit=False, autoflush=False)
+sqlalchemy_config = SQLAlchemySyncConfig(
+    connection_string=get_db_connection_string(settings),
+    session_config=db_session_config,
+)

@@ -11,7 +11,7 @@ from geoapi.settings import settings
 from geoapi.services.streetview import StreetviewService
 from geoapi.models import Streetview
 from geoapi.log import logging
-from geoapi.utils.decorators import jwt_decoder_guard
+from geoapi.utils.decorators import jwt_decoder_prehandler
 from geoapi.exceptions import AuthenticationIssue
 from geoapi.utils.client_backend import (
     validate_referrer_url,
@@ -180,7 +180,7 @@ class StreetviewMapillaryAuthController(Controller):
         "/mapillary/",
         operation_id="mapillary_auth_delete",
         description="Delete Mapillary OAuth authentication",
-        guards=[jwt_decoder_guard],
+        before_request=jwt_decoder_prehandler,
     )
     async def mapillary_auth_delete(
         self, request: "Request[User, Any, Any]", db_session: "Session"

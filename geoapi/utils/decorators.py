@@ -11,31 +11,37 @@ from geoapi.utils import jwt_utils
 from geoapi.utils.users import is_anonymous, AnonymousUser
 from geoapi.log import logger
 from geoapi.settings import settings
+from geoapi.db import sqlalchemy_config
 
 
 if TYPE_CHECKING:
     from sqlalchemy.orm import Session
+    from litestar import Request
 
 
-def jwt_decoder_guard(connection: ASGIConnection, _: BaseRouteHandler) -> None:
+def jwt_decoder_prehandler(request: "Request") -> None:
     """Middleware to decode JWT and set the current user in the request."""
 
-    db_session: "Session" = connection.scope.get("db_session")
+    if request.user:
+        return None
 
-    user = None
+    db_session: "Session" = sqlalchemy_config.provide_session(
+        request.app.state, request.scope
+    )
+
     try:
         # Get JWT from header first
-        token = jwt_utils.get_jwt(connection.headers)
+        token = jwt_utils.get_jwt(request.headers)
     except ValueError:
         # Try cookie fallback; Cookies are being used pre-WG-472 for
         # nginx-related access check of /assets
-        token = connection.cookies.get("X-Tapis-Token")
+        token = request.cookies.get("X-Tapis-Token")
 
     # If still no token, check for guest UUID
     if not token:
         # if JWT is not provided in header/cookie, then this is a guest user
         # and if hazmapper/taggit, a guest uuid is provided in the header
-        guest_uuid = connection.headers.get("X-Guest-UUID")
+        guest_uuid = request.headers.get("X-Guest-UUID")
         user = AnonymousUser(guest_unique_id=guest_uuid)
     else:
         try:
@@ -56,9 +62,13 @@ def jwt_decoder_guard(connection: ASGIConnection, _: BaseRouteHandler) -> None:
             )
         else:
             # Update the jwt access token
+            #   (It is more common that user will be using an auth flow were hazmapper will auth
+            #   with geoapi to get the token. BUT we can't assume that as it is also possible that
+            #   user just uses geoapi as a service with token generated somewhere else. So we need
+            #   to get/update just their access token for these cases)
             UserService.update_access_token(db_session, user, token)
 
-    connection.user = user
+    request.user = user
 
 
 def check_access_and_get_project(

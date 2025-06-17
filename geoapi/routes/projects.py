@@ -13,9 +13,9 @@ from geoapi.services.streetview import StreetviewService
 from geoapi.services.point_cloud import PointCloudService
 from geoapi.services.projects import ProjectsService
 from geoapi.tasks import external_data, streetview
-from geoapi.models import Task
+from geoapi.models import Task, Project
 from geoapi.utils.decorators import (
-    jwt_decoder_guard,
+    jwt_decoder_prehandler,
     project_permissions_allow_public_guard,
     project_permissions_guard,
     project_feature_exists_guard,
@@ -186,9 +186,7 @@ class ProjectsListingController(Controller):
         operation_id="get_projects",
         description="Get a list of projects",
     )
-    def get_projects(
-        self, request: Request, db_session: "Session"
-    ) -> list[ProjectResponseModel]:
+    def get_projects(self, request: Request, db_session: "Session") -> list[Project]:
         """Get a list of projects for the current user or a specific project by UUID."""
         u = request.user
         uuid_subset = request.query_params.get("uuid", None)
@@ -220,11 +218,11 @@ class ProjectsListingController(Controller):
     )
     def create_project(
         self, request: Request, db_session: "Session", data: ProjectPayloadModel
-    ) -> ProjectResponseModel:
+    ) -> Project:
         """Create a new project."""
         u = request.user
         logger.info("Create project for user:{} : {}".format(u.username, data))
-        return ProjectsService.create(db_session, data, u)
+        return ProjectsService.create(db_session, data.model_dump(), u)
 
 
 class ProjectResourceController(Controller):
@@ -238,7 +236,7 @@ class ProjectResourceController(Controller):
     )
     def get_project_by_id(
         self, request: Request, db_session: "Session", project_id: int
-    ) -> ProjectResponseModel:
+    ) -> Project:
         """Get the metadata about a project by its ID."""
         u = request.user
         logger.info(
@@ -278,11 +276,13 @@ class ProjectResourceController(Controller):
         db_session: "Session",
         project_id: int,
         data: ProjectUpdatePayloadModel,
-    ) -> ProjectResponseModel:
+    ) -> Project:
         """Update metadata about a project by its ID."""
         u = request.user
         logger.info("Update project:{} for user:{}".format(project_id, u.username))
-        return ProjectsService.update(db_session, projectId=project_id, data=data)
+        return ProjectsService.update(
+            db_session, projectId=project_id, data=data.model_dump()
+        )
 
 
 class ProjectCheckAccessResourceController(Controller):
@@ -339,8 +339,8 @@ class ProjectUsersResourceController(Controller):
         username = data.username
         admin = data.admin
         logger.info(
-            "Add user:{} to project:{} for user:{}".format(
-                username, project_id, request.user.username
+            "User: {} is adding user:{} to project:{}".format(
+                request.user.username, username, project_id
             )
         )
         ProjectsService.addUserToProject(db_session, project_id, username, admin)
@@ -419,7 +419,7 @@ class ProjectFeaturesResourceController(Controller):
                 project_id, request.user.username
             )
         )
-        return FeaturesService.addGeoJSON(db_session, project_id, data)
+        return FeaturesService.addGeoJSON(db_session, project_id, data.model_dump())
 
 
 class ProjectFeatureResourceController(Controller):
@@ -571,7 +571,9 @@ class ProjectFeaturesFilsResourceController(Controller):
                 project_id, request.user.username, file.filename
             )
         )
-        return FeaturesService.fromFileObj(db_session, project_id, file, data)
+        return FeaturesService.fromFileObj(
+            db_session, project_id, file, data.model_dump()
+        )
 
 
 class ProjectFeaturesFileImportResourceController(Controller):
@@ -814,7 +816,7 @@ class ProjectPointCloudsResourceController(Controller):
             database_session=db_session,
             projectId=project_id,
             user=request.user,
-            data=data,
+            data=data.model_dump(),
         )
 
 
@@ -868,7 +870,9 @@ class ProjectPointCloudResourceController(Controller):
         )
         # TODO consider adding status to point cloud as we aren't returning task
         return PointCloudService.update(
-            database_session=db_session, pointCloudId=point_cloud_id, data=data
+            database_session=db_session,
+            pointCloudId=point_cloud_id,
+            data=data.model_dump(),
         )
 
     @delete(
@@ -978,7 +982,7 @@ class ProjectTileServersResourceController(Controller):
                 project_id, request.user.username, data.name
             )
         )
-        return FeaturesService.addTileServer(db_session, project_id, data)
+        return FeaturesService.addTileServer(db_session, project_id, data.model_dump())
 
     @get(
         tags=["projects"],
@@ -1074,5 +1078,5 @@ projects_router = Router(
         ProjectTileServersResourceController,
         ProjectTileServerResourceController,
     ],
-    guards=[jwt_decoder_guard],
+    before_request=jwt_decoder_prehandler,
 )

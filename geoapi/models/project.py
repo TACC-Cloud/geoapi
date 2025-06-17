@@ -4,6 +4,7 @@ from sqlalchemy.orm import relationship, backref
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.sql import func
 from geoapi.db import Base
+from geoapi.models.users import User
 
 
 class ProjectUser(Base):
