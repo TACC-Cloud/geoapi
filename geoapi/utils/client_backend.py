@@ -23,24 +23,38 @@ def get_client_url(url):
     This function checks if the provided URL starts with any of the predefined client URLs. If a match is found,
     it returns the matching client URL. If no match is found, it returns None
     """
-    client_urls = [
+
+    logger.info(f"Getting client url from request: {url}")
+    local_urls = [
         "http://localhost:4200/",
         "http://hazmapper.local:4200/",
-        "https://hazmapper.tacc.utexas.edu/hazmapper/",
-        "https://hazmapper.tacc.utexas.edu/staging/",
-        "https://hazmapper.tacc.utexas.edu/dev/",
-        "https://hazmapper.tacc.utexas.edu/exp/",
-        "https://hazmapper.tacc.utexas.edu/hazmapper-react/",
-        "https://hazmapper.tacc.utexas.edu/staging-react/",
-        "https://hazmapper.tacc.utexas.edu/dev-react/",
-        "https://hazmapper.tacc.utexas.edu/exp-react/",
-        "https://hazmapper.tacc.utexas.edu/taggit/",
-        "https://hazmapper.tacc.utexas.edu/taggit-staging/",
-        "https://hazmapper.tacc.utexas.edu/taggit-dev/",
-        "https://hazmapper.tacc.utexas.edu/taggit-exp/",
     ]
+
+    base_domains = [
+        "https://hazmapper.tacc.utexas.edu",
+        # TODO remove hazmapper-tmp https://tacc-main.atlassian.net/browse/WG-51
+        "https://hazmapper-tmp.tacc.utexas.edu",
+    ]
+    base_domain_paths = [
+        "hazmapper",
+        "staging",
+        "dev",
+        "taggit",
+        "taggit-staging",
+        "taggit-dev",
+        "",
+    ]
+
+    client_urls = local_urls + [
+        f"{domain}/{path}/" if path else f"{domain}/"
+        for domain in base_domains
+        for path in base_domain_paths
+    ]
+
+    normalized_url = url if url.endswith("/") else url + "/"
+
     for client in client_urls:
-        if url.startswith(client):
+        if normalized_url.startswith(client):
             return client.rstrip("/")
     return None
 
@@ -57,7 +71,6 @@ def get_deployed_geoapi_url():
         "production": "https://hazmapper.tacc.utexas.edu/geoapi",
         "staging": "https://hazmapper.tacc.utexas.edu/geoapi-staging",
         "dev": "https://hazmapper.tacc.utexas.edu/geoapi-dev",
-        "experimental": "https://hazmapper.tacc.utexas.edu/geoapi-experimental",
         "testing": "http://test:8888",
     }
     if settings.APP_ENV in geoapi_urls:

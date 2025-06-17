@@ -15,6 +15,10 @@ class Config(object):
     TAPIS_CLIENT_ID = os.environ.get("TAPIS_CLIENT_ID")
     TAPIS_CLIENT_KEY = os.environ.get("TAPIS_CLIENT_KEY")
 
+    # TODO Remove see https://tacc-main.atlassian.net/browse/WG-513
+    TMP_TAPIS_CLIENT_ID = os.environ.get("TMP_TAPIS_CLIENT_ID")
+    TMP_TAPIS_CLIENT_KEY = os.environ.get("TMP_TAPIS_CLIENT_KEY")
+
     # Mapillary-related settings
     MAPILLARY_CLIENT_ID = os.environ.get("MAPILLARY_CLIENT_ID")
     MAPILLARY_CLIENT_SECRET = os.environ.get("MAPILLARY_CLIENT_SECRET")
@@ -76,12 +80,7 @@ class UnitTestingConfig(LocalDevelopmentConfig):
 
 
 APP_ENV = os.environ.get("APP_ENV", "").lower()
-if (
-    APP_ENV == "production"
-    or APP_ENV == "staging"
-    or APP_ENV == "dev"
-    or APP_ENV == "experimental"
-):
+if APP_ENV == "production" or APP_ENV == "staging" or APP_ENV == "dev":
     settings = DeployedConfig
 elif APP_ENV == "testing":
     settings = UnitTestingConfig
