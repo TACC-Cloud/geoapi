@@ -15,3 +15,17 @@ formatter = logging.Formatter(
 )
 for h in logger.handlers:
     h.setFormater(formatter)
+
+
+def get_logger(mod_name: str) -> logging.Logger:
+    """Return logger object."""
+    mod_format = (
+        "%(asctime)s :: %(levelname)s :: [%(filename)s:%(lineno)d] :: %(message)s"
+    )
+    mod_logger = logging.getLogger(mod_name)
+    # Writes to stdout
+    ch = logging.StreamHandler()
+    ch.setLevel(logging.INFO)
+    ch.setFormatter(logging.Formatter(mod_format))
+    logger.addHandler(ch)
+    return mod_logger

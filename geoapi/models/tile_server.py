@@ -1,21 +1,21 @@
-from sqlalchemy import Column, Integer, String, ForeignKey
-from sqlalchemy.orm import relationship
+from sqlalchemy import Integer, String, ForeignKey
+from sqlalchemy.orm import relationship, mapped_column
 from sqlalchemy.dialects.postgresql import JSONB
 from geoapi.db import Base
 
 
 class TileServer(Base):
     __tablename__ = "tile_servers"
-    id = Column(Integer, primary_key=True)
-    project_id = Column(
+    id = mapped_column(Integer, primary_key=True)
+    project_id = mapped_column(
         ForeignKey("projects.id", ondelete="CASCADE", onupdate="CASCADE"), index=True
     )
-    name = Column(String(), nullable=False)
-    type = Column(String(), nullable=False)
-    url = Column(String(), nullable=False)
-    attribution = Column(String(), nullable=False)
-    tileOptions = Column(JSONB, default={})
-    uiOptions = Column(JSONB, default={})
+    name = mapped_column(String(), nullable=False)
+    type = mapped_column(String(), nullable=False)
+    url = mapped_column(String(), nullable=False)
+    attribution = mapped_column(String(), nullable=False)
+    tileOptions = mapped_column(JSONB, default={})
+    uiOptions = mapped_column(JSONB, default={})
 
     project = relationship("Project")
 
