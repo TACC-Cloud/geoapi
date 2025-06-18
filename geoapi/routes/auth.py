@@ -31,6 +31,24 @@ def get_auth_state():
     return secrets.token_hex(24)
 
 
+def get_adjusted_geoapi_url(request: Request):
+    # workaround while we test hazmapper.tmp
+    # TODO https://tacc-main.atlassian.net/browse/WG-513 remove this method and its uses
+    base_url = get_deployed_geoapi_url()
+
+    if "hazmapper-tmp" in request.url.hostname:
+        return base_url.replace("hazmapper", "hazmapper-tmp")
+
+    return base_url
+
+
+def get_client_id_key(request: Request):
+    logger.info(f"Getting client id/key for host:{request.url.hostname}")
+    if "hazmapper-tmp" in request.url.hostname:
+        return settings.TMP_TAPIS_CLIENT_ID, settings.TMP_TAPIS_CLIENT_KEY
+    return settings.TAPIS_CLIENT_ID, settings.TAPIS_CLIENT_KEY
+
+
 class AuthController(Controller):
     path = "/auth"
 
@@ -48,11 +66,17 @@ class AuthController(Controller):
         # Assuming always DesignSafe tenant if using this route
         tenant_id = "DESIGNSAFE" if not settings.TESTING else "TEST"
         tapis_server = get_tapis_api_server(tenant_id)
-        callback_url = f"{get_deployed_geoapi_url()}/auth/callback"
+        # TODO use get_deployed_geoapi_url instead below;
+        #  see  https://tacc-main.atlassian.net/browse/WG-51
+        callback_host = get_adjusted_geoapi_url(request)
+        callback_url = f"{callback_host}/auth/callback"
+
+        # TODO Remove see https://tacc-main.atlassian.net/browse/WG-513
+        client_id, client_key = get_client_id_key(request)
 
         authorization_url = (
             f"{tapis_server}/v3/oauth2/authorize?"
-            f"client_id={settings.TAPIS_CLIENT_ID}&"
+            f"client_id={client_id}&"
             f"redirect_uri={callback_url}&"
             "response_type=code&"
             f"state={session['auth_state']}"
@@ -106,7 +130,15 @@ class AuthController(Controller):
             tapis_server = get_tapis_api_server(
                 "DESIGNSAFE" if not settings.TESTING else "TEST"
             )
-            callback_url = f"{get_deployed_geoapi_url()}/auth/callback"
+            # TODO use get_deployed_geoapi_url instead below;
+            #  see  https://tacc-main.atlassian.net/browse/WG-51
+            callback_host = get_adjusted_geoapi_url(request)
+            callback_url = f"{callback_host}/auth/callback"
+
+            # TODO Remove see https://tacc-main.atlassian.net/browse/WG-513
+            client_id, client_key = get_client_id_key(request)
+            logger.info(f"Using client_id ({client_id}) and key for auth flow")
+
             body = {
                 "grant_type": "authorization_code",
                 "code": code,
@@ -123,8 +155,14 @@ class AuthController(Controller):
             response = requests.post(
                 f"{tapis_server}/v3/oauth2/tokens",
                 data=body,
-                auth=(settings.TAPIS_CLIENT_ID, settings.TAPIS_CLIENT_KEY),
+                auth=(client_id, client_key),
             )
+            if not response.ok:
+                logger.error(
+                    f"Token request failed: {response.status_code} - {response.text}"
+                )
+                raise AuthenticationIssue("OAuth token exchange failed")
+
             response_json = response.json()["result"]
 
             access_token = response_json["access_token"]["access_token"]
