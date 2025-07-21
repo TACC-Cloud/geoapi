@@ -1,6 +1,5 @@
 """GeoAPI Application Module"""
 
-import logging
 from typing import Any, TYPE_CHECKING
 from os import urandom
 from litestar import Litestar, Request, Response, status_codes
@@ -17,10 +16,11 @@ from litestar.openapi.config import OpenAPIConfig
 from litestar.security.session_auth import SessionAuth
 from litestar.stores.redis import RedisStore
 from litestar.stores.registry import StoreRegistry
+from litestar.stores.memory import MemoryStore
 from litestar.exceptions import InternalServerException
 from litestar.connection import ASGIConnection
 from litestar.security.jwt import JWTAuth, Token
-from litestar.plugins.sqlalchemy import SQLAlchemyPlugin, SQLAlchemySerializationPlugin
+from litestar.plugins.sqlalchemy import SQLAlchemyPlugin
 from geoapi.models import User
 from geoapi.routes import api_router
 from geoapi.settings import settings
@@ -213,7 +213,7 @@ async def retrieve_jwt_user_handler(
 jwt_auth = JWTAuth["User"](
     retrieve_user_handler=retrieve_jwt_user_handler,
     token_secret=get_pub_key() if not settings.TESTING else PUBLIC_KEY_FOR_TESTING,
-    # This is a regex that matches any path that does not start with /status, /projects, or /notifications.
+    # Only match the following paths for JWT authentication.
     exclude=[
         r"^(?!\/(status|projects|notifications|streetview|streetview_auth/mapillary/prepare|streetview_auth/mapillary/)(\/.*)?$).*$"
     ],
@@ -235,13 +235,21 @@ async def retrieve_session_user_handler(
     )
 
     if not username or not tenant:
-        return None
+        return AnonymousUser()
     return UserService.getUser(
         database_session=db_session, username=username, tenant=tenant
     )
 
 
-session_auth_config = ServerSideSessionConfig(httponly=False, secure=True)
+if settings.APP_ENV == "testing":
+    store = MemoryStore()
+    session_auth_config = ServerSideSessionConfig(store=store)
+    csrf_config = None
+    stores = None
+else:
+    session_auth_config = ServerSideSessionConfig(httponly=False, secure=True)
+    stores = StoreRegistry(default_factory=root_store.with_namespace)
+
 session_auth = SessionAuth["User", ServerSideSessionBackend](
     retrieve_user_handler=retrieve_session_user_handler,
     # we must pass a config for a session backend.
@@ -249,29 +257,30 @@ session_auth = SessionAuth["User", ServerSideSessionBackend](
     session_backend_config=session_auth_config,
     # exclude any URLs that should not have authentication.
     # We exclude the documentation URLs, signup and login.
-    exclude=["/auth/login", "/schema"],
+    exclude=["/auth/login", "/auth/callback", "/schema"],
 )
 
 alchemy = SQLAlchemyPlugin(config=sqlalchemy_config)
 
 cors_config = CORSConfig(allow_origins=["*"], allow_credentials=True)
 
-# Create Litestar app
+
 app = Litestar(
     route_handlers=[api_router],
     middleware=[
         # TapisTokenRefreshMiddleware,
         logging_middleware_config.middleware,
-        # cookie_session_config.middleware,
+        cookie_session_config.middleware,
         # jwt_auth.middleware,
         session_auth_config.middleware,
     ],
-    plugins=[alchemy, SQLAlchemySerializationPlugin()],
+    plugins=[alchemy],
     on_startup=[get_db_connection],
     on_shutdown=[close_db_connection],
-    stores=StoreRegistry(default_factory=root_store.with_namespace),
+    stores=stores,
     exception_handlers=exception_handlers,
     csrf_config=csrf_config,
+    cors_config=cors_config,
     logging_config=LoggingConfig(
         root={"level": "DEBUG", "handlers": ["console"]},
         formatters={

@@ -1,4 +1,3 @@
-from typing import TypedDict
 from pydantic import BaseModel, ConfigDict
 from dateutil import parser, tz
 from datetime import datetime

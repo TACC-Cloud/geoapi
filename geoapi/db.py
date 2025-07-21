@@ -29,27 +29,13 @@ def close_db_connection(app: Litestar) -> None:
         cast("Engine", app.state.engine).dispose()
 
 
-@asynccontextmanager
-async def db_connection(app: Litestar) -> AsyncGenerator[None, None]:
-    engine = getattr(app.state, "engine", None)
-    if engine is None:
-        engine = create_engine(get_db_connection_string(settings))
-        app.state.engine = engine
-
-    try:
-        yield
-    finally:
-        await engine.dispose()
-
-
 def create_engine_for_context(context=None):
-    engine = create_engine(
+    return create_engine(
         get_db_connection_string(settings),
         echo=False,  # default value
         pool_pre_ping=True,
         pool_reset_on_return=True,
     )
-    return engine
 
 
 engine = create_engine_for_context()

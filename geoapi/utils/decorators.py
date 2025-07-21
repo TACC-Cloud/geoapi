@@ -2,7 +2,7 @@ from uuid import UUID
 from typing import TYPE_CHECKING
 from litestar.connection import ASGIConnection
 from litestar.handlers.base import BaseRouteHandler
-from litestar.exceptions import HTTPException
+from litestar.exceptions import HTTPException, NotAuthorizedException
 from geoapi.services.users import UserService
 from geoapi.services.projects import ProjectsService
 from geoapi.services.features import FeaturesService
@@ -22,8 +22,8 @@ if TYPE_CHECKING:
 def jwt_decoder_prehandler(request: "Request") -> None:
     """Middleware to decode JWT and set the current user in the request."""
 
-    if request.user:
-        return None
+    if request.user and not is_anonymous(request.user):
+        return
 
     db_session: "Session" = sqlalchemy_config.provide_session(
         request.app.state, request.scope
@@ -42,6 +42,10 @@ def jwt_decoder_prehandler(request: "Request") -> None:
         # if JWT is not provided in header/cookie, then this is a guest user
         # and if hazmapper/taggit, a guest uuid is provided in the header
         guest_uuid = request.headers.get("X-Guest-UUID")
+        if not guest_uuid:
+            raise NotAuthorizedException(
+                detail="No JWT or guest UUID provided in request headers."
+            )
         user = AnonymousUser(guest_unique_id=guest_uuid)
     else:
         try:
@@ -186,7 +190,7 @@ def project_feature_exists_guard(
         connection.app.state, connection.scope
     )
     project_id = connection.path_params["project_id"]
-    feature_id = connection.path_params["featureId"]
+    feature_id = connection.path_params["feature_id"]
 
     proj = ProjectsService.get(db_session, project_id)
     if not proj:

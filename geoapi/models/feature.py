@@ -47,7 +47,7 @@ class Feature(Base):
         return feat
 
     @property
-    def geometry(self):
+    def geometry(self) -> dict:
         """
 
         :return: Dict

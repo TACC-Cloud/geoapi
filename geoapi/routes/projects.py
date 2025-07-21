@@ -8,6 +8,7 @@ from litestar.enums import RequestEncodingType
 from litestar.exceptions import HTTPException
 from litestar.plugins.sqlalchemy import SQLAlchemyDTO
 from litestar.dto import DTOConfig
+from uuid import UUID
 from geojson_pydantic import Feature as GeoJSONFeature
 from geoapi.log import logger
 from geoapi.services.features import FeaturesService
@@ -42,7 +43,7 @@ class AssetModel(BaseModel):
 
     id: int | None = None
     path: str | None = None
-    uuid: str | None = None
+    uuid: UUID | None = None
     asset_type: str | None = None
     original_path: str | None = None
     original_name: str | None = None
@@ -55,7 +56,6 @@ class FeatureModel(BaseModel):
     id: int
     project_id: int
     geometry: dict
-    type: str = "Feature"
     properties: dict | None = None
     styles: dict | None = None
     assets: list[AssetModel] | None = None
@@ -67,7 +67,6 @@ class FeatureReturnDTO(SQLAlchemyDTO[Feature]):
             "id",
             "project_id",
             "geometry",
-            "type",
             "properties",
             "styles",
             "assets",
@@ -1099,7 +1098,6 @@ def feature_enc_hook(feature: Feature) -> FeatureModel:
         id=feature.id,
         project_id=feature.project_id,
         geometry=feature.geometry,
-        type=feature.type,
         properties=feature.properties,
         styles=feature.styles,
         assets=feature.assets,
@@ -1134,5 +1132,5 @@ projects_router = Router(
         ProjectTileServerResourceController,
     ],
     before_request=jwt_decoder_prehandler,
-    # type_encoders={Feature: feature_enc_hook},
+    type_encoders={Feature: feature_enc_hook},
 )
