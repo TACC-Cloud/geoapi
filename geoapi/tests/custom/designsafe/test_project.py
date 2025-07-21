@@ -1,14 +1,14 @@
 from geoapi.custom.designsafe.project import on_project_creation, on_project_deletion
 from geoapi.services.features import FeaturesService
 from geoapi.settings import settings
-from geoapi.db import db_session
+
 from urllib.parse import quote
 import json
 import os
 
 
 def test_on_project_creation(
-    tapis_url, requests_mock, user1, watch_content_users_projects_fixture
+    tapis_url, requests_mock, user1, watch_content_users_projects_fixture, db_session
 ):
     project = watch_content_users_projects_fixture
     create_file_url = tapis_url + quote(
@@ -45,7 +45,7 @@ def test_on_project_creation(
 
 
 def test_on_project_deletion(
-    tapis_url, requests_mock, user1, watch_content_users_projects_fixture
+    tapis_url, requests_mock, user1, watch_content_users_projects_fixture, db_session
 ):
     project = watch_content_users_projects_fixture
     file_path = f"{project.system_path}/{project.system_file}.hazmapper"

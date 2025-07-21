@@ -1,20 +1,19 @@
 import pytest
 
-from geoapi.db import db_session
 
 from geoapi.services.streetview import StreetviewService
 from geoapi.models import User
 
 
 @pytest.mark.skip(reason="Update needed; https://jira.tacc.utexas.edu/browse/DES-2264")
-def test_create_streetview_token():
+def test_create_streetview_token(db_session):
     user = db_session.get(User, 1)
     StreetviewService.setToken(db_session, user, "mapillary", "test token")
     assert user.mapillary_jwt == "test token"
 
 
 @pytest.mark.skip(reason="Update needed; https://jira.tacc.utexas.edu/browse/DES-2264")
-def test_get_streetview_token():
+def test_get_streetview_token(db_session):
     user = db_session.get(User, 1)
     StreetviewService.setToken(user, "mapillary", "test token")
     tok = StreetviewService.getToken(db_session, user, "mapillary")
@@ -22,7 +21,7 @@ def test_get_streetview_token():
 
 
 @pytest.mark.skip(reason="Update needed; https://jira.tacc.utexas.edu/browse/DES-2264")
-def test_create_streetview():
+def test_create_streetview(db_session):
     user = db_session.get(User, 1)
     streetview = StreetviewService.create(
         db_session, user.id, "test system", "test path"
@@ -31,7 +30,7 @@ def test_create_streetview():
 
 
 @pytest.mark.skip(reason="Update needed; https://jira.tacc.utexas.edu/browse/DES-2264")
-def test_get_user_streetview():
+def test_get_user_streetview(db_session):
     user = db_session.get(User, 1)
     StreetviewService.create(user.id, "test system", "test path")
     StreetviewService.create(user.id, "test system 2", "test path 2")
@@ -40,7 +39,7 @@ def test_get_user_streetview():
 
 
 @pytest.mark.skip(reason="Update needed; https://jira.tacc.utexas.edu/browse/DES-2264")
-def test_get_streetview_system_path():
+def test_get_streetview_system_path(db_session):
     user = db_session.get(User, 1)
     StreetviewService.create(user.id, "test system", "test path")
     StreetviewService.create(user.id, "test system 2", "test path 2")
@@ -53,7 +52,7 @@ def test_get_streetview_system_path():
 
 
 @pytest.mark.skip(reason="Update needed; https://jira.tacc.utexas.edu/browse/DES-2264")
-def test_create_sequence():
+def test_create_sequence(db_session):
     user = db_session.get(User, 1)
     streetview = StreetviewService.create(user.id, "test system", "test path")
     sequence = StreetviewService.createSequence(
@@ -64,7 +63,7 @@ def test_create_sequence():
 
 
 @pytest.mark.skip(reason="Update needed; https://jira.tacc.utexas.edu/browse/DES-2264")
-def test_update_sequence():
+def test_update_sequence(db_session):
     user = db_session.get(User, 1)
     streetview = StreetviewService.create(user.id, "test system", "test path")
     sequence = StreetviewService.createSequence(
@@ -79,7 +78,7 @@ def test_update_sequence():
 
 
 @pytest.mark.skip(reason="Update needed; https://jira.tacc.utexas.edu/browse/DES-2264")
-def test_add_sequence_to_path():
+def test_add_sequence_to_path(db_session):
     user = db_session.get(User, 1)
     streetview = StreetviewService.create(
         db_session, user.id, "test system", "test path"

@@ -1,14 +1,13 @@
 import os
 
 from werkzeug.datastructures import FileStorage
-from geoapi.db import db_session
 from geoapi.services.features import FeaturesService
 from geoapi.models import Feature, FeatureAsset, TileServer
 from geoapi.utils.assets import get_project_asset_dir, get_asset_path
 from geoapi.utils.geo_location import GeoLocation
 
 
-def test_create_feature_fromLatLng(projects_fixture):
+def test_create_feature_fromLatLng(projects_fixture, db_session):
     feature = FeaturesService.fromLatLng(
         db_session,
         projects_fixture.id,
@@ -19,7 +18,7 @@ def test_create_feature_fromLatLng(projects_fixture):
     assert feature.id is not None
 
 
-def test_hazmapperv1_file_with_images(projects_fixture, hazmpperV1_file):
+def test_hazmapperv1_file_with_images(projects_fixture, hazmpperV1_file, db_session):
     features = FeaturesService.fromGeoJSON(
         db_session, projects_fixture.id, hazmpperV1_file, metadata={}
     )
@@ -27,7 +26,9 @@ def test_hazmapperv1_file_with_images(projects_fixture, hazmpperV1_file):
     assert len(features[1].assets) == 1
 
 
-def test_insert_feature_geojson(projects_fixture, feature_properties_file_fixture):
+def test_insert_feature_geojson(
+    projects_fixture, feature_properties_file_fixture, db_session
+):
     features = FeaturesService.fromGeoJSON(
         db_session, projects_fixture.id, feature_properties_file_fixture, metadata={}
     )
@@ -38,7 +39,7 @@ def test_insert_feature_geojson(projects_fixture, feature_properties_file_fixtur
     assert db_session.query(FeatureAsset).count() == 0
 
 
-def test_insert_feature_collection(projects_fixture, geojson_file_fixture):
+def test_insert_feature_collection(projects_fixture, geojson_file_fixture, db_session):
     features = FeaturesService.fromGeoJSON(
         db_session, projects_fixture.id, geojson_file_fixture, metadata={}
     )
@@ -48,13 +49,13 @@ def test_insert_feature_collection(projects_fixture, geojson_file_fixture):
     assert db_session.query(FeatureAsset).count() == 0
 
 
-def test_remove_feature(projects_fixture, feature_fixture):
+def test_remove_feature(projects_fixture, feature_fixture, db_session):
     FeaturesService.delete(db_session, feature_fixture.id)
     assert db_session.query(Feature).count() == 0
     assert not os.path.exists(get_project_asset_dir(feature_fixture.project_id))
 
 
-def test_create_feature_image(projects_fixture, image_file_fixture):
+def test_create_feature_image(projects_fixture, image_file_fixture, db_session):
     feature = FeaturesService.fromImage(
         db_session, projects_fixture.id, image_file_fixture, metadata={}
     )
@@ -73,7 +74,7 @@ def test_create_feature_image(projects_fixture, image_file_fixture):
 
 
 def test_create_feature_image_small_image(
-    projects_fixture, image_small_DES_2176_fixture
+    projects_fixture, image_small_DES_2176_fixture, db_session
 ):
     feature = FeaturesService.fromImage(
         db_session, projects_fixture.id, image_small_DES_2176_fixture, metadata={}
@@ -92,7 +93,7 @@ def test_create_feature_image_small_image(
     )
 
 
-def test_remove_feature_image(projects_fixture, image_file_fixture):
+def test_remove_feature_image(projects_fixture, image_file_fixture, db_session):
     feature = FeaturesService.fromImage(
         db_session, projects_fixture.id, image_file_fixture, metadata={}
     )
@@ -104,7 +105,7 @@ def test_remove_feature_image(projects_fixture, image_file_fixture):
 
 
 def test_create_feature_image_asset(
-    projects_fixture, feature_fixture, image_file_fixture
+    projects_fixture, feature_fixture, image_file_fixture, db_session
 ):
     feature = FeaturesService.createFeatureAsset(
         db_session,
@@ -126,7 +127,7 @@ def test_create_feature_image_asset(
 
 
 def test_remove_feature_image_asset(
-    projects_fixture, feature_fixture, image_file_fixture
+    projects_fixture, feature_fixture, image_file_fixture, db_session
 ):
     feature = FeaturesService.createFeatureAsset(
         db_session,
@@ -141,7 +142,7 @@ def test_remove_feature_image_asset(
 
 
 def test_create_feature_video_asset(
-    projects_fixture, feature_fixture, video_file_fixture
+    projects_fixture, feature_fixture, video_file_fixture, db_session
 ):
     feature = FeaturesService.createFeatureAsset(
         db_session,
@@ -163,7 +164,7 @@ def test_create_feature_video_asset(
 
 
 def test_remove_feature_video_asset(
-    projects_fixture, feature_fixture, video_file_fixture
+    projects_fixture, feature_fixture, video_file_fixture, db_session
 ):
     feature = FeaturesService.createFeatureAsset(
         db_session,
@@ -178,7 +179,7 @@ def test_remove_feature_video_asset(
 
 
 def test_create_feature_shpfile(
-    projects_fixture, shapefile_fixture, shapefile_additional_files_fixture
+    projects_fixture, shapefile_fixture, shapefile_additional_files_fixture, db_session
 ):
     features = FeaturesService.fromShapefile(
         db_session,
@@ -193,7 +194,7 @@ def test_create_feature_shpfile(
     assert features[0].project_id == projects_fixture.id
 
 
-def test_create_tile_server(projects_fixture):
+def test_create_tile_server(projects_fixture, db_session):
     data = {
         "name": "Test",
         "type": "tms",
@@ -210,7 +211,7 @@ def test_create_tile_server(projects_fixture):
     assert tile_server.attribution == "contributors"
 
 
-def test_remove_tile_server(projects_fixture):
+def test_remove_tile_server(projects_fixture, db_session):
     data = {
         "name": "Test",
         "type": "tms",
@@ -226,7 +227,7 @@ def test_remove_tile_server(projects_fixture):
     assert db_session.query(TileServer).count() == 0
 
 
-def test_update_tile_server(projects_fixture):
+def test_update_tile_server(projects_fixture, db_session):
     data = {
         "name": "Test",
         "type": "tms",
@@ -248,7 +249,7 @@ def test_update_tile_server(projects_fixture):
     assert updated_tile_server.name == "NewTestName"
 
 
-def test_update_tile_servers(projects_fixture):
+def test_update_tile_servers(projects_fixture, db_session):
     data = {
         "name": "Test",
         "type": "tms",
@@ -276,7 +277,9 @@ def test_update_tile_servers(projects_fixture):
     assert updated_tile_server_list[1].name == "NewTestName2"
 
 
-def test_create_tile_server_from_file(projects_fixture, tile_server_ini_file_fixture):
+def test_create_tile_server_from_file(
+    projects_fixture, tile_server_ini_file_fixture, db_session
+):
     tile_server = FeaturesService.fromINI(
         db_session, projects_fixture.id, tile_server_ini_file_fixture, metadata={}
     )
@@ -291,7 +294,7 @@ def test_create_tile_server_from_file(projects_fixture, tile_server_ini_file_fix
 
 
 def test_create_questionnaire_feature(
-    projects_fixture, questionnaire_file_without_assets_fixture
+    projects_fixture, questionnaire_file_without_assets_fixture, db_session
 ):
     feature = FeaturesService.from_rapp_questionnaire(
         db_session,
@@ -309,7 +312,10 @@ def test_create_questionnaire_feature(
 
 
 def test_create_questionnaire_feature_with_assets(
-    projects_fixture, questionnaire_file_with_assets_fixture, image_file_fixture
+    projects_fixture,
+    questionnaire_file_with_assets_fixture,
+    image_file_fixture,
+    db_session,
 ):
     assets = [image_file_fixture]
     feature = FeaturesService.from_rapp_questionnaire(

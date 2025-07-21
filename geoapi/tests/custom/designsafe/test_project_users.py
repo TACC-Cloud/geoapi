@@ -1,7 +1,7 @@
 import os
 import pytest
 import json
-from geoapi.db import db_session
+
 from geoapi.custom.designsafe.project_users import get_system_users
 from geoapi.settings import settings
 
@@ -29,7 +29,7 @@ def project_response_with_duplicate_users():
         yield mock_data
 
 
-def test_get_system_users(requests_mock, user1, project_response):
+def test_get_system_users(requests_mock, user1, project_response, db_session):
     uuid = "5752672753351626260-242ac118-0001-014"
     requests_mock.get(
         settings.DESIGNSAFE_URL + f"/api/projects/v2/{uuid}/", json=project_response
@@ -55,7 +55,7 @@ def test_get_system_users(requests_mock, user1, project_response):
 
 
 def test_get_system_users_duplicate(
-    requests_mock, user1, project_response_with_duplicate_users
+    requests_mock, user1, project_response_with_duplicate_users, db_session
 ):
     uuid = "5752672753351626260-242ac118-0001-014"
     requests_mock.get(
