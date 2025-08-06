@@ -69,7 +69,7 @@ class GeoAPIJWTAuthMiddleware(JWTAuthenticationMiddleware):
 
         auth_header = connection.headers.get(self.auth_header)
         if not auth_header:
-            user = await self.retrieve_user_handler(connection.session, connection)
+            user = await self.retrieve_user_handler(None, connection)
             return AuthenticationResult(user=user, auth=None)
 
         # Accommodate both "Authorization: Bearer <token>" and plain JWT in header

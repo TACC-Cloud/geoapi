@@ -37,7 +37,6 @@ def check_access_and_get_project(
             UUID(uuid)
         except ValueError as exc:
             raise HTTPException(status_code=404, detail="Invalid project UUID") from exc
-    print(current_user)
     proj = (
         ProjectsService.get(db_session, user=current_user, project_id=project_id)
         if project_id

@@ -84,7 +84,7 @@ def test_delete_done_progress_notifications(
         "/notifications/progress", headers={"X-Tapis-Token": u1.jwt}
     )
 
-    assert resp.status_code == 200
+    assert resp.status_code == 204
 
     resp = test_client.get("/notifications/progress", headers={"X-Tapis-Token": u1.jwt})
     data = resp.json()
@@ -112,7 +112,7 @@ def test_delete_progress_notification(test_client, progress_notifications, db_se
         headers={"X-Tapis-Token": u1.jwt},
     )
 
-    assert resp.status_code == 200
+    assert resp.status_code == 204
 
     resp = test_client.get("/notifications/progress", headers={"X-Tapis-Token": u1.jwt})
 

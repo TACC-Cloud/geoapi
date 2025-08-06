@@ -38,14 +38,20 @@ class OkResponse(BaseModel):
 
 
 class NotificationsQuery(BaseModel):
-    startDate: datetime | None = None
+    startDate: datetime | str | None = None
 
-    @field_validator("startDate")
+    @field_validator("startDate", mode="before")
     @classmethod
-    def validate_start_date(cls, value: datetime | None) -> datetime | None:
-        if value is not None:
-            return utc_datetime(value.isoformat())
-        return None
+    def validate_start_date(cls, value: datetime | str | None) -> datetime | None:
+        if value is None:
+            return None
+        if isinstance(value, datetime):
+            return value
+        if isinstance(value, str):
+            # Accept ISO8601 and fix legacy " 00:00" if needed
+            value = value.replace(" 00:00", "+00:00")
+            return utc_datetime(value)
+        raise ValueError("Invalid startDate format")
 
 
 class NotificationsController(Controller):
