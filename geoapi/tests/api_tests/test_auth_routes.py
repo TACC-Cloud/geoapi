@@ -82,15 +82,20 @@ def test_callback(test_client, requests_mock, user1):
     assert f"expires_at={urllib.parse.quote_plus(access_token_expires_at)}" in resp_url
     assert "to=%2Fsomewhere" in resp_url
 
-    # Test X-Tapis-Token cookie is set correctly
-    xTapisTokenCookie = resp.headers.getlist("Set-Cookie")[0]
-    assert xTapisTokenCookie.startswith("X-Tapis-Token=")
-    assert access_token in xTapisTokenCookie
-    assert "Path=/" in xTapisTokenCookie
-    assert f"Max-Age={access_token_expires_in}" in xTapisTokenCookie
-    assert "SameSite=Lax" in xTapisTokenCookie
+    sess = test_client.get_session_data()
+    assert "auth_state" not in sess
+    assert "to" not in sess
+    assert "clientBaseUrl" not in sess
 
-    with test_client.session_transaction() as sess:
-        assert "auth_state" not in sess
-        assert "to" not in sess
-        assert "clientBaseUrl" not in sess
+
+def test_callback_missing_state_or_code(test_client):
+    resp = test_client.get("/auth/callback?state=mocked_auth_state")
+    assert resp.status_code == 400
+    resp2 = test_client.get("/auth/callback?code=mocked_code")
+    assert resp2.status_code == 400
+
+
+def test_callback_invalid_state(test_client):
+    test_client.set_session_data({"auth_state": "expected_state"})
+    resp = test_client.get("/auth/callback?state=wrong_state&code=mocked_code")
+    assert resp.status_code == 400

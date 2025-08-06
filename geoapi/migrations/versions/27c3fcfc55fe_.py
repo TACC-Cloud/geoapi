@@ -191,7 +191,11 @@ def upgrade():
         ),
         sa.Column("updated", sa.DateTime(timezone=True), nullable=True),
         sa.ForeignKeyConstraint(
-            ["feature_id"], ["features.id"], onupdate="CASCADE", ondelete="CASCADE"
+            ["feature_id"],
+            ["features.id"],
+            name="point_clouds_feature_id_fkey",  # explicit name
+            onupdate="CASCADE",
+            ondelete="CASCADE",
         ),
         sa.ForeignKeyConstraint(
             ["project_id"], ["projects.id"], onupdate="CASCADE", ondelete="CASCADE"

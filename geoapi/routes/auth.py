@@ -204,7 +204,7 @@ class AuthController(Controller):
                 "to": to,
             }
             encoded_params = urllib.parse.urlencode(params)
-            client_redirect_uri = f"{client_base_url}/handle-login#{encoded_params}"
+            client_redirect_uri = f"{client_base_url}/handle-login?{encoded_params}"
 
             # Build response with redirect
             response = Redirect(client_redirect_uri, status_code=HTTP_302_FOUND)
