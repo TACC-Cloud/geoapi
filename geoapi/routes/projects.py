@@ -753,6 +753,27 @@ class ProjectOverlaysImportResourceController(Controller):
         )
 
 
+class ProjectOverlayResourceController(Controller):
+    path = "/{project_id:int}/overlays/{overlay_id:int}/"
+
+    @delete(
+        tags=["projects"],
+        operation_id="remove_overlay",
+        description="Remove an overlay from a project",
+        guards=[project_permissions_guard],
+    )
+    def remove_overlay(
+        self, request: Request, db_session: "Session", project_id: int, overlay_id: int
+    ) -> None:
+        """Remove an overlay from a project."""
+        logger.info(
+            "Delete overlay:{} in project:{} for user:{}".format(
+                overlay_id, project_id, request.user.username
+            )
+        )
+        FeaturesService.deleteOverlay(db_session, project_id, overlay_id)
+
+
 class ProjectStreetviewResourceController(Controller):
     path = "/{project_id:int}/streetview/"
 
@@ -1121,6 +1142,7 @@ projects_router = Router(
         ProjectFeaturesClustersResourceController,
         ProjectOverlaysResourceController,
         ProjectOverlaysImportResourceController,
+        ProjectOverlayResourceController,
         ProjectStreetviewResourceController,
         ProjectStreetviewFeatureResourceController,
         ProjectPointCloudsResourceController,
