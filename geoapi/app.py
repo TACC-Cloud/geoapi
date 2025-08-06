@@ -4,7 +4,6 @@ from typing import Any, TYPE_CHECKING
 from os import urandom
 from litestar import Litestar, Request, Response, status_codes
 from litestar.config.csrf import CSRFConfig
-from litestar.config.cors import CORSConfig
 from litestar.logging.config import LoggingConfig
 from litestar.middleware.logging import LoggingMiddlewareConfig
 from litestar.middleware.session.server_side import (
@@ -13,14 +12,15 @@ from litestar.middleware.session.server_side import (
 )
 from litestar.middleware.session.client_side import CookieBackendConfig
 from litestar.openapi.config import OpenAPIConfig
-from litestar.security.session_auth import SessionAuth
 from litestar.stores.redis import RedisStore
 from litestar.stores.registry import StoreRegistry
 from litestar.stores.memory import MemoryStore
 from litestar.exceptions import InternalServerException
 from litestar.connection import ASGIConnection
 from litestar.security.jwt import JWTAuth, Token
+from litestar.security.session_auth import SessionAuth
 from litestar.plugins.sqlalchemy import SQLAlchemyPlugin
+from litestar.types import Empty
 from geoapi.models import User
 from geoapi.routes import api_router
 from geoapi.settings import settings
@@ -42,6 +42,11 @@ from geoapi.exceptions import (
 from geoapi.services.users import UserService
 from geoapi.utils.users import AnonymousUser
 from geoapi.utils.jwt_utils import get_pub_key, PUBLIC_KEY_FOR_TESTING
+from geoapi.middleware import (
+    GeoAPISessionAuthMiddleware,
+    GeoAPIJWTAuthMiddleware,
+    GeoAPIToken,
+)
 
 if TYPE_CHECKING:
     from sqlalchemy.orm import Session
@@ -135,46 +140,12 @@ def authentication_issue_exception_handler(
     )
 
 
-# Register exception handlers
-exception_handlers = {
-    InvalidGeoJSON: geojson_exception_handler,
-    ApiException: api_exception_handler,
-    InvalidEXIFData: exif_exception_handler,
-    InvalidCoordinateReferenceSystem: coordinate_reference_system_exception_handler,
-    ProjectSystemPathWatchFilesAlreadyExists: project_system_path_watch_files_already_exists_handler,
-    StreetviewAuthException: streetview_auth_exception_handler,
-    StreetviewLimitException: streetview_limit_exception_handler,
-    AuthenticationIssue: authentication_issue_exception_handler,
-}
-
-
-csrf_config = CSRFConfig(secret="my-secret")
-
-logging_middleware_config = LoggingMiddlewareConfig()
-
-cookie_session_config = CookieBackendConfig(secret=urandom(16))  # type: ignore
-
-root_store = RedisStore.with_client(url="redis://geoapi_redis:6379/0")
-
-# We add the session security schema to the OpenAPI config.
-openapi_config = OpenAPIConfig(
-    title="GeoAPI",
-    version="3.0.0",
-    # components=[jwt_auth.openapi_components],
-    # security=[jwt_auth.security_requirement],
-    # use_handler_docstrings=True,
-    # render_plugins=[ScalarRenderPlugin(version="latest")],
-)
-
-
+# Handlers for user retrieval in JWT and session authentication
 async def retrieve_jwt_user_handler(
-    token: Token,
+    token: GeoAPIToken,
     connection: ASGIConnection[Any, Any, Any, Any],
 ) -> User | AnonymousUser:
     """Used by the JWTAuth Middleware to retrieve the user from the JWT token."""
-
-    if connection.user:
-        return connection.user
 
     db_session: "Session" = sqlalchemy_config.provide_session(
         connection.app.state, connection.scope
@@ -202,25 +173,12 @@ async def retrieve_jwt_user_handler(
             )
         else:
             # Update the jwt access token
-            #   (It is more common that user will be using an auth flow were hazmapper will auth
+            #   (It is more common that user will be using an auth flow where hazmapper will auth
             #   with geoapi to get the token. BUT we can't assume that as it is also possible that
             #   user just uses geoapi as a service with token generated somewhere else. So we need
             #   to get/update just their access token for these cases)
-            UserService.update_access_token(db_session, user, token)
+            UserService.update_access_token(db_session, user, token.token)
     return user
-
-
-jwt_auth = JWTAuth["User"](
-    retrieve_user_handler=retrieve_jwt_user_handler,
-    token_secret=get_pub_key() if not settings.TESTING else PUBLIC_KEY_FOR_TESTING,
-    # Only match the following paths for JWT authentication.
-    exclude=[
-        r"^(?!\/(status|projects|notifications|streetview|streetview_auth/mapillary/prepare|streetview_auth/mapillary/)(\/.*)?$).*$"
-    ],
-    auth_header="X-Tapis-Token",
-    verify_expiry=True,
-    algorithm="RS256",
-)
 
 
 async def retrieve_session_user_handler(
@@ -228,41 +186,86 @@ async def retrieve_session_user_handler(
     connection: ASGIConnection[Any, Any, Any, Any],
 ) -> User | None:
     """Used by the SessionAuth Middleware to retrieve the user from the session."""
-    username = session.get("username")
-    tenant = session.get("tenant")
     db_session = sqlalchemy_config.provide_session(
         connection.app.state, connection.scope
     )
 
-    if not username or not tenant:
+    if session is Empty:
         return AnonymousUser()
+
+    username = session.get("username")
+    tenant = session.get("tenant")
     return UserService.getUser(
         database_session=db_session, username=username, tenant=tenant
     )
 
 
-if settings.APP_ENV == "testing":
-    store = MemoryStore()
-    session_auth_config = ServerSideSessionConfig(store=store)
-    csrf_config = None
+# Litestar application configuration
+if settings.TESTING:
+    root_store = MemoryStore()
+    session_auth_config = ServerSideSessionConfig(store=root_store)
     stores = None
+    csrf_config = None
 else:
+    root_store = RedisStore.with_client(url="redis://geoapi_redis:6379/0")
     session_auth_config = ServerSideSessionConfig(httponly=False, secure=True)
     stores = StoreRegistry(default_factory=root_store.with_namespace)
+    csrf_config = CSRFConfig(secret="my-secret")
 
 session_auth = SessionAuth["User", ServerSideSessionBackend](
     retrieve_user_handler=retrieve_session_user_handler,
-    # we must pass a config for a session backend.
-    # all session backends are supported
     session_backend_config=session_auth_config,
-    # exclude any URLs that should not have authentication.
-    # We exclude the documentation URLs, signup and login.
-    exclude=["/auth/login", "/auth/callback", "/schema"],
+    exclude=[
+        "/auth/login",
+        "/auth/callback",
+        "/schema",
+        "/streetview/auth/mapillary/login",
+        "/streetview/auth/mapillary/callback",
+    ],
+    authentication_middleware_class=GeoAPISessionAuthMiddleware,
 )
 
-alchemy = SQLAlchemyPlugin(config=sqlalchemy_config)
+jwt_auth = JWTAuth["User"](
+    retrieve_user_handler=retrieve_jwt_user_handler,
+    token_secret=get_pub_key() if not settings.TESTING else PUBLIC_KEY_FOR_TESTING,
+    exclude=[
+        "/auth/login",
+        "/auth/callback",
+        "/schema",
+        "/streetview/auth/mapillary/login",
+        "/streetview/auth/mapillary/callback",
+    ],
+    auth_header="X-Tapis-Token",
+    verify_expiry=True,
+    algorithm="RS256",
+    authentication_middleware_class=GeoAPIJWTAuthMiddleware,
+    token_cls=GeoAPIToken,
+)
 
-cors_config = CORSConfig(allow_origins=["*"], allow_credentials=True)
+
+alchemy = SQLAlchemyPlugin(config=sqlalchemy_config)
+logging_middleware_config = LoggingMiddlewareConfig()
+cookie_session_config = CookieBackendConfig(secret=urandom(16))  # type: ignore
+openapi_config = OpenAPIConfig(
+    title="GeoAPI",
+    version="3.0.0",
+    # components=[jwt_auth.openapi_components],
+    # security=[jwt_auth.security_requirement],
+    # use_handler_docstrings=True,
+    # render_plugins=[ScalarRenderPlugin(version="latest")],
+)
+
+# Register exception handlers
+exception_handlers = {
+    InvalidGeoJSON: geojson_exception_handler,
+    ApiException: api_exception_handler,
+    InvalidEXIFData: exif_exception_handler,
+    InvalidCoordinateReferenceSystem: coordinate_reference_system_exception_handler,
+    ProjectSystemPathWatchFilesAlreadyExists: project_system_path_watch_files_already_exists_handler,
+    StreetviewAuthException: streetview_auth_exception_handler,
+    StreetviewLimitException: streetview_limit_exception_handler,
+    AuthenticationIssue: authentication_issue_exception_handler,
+}
 
 
 app = Litestar(
@@ -271,8 +274,8 @@ app = Litestar(
         # TapisTokenRefreshMiddleware,
         logging_middleware_config.middleware,
         cookie_session_config.middleware,
-        # jwt_auth.middleware,
         session_auth_config.middleware,
+        jwt_auth.middleware,
     ],
     plugins=[alchemy],
     on_startup=[get_db_connection],
@@ -280,7 +283,6 @@ app = Litestar(
     stores=stores,
     exception_handlers=exception_handlers,
     csrf_config=csrf_config,
-    cors_config=cors_config,
     logging_config=LoggingConfig(
         root={"level": "DEBUG", "handlers": ["console"]},
         formatters={
@@ -290,10 +292,7 @@ app = Litestar(
         },
         log_exceptions="always",
     ),
-    on_app_init=[
-        # jwt_auth.on_app_init,
-        session_auth.on_app_init
-    ],
+    on_app_init=[jwt_auth.on_app_init, session_auth.on_app_init],
     openapi_config=openapi_config,
     debug=settings.DEBUG if hasattr(settings, "DEBUG") else False,
 )

@@ -5,7 +5,7 @@
 GeoAPI is a restful API to create geospatial features in a PostGIS database. Users create a map "project" then
 can add features to it. The development docker-compose file has 3 containers:
 * a PostGIS database exposing 5432,
-* the api which exposes port 8000 behind gunicorn
+* the api which exposes port 8000 behind asgi
 * a nginx server to serve static files and proxy to the api, running on port 8080.
 
 See https://github.com/TACC-Cloud/hazmapper which is an associated viewer application.
@@ -19,15 +19,15 @@ information. An .env file for developers can be found on [UT Stache](https://sta
 
 #### Python side
 
-The API is built with flask and flask-restplus. It is running in its own container
-under gunicorn on port 8000
+The API is built with litestar. It is running in its own container
+under asgi on port 8000
 
 `make build-dev`
 `make start`
 
 ###### Initialize the database (for local development and unit testing)
 
-`docker exec -it geoapi python initdb.py`
+`docker exec -it geoapi_backend python initdb.py`
 
 ### Example requests
 
@@ -61,7 +61,7 @@ These are useful steps to follow when there are changes to the database model.
 First, apply migrations:
 
 ```
-docker exec -it geoapi alembic upgrade head
+docker exec -it geoapi_backend alembic upgrade head
 ```
 
 **Note:** The above step is also automatically performed when running `initdb.py`
@@ -69,7 +69,7 @@ docker exec -it geoapi alembic upgrade head
 Then, create migrations:
 
 ```
-docker exec -it geoapi /bin/bash
+docker exec -it geoapi_backend /bin/bash
 # determine a description for the migration like 'add_user_email_column'
 alembic revision --autogenerate -m "add_user_email_column"
 # Then:
@@ -79,7 +79,7 @@ alembic revision --autogenerate -m "add_user_email_column"
 
 Then, you will need to manually apply the new migration after creating it:
 ```
-docker exec -it geoapi alembic upgrade head
+docker exec -it geoapi_backend alembic upgrade head
 ```
 
 ## Testing
@@ -87,11 +87,11 @@ docker exec -it geoapi alembic upgrade head
 Run directly in your running containers:
 ```
 # then run tests in api
-docker exec -it geoapi bash
+docker exec -it geoapi_backend bash
 APP_ENV=testing pytest
 
 # then run tests in worker
-docker exec -it geoapiworkers bash
+docker exec -it geoapi_workers bash
 APP_ENV=testing pytest -m "worker"
 ```
 ## Production/Staging

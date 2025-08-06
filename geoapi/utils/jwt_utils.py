@@ -113,6 +113,8 @@ def compare_token_expiry(token_a, token_b):
     """
     try:
         # Extract expiration times
+        logger.debug("token_a: %s", token_a)
+        logger.debug("token_b: %s", token_b)
         exp_a = get_token_expiry(token_a)
         exp_b = get_token_expiry(token_b)
 
@@ -124,6 +126,7 @@ def compare_token_expiry(token_a, token_b):
         return exp_a > exp_b
 
     except jwt.InvalidTokenError:
+        logger.exception("Invalid token provided for comparison.")
         raise ValueError("One or both tokens are invalid.")
 
 

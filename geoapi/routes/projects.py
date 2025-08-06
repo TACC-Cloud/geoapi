@@ -18,7 +18,6 @@ from geoapi.services.projects import ProjectsService
 from geoapi.tasks import external_data, streetview
 from geoapi.models import Task, Project, Feature, TileServer
 from geoapi.utils.decorators import (
-    jwt_decoder_prehandler,
     project_permissions_allow_public_guard,
     project_permissions_guard,
     project_feature_exists_guard,
@@ -1131,6 +1130,5 @@ projects_router = Router(
         ProjectTileServersResourceController,
         ProjectTileServerResourceController,
     ],
-    before_request=jwt_decoder_prehandler,
     type_encoders={Feature: feature_enc_hook},
 )

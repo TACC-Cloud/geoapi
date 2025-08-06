@@ -33,7 +33,7 @@ def test_login(test_client: "TestClient[Litestar]"):
     assert f'state={sess["auth_state"]}' in resp_url
 
 
-def test_callback(test_client, requests_mock, user1):
+def test_callback(test_client_user1, requests_mock, user1):
     current_time = datetime.now(timezone.utc)
     access_token = user1.auth.access_token
     access_token_expires_in = 14400
@@ -62,7 +62,7 @@ def test_callback(test_client, requests_mock, user1):
         },
     )
 
-    test_client.set_session_data(
+    test_client_user1.set_session_data(
         {
             "auth_state": "mocked_auth_state",
             "to": "/somewhere",
@@ -70,7 +70,9 @@ def test_callback(test_client, requests_mock, user1):
         }
     )
 
-    resp = test_client.get("/auth/callback?state=mocked_auth_state&code=mocked_code")
+    resp = test_client_user1.get(
+        "/auth/callback?state=mocked_auth_state&code=mocked_code"
+    )
     resp_url = (
         f"{resp.url.scheme}://{resp.url.netloc.decode()}{resp.url.raw_path.decode()}"
     )
@@ -82,7 +84,7 @@ def test_callback(test_client, requests_mock, user1):
     assert f"expires_at={urllib.parse.quote_plus(access_token_expires_at)}" in resp_url
     assert "to=%2Fsomewhere" in resp_url
 
-    sess = test_client.get_session_data()
+    sess = test_client_user1.get_session_data()
     assert "auth_state" not in sess
     assert "to" not in sess
     assert "clientBaseUrl" not in sess

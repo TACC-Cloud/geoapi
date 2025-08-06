@@ -53,10 +53,25 @@ def db_session(db_engine, create_tables) -> "Iterator[sqlalchemy_config.Session]
 
 
 @pytest.fixture(scope="function")
-def test_client() -> "Iterator[TestClient[Litestar]]":
+def test_client_user1() -> "Iterator[TestClient[Litestar]]":
 
     with TestClient(app=app, session_config=session_auth_config) as client:
         client.set_session_data({"username": "test1", "tenant": "test"})
+        yield client
+
+
+@pytest.fixture(scope="function")
+def test_client_user2() -> "Iterator[TestClient[Litestar]]":
+
+    with TestClient(app=app, session_config=session_auth_config) as client:
+        client.set_session_data({"username": "test2", "tenant": "test"})
+        yield client
+
+
+@pytest.fixture(scope="function")
+def test_client() -> "Iterator[TestClient[Litestar]]":
+
+    with TestClient(app=app, session_config=session_auth_config) as client:
         yield client
 
 

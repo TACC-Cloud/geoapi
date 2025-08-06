@@ -23,7 +23,6 @@ class ProgressNotification(Base):
     __tablename__ = "progress_notifications"
     id = mapped_column(Integer, primary_key=True)
     user_id = mapped_column(Integer)
-    tenant_id = mapped_column(String)
     uuid = mapped_column(UUID(as_uuid=True))
     username = mapped_column(String, nullable=True, index=True)
     tenant_id = mapped_column(String)

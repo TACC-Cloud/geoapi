@@ -45,7 +45,7 @@ def test_filter_notifications(test_client, notifications, db_session):
     u1 = db_session.get(User, 1)
 
     resp = test_client.get(
-        "/notifications/?startDate=2222-1-1T12:00:00+00:00",
+        "/notifications/?startDate=2222-01-01T12:00:00+00:00",
         headers={"X-Tapis-Token": u1.jwt},
     )
     data = resp.json()
@@ -57,7 +57,7 @@ def test_filter_notifications_positive(test_client, notifications, db_session):
     u1 = db_session.get(User, 1)
 
     resp = test_client.get(
-        "/notifications/?startDate=1900-1-1T12:00:00+00:00",
+        "/notifications/?startDate=1900-01-01T12:00:00+00:00",
         headers={"X-Tapis-Token": u1.jwt},
     )
     data = resp.json()

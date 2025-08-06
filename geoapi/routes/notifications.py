@@ -1,11 +1,17 @@
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, field_validator
 from dateutil import parser, tz
 from datetime import datetime
 from typing import TYPE_CHECKING
 from litestar import Controller, get, delete, Request
+from litestar.plugins.sqlalchemy import SQLAlchemyDTO
+from litestar.dto import DTOConfig
 from geoapi.log import logging
-from geoapi.utils.decorators import jwt_decoder_prehandler, not_anonymous_guard
-from geoapi.services.notifications import NotificationsService
+from geoapi.utils.decorators import not_anonymous_guard
+from geoapi.services.notifications import (
+    NotificationsService,
+    Notification,
+    ProgressNotification,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -19,27 +25,12 @@ def utc_datetime(value):
     return dt
 
 
-class NotificationResponse(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
-
-    status: str
-    message: str
-    created: datetime
-    viewed: bool
-    id: int
+class NotificationDTO(SQLAlchemyDTO[Notification]):
+    config = DTOConfig(exclude={"username", "tenant_id"})
 
 
-class ProgressNotificationResponse(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
-
-    status: str
-    message: str
-    progress: int
-    uuid: str
-    created: datetime
-    viewed: bool
-    id: int
-    logs: dict
+class ProgressNotificationDTO(SQLAlchemyDTO[ProgressNotification]):
+    config = DTOConfig(exclude={"user_id", "username", "tenant_id"})
 
 
 class OkResponse(BaseModel):
@@ -49,10 +40,16 @@ class OkResponse(BaseModel):
 class NotificationsQuery(BaseModel):
     startDate: datetime | None = None
 
+    @field_validator("startDate")
+    @classmethod
+    def validate_start_date(cls, value: datetime | None) -> datetime | None:
+        if value is not None:
+            return utc_datetime(value.isoformat())
+        return None
+
 
 class NotificationsController(Controller):
     path = "/notifications"
-    before_request = jwt_decoder_prehandler
 
     @get(
         "/",
@@ -60,10 +57,11 @@ class NotificationsController(Controller):
         operation_id="get_notifications",
         description="Get a list of notifications",
         guards=[not_anonymous_guard],
+        return_dto=NotificationDTO,
     )
     def get_notifications(
         self, request: Request, query: NotificationsQuery, db_session: "Session"
-    ) -> list[NotificationResponse]:
+    ) -> list[Notification]:
         """Get a list of notifications."""
         u = request.user
         return NotificationsService.get(db_session, u, query.model_dump())
@@ -73,10 +71,11 @@ class NotificationsController(Controller):
         tags=["notifications"],
         operation_id="get_progress_notifications",
         description="Get a list of progress notifications",
+        return_dto=ProgressNotificationDTO,
     )
     def get_progress_notifications(
         self, request: Request, db_session: "Session"
-    ) -> list[ProgressNotificationResponse]:
+    ) -> list[ProgressNotification]:
         """Get a list of progress notifications."""
         u = request.user
         return NotificationsService.getProgress(db_session, u)
@@ -96,10 +95,11 @@ class NotificationsController(Controller):
         tags=["notifications"],
         operation_id="get_progress_notification_id",
         description="Get a specific progress notification",
+        return_dto=ProgressNotificationDTO,
     )
     def get_progress_notification_id(
         self, progressUUID: str, db_session: "Session"
-    ) -> ProgressNotificationResponse:
+    ) -> ProgressNotification:
         """Get a specific progress notification."""
         return NotificationsService.getProgressUUID(db_session, progressUUID)
 

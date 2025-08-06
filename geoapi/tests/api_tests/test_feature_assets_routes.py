@@ -17,9 +17,9 @@ def test_post_image_feature_asset(
     resp = test_client.post(
         "/projects/1/features/1/assets/",
         json={"system_id": "test", "path": "/test/corrected_image.jpg"},
-        # headers={"X-Tapis-Token": u1.jwt},
+        headers={"X-Tapis-Token": u1.jwt},
     )
-    data = resp.json()
+    data = resp.json()  # noqa
     assert resp.status_code == 201
 
     # Have to reload the User from the DB, in app.py in the teardown_appcontext callback

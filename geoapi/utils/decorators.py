@@ -2,77 +2,18 @@ from uuid import UUID
 from typing import TYPE_CHECKING
 from litestar.connection import ASGIConnection
 from litestar.handlers.base import BaseRouteHandler
-from litestar.exceptions import HTTPException, NotAuthorizedException
+from litestar.exceptions import HTTPException
 from geoapi.services.users import UserService
 from geoapi.services.projects import ProjectsService
 from geoapi.services.features import FeaturesService
 from geoapi.services.point_cloud import PointCloudService
-from geoapi.utils import jwt_utils
-from geoapi.utils.users import is_anonymous, AnonymousUser
+from geoapi.utils.users import is_anonymous
 from geoapi.log import logger
-from geoapi.settings import settings
 from geoapi.db import sqlalchemy_config
 
 
 if TYPE_CHECKING:
     from sqlalchemy.orm import Session
-    from litestar import Request
-
-
-def jwt_decoder_prehandler(request: "Request") -> None:
-    """Middleware to decode JWT and set the current user in the request."""
-
-    if request.user and not is_anonymous(request.user):
-        return
-
-    db_session: "Session" = sqlalchemy_config.provide_session(
-        request.app.state, request.scope
-    )
-
-    try:
-        # Get JWT from header first
-        token = jwt_utils.get_jwt(request.headers)
-    except ValueError:
-        # Try cookie fallback; Cookies are being used pre-WG-472 for
-        # nginx-related access check of /assets
-        token = request.cookies.get("X-Tapis-Token")
-
-    # If still no token, check for guest UUID
-    if not token:
-        # if JWT is not provided in header/cookie, then this is a guest user
-        # and if hazmapper/taggit, a guest uuid is provided in the header
-        guest_uuid = request.headers.get("X-Guest-UUID")
-        if not guest_uuid:
-            raise NotAuthorizedException(
-                detail="No JWT or guest UUID provided in request headers."
-            )
-        user = AnonymousUser(guest_unique_id=guest_uuid)
-    else:
-        try:
-            decoded = jwt_utils.decode_token(token, verify=not settings.TESTING)
-            username = decoded["tapis/username"]
-            tenant = decoded["tapis/tenant_id"]
-        # Exceptions
-        except Exception as e:
-            logger.exception("There is an issue decoding the JWT")
-            raise HTTPException(
-                status_code=400, detail=f"There is an issue decoding the JWT: {e}"
-            ) from e
-
-        user = UserService.getUser(db_session, username, tenant)
-        if not user:
-            user = UserService.create(
-                db_session, username=username, access_token=token, tenant=tenant
-            )
-        else:
-            # Update the jwt access token
-            #   (It is more common that user will be using an auth flow were hazmapper will auth
-            #   with geoapi to get the token. BUT we can't assume that as it is also possible that
-            #   user just uses geoapi as a service with token generated somewhere else. So we need
-            #   to get/update just their access token for these cases)
-            UserService.update_access_token(db_session, user, token)
-
-    request.user = user
 
 
 def check_access_and_get_project(
@@ -96,7 +37,7 @@ def check_access_and_get_project(
             UUID(uuid)
         except ValueError as exc:
             raise HTTPException(status_code=404, detail="Invalid project UUID") from exc
-
+    print(current_user)
     proj = (
         ProjectsService.get(db_session, user=current_user, project_id=project_id)
         if project_id

@@ -16,7 +16,6 @@ from typing import TYPE_CHECKING
 from geoapi.services.streetview import StreetviewService
 from geoapi.tasks import streetview
 from geoapi.log import logging
-from geoapi.utils.decorators import jwt_decoder_prehandler
 
 logger = logging.getLogger(__name__)
 
@@ -92,7 +91,6 @@ class Streetview(BaseModel):
 
 class StreetviewController(Controller):
     path = "streetview"
-    before_request = jwt_decoder_prehandler
 
     @get(
         "/services",
