@@ -17,7 +17,7 @@ from geoapi.services.streetview import StreetviewService
 from geoapi.services.point_cloud import PointCloudService
 from geoapi.services.projects import ProjectsService
 from geoapi.tasks import external_data, streetview
-from geoapi.models import Task, Project, Feature, TileServer, Overlay
+from geoapi.models import Task, Project, Feature, TileServer, Overlay, PointCloud
 from geoapi.utils.decorators import (
     project_permissions_allow_public_guard,
     project_permissions_guard,
@@ -131,10 +131,24 @@ class TaskModel(BaseModel):
     updated: datetime = None
 
 
+class PointCloudDTO(SQLAlchemyDTO[PointCloud]):
+    config = DTOConfig(
+        include={
+            "id",
+            "description",
+            "conversion_parameters",
+            "files_info",
+            "feature_id",
+            "task",
+            "project_id",
+        },
+    )
+
+
 class PointCloudModel(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
-    files_info: dict
+    files_info: dict | None = None
     id: int | None = None
     description: str | None = None
     conversion_parameters: str | None = None
@@ -849,13 +863,14 @@ class ProjectPointCloudsResourceController(Controller):
         operation_id="get_all_point_clouds",
         description="Get a listing of all the points clouds of a project.",
         guards=[project_permissions_allow_public_guard],
+        return_dto=PointCloudDTO,
     )
     def get_all_point_clouds(
         self,
         request: Request,
         db_session: "Session",
         project_id: int,
-    ) -> PointCloudModel:
+    ) -> list[PointCloud]:
         """Get a listing of all the point clouds of a project."""
         logger.info(
             "Get point clouds for project:{} for user:{}".format(
@@ -869,6 +884,7 @@ class ProjectPointCloudsResourceController(Controller):
         operation_id="add_point_cloud",
         description="Add a point cloud to a project.",
         guards=[project_permissions_guard],
+        return_dto=PointCloudDTO,
     )
     def add_point_cloud(
         self,
@@ -876,7 +892,7 @@ class ProjectPointCloudsResourceController(Controller):
         db_session: "Session",
         project_id: int,
         data: PointCloudModel,
-    ) -> PointCloudModel:
+    ) -> PointCloud:
         """Add a point cloud to a project."""
         logger.info(
             "Add point cloud to project:{} for user:{}".format(
@@ -899,6 +915,7 @@ class ProjectPointCloudResourceController(Controller):
         operation_id="get_point_cloud",
         description="Get point cloud of a project by its ID.",
         guards=[project_permissions_allow_public_guard],
+        return_dto=PointCloudDTO,
     )
     def get_point_cloud(
         self,
@@ -906,7 +923,7 @@ class ProjectPointCloudResourceController(Controller):
         db_session: "Session",
         project_id: int,
         point_cloud_id: int,
-    ) -> PointCloudModel:
+    ) -> PointCloud:
         """Get point cloud of a project by its ID."""
         logger.info(
             "Get point cloud:{} in project:{} for user:{}".format(
@@ -924,6 +941,7 @@ class ProjectPointCloudResourceController(Controller):
             project_point_cloud_exists_guard,
             project_point_cloud_not_processing_guard,
         ],
+        return_dto=PointCloudDTO,
     )
     def update_point_cloud(
         self,
@@ -932,7 +950,7 @@ class ProjectPointCloudResourceController(Controller):
         project_id: int,
         point_cloud_id: int,
         data: PointCloudModel,
-    ) -> PointCloudModel:
+    ) -> PointCloud:
         """Update point cloud of a project by its ID."""
         logger.info(
             "Update point cloud:{} in project:{} for user:{}".format(
@@ -943,7 +961,7 @@ class ProjectPointCloudResourceController(Controller):
         return PointCloudService.update(
             database_session=db_session,
             pointCloudId=point_cloud_id,
-            data=data.model_dump(),
+            data=data.model_dump(exclude_defaults=True),
         )
 
     @delete(
@@ -1004,7 +1022,7 @@ class ProjectPointCloudsFileImportResourceController(Controller):
         )
 
         for file in files:
-            PointCloudService.check_file_extension(file["path"])
+            PointCloudService.check_file_extension(file.path)
 
         external_data.import_point_clouds_from_tapis.delay(u.id, files, point_cloud_id)
         return OkResponse(message="Task created for point cloud import")
