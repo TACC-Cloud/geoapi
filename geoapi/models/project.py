@@ -2,9 +2,9 @@ import uuid
 from sqlalchemy import Integer, String, ForeignKey, Boolean, DateTime
 from sqlalchemy.orm import relationship, backref, mapped_column
 from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.sql import func
 from geoapi.db import Base
-from geoapi.models.users import User
 
 
 class ProjectUser(Base):
@@ -59,6 +59,16 @@ class Project(Base):
 
     # watch user of tapis system (system_id)
     watch_users = mapped_column(Boolean, default=False)
+
+    _deletable: bool = False
+
+    @hybrid_property
+    def deletable(self):
+        return getattr(self, "_deletable", False)
+
+    @deletable.setter
+    def deletable(self, value: bool):
+        self._deletable = value
 
     def __repr__(self):
         return (

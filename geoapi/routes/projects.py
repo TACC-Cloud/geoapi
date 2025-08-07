@@ -6,7 +6,7 @@ from litestar import Controller, get, Request, post, delete, put, Router
 from litestar.datastructures import UploadFile
 from litestar.params import Body
 from litestar.enums import RequestEncodingType
-from litestar.exceptions import HTTPException
+from litestar.exceptions import PermissionDeniedException
 from litestar.plugins.sqlalchemy import SQLAlchemyDTO
 from litestar.dto import DTOConfig
 from uuid import UUID
@@ -258,7 +258,7 @@ class ProjectsListingController(Controller):
             ]
             return subset
         if is_anonymous(u):
-            raise HTTPException(403, "Access denied.")
+            raise PermissionDeniedException(403, "Access denied.")
         logger.info(f"Get all projects for user:{u.username}")
         return ProjectsService.list(db_session, u)
 
@@ -426,7 +426,7 @@ class ProjectFeaturesResourceController(Controller):
 
     class ProjectFeaturesResourceModel(BaseModel):
         assetType: str | None = None
-        bbox: list[float] | None = Field(
+        bbox: str | None = Field(
             default=None, description="Bounding box: minLon,minLat,maxLon,maxLat"
         )
         startDate: datetime | None = None
@@ -446,12 +446,23 @@ class ProjectFeaturesResourceController(Controller):
         query: ProjectFeaturesResourceModel,
     ) -> FeatureCollectionModel:
         """Get all features of a project as GeoJSON."""
+        # Following log is for analytics, see https://confluence.tacc.utexas.edu/display/DES/Hazmapper+Logging
+        application = request.headers.get("X-Geoapi-Application", "Unknown")
+        is_public_view = request.headers.get("X-Geoapi-IsPublicView", "Unknown")
+
+        prj = ProjectsService.get(db_session, project_id=project_id, user=request.user)
         logger.info(
-            "Get features of project for user:{} project_id:{}".format(
-                request.user.username, project_id
-            )
+            f"Get features of project for user:{request.user.username} application:{application}"
+            f" public_view:{is_public_view} project_uuid:{prj.uuid} project:{prj.id} tapis_system_id:{prj.system_id} "
+            f"tapis_system_path:{prj.system_path}"
         )
-        return ProjectsService.getFeatures(db_session, project_id, query.model_dump())
+
+        query_params = query.model_dump()
+        if query_params.get("bbox"):
+            query_params["bbox"] = [
+                float(coord) for coord in query_params["bbox"].split(",")
+            ]
+        return ProjectsService.getFeatures(db_session, project_id, query_params)
 
     @post(
         tags=["projects"],
@@ -630,9 +641,7 @@ class ProjectFeaturesFilsResourceController(Controller):
                 project_id, request.user.username, file.filename
             )
         )
-        return FeaturesService.fromFileObj(
-            db_session, project_id, file, data.model_dump()
-        )
+        return FeaturesService.fromFileObj(db_session, project_id, file, data)
 
 
 class ProjectFeaturesFileImportResourceController(Controller):
@@ -660,7 +669,7 @@ class ProjectFeaturesFileImportResourceController(Controller):
         )
         for file in data.files:
             external_data.import_file_from_tapis.delay(
-                u.id, file["system"], file["path"], project_id
+                u.id, file.system, file.path, project_id
             )
         return OkResponse(message="Task created for file import")
 
