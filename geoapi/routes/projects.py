@@ -1,3 +1,4 @@
+import io
 from datetime import datetime
 from typing import TYPE_CHECKING, Annotated
 from pydantic import BaseModel, Field, ConfigDict
@@ -16,7 +17,7 @@ from geoapi.services.streetview import StreetviewService
 from geoapi.services.point_cloud import PointCloudService
 from geoapi.services.projects import ProjectsService
 from geoapi.tasks import external_data, streetview
-from geoapi.models import Task, Project, Feature, TileServer
+from geoapi.models import Task, Project, Feature, TileServer, Overlay
 from geoapi.utils.decorators import (
     project_permissions_allow_public_guard,
     project_permissions_guard,
@@ -140,6 +141,12 @@ class PointCloudModel(BaseModel):
     feature_id: int | None = None
     task: TaskModel = None
     project_id: int | None = None
+
+
+class OverlayDTO(SQLAlchemyDTO[Overlay]):
+    config = DTOConfig(
+        exclude={"project"},
+    )
 
 
 class OverlayModel(BaseModel):
@@ -678,8 +685,9 @@ class ProjectOverlaysResourceController(Controller):
         operation_id="add_overlay",
         description="Add a new overlay to a project",
         guards=[project_permissions_guard],
+        return_dto=OverlayDTO,
     )
-    def add_overlay(
+    async def add_overlay(
         self,
         request: Request,
         db_session: "Session",
@@ -687,9 +695,11 @@ class ProjectOverlaysResourceController(Controller):
         data: Annotated[
             AddOverlayBody, Body(media_type=RequestEncodingType.MULTI_PART)
         ],
-    ) -> OverlayModel:
+    ) -> Overlay:
         """Add an overlay to a project."""
         file = data.file
+        file_bytes = await file.read()
+        file_obj = io.BytesIO(file_bytes)
 
         logger.info(
             "Add overlay to project:{} for user:{}: {}".format(
@@ -699,7 +709,9 @@ class ProjectOverlaysResourceController(Controller):
 
         bounds = [data.minLon, data.minLat, data.maxLon, data.maxLat]
         label = data.label
-        return FeaturesService.addOverlay(db_session, project_id, file, bounds, label)
+        return FeaturesService.addOverlay(
+            db_session, project_id, file_obj, bounds, label
+        )
 
     @get(
         tags=["projects"],
@@ -727,16 +739,15 @@ class ProjectOverlaysImportResourceController(Controller):
         operation_id="import_overlay_from_tapis",
         description="Import an overlay from Tapis into a project.",
         guards=[project_permissions_guard],
+        return_dto=OverlayDTO,
     )
     def import_overlay_from_tapis(
         self,
         request: Request,
         db_session: "Session",
         project_id: int,
-        data: Annotated[
-            TapisOverlayImportBody, Body(media_type=RequestEncodingType.MULTI_PART)
-        ],
-    ) -> OverlayModel:
+        data: TapisOverlayImportBody,
+    ) -> Overlay:
         """Import an overlay from Tapis into a project."""
         u = request.user
         logger.info(

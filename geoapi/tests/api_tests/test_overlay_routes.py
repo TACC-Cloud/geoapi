@@ -1,7 +1,13 @@
+from typing import TYPE_CHECKING
 from geoapi.models.users import User
 from geoapi.models import Overlay
 
 from unittest.mock import patch
+
+
+if TYPE_CHECKING:
+    from litestar import Litestar
+    from litestar.testing import TestClient
 
 
 def _get_overlay_data(extra):
@@ -39,11 +45,12 @@ def test_post_overlay(test_client, projects_fixture, image_file_fixture, db_sess
 
     resp = test_client.post(
         "/projects/1/overlays/",
-        data=_get_overlay_data({"file": image_file_fixture}),
+        data=_get_overlay_data({}),
+        files={"file": image_file_fixture},
         headers={"X-Tapis-Token": u1.jwt},
     )
     data = resp.json()
-    assert resp.status_code == 200
+    assert resp.status_code == 201
     assert data["minLat"] == 10
     assert data["maxLon"] == 25
     assert data["path"] is not None
@@ -51,7 +58,11 @@ def test_post_overlay(test_client, projects_fixture, image_file_fixture, db_sess
 
 @patch("geoapi.services.features.TapisUtils")
 def test_post_overlay_import_tapis(
-    MockTapisUtils, test_client, projects_fixture, image_file_fixture, db_session
+    MockTapisUtils,
+    test_client: "TestClient[Litestar]",
+    projects_fixture,
+    image_file_fixture,
+    db_session,
 ):
     MockTapisUtils().getFile.return_value = image_file_fixture
     u1 = db_session.get(User, 1)
@@ -61,17 +72,23 @@ def test_post_overlay_import_tapis(
         headers={"X-Tapis-Token": u1.jwt},
     )
     data = resp.json()
-    assert resp.status_code == 200
+    assert resp.status_code == 201
     assert data["minLat"] == 10
     assert data["maxLon"] == 25
     assert data["path"] is not None
 
 
-def test_delete_overlay(test_client, projects_fixture, image_file_fixture, db_session):
+def test_delete_overlay(
+    test_client: "TestClient[Litestar]",
+    projects_fixture,
+    image_file_fixture,
+    db_session,
+):
     u1 = db_session.get(User, 1)
     test_client.post(
         "/projects/1/overlays/",
-        data=_get_overlay_data({"file": image_file_fixture}),
+        data=_get_overlay_data({}),
+        files={"file": image_file_fixture},
         headers={"X-Tapis-Token": u1.jwt},
     )
 
@@ -79,6 +96,6 @@ def test_delete_overlay(test_client, projects_fixture, image_file_fixture, db_se
     resp = test_client.delete(
         "/projects/1/overlays/1/", headers={"X-Tapis-Token": u1.jwt}
     )
-    assert resp.status_code == 200
+    assert resp.status_code == 204
     proj = db_session.get(Overlay, 1)
     assert proj is None
