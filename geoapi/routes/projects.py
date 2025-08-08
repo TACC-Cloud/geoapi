@@ -17,7 +17,7 @@ from geoapi.services.streetview import StreetviewService
 from geoapi.services.point_cloud import PointCloudService
 from geoapi.services.projects import ProjectsService
 from geoapi.tasks import external_data, streetview
-from geoapi.models import Task, Project, Feature, TileServer, Overlay, PointCloud
+from geoapi.models import Task, Project, Feature, TileServer, Overlay, PointCloud, User
 from geoapi.utils.decorators import (
     project_permissions_allow_public_guard,
     project_permissions_guard,
@@ -109,6 +109,15 @@ class ProjectDTO(SQLAlchemyDTO[Project]):
             "system_path",
             "deletable",
         },
+    )
+
+
+class UserDTO(SQLAlchemyDTO[User]):
+    config = DTOConfig(
+        include={
+            "id",
+            "username",
+        }
     )
 
 
@@ -363,10 +372,11 @@ class ProjectUsersResourceController(Controller):
         operation_id="get_project_users",
         description="Get users associated with a project",
         guards=[project_permissions_guard],
+        return_dto=UserDTO,
     )
     def get_project_users(
         self, request: Request, db_session: "Session", project_id: int
-    ) -> list[UserModel]:
+    ) -> list[User]:
         """Get users associated with a project."""
         logger.info(
             f"Get users of project:{project_id} for user:{request.user.username}"
@@ -625,7 +635,7 @@ class ProjectFeaturesFilsResourceController(Controller):
         guards=[project_permissions_guard],
         return_dto=FeatureReturnDTO,
     )
-    def upload_feature_file(
+    async def upload_feature_file(
         self,
         request: Request,
         db_session: "Session",
@@ -636,12 +646,15 @@ class ProjectFeaturesFilsResourceController(Controller):
     ) -> list[FeatureModel]:
         """Upload a file containing features to a project."""
         file = data.pop("file")
+        file_bytes = await file.read()
+        file_obj = io.BytesIO(file_bytes)
+        file_obj.filename = file.filename
         logger.info(
             "Add feature to project:{} for user:{}: {}".format(
                 project_id, request.user.username, file.filename
             )
         )
-        return FeaturesService.fromFileObj(db_session, project_id, file, data)
+        return FeaturesService.fromFileObj(db_session, project_id, file_obj, data)
 
 
 class ProjectFeaturesFileImportResourceController(Controller):

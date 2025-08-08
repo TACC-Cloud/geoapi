@@ -289,10 +289,10 @@ def test_delete_user_unauthorized(test_client, projects_fixture, user2):
 def test_upload_gpx(test_client, projects_fixture, gpx_file_fixture, user1):
     resp = test_client.post(
         f"/projects/{projects_fixture.id}/features/files/",
-        data={"file": gpx_file_fixture},
+        files={"file": gpx_file_fixture},
         headers={"X-Tapis-Token": user1.jwt},
     )
-    assert resp.status_code == 200
+    assert resp.status_code == 201
 
 
 def test_upload_image(test_client, projects_fixture, image_file_fixture, user1):
@@ -301,7 +301,7 @@ def test_upload_image(test_client, projects_fixture, image_file_fixture, user1):
         files={"file": image_file_fixture},
         headers={"X-Tapis-Token": user1.jwt},
     )
-    assert resp.status_code == 200
+    assert resp.status_code == 201
 
 
 def test_import_image_tapis(
