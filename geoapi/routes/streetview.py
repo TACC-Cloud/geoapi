@@ -165,7 +165,7 @@ class StreetviewController(Controller):
             )
         )
         return StreetviewService.updateByService(
-            db_session, u, service, data.model_dump()
+            db_session, u, service, data.model_dump(exclude_none=True)
         )
 
     @get(
@@ -247,7 +247,7 @@ class StreetviewController(Controller):
             )
         )
         return StreetviewService.updateOrganization(
-            db_session, organization_id, data.model_dump()
+            db_session, organization_id, data.model_dump(exclude_none=True)
         )
 
     @delete(
@@ -333,7 +333,7 @@ class StreetviewController(Controller):
             )
         )
         return StreetviewService.updateSequence(
-            db_session, sequence_id, data.model_dump()
+            db_session, sequence_id, data.model_dump(exclude_none=True)
         )
 
     @post(

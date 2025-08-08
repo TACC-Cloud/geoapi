@@ -25,7 +25,7 @@ def test_add_tile_server(test_client, projects_fixture, db_session):
         headers={"X-Tapis-Token": u1.jwt},
     )
     data = resp.json()
-    assert resp.status_code == 200
+    assert resp.status_code == 201
     assert data["name"] == "Test"
     assert data["type"] == "tms"
     assert data["url"] == "www.test.com"
@@ -43,7 +43,7 @@ def test_delete_tile_server(test_client, projects_fixture, db_session):
     resp = test_client.delete(
         "/projects/1/tile-servers/1/", headers={"X-Tapis-Token": u1.jwt}
     )
-    assert resp.status_code == 200
+    assert resp.status_code == 204
     proj = db_session.get(TileServer, 1)
     assert proj is None
 
@@ -116,4 +116,4 @@ def test_import_tile_server__tapis(
         },
         headers={"X-Tapis-Token": u1.jwt},
     )
-    assert resp.status_code == 200
+    assert resp.status_code == 201

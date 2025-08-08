@@ -189,6 +189,20 @@ class OverlayModel(BaseModel):
     label: str
 
 
+class TileServerDTO(SQLAlchemyDTO[TileServer]):
+    config = DTOConfig(
+        include={
+            "id",
+            "name",
+            "type",
+            "url",
+            "attribution",
+            "tileOptions",
+            "uiOptions",
+        }
+    )
+
+
 class TileServerModel(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -346,7 +360,7 @@ class ProjectResourceController(Controller):
         u = request.user
         logger.info("Update project:{} for user:{}".format(project_id, u.username))
         return ProjectsService.update(
-            db_session, projectId=project_id, data=data.model_dump()
+            db_session, projectId=project_id, data=data.model_dump(exclude_none=True)
         )
 
 
@@ -987,7 +1001,7 @@ class ProjectPointCloudResourceController(Controller):
         return PointCloudService.update(
             database_session=db_session,
             pointCloudId=point_cloud_id,
-            data=data.model_dump(exclude_defaults=True),
+            data=data.model_dump(exclude_none=True),
         )
 
     @delete(
@@ -1084,6 +1098,7 @@ class ProjectTileServersResourceController(Controller):
         operation_id="add_tile_server",
         description="Add a new tile server to a project.",
         guards=[project_permissions_guard],
+        return_dto=TileServerDTO,
     )
     def add_tile_server(
         self,
@@ -1091,7 +1106,7 @@ class ProjectTileServersResourceController(Controller):
         db_session: "Session",
         project_id: int,
         data: TileServerModel,
-    ) -> TileServerModel:
+    ) -> TileServer:
         """Add a tile server to a project."""
         logger.info(
             "Add tile server to project:{} for user:{}: {}".format(
@@ -1105,6 +1120,7 @@ class ProjectTileServersResourceController(Controller):
         operation_id="get_tile_servers",
         description="Get a list of all the tile servers associated with the current map project.",
         guards=[project_permissions_allow_public_guard],
+        return_dto=TileServerDTO,
     )
     def get_tile_servers(
         self, request: Request, db_session: "Session", project_id: int
@@ -1116,6 +1132,33 @@ class ProjectTileServersResourceController(Controller):
             )
         )
         return FeaturesService.getTileServers(db_session, project_id)
+
+    @put(
+        tags=["projects"],
+        operation_id="update_tile_servers",
+        description="Update metadata about tile servers",
+        guards=[project_permissions_guard],
+        return_dto=TileServerDTO,
+    )
+    def update_tile_servers(
+        self,
+        request: Request,
+        db_session: "Session",
+        project_id: int,
+        data: list[TileServerModel],
+    ) -> list[TileServer]:
+        """Update metadata about tile servers."""
+        u = request.user
+        logger.info(
+            "Update tile servers for project:{} for user:{}".format(
+                project_id, u.username
+            )
+        )
+
+        return FeaturesService.updateTileServers(
+            database_session=db_session,
+            dataList=[ts.model_dump(exclude_none=True) for ts in data],
+        )
 
 
 class ProjectTileServerResourceController(Controller):
@@ -1147,6 +1190,7 @@ class ProjectTileServerResourceController(Controller):
         operation_id="update_tile_server",
         description="Update metadata about a tile server",
         guards=[project_permissions_guard],
+        return_dto=TileServerDTO,
     )
     def update_tile_server(
         self,
@@ -1154,8 +1198,8 @@ class ProjectTileServerResourceController(Controller):
         db_session: "Session",
         project_id: int,
         tile_server_id: int,
-        data: dict[str, dict],
-    ) -> TileServerModel:
+        data: TileServerModel,
+    ) -> TileServer:
         """Update metadata about a tile server."""
         logger.info(
             "Update tile server:{} in project:{} for user:{}".format(
@@ -1163,7 +1207,9 @@ class ProjectTileServerResourceController(Controller):
             )
         )
         return FeaturesService.updateTileServer(
-            database_session=db_session, tileServerId=tile_server_id, data=data
+            database_session=db_session,
+            tileServerId=tile_server_id,
+            data=data.model_dump(exclude_none=True),
         )
 
 
