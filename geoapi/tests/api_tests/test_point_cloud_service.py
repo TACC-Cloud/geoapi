@@ -77,6 +77,7 @@ def test_delete_point_cloud_feature(
 
     # delete point cloud feature
     FeaturesService.delete(db_session, point_cloud.feature.id)
+    db_session.refresh(point_cloud_fixture)
 
     assert db_session.query(PointCloud).count() == 1
     assert db_session.get(PointCloud, 1).feature is None
