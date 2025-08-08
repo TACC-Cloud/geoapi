@@ -132,6 +132,9 @@ class UserPayloadModel(UserModel):
     admin: bool = False
 
 
+TaskDTO = SQLAlchemyDTO[Task]
+
+
 class TaskModel(BaseModel):
     id: int | None = None
     status: str | None = None
@@ -830,6 +833,7 @@ class ProjectStreetviewResourceController(Controller):
         description="""Add a streetview sequence to a project feature.
         This is an asynchronous operation, streetview data will be processed in the background""",
         guards=[project_permissions_guard],
+        return_dto=TaskDTO,
     )
     def add_streetview_sequence_to_feature(
         self,
@@ -837,7 +841,7 @@ class ProjectStreetviewResourceController(Controller):
         db_session: "Session",
         project_id: int,
         data: dict[str, dict],
-    ) -> TaskModel:
+    ) -> Task:
         """Add streetview data to a project."""
         logger.info(
             "Add streetview sequence to project features:{} for user:{}".format(
@@ -1058,10 +1062,11 @@ class ProjectTasksResourceController(Controller):
         operation_id="get_project_tasks",
         description="Get a listing of all the tasks of a project",
         guards=[project_permissions_guard],
+        return_dto=TaskDTO,
     )
     def get_project_tasks(
         self, request: Request, db_session: "Session", project_id: int
-    ) -> list[TaskModel]:
+    ) -> list[Task]:
         """Get a listing of all the tasks of a project."""
         logger.info(
             "Get tasks for project:{} for user:{}".format(
