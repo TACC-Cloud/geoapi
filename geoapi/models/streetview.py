@@ -1,5 +1,6 @@
 from sqlalchemy import Integer, String, DateTime, ForeignKey
 from sqlalchemy.orm import relationship, mapped_column
+from litestar.dto import dto_field
 from geoapi.db import Base
 
 
@@ -18,7 +19,7 @@ class Streetview(Base):
     user_id = mapped_column(
         ForeignKey("users.id", ondelete="CASCADE", onupdate="CASCADE"), index=True
     )
-    user = relationship("User", overlaps="streetviews")
+    user = relationship("User", overlaps="streetviews", info=dto_field("private"))
     token = mapped_column(String())
     token_expires_at = mapped_column(DateTime(timezone=True))
     service = mapped_column(String())
@@ -42,7 +43,9 @@ class StreetviewOrganization(Base):
     streetview_id = mapped_column(
         ForeignKey("streetview.id", ondelete="CASCADE", onupdate="CASCADE"), index=True
     )
-    streetview = relationship("Streetview", overlaps="organizations")
+    streetview = relationship(
+        "Streetview", overlaps="organizations", info=dto_field("private")
+    )
     key = mapped_column(String())
     name = mapped_column(String())
     slug = mapped_column(String())

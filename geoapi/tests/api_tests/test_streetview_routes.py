@@ -1,9 +1,13 @@
 import pytest
-
+from typing import TYPE_CHECKING
 
 from geoapi.models.users import User
 from geoapi.models.streetview import Streetview, StreetviewOrganization
 from datetime import datetime, timedelta, timezone
+
+
+if TYPE_CHECKING:
+    from sqlalchemy.orm import Session
 
 
 @pytest.fixture(scope="function")
@@ -65,8 +69,8 @@ def test_list_streetview_service_resource(
             "id": 1,
             "user_id": 1,
             "token": streetview_service_resource_fixture.token,
-            "token_expires_at": str(
-                streetview_service_resource_fixture.token_expires_at
+            "token_expires_at": streetview_service_resource_fixture.token_expires_at.isoformat().replace(
+                "+00:00", "Z"
             ),
             "service": "my_service",
             "service_user": None,
@@ -94,6 +98,7 @@ def test_list_streetview_service_expired_resource(
             "instances": [],
         }
     ]
+    db_session.refresh(streetview_service_resource_expired_fixture)
 
     # Assert token was nulled in DB
     sv = (
@@ -142,7 +147,7 @@ def test_create_streetview_service_resource(test_client, db_session):
     resp = test_client.post(
         "/streetview/services/", json=data, headers={"X-Tapis-Token": u1.jwt}
     )
-    assert resp.status_code == 200
+    assert resp.status_code == 201
     streetview_service_object = db_session.get(Streetview, 1)
     assert streetview_service_object.service == data["service"]
     assert streetview_service_object.service_user == data["service_user"]
@@ -172,7 +177,9 @@ def test_get_streetview_service_resource(
         "id": 1,
         "user_id": 1,
         "token": "my_token",
-        "token_expires_at": str(streetview_service_resource_fixture.token_expires_at),
+        "token_expires_at": streetview_service_resource_fixture.token_expires_at.isoformat().replace(
+            "+00:00", "Z"
+        ),
         "service": "my_service",
         "service_user": None,
         "organizations": [],
@@ -188,12 +195,12 @@ def test_delete_streetview_service_resource(
         "/streetview/services/{}/".format(streetview_service_resource_fixture.service),
         headers={"X-Tapis-Token": u1.jwt},
     )
-    assert resp.status_code == 200
+    assert resp.status_code == 204
     assert db_session.query(StreetviewOrganization).first() is None
 
 
 def test_update_streetview_service_resource(
-    test_client, streetview_service_resource_fixture, db_session
+    test_client, streetview_service_resource_fixture, db_session: "Session"
 ):
     u1 = db_session.get(User, 1)
     data = {"service_user": "some_different_username"}
@@ -203,6 +210,7 @@ def test_update_streetview_service_resource(
         headers={"X-Tapis-Token": u1.jwt},
     )
     assert resp.status_code == 200
+    db_session.refresh(streetview_service_resource_fixture)
     service = db_session.get(Streetview, 1)
     assert service.service_user == "some_different_username"
 
@@ -219,7 +227,7 @@ def test_create_organization(
         json=data,
         headers={"X-Tapis-Token": u1.jwt},
     )
-    assert resp.status_code == 200
+    assert resp.status_code == 201
     assert resp.json() == {
         "id": 1,
         "key": "my_key",
@@ -243,7 +251,7 @@ def test_delete_organization(test_client, organization_fixture, db_session):
         ),
         headers={"X-Tapis-Token": u1.jwt},
     )
-    assert resp.status_code == 200
+    assert resp.status_code == 204
     assert db_session.query(StreetviewOrganization).first() is None
 
 
@@ -258,7 +266,7 @@ def FAILING_test_post_streetview_sequences(test_client, db_session):
         "/streetview/sequences/", json=data, headers={"X-Tapis-Token": u1.jwt}
     )
 
-    assert resp.status_code == 200
+    assert resp.status_code == 201
     assert len(data["sequences"]) == 4
 
 

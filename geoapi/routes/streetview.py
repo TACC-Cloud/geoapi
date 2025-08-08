@@ -13,9 +13,11 @@ from datetime import datetime
 from pydantic import BaseModel, ConfigDict
 from litestar import Controller, get, Request, post, delete, put
 from typing import TYPE_CHECKING
+from litestar.plugins.sqlalchemy import SQLAlchemyDTO
 from geoapi.services.streetview import StreetviewService
 from geoapi.tasks import streetview
 from geoapi.log import logging
+from geoapi.models import StreetviewOrganization, Streetview
 
 logger = logging.getLogger(__name__)
 
@@ -24,7 +26,7 @@ if TYPE_CHECKING:
     from sqlalchemy.orm import Session
 
 
-class StreetviewServiceParams(BaseModel):
+class StreetviewParams(BaseModel):
     service: str | None = None
     service_user: str | None = None
     token: str | None = None
@@ -45,7 +47,7 @@ class TapisFolderImport(BaseModel):
     path: str
 
 
-class StreetviewSequence(BaseModel):
+class StreetviewSequenceModel(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: int
@@ -57,7 +59,10 @@ class StreetviewSequence(BaseModel):
     organization_id: str | None = None
 
 
-class StreetviewOrganization(BaseModel):
+StreetviewOrganizationDTO = SQLAlchemyDTO[StreetviewOrganization]
+
+
+class StreetviewOrganizationModel(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: int | None = None
@@ -67,26 +72,14 @@ class StreetviewOrganization(BaseModel):
     key: str | None = None
 
 
-class StreetviewInstance(BaseModel):
+class StreetviewInstanceModel(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: int
     streetview_id: int
     system_id: str
     path: str
-    sequences: list[StreetviewSequence] | None = None
-
-
-class Streetview(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
-
-    id: int
-    user_id: int
-    token: str
-    token_expires_at: str
-    service: str
-    service_user: str
-    organizations: list[StreetviewOrganization] | None = None
+    sequences: list[StreetviewSequenceModel] | None = None
 
 
 class StreetviewController(Controller):
@@ -110,7 +103,7 @@ class StreetviewController(Controller):
         description="Create streetview service object for a user",
     )
     def create_streetview_service_resource(
-        self, request: Request, db_session: "Session", data: StreetviewServiceParams
+        self, request: Request, db_session: "Session", data: StreetviewParams
     ) -> Streetview:
         u = request.user
         service = data.service
@@ -122,7 +115,7 @@ class StreetviewController(Controller):
         return StreetviewService.create(db_session, u, data.model_dump())
 
     @get(
-        "/services/<service>/",
+        "/services/{service:str}/",
         operation_id="get_streetview_service_resource",
         description="Get a streetview service resource by service name",
     )
@@ -138,7 +131,7 @@ class StreetviewController(Controller):
         return StreetviewService.getByService(db_session, u, service)
 
     @delete(
-        "/services/<service>/",
+        "/services/{service:str}/",
         operation_id="delete_streetview_service_resource",
         description="Delete a streetview service resource by service name",
     )
@@ -154,7 +147,7 @@ class StreetviewController(Controller):
         StreetviewService.deleteByService(db_session, u, service)
 
     @put(
-        "/services/<service>/",
+        "/services/{service:str}/",
         operation_id="update_streetview_service_resource",
         description="Update streetview service resource for a user by service name",
     )
@@ -163,7 +156,7 @@ class StreetviewController(Controller):
         request: Request,
         db_session: "Session",
         service: str,
-        data: StreetviewServiceParams,
+        data: StreetviewParams,
     ) -> Streetview:
         u = request.user
         logger.info(
@@ -176,7 +169,9 @@ class StreetviewController(Controller):
         )
 
     @get(
-        "/services/<service>/organization/", operation_id="get_streetview_organizations"
+        "/services/{service:str}/organization/",
+        operation_id="get_streetview_organizations",
+        return_dto=StreetviewOrganizationDTO,
     )
     def get_streetview_organizations(
         self, request: Request, db_session: "Session", service: str
@@ -190,15 +185,16 @@ class StreetviewController(Controller):
         return StreetviewService.getAllOrganizations(db_session, u, service)
 
     @post(
-        "/services/<service>/organization/",
+        "/services/{service:str}/organization/",
         operation_id="create_streetview_organization",
+        return_dto=StreetviewOrganizationDTO,
     )
     def create_streetview_organization(
         self,
         request: Request,
         db_session: "Session",
         service: str,
-        data: StreetviewOrganization,
+        data: StreetviewOrganizationModel,
     ) -> StreetviewOrganization:
         u = request.user
         logger.info(
@@ -211,7 +207,7 @@ class StreetviewController(Controller):
         )
 
     @delete(
-        "/services/<service>/organization/<organization_id>/",
+        "/services/{service:str}/organization/{organization_id:int}/",
         operation_id="delete_streetview_organization",
         description="Delete organization from streetview service resource",
     )
@@ -231,9 +227,10 @@ class StreetviewController(Controller):
         StreetviewService.deleteOrganization(db_session, organization_id)
 
     @put(
-        "/services/<service>/organization/<organization_id>/",
+        "/services/{service:str}/organization/{organization_id:int}/",
         operation_id="update_streetview_organization",
         description="Update organization from streetview service resource",
+        return_dto=StreetviewOrganizationDTO,
     )
     def update_streetview_organization(
         self,
@@ -241,7 +238,7 @@ class StreetviewController(Controller):
         db_session: "Session",
         service: str,
         organization_id: int,
-        data: StreetviewOrganization,
+        data: StreetviewOrganizationModel,
     ) -> StreetviewOrganization:
         u = request.user
         logger.info(
@@ -254,7 +251,7 @@ class StreetviewController(Controller):
         )
 
     @delete(
-        "/instances/<instance_id>/",
+        "/instances/{instance_id:int}/",
         operation_id="delete_streetview_instance",
         description="Delete streetview instance",
     )
@@ -275,7 +272,7 @@ class StreetviewController(Controller):
         description="Add sequences to streetview instance",
     )
     def add_streetview_sequence(
-        self, request: Request, db_session: "Session", data: StreetviewSequence
+        self, request: Request, db_session: "Session", data: StreetviewSequenceModel
     ) -> None:
         u = request.user
         logger.info(
@@ -286,13 +283,13 @@ class StreetviewController(Controller):
         StreetviewService.addSequenceToInstance(db_session, u, data.model_dump())
 
     @get(
-        "/sequences/<sequence_id>/",
+        "/sequences/{sequence_id:int}/",
         operation_id="get_streetview_sequence",
         description="Get a streetview service's sequence",
     )
     def get_streetview_sequence(
         self, request: Request, db_session: "Session", sequence_id: str
-    ) -> StreetviewSequence:
+    ) -> StreetviewSequenceModel:
         u = request.user
         logger.info(
             "Get streetview sequence of id:{} for user:{}".format(
@@ -302,7 +299,7 @@ class StreetviewController(Controller):
         return StreetviewService.getSequenceFromId(db_session, sequence_id)
 
     @delete(
-        "/sequences/<sequence_id>/",
+        "/sequences/{sequence_id:int}/",
         operation_id="delete_streetview_sequence",
         description="Delete a streetview service's sequence",
     )
@@ -318,7 +315,7 @@ class StreetviewController(Controller):
         StreetviewService.deleteSequence(db_session, sequence_id)
 
     @put(
-        "/sequences/<sequence_id>/",
+        "/sequences/{sequence_id:int}/",
         operation_id="update_streetview_sequence",
         description="Update a streetview service's sequence",
     )
@@ -327,8 +324,8 @@ class StreetviewController(Controller):
         request: Request,
         db_session: "Session",
         sequence_id: int,
-        data: StreetviewOrganization,
-    ) -> StreetviewSequence:
+        data: StreetviewOrganizationModel,
+    ) -> StreetviewSequenceModel:
         u = request.user
         logger.info(
             "Update streetview sequence of id:{} for user:{}".format(

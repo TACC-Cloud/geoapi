@@ -1,10 +1,9 @@
-from sqlalchemy.orm import sessionmaker, DeclarativeBase
+from sqlalchemy.orm import sessionmaker
 from sqlalchemy import create_engine, Engine
 from litestar import Litestar
 from litestar.plugins.sqlalchemy import SyncSessionConfig, SQLAlchemySyncConfig, base
 from typing import cast
-from contextlib import asynccontextmanager, contextmanager
-from collections.abc import AsyncGenerator
+from contextlib import contextmanager
 from geoapi.settings import settings
 from geoapi.log import logger
 
