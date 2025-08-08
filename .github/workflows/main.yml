@@ -19,13 +19,13 @@ jobs:
       - name: Setup Python
         uses: actions/setup-python@v4
         with:
-          python-version: "3.11"
+          python-version: "3.12"
           cache: "poetry"
 
       - name: Install Python Packages
         run: |
           cd devops
-          poetry install --only dev
+          poetry install --with dev
 
       - name: Run flake8
         run: |
@@ -67,7 +67,7 @@ jobs:
       - name: Setup Python
         uses: actions/setup-python@v4
         with:
-          python-version: "3.11"
+          python-version: "3.12"
           cache: "poetry"
 
       - name: Install ffmpeg
@@ -78,7 +78,7 @@ jobs:
       - name: Install Python Packages
         run: |
           cd devops
-          poetry install --with dev,flask,worker
+          poetry install --with dev
 
       - name: Run server-side unit tests
         run: |

@@ -17,7 +17,7 @@ from litestar.stores.registry import StoreRegistry
 from litestar.stores.memory import MemoryStore
 from litestar.exceptions import InternalServerException
 from litestar.connection import ASGIConnection
-from litestar.security.jwt import JWTAuth, Token
+from litestar.security.jwt import JWTAuth
 from litestar.security.session_auth import SessionAuth
 from litestar.plugins.sqlalchemy import SQLAlchemyPlugin
 from litestar.types import Empty
