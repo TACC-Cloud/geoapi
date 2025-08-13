@@ -20,7 +20,9 @@ from litestar.connection import ASGIConnection
 from litestar.security.jwt import JWTAuth
 from litestar.security.session_auth import SessionAuth
 from litestar.plugins.sqlalchemy import SQLAlchemyPlugin
-from litestar.types import Empty
+from litestar.channels import ChannelsPlugin
+from litestar.channels.backends.redis import RedisChannelsPubSubBackend
+from redis.asyncio import Redis
 from geoapi.models import User
 from geoapi.routes import api_router
 from geoapi.settings import settings
@@ -184,13 +186,13 @@ async def retrieve_jwt_user_handler(
 async def retrieve_session_user_handler(
     session: dict[str, Any],
     connection: ASGIConnection[Any, Any, Any, Any],
-) -> User | None:
+) -> User | AnonymousUser:
     """Used by the SessionAuth Middleware to retrieve the user from the session."""
     db_session = sqlalchemy_config.provide_session(
         connection.app.state, connection.scope
     )
 
-    if session is Empty:
+    if not session.get("username") or not session.get("tenant"):
         return AnonymousUser()
 
     username = session.get("username")
@@ -244,6 +246,12 @@ jwt_auth = JWTAuth["User"](
 
 
 alchemy = SQLAlchemyPlugin(config=sqlalchemy_config)
+channels = ChannelsPlugin(
+    backend=RedisChannelsPubSubBackend(
+        redis=Redis.from_url("redis://geoapi_redis:6379/0")
+    ),
+    arbitrary_channels_allowed=True,
+)
 logging_middleware_config = LoggingMiddlewareConfig()
 cookie_session_config = CookieBackendConfig(secret=urandom(16))  # type: ignore
 openapi_config = OpenAPIConfig(
