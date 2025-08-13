@@ -6,7 +6,6 @@ ARG DEBIAN_FRONTEND=noninteractive
 
 RUN apt-get update && apt-get install -y \
     build-essential \
-    software-properties-common \
     libgdal-dev \
     ffmpeg \
     curl \
@@ -14,7 +13,7 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # https://python-poetry.org/docs/configuration/#using-environment-variables
-ENV POETRY_VERSION=2.1.3 \
+ENV POETRY_VERSION=2.1.4 \
     POETRY_HOME="/opt/poetry" \
     POETRY_VIRTUALENVS_IN_PROJECT=true \
     PYSETUP_PATH="/opt/pysetup" \
