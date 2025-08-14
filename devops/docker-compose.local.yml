@@ -25,6 +25,8 @@ x-worker-base: &worker-base  # Base fragment for worker services
   depends_on:
     rabbitmq:
       condition: service_healthy
+    assets-init:
+      condition: service_completed_successfully
 
 services:
   redis:
@@ -78,17 +80,17 @@ services:
   workers:
     <<: *worker-base  # Reuses worker-base fragment defined at start
     container_name: geoapi_workers
-    command: celery -A geoapi.celery_app worker -l info -Q default -n default_worker@geoapi --uid=nobody --gid=nogroup
+    command: celery -A geoapi.celery_app worker -l info -Q default -n default_worker@geoapi --uid=1000 --gid=1000
 
   workers-heavy:
     <<: *worker-base  # Reuses worker-base fragment defined at start
     container_name: geoapi_workers_heavy
-    command: celery -A geoapi.celery_app worker -l info -Q heavy --concurrency=6 --uid=nobody --gid=nogroup
+    command: celery -A geoapi.celery_app worker -l info -Q heavy --concurrency=6 --uid=1000 --gid=1000
 
   celerybeat:
     <<: *worker-base  # Reuses worker-base fragment defined at start
     container_name: geoapi_celerybeat
-    command: "celery -A geoapi.celery_app beat -l info --uid=nobody --gid=nogroup"
+    command: "celery -A geoapi.celery_app beat -l info --uid=1000 --gid=1000"
 
   backend:
     image: taccaci/geoapi:local
@@ -101,6 +103,7 @@ services:
       - APP_ENV=local
       - ASSETS_BASE_DIR=/assets
       - DESIGNSAFE_URL
+      - FLASK_SESSION_SECRET_KEY
       - TAPIS_CLIENT_ID
       - TAPIS_CLIENT_KEY
       - MAPILLARY_CLIENT_ID
@@ -116,3 +119,11 @@ services:
     depends_on:
       redis:
         condition: service_healthy
+      assets-init:
+        condition: service_completed_successfully
+
+  assets-init:
+    image: alpine
+    volumes:
+      - assets:/assets
+    command: ["sh", "-c", "chown -R 1000:1000 /assets && chmod -R 775 /assets"]
