@@ -22,6 +22,7 @@ from litestar.security.session_auth import SessionAuth
 from litestar.plugins.sqlalchemy import SQLAlchemyPlugin
 from litestar.channels import ChannelsPlugin
 from litestar.channels.backends.redis import RedisChannelsPubSubBackend
+from litestar.types import Empty
 from redis.asyncio import Redis
 from geoapi.models import User
 from geoapi.routes import api_router
@@ -192,7 +193,7 @@ async def retrieve_session_user_handler(
         connection.app.state, connection.scope
     )
 
-    if not session.get("username") or not session.get("tenant"):
+    if session is Empty or not session:
         return AnonymousUser()
 
     username = session.get("username")
@@ -212,7 +213,7 @@ else:
     root_store = RedisStore.with_client(url="redis://geoapi_redis:6379/0")
     session_auth_config = ServerSideSessionConfig(httponly=False, secure=True)
     stores = StoreRegistry(default_factory=root_store.with_namespace)
-    csrf_config = CSRFConfig(secret="my-secret")
+    csrf_config = CSRFConfig(secret=settings.SECRET_KEY, exclude=["/api/webhooks"])
 
 session_auth = SessionAuth["User", ServerSideSessionBackend](
     retrieve_user_handler=retrieve_session_user_handler,
@@ -285,7 +286,7 @@ app = Litestar(
         session_auth_config.middleware,
         jwt_auth.middleware,
     ],
-    plugins=[alchemy],
+    plugins=[alchemy, channels],
     on_startup=[get_db_connection],
     on_shutdown=[close_db_connection],
     stores=stores,

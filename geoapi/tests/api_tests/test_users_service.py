@@ -1,9 +1,8 @@
+import pytest
 from geoapi.services.users import UserService
 from geoapi.services.projects import ProjectsService
 from geoapi.exceptions import ApiException
 from geoapi.models.project import ProjectUser
-
-import pytest
 
 
 def test_user_get(userdata, db_session):

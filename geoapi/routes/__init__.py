@@ -6,6 +6,8 @@ from .streetview import StreetviewController
 from .streetview_mapillary_auth import StreetviewMapillaryAuthController
 from .notifications import NotificationsController
 from .auth import AuthController
+from .webhooks import TaskStatusWebhookController
+from .websockets import websocket_handler
 
 
 api_router = Router(
@@ -17,5 +19,7 @@ api_router = Router(
         StreetviewController,
         StreetviewMapillaryAuthController,
         AuthController,
+        TaskStatusWebhookController,
+        websocket_handler,
     ],
 )

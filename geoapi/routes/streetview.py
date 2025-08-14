@@ -18,6 +18,7 @@ from geoapi.services.streetview import StreetviewService
 from geoapi.tasks import streetview
 from geoapi.log import logging
 from geoapi.models import StreetviewOrganization, Streetview
+from litestar.channels import ChannelsPlugin
 
 logger = logging.getLogger(__name__)
 
@@ -345,9 +346,13 @@ class StreetviewController(Controller):
         This is an asynchronous operation, files will be imported in the background""",
     )
     def publish_files_to_streetview(
-        self, request: Request, db_session: "Session", data: TapisFolderImport
+        self,
+        request: Request,
+        db_session: "Session",
+        data: TapisFolderImport,
+        channels: "ChannelsPlugin",
     ) -> OkResponse:
         u = request.user
         logger.info("Publish images to streetview for user:{}".format(u.username))
-        streetview.publish(db_session, u, data.model_dump())
+        streetview.publish(db_session, u, data.model_dump(), channels)
         return OkResponse(message="accepted")

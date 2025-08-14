@@ -1,4 +1,4 @@
-from typing import List, AnyStr, Dict
+from typing import List, AnyStr, Dict, TYPE_CHECKING
 
 from geoapi.models import Notification, ProgressNotification
 from geoapi.models import User
@@ -6,6 +6,9 @@ from uuid import UUID
 from geoapi.log import logging
 
 logger = logging.getLogger(__file__)
+
+if TYPE_CHECKING:
+    from litestar.channels import ChannelsPlugin
 
 
 class NotificationsService:
@@ -34,7 +37,11 @@ class NotificationsService:
 
     @staticmethod
     def create(
-        database_session, user: User, status: AnyStr, message: AnyStr
+        database_session,
+        user: User,
+        status: AnyStr,
+        message: AnyStr,
+        channels: "ChannelsPlugin | None" = None,
     ) -> Notification:
         note = Notification(
             username=user.username,
@@ -45,6 +52,8 @@ class NotificationsService:
         try:
             database_session.add(note)
             database_session.commit()
+            if channels is not None:
+                channels.publish(note.to_dict(), f"notifications-{user.id}")
             return note
         except Exception:
             database_session.rollback()
