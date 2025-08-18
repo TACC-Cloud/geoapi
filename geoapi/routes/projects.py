@@ -693,9 +693,10 @@ class ProjectFeaturesFileImportResourceController(Controller):
         """Import files into a project from Tapis."""
         u = request.user
         logger.info(
-            "Import feature to project:{} for user:{}: {}".format(
-                project_id, u.username, data.files
-            )
+            "Import feature to project:%s for user:%s: %s",
+            project_id,
+            u.username,
+            data.files,
         )
         for file in data.files:
             external_data.import_file_from_tapis.delay(

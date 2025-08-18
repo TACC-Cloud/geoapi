@@ -11,10 +11,13 @@ def send_progress_update(user: User, task_id: str, status: str, message: str) ->
         "status": status,
         "message": message,
     }
-    headers = ({"X-Tapis-Token": user.jwt},)
+    headers = {"X-Tapis-Token": user.jwt}
     try:
         requests.post(url, json=payload, headers=headers, timeout=2)
     except requests.RequestException:
         logger.exception(
-            "Failed to send progress update for task %s with status %s", task_id, status
+            "Failed to send progress update for task %s, user %s with status %s",
+            task_id,
+            user,
+            status,
         )

@@ -201,14 +201,12 @@ def import_file_from_tapis(userId: int, systemId: str, path: str, projectId: int
                 user, task_id, "success", f"Imported {path} successfully"
             )
             temp_file.close()
-        except Exception as e:  # noqa: E722
+        except Exception:  # noqa: E722
             logger.exception(
-                "Could not import file from tapis: {} :: {}".format(systemId, path)
+                "Could not import file from tapis: %s :: %s", systemId, path
             )
-            send_progress_update(
-                user, task_id, "error", "Error importing {f}".format(f=path)
-            )
-            raise e
+            send_progress_update(user, task_id, "error", f"Error importing {path}")
+            raise
 
 
 def _update_point_cloud_task(
