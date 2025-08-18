@@ -33,7 +33,7 @@ def test_login(test_client: "TestClient[Litestar]"):
     assert f'state={sess["auth_state"]}' in resp_url
 
 
-def test_callback(test_client_user1, requests_mock, user1):
+def test_callback(test_client_user1: "TestClient[Litestar]", requests_mock, user1):
     current_time = datetime.now(timezone.utc)
     access_token = user1.auth.access_token
     access_token_expires_in = 14400
@@ -73,10 +73,7 @@ def test_callback(test_client_user1, requests_mock, user1):
     resp = test_client_user1.get(
         "/auth/callback?state=mocked_auth_state&code=mocked_code"
     )
-    resp_url = (
-        f"{resp.url.scheme}://{resp.url.netloc.decode()}{resp.url.raw_path.decode()}"
-    )
-
+    resp_url = str(resp.url)
     assert resp.history[-1].status_code == 302
     assert resp_url.startswith("http://localhost:4200/handle-login")
     assert f"access_token={access_token}" in resp_url

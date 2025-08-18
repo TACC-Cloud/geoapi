@@ -22,6 +22,7 @@ from litestar.security.session_auth import SessionAuth
 from litestar.plugins.sqlalchemy import SQLAlchemyPlugin
 from litestar.channels import ChannelsPlugin
 from litestar.channels.backends.redis import RedisChannelsPubSubBackend
+from litestar.channels.backends.memory import MemoryChannelsBackend
 from litestar.types import Empty
 from redis.asyncio import Redis
 from geoapi.models import User
@@ -209,11 +210,21 @@ if settings.TESTING:
     session_auth_config = ServerSideSessionConfig(store=root_store)
     stores = None
     csrf_config = None
+    channels = ChannelsPlugin(
+        backend=MemoryChannelsBackend(),
+        arbitrary_channels_allowed=True,
+    )
 else:
     root_store = RedisStore.with_client(url="redis://geoapi_redis:6379/0")
     session_auth_config = ServerSideSessionConfig(httponly=False, secure=True)
     stores = StoreRegistry(default_factory=root_store.with_namespace)
     csrf_config = CSRFConfig(secret=settings.SECRET_KEY, exclude=["/api/webhooks"])
+    channels = ChannelsPlugin(
+        backend=RedisChannelsPubSubBackend(
+            redis=Redis.from_url("redis://geoapi_redis:6379/0")
+        ),
+        arbitrary_channels_allowed=True,
+    )
 
 session_auth = SessionAuth["User", ServerSideSessionBackend](
     retrieve_user_handler=retrieve_session_user_handler,
@@ -247,12 +258,6 @@ jwt_auth = JWTAuth["User"](
 
 
 alchemy = SQLAlchemyPlugin(config=sqlalchemy_config)
-channels = ChannelsPlugin(
-    backend=RedisChannelsPubSubBackend(
-        redis=Redis.from_url("redis://geoapi_redis:6379/0")
-    ),
-    arbitrary_channels_allowed=True,
-)
 logging_middleware_config = LoggingMiddlewareConfig()
 cookie_session_config = CookieBackendConfig(secret=urandom(16))  # type: ignore
 openapi_config = OpenAPIConfig(
