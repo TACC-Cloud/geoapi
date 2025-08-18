@@ -48,6 +48,8 @@ class DeployedConfig(Config):
     MAPILLARY_CLIENT_ID = os.environ.get(
         "MAPILLARY_CLIENT_ID", "MLY|5156692464392931|4f1118aa1b06f051a44217cb56bedf79"
     )
+    REDIS_HOST = os.environ.get("REDIS_HOST")
+    REDIS_PORT = os.environ.get("REDIS_PORT")
 
 
 class LocalDevelopmentConfig(Config):
@@ -61,6 +63,8 @@ class LocalDevelopmentConfig(Config):
     DB_NAME = "dev"
     DB_PASSWD = "dev"
     DB_HOST = "postgres"
+    REDIS_HOST = "geoapi_redis"
+    REDIS_PORT = 6379
 
 
 class UnitTestingConfig(LocalDevelopmentConfig):

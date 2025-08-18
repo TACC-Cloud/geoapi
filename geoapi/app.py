@@ -215,14 +215,13 @@ if settings.TESTING:
         arbitrary_channels_allowed=True,
     )
 else:
-    root_store = RedisStore.with_client(url="redis://geoapi_redis:6379/0")
+    redis_url = f"redis://{settings.REDIS_HOST}:{settings.REDIS_PORT}/0"
+    root_store = RedisStore.with_client(url=redis_url)
     session_auth_config = ServerSideSessionConfig(httponly=False, secure=True)
     stores = StoreRegistry(default_factory=root_store.with_namespace)
     csrf_config = CSRFConfig(secret=settings.SECRET_KEY, exclude=["/api/webhooks"])
     channels = ChannelsPlugin(
-        backend=RedisChannelsPubSubBackend(
-            redis=Redis.from_url("redis://geoapi_redis:6379/0")
-        ),
+        backend=RedisChannelsPubSubBackend(redis=Redis.from_url(redis_url)),
         arbitrary_channels_allowed=True,
     )
 

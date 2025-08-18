@@ -237,6 +237,18 @@ class UserService:
                         f"Finished refreshing token for user:{user.username}"
                         f" tenant:{user.tenant_id}"
                     )
+                    jwt_utils.send_refreshed_token_websocket(
+                        user,
+                        {
+                            "user": {
+                                "username": user.username,
+                            },
+                            "authToken": {
+                                "token": locked_auth.access_token,
+                                "expiresAt": locked_auth.access_token_expires_at,
+                            },
+                        },
+                    )
                 else:
                     logger.error(
                         f"Problem refreshing token for user:{user.username}"

@@ -5,6 +5,8 @@ from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
 import base64
 import time
+import redis
+import json
 from geoapi.settings import settings
 from geoapi.log import logging
 
@@ -162,3 +164,13 @@ def create_token_expiry_hours_from_now(token: str, hours_from_now: int = 4) -> s
         return modified_token
     except jwt.InvalidTokenError:
         raise ValueError("Invalid token provided.")
+
+
+def send_refreshed_token_websocket(user, token):
+
+    r = redis.Redis(
+        host=settings.REDIS_HOST,
+        port=settings.REDIS_PORT,
+        db=0,
+    )
+    r.publish(f"notifications-{user.id}", json.dumps({"token": token}))
