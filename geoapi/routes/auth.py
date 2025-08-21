@@ -1,6 +1,5 @@
 import requests
 import secrets
-import urllib
 from typing import TYPE_CHECKING, Any
 from litestar import Controller, get, Request, Response
 from litestar.response import Redirect
@@ -16,9 +15,8 @@ from geoapi.utils.client_backend import (
     get_deployed_geoapi_url,
 )
 from geoapi.exceptions import AuthenticationIssue, ApiException
-from tapipy.tapis import Tapis
-from tapipy.errors import BaseTapyException
 from geoapi.models import User
+from geoapi.utils.users import is_anonymous
 
 if TYPE_CHECKING:
     from sqlalchemy.orm import Session
@@ -86,8 +84,8 @@ class AuthController(Controller):
         )
         return Redirect(authorization_url, status_code=HTTP_302_FOUND)
 
-    @get(operation_id="logout", path="/logout", exclude_from_auth=True)
-    async def logout(self, request: Request[User, Any, Any]) -> Response:
+    @get(operation_id="logout", path="/logout")
+    async def logout(self, request: Request[User, Any, Any]) -> Redirect:
         """Account Logout"""
         logger.info(
             f"user {request.user} is logging out; clearing session and revoking token"
@@ -95,22 +93,18 @@ class AuthController(Controller):
         tapis_server = get_tapis_api_server(
             "DESIGNSAFE" if not settings.TESTING else "TEST"
         )
-        user = request.user
-
-        try:
-            client = Tapis(base_url=tapis_server, access_token=user.access_token)
-            response = client.authenticator.revoke_token(token=user.access_token)
-            logger.info("revoke response is %s" % response)
-        except BaseTapyException as e:
-            logger.error("Error revoking token: %s", e.message)
+        referrer = request.headers.get("referer")
+        validate_referrer_url(referrer)
+        client_url = get_client_url(referrer)
 
         if request.session:
             request.clear_session()
 
-        return Response(
-            {"message": "OK"},
-            status_code=200,
+        logout_endpoint = (
+            f"{tapis_server}/v3/oauth2/logout?redirect_url={client_url}/logged-out"
         )
+
+        return Redirect(logout_endpoint)
 
     @get(path="/callback", id="callback", description="Callback for oauth login")
     async def callback(self, request: Request, db_session: "Session") -> Redirect:
@@ -166,7 +160,6 @@ class AuthController(Controller):
             response_json = response.json()["result"]
 
             access_token = response_json["access_token"]["access_token"]
-            access_token_expires_in = response_json["access_token"]["expires_in"]
             access_token_expires_at = response_json["access_token"]["expires_at"]
             refresh_token = response_json["refresh_token"]["refresh_token"]
             refresh_token_expires_at = response_json["refresh_token"]["expires_at"]
@@ -196,18 +189,30 @@ class AuthController(Controller):
             # commit changes before redirect in case there was an error
             db_session.commit()
 
-            # This can be removed once we have proper session management not dependent on the client-side handling session state
-            params = {
-                "access_token": access_token,
-                "expires_in": access_token_expires_in,
-                "expires_at": access_token_expires_at,
-                "to": to,
-            }
-            encoded_params = urllib.parse.urlencode(params)
-            client_redirect_uri = f"{client_base_url}/handle-login#{encoded_params}"
-
             # Build response with redirect
-            response = Redirect(client_redirect_uri, status_code=HTTP_302_FOUND)
+            response = Redirect(f"{client_base_url}{to}", status_code=HTTP_302_FOUND)
 
             request.set_session({"username": username, "tenant": tenant})
             return response
+
+    @get(
+        path="/user",
+        operation_id="get_user_info",
+        description="Get user information",
+    )
+    async def get_user_info(self, request: Request[User, Any, Any]) -> Response:
+        """Get user information"""
+        if is_anonymous(request.user):
+            return Response({"user": None, "authToken": None}, status_code=200)
+
+        user_info = {
+            "user": {
+                "username": request.user.username,
+            },
+            "authToken": {
+                "token": request.user.jwt,
+                "expiresAt": request.user.auth.access_token_expires_at,
+            },
+        }
+
+        return Response(user_info, status_code=200)
