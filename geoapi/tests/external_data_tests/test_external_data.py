@@ -194,6 +194,19 @@ def tapis_utils_listing_with_single_trash_folder_of_image(image_file_fixture):
             yield MockTapis
 
 
+@pytest.fixture(autouse=True)
+def mock_task_update_webhook(requests_mock):
+    """
+    Mock the Celery->Litestar webhook so tests don't make real HTTP calls.
+    """
+    requests_mock.post(
+        "http://geoapi_backend:8000/api/webhooks/task-update",
+        json={"ok": True},
+        status_code=200,
+    )
+    yield requests_mock
+
+
 @pytest.mark.worker
 def test_external_data_good_files(
     metadata_geolocation_30long_20lat_fixture,

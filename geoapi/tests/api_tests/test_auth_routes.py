@@ -1,4 +1,3 @@
-import urllib
 from geoapi.utils.tenants import get_tapis_api_server
 from geoapi.settings import settings
 from datetime import datetime, timedelta, timezone
