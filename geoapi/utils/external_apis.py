@@ -124,7 +124,7 @@ class ApiUtils(metaclass=EnsureValidTokenMeta):
         """Make get request"""
         return self.client.get(self.base_url + url, params=params)
 
-    def _ensure_valid_token(self):
+    def _ensure_valid_token(self, buffer: int = None):
         """
         Ensures there is a valid token.
 
@@ -135,11 +135,13 @@ class ApiUtils(metaclass=EnsureValidTokenMeta):
         """
         try:
             # if we can refresh token, and our token is about to expire,
-            # let's go ahead and refreshit.
+            # let's go ahead and refresh it.
             if (
                 self.user.has_unexpired_refresh_token()
                 and self.user.auth.access_token
-                and jwt_utils.token_will_expire_soon(self.user.auth.access_token)
+                and jwt_utils.token_will_expire_soon(
+                    self.user.auth.access_token, buffer
+                )
             ):
                 logger.debug(
                     f"user:{self.user} has a token about to expire or has expired; we will refresh it."

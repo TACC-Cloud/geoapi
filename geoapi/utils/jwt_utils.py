@@ -94,16 +94,17 @@ def get_token_expiry(token: str) -> int:
     return decoded_token.get("exp")
 
 
-def token_will_expire_soon(token: str) -> bool:
+def token_will_expire_soon(token: str, buffer: int | None) -> bool:
     """
-    Check if the token will expire in the next few minutes.
+    Check if the token will expire within a certain buffer time.
 
     :param token: str
+    :param buffer: int (seconds before expiration)
     :return: bool
     """
     exp = get_token_expiry(token)
     current_time = int(time.time())
-    return current_time > exp - BUFFER_TIME_FOR_EXPIRING_TOKENS
+    return current_time > exp - (buffer or BUFFER_TIME_FOR_EXPIRING_TOKENS)
 
 
 def compare_token_expiry(token_a, token_b):

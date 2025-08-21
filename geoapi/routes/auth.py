@@ -17,6 +17,7 @@ from geoapi.utils.client_backend import (
 from geoapi.exceptions import AuthenticationIssue, ApiException
 from geoapi.models import User
 from geoapi.utils.users import is_anonymous
+from geoapi.utils.external_apis import TapisUtils
 
 if TYPE_CHECKING:
     from sqlalchemy.orm import Session
@@ -200,18 +201,24 @@ class AuthController(Controller):
         operation_id="get_user_info",
         description="Get user information",
     )
-    async def get_user_info(self, request: Request[User, Any, Any]) -> Response:
+    async def get_user_info(
+        self,
+        request: Request[User, Any, Any],
+        db_session: "Session",
+    ) -> Response:
         """Get user information"""
         if is_anonymous(request.user):
             return Response({"user": None, "authToken": None}, status_code=200)
 
+        tapis = TapisUtils(db_session, request.user)
+        tapis._ensure_valid_token(buffer=60 * 30)  # 30 minutes buffer
         user_info = {
             "user": {
-                "username": request.user.username,
+                "username": tapis.user.username,
             },
             "authToken": {
-                "token": request.user.jwt,
-                "expiresAt": request.user.auth.access_token_expires_at,
+                "token": tapis.user.jwt,
+                "expiresAt": tapis.user.auth.access_token_expires_at,
             },
         }
 
