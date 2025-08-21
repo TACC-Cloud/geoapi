@@ -75,11 +75,7 @@ def test_callback(test_client_user1: "TestClient[Litestar]", requests_mock, user
     )
     resp_url = str(resp.url)
     assert resp.history[-1].status_code == 302
-    assert resp_url.startswith("http://localhost:4200/handle-login")
-    assert f"access_token={access_token}" in resp_url
-    assert f"expires_in={access_token_expires_in}" in resp_url
-    assert f"expires_at={urllib.parse.quote_plus(access_token_expires_at)}" in resp_url
-    assert "to=%2Fsomewhere" in resp_url
+    assert resp_url.startswith("http://localhost:4200/somewhere")
 
     sess = test_client_user1.get_session_data()
     assert "auth_state" not in sess
