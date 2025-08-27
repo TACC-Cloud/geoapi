@@ -208,14 +208,12 @@ class AuthController(Controller):
     ) -> Response:
         """Get user information"""
         if is_anonymous(request.user):
-            return Response({"user": None, "authToken": None}, status_code=200)
+            return Response({"username": None, "authToken": None}, status_code=200)
 
         tapis = TapisUtils(db_session, request.user)
         tapis._ensure_valid_token(buffer=60 * 30)  # 30 minutes buffer
         user_info = {
-            "user": {
-                "username": tapis.user.username,
-            },
+            "username": tapis.user.username,
             "authToken": {
                 "token": tapis.user.jwt,
                 "expiresAt": tapis.user.auth.access_token_expires_at,

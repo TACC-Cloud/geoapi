@@ -644,7 +644,7 @@ class ProjectFeaturesFilsResourceController(Controller):
 
     @post(
         tags=["projects"],
-        operation_id="uplaod_feature_file",
+        operation_id="upload_feature_file",
         description="""
           Add a new feature(s) to a project from a file that has embedded geospatial information.
           Current allowed file types are GeoJSON, georeferenced image (jpeg) or gpx track.

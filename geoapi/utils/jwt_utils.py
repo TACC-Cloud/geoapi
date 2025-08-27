@@ -1,4 +1,5 @@
 from typing import Dict
+from pydantic import BaseModel
 import jwt
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import serialization
@@ -167,11 +168,24 @@ def create_token_expiry_hours_from_now(token: str, hours_from_now: int = 4) -> s
         raise ValueError("Invalid token provided.")
 
 
-def send_refreshed_token_websocket(user, token):
+class AuthTokenModel(BaseModel):
+    token: str
+    expiresAt: str
+
+
+class AuthStateModel(BaseModel):
+    username: str
+    authToken: AuthTokenModel
+
+
+def send_refreshed_token_websocket(user, auth_state: AuthStateModel):
+    """Send refreshed token to user via redis pub/sub litestar websocket channel.
+    Used to notify connected client of token refreshes that take place within celery tasks.
+    """
 
     r = redis.Redis(
         host=settings.REDIS_HOST,
         port=settings.REDIS_PORT,
         db=0,
     )
-    r.publish(f"notifications-{user.id}", json.dumps({"token": token}))
+    r.publish(f"notifications-{user.id}", json.dumps(auth_state))

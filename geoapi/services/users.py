@@ -240,9 +240,7 @@ class UserService:
                     jwt_utils.send_refreshed_token_websocket(
                         user,
                         {
-                            "user": {
-                                "username": user.username,
-                            },
+                            "username": user.username,
                             "authToken": {
                                 "token": locked_auth.access_token,
                                 "expiresAt": locked_auth.access_token_expires_at,
