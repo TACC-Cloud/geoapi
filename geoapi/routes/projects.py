@@ -1065,7 +1065,9 @@ class ProjectPointCloudsFileImportResourceController(Controller):
         for file in files:
             PointCloudService.check_file_extension(file.path)
 
-        external_data.import_point_clouds_from_tapis.delay(u.id, files, point_cloud_id)
+        external_data.import_point_clouds_from_tapis.delay(
+            u.id, [file.model_dump() for file in files], point_cloud_id
+        )
         return OkResponse(message="Task created for point cloud import")
 
 
