@@ -103,7 +103,7 @@ services:
       - APP_ENV=local
       - ASSETS_BASE_DIR=/assets
       - DESIGNSAFE_URL
-      - FLASK_SESSION_SECRET_KEY
+      - SESSION_SECRET_KEY
       - TAPIS_CLIENT_ID
       - TAPIS_CLIENT_KEY
       - MAPILLARY_CLIENT_ID
