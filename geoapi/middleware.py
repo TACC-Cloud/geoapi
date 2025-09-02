@@ -82,7 +82,18 @@ class GeoAPIJWTAuthMiddleware(JWTAuthenticationMiddleware):
 
 
 class GeoAPIToken(Token):
-    """Custom Token class for GeoAPI JWT handling."""
+    """Custom Token class for GeoAPI JWT handling.
+
+    Note: The purpose of this subclass is to override the `decode` method to
+    ignore the `iat` claim during token decoding and validation, as Tapis does not
+    include it in their issued tokens. This could be removed if Tapis adds the `iat` claim
+    to their tokens in the future.
+
+    removed after line 177:
+        ```
+            payload["iat"] = datetime.fromtimestamp(payload["iat"], tz=timezone.utc)
+        ```
+    """
 
     token: str
 
