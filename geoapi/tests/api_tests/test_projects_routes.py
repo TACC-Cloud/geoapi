@@ -283,7 +283,7 @@ def test_delete_user_unauthorized(test_client, projects_fixture, user2):
     assert resp.status_code == 403
 
     test_client.delete("/projects/1/users/test1/")
-    assert resp.status_code == 401
+    assert resp.status_code == 403
 
 
 def test_upload_gpx(test_client, projects_fixture, gpx_file_fixture, user1):
@@ -494,7 +494,7 @@ def test_update_project_unauthorized_guest(test_client, public_projects_fixture)
     data = {"name": "Renamed Project", "description": "New Description", "public": True}
     resp = test_client.put(f"/projects/{public_projects_fixture.id}/", json=data)
     assert resp.status_code == 401
-    assert resp.json()["detail"] == "Access denied"
+    assert resp.json()["detail"] == "Must be logged in to access project"
 
 
 def test_create_project_watch_content_already_exists(

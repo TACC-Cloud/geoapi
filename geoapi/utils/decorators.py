@@ -49,10 +49,12 @@ def check_access_and_get_project(
     )
     if not proj:
         raise NotFoundException("No project found")
-    if is_anonymous(current_user) and not (allow_public_use or proj.public):
-        raise NotAuthorizedException("Must be logged in to access project")
-    if not UserService.canAccess(db_session, current_user, proj.id):
-        raise PermissionDeniedException("Access denied")
+    if not allow_public_use or not proj.public:
+        if is_anonymous(current_user):
+            raise NotAuthorizedException("Must be logged in to access project")
+
+        if not UserService.canAccess(db_session, current_user, proj.id):
+            raise PermissionDeniedException("Access denied")
     return proj
 
 

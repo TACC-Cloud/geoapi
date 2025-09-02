@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING, Any
 from litestar import Controller, get, Request, Response
 from litestar.response import Redirect
 from litestar.status_codes import HTTP_302_FOUND
+from litestar.exceptions import NotAuthorizedException
 from geoapi.settings import settings
 from geoapi.log import logging
 from geoapi.utils import jwt_utils
@@ -216,7 +217,7 @@ class AuthController(Controller):
             tapis._ensure_valid_token(buffer=60 * 30)  # 30 minutes buffer
         except Exception:
             logger.exception(f"Error ensuring valid token for user:{request.user}")
-            raise AuthenticationIssue("Could not refresh authentication token")
+            raise NotAuthorizedException("Could not refresh authentication token")
 
         user_info = {
             "username": tapis.user.username,
