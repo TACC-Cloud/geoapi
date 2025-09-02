@@ -28,7 +28,7 @@ def test_get_overlay_permissions(test_client, projects_fixture, db_session):
     assert resp.status_code == 403
 
     resp = test_client.get("/projects/1/overlays/")
-    assert resp.status_code == 403
+    assert resp.status_code == 401
 
 
 def test_get_overlay_public_access(test_client, public_projects_fixture, db_session):

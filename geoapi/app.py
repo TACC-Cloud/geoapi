@@ -140,7 +140,7 @@ def authentication_issue_exception_handler(
     Handles general authentication issues."""
     return Response(
         content={"message": exc.message},
-        status_code=status_codes.HTTP_400_BAD_REQUEST,
+        status_code=status_codes.HTTP_401_UNAUTHORIZED,
     )
 
 

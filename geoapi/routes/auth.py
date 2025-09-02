@@ -211,7 +211,13 @@ class AuthController(Controller):
             return Response({"username": None, "authToken": None}, status_code=200)
 
         tapis = TapisUtils(db_session, request.user)
-        tapis._ensure_valid_token(buffer=60 * 30)  # 30 minutes buffer
+
+        try:
+            tapis._ensure_valid_token(buffer=60 * 30)  # 30 minutes buffer
+        except Exception:
+            logger.exception(f"Error ensuring valid token for user:{request.user}")
+            raise AuthenticationIssue("Could not refresh authentication token")
+
         user_info = {
             "username": tapis.user.username,
             "authToken": {

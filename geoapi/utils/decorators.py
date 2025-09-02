@@ -2,7 +2,12 @@ from uuid import UUID
 from typing import TYPE_CHECKING
 from litestar.connection import ASGIConnection
 from litestar.handlers.base import BaseRouteHandler
-from litestar.exceptions import HTTPException
+from litestar.exceptions import (
+    HTTPException,
+    NotAuthorizedException,
+    PermissionDeniedException,
+    NotFoundException,
+)
 from geoapi.services.users import UserService
 from geoapi.services.projects import ProjectsService
 from geoapi.services.features import FeaturesService
@@ -36,22 +41,18 @@ def check_access_and_get_project(
         try:
             UUID(uuid)
         except ValueError as exc:
-            raise HTTPException(status_code=404, detail="Invalid project UUID") from exc
+            raise NotFoundException("Invalid project UUID") from exc
     proj = (
         ProjectsService.get(db_session, user=current_user, project_id=project_id)
         if project_id
         else ProjectsService.get(db_session, user=current_user, uuid=uuid)
     )
     if not proj:
-        raise HTTPException(status_code=404, detail="No project found")
-    if not allow_public_use or not proj.public:
-        access = (
-            False
-            if is_anonymous(current_user)
-            else UserService.canAccess(db_session, current_user, proj.id)
-        )
-        if not access:
-            raise HTTPException(status_code=403, detail="Access denied")
+        raise NotFoundException("No project found")
+    if is_anonymous(current_user) and not (allow_public_use or proj.public):
+        raise NotAuthorizedException("Must be logged in to access project")
+    if not UserService.canAccess(db_session, current_user, proj.id):
+        raise PermissionDeniedException("Access denied")
     return proj
 
 
@@ -115,7 +116,7 @@ def project_admin_or_creator_permissions_guard(
         allow_public_use=False,
     )
     if not UserService.is_admin_or_creator(db_session, connection.user, project_id):
-        raise HTTPException(status_code=403, detail="Access denied")
+        raise PermissionDeniedException("Must be project admin or creator")
 
 
 def project_feature_exists_guard(
@@ -196,4 +197,4 @@ def not_anonymous_guard(connection: ASGIConnection, _: BaseRouteHandler) -> None
     This is used in the ASGI app to check permissions before processing the request.
     """
     if is_anonymous(connection.user):
-        raise HTTPException(status_code=403, detail="Access denied")
+        raise NotAuthorizedException("Must be logged in to access this resource")

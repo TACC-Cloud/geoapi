@@ -29,7 +29,7 @@ def progress_notifications(userdata, db_session):
 
 def test_get_notifications_unauthorized_guest(test_client, projects_fixture):
     resp = test_client.get("/notifications/")
-    assert resp.status_code == 403
+    assert resp.status_code == 401
 
 
 def test_get_notifications(test_client, notifications, db_session):

@@ -6,7 +6,7 @@ from litestar import Controller, get, Request, post, delete, put, Router
 from litestar.datastructures import UploadFile
 from litestar.params import Body
 from litestar.enums import RequestEncodingType
-from litestar.exceptions import PermissionDeniedException
+from litestar.exceptions import NotAuthorizedException
 from litestar.plugins.sqlalchemy import SQLAlchemyDTO
 from litestar.dto import DTOConfig
 from uuid import UUID
@@ -284,7 +284,7 @@ class ProjectsListingController(Controller):
             ]
             return subset
         if is_anonymous(u):
-            raise PermissionDeniedException(403, "Access denied.")
+            raise NotAuthorizedException("Must be logged in to access all projects")
         logger.info(f"Get all projects for user:{u.username}")
         return ProjectsService.list(db_session, u)
 

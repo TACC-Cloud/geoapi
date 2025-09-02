@@ -47,7 +47,7 @@ def test_get_projects_with_multiple(
 
 def test_get_projects_not_allowed(test_client):
     resp = test_client.get("/projects/")
-    assert resp.status_code == 403
+    assert resp.status_code == 401
 
 
 def test_get_projects_using_uuids(
@@ -110,7 +110,7 @@ def test_get_project_using_single_uuid_unauthorized_guest(
     test_client, projects_fixture
 ):
     resp = test_client.get("/projects/", params="uuid={}".format(projects_fixture.uuid))
-    assert resp.status_code == 403
+    assert resp.status_code == 401
 
 
 def test_get_project_using_single_uuid_not_member_of_project(
@@ -228,7 +228,7 @@ def test_delete_project_not_admin_or_creator(
 
 def test_delete_unauthorized_guest(test_client, projects_fixture, db_session):
     resp = test_client.delete(f"/projects/{projects_fixture.id}/")
-    assert resp.status_code == 403
+    assert resp.status_code == 401
     proj = db_session.get(Project, 1)
     assert proj is not None
 
@@ -264,7 +264,7 @@ def test_add_user_unauthorized_guest(test_client, projects_fixture):
         f"/projects/{projects_fixture.id}/users/",
         json={"username": "newUser"},
     )
-    assert resp.status_code == 403
+    assert resp.status_code == 401
 
 
 def test_delete_user(test_client, projects_fixture2, user1, user2):
@@ -283,7 +283,7 @@ def test_delete_user_unauthorized(test_client, projects_fixture, user2):
     assert resp.status_code == 403
 
     test_client.delete("/projects/1/users/test1/")
-    assert resp.status_code == 403
+    assert resp.status_code == 401
 
 
 def test_upload_gpx(test_client, projects_fixture, gpx_file_fixture, user1):
@@ -493,7 +493,7 @@ def test_update_project(test_client, projects_fixture, user1, db_session):
 def test_update_project_unauthorized_guest(test_client, public_projects_fixture):
     data = {"name": "Renamed Project", "description": "New Description", "public": True}
     resp = test_client.put(f"/projects/{public_projects_fixture.id}/", json=data)
-    assert resp.status_code == 403
+    assert resp.status_code == 401
     assert resp.json()["detail"] == "Access denied"
 
 
@@ -569,14 +569,14 @@ def test_create_project_unauthorized(test_client):
 
     resp = test_client.post("/projects/", json=data)
 
-    assert resp.status_code == 403
+    assert resp.status_code == 401
 
 
 def test_project_check_access(test_client, user1, projects_fixture):
     resp = test_client.get(
         f"/projects/{projects_fixture.id}/check-access/",
     )
-    assert resp.status_code == 403
+    assert resp.status_code == 401
 
     resp = test_client.get(
         f"/projects/{projects_fixture.id}/check-access/",
