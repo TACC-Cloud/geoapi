@@ -1,4 +1,6 @@
 import logging
+import uuid
+from hashlib import sha256
 from geoapi.settings import settings
 
 
@@ -17,15 +19,25 @@ for h in logger.handlers:
     h.setFormater(formatter)
 
 
-def get_logger(mod_name: str) -> logging.Logger:
-    """Return logger object."""
-    mod_format = (
-        "%(asctime)s :: %(levelname)s :: [%(filename)s:%(lineno)d] :: %(message)s"
+def guid_filter(record: logging.LogRecord) -> bool:
+    """Log filter that adds a guid to each entry"""
+
+    record.logGuid = uuid.uuid4().hex
+    if record.sessionId is not None:
+        record.sessionId = sha256(record.sessionId.encode()).hexdigest()
+    return True
+
+
+metrics = logging.getLogger("metrics")
+metrics.setLevel(logging.INFO)
+ch = logging.StreamHandler()
+ch.setLevel(logging.INFO)
+ch.setFormatter(
+    logging.Formatter(
+        "[METRICS] %(levelname)s %(module)s %(name)s.%(funcName)s:%(lineno)s:"
+        " %(message)s user=%(user)s sessionId=%(sessionId)s op=%(operation)s"
+        " info=%(info)s timestamp=%(asctime)s trackingId=portals.%(sessionId)s guid=%(logGuid)s portal=hazmapper tenant=designsafe"
     )
-    mod_logger = logging.getLogger(mod_name)
-    # Writes to stdout
-    ch = logging.StreamHandler()
-    ch.setLevel(logging.INFO)
-    ch.setFormatter(logging.Formatter(mod_format))
-    logger.addHandler(ch)
-    return mod_logger
+)
+ch.addFilter(guid_filter)
+metrics.addHandler(ch)
