@@ -80,17 +80,17 @@ services:
   workers:
     <<: *worker-base  # Reuses worker-base fragment defined at start
     container_name: geoapi_workers
-    command: celery -A geoapi.celery_app worker -l info -Q default -n default_worker@geoapi --uid=1000 --gid=1000
+    command: celery -A geoapi.celery_app worker -l info -Q default -n default_worker@geoapi --uid=celeryuser --gid=celeryuser
 
   workers-heavy:
     <<: *worker-base  # Reuses worker-base fragment defined at start
     container_name: geoapi_workers_heavy
-    command: celery -A geoapi.celery_app worker -l info -Q heavy --concurrency=6 --uid=1000 --gid=1000
+    command: celery -A geoapi.celery_app worker -l info -Q heavy --concurrency=6 --uid=celeryuser --gid=celeryuser
 
   celerybeat:
     <<: *worker-base  # Reuses worker-base fragment defined at start
     container_name: geoapi_celerybeat
-    command: "celery -A geoapi.celery_app beat -l info --uid=1000 --gid=1000"
+    command: "celery -A geoapi.celery_app beat --schedule=/var/run/celery/celerybeat-schedule -l info --uid=celeryuser --gid=celeryuser"
 
   backend:
     image: taccaci/geoapi:local
