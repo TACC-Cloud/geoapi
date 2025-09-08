@@ -80,17 +80,17 @@ services:
   workers:
     <<: *worker-base  # Reuses worker-base fragment defined at start
     container_name: geoapi_workers
-    command: celery -A geoapi.celery_app worker -l info -Q default -n default_worker@geoapi --uid=celeryuser --gid=celeryuser
+    command: celery -A geoapi.celery_app worker -l info -Q default -n default_worker@geoapi --uid=1100 --gid=1100
 
   workers-heavy:
     <<: *worker-base  # Reuses worker-base fragment defined at start
     container_name: geoapi_workers_heavy
-    command: celery -A geoapi.celery_app worker -l info -Q heavy --concurrency=6 --uid=celeryuser --gid=celeryuser
+    command: celery -A geoapi.celery_app worker -l info -Q heavy --concurrency=6 --uid=1100 --gid=1100
 
   celerybeat:
     <<: *worker-base  # Reuses worker-base fragment defined at start
     container_name: geoapi_celerybeat
-    command: "celery -A geoapi.celery_app beat --schedule=/var/run/celery/celerybeat-schedule -l info --uid=celeryuser --gid=celeryuser"
+    command: "celery -A geoapi.celery_app beat --schedule=/var/run/celery/celerybeat-schedule -l info --uid=1100 --gid=1100"
 
   backend:
     image: taccaci/geoapi:local
@@ -123,7 +123,7 @@ services:
         condition: service_completed_successfully
 
   assets-init:
-    image: alpine
+    image: taccaci/geoapi-workers:local
     volumes:
       - assets:/assets
-    command: ["sh", "-c", "chown -R 1000:1000 /assets && chmod -R 775 /assets"]
+    command: ["sh", "-c", "chown -R 1100:1100 /assets && chmod -R 775 /assets"]

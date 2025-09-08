@@ -103,8 +103,9 @@ ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
 RUN echo '. /opt/conda/etc/profile.d/conda.sh' >> /root/.bashrc && \
     echo 'conda activate py312env' >> /root/.bashrc
 
-RUN useradd -s /sbin/nologin celeryuser
-RUN mkdir -p /var/run/celery && chown -R celeryuser:celeryuser /var/run/celery
+RUN groupadd -g 1100 celeryuser
+RUN useradd -s /sbin/nologin -u 1100 -g 1100 celeryuser
+RUN mkdir -p /var/run/celery && chown -R 1100:1100 /var/run/celery
 
 # Set a default command (can be overridden by docker-compose)
 CMD ["bash"]
