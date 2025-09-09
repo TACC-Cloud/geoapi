@@ -200,7 +200,7 @@ def mock_task_update_webhook(requests_mock):
     Mock the Celery->Litestar webhook so tests don't make real HTTP calls.
     """
     requests_mock.post(
-        "http://geoapi_backend:8000/api/webhooks/task-update",
+        "http://test:8888/webhooks/task-update",
         json={"ok": True},
         status_code=200,
     )

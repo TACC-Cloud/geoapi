@@ -1,11 +1,18 @@
 import requests
 from geoapi.models import User
+from geoapi.settings import settings
+from geoapi.utils.client_backend import get_deployed_geoapi_url
 from geoapi.log import logger
 
 
 def send_progress_update(user: User, task_id: str, status: str, message: str) -> None:
     """Send task update payload to webhook."""
-    url = "http://geoapi_backend:8000/api/webhooks/task-update"
+    base_url = (
+        get_deployed_geoapi_url()
+        if settings.APP_ENV != "local"
+        else "http://geoapi_backend:8000"
+    )
+    url = f"{base_url}/webhooks/task-update"
     payload = {
         "task_id": str(task_id),
         "status": status,

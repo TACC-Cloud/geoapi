@@ -219,7 +219,7 @@ else:
     root_store = RedisStore.with_client(url=redis_url)
     session_auth_config = ServerSideSessionConfig(httponly=False, secure=True)
     stores = StoreRegistry(default_factory=root_store.with_namespace)
-    csrf_config = CSRFConfig(secret=settings.SECRET_KEY, exclude=["/api/webhooks"])
+    csrf_config = CSRFConfig(secret=settings.SECRET_KEY, exclude=["/webhooks"])
     channels = ChannelsPlugin(
         backend=RedisChannelsPubSubBackend(redis=Redis.from_url(redis_url)),
         arbitrary_channels_allowed=True,

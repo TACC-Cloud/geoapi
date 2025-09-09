@@ -16,7 +16,7 @@ class TaskStatusWebhookData(BaseModel):
 
 
 class TaskStatusWebhookController(Controller):
-    path = "/api/webhooks/task-update"
+    path = "/webhooks/task-update"
 
     @post(
         "",
