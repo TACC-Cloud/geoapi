@@ -9,9 +9,9 @@ The images used in deployment are built automatically and
 pushed to Docker Hub.
 
 See:
-* https://hub.docker.com/r/taccaci/hazmapper
-* https://hub.docker.com/r/taccaci/geoapi
-* https://hub.docker.com/r/taccaci/geoapi-workers)
+* https://hub.docker.com/r/taccwma/hazmapper
+* https://hub.docker.com/r/taccwma/geoapi
+* https://hub.docker.com/r/taccwma/geoapi-workers)
 
 Deployment configuration including the tag of which image is deployed is maintained at https://github.com/TACC-Cloud/wma-geospatial-deployments
 

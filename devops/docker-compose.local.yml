@@ -8,7 +8,7 @@ networks:
 
 x-worker-base: &worker-base  # Base fragment for worker services
   # See: https://docs.docker.com/reference/compose-file/fragments/
-  image: taccaci/geoapi-workers:local
+  image: taccwma/geoapi-workers:local
   networks:
     - geoapi
   volumes:
@@ -82,7 +82,7 @@ services:
     command: celery -A geoapi.celery_app worker -l info -Q heavy --concurrency=6
 
   celerybeat:
-    image: taccaci/geoapi-workers:local
+    image: taccwma/geoapi-workers:local
     networks:
       - geoapi
     volumes:
@@ -102,7 +102,7 @@ services:
         condition: service_healthy
 
   api:
-    image: taccaci/geoapi:local
+    image: taccwma/geoapi:local
     networks:
       - geoapi
     volumes:
