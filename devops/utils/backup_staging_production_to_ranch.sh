@@ -8,18 +8,16 @@ ssh -o StrictHostKeyChecking=no tg458981@ranch.tacc.utexas.edu \
 echo "Backing up staging"
 ssh -o StrictHostKeyChecking=no portal@staging.geoapi-services.tacc.utexas.edu bash -lc '
   set -Exeuo pipefail
+
   # skipping /assets/streetview as those are temp files
   tar \
-      --warning=no-absolute-paths \
-      --exclude=/assets/streetview \
+      -C / \
       --exclude=assets/streetview \
-      --exclude=/assets/lost+found \
       --exclude=assets/lost+found \
-      --exclude=/assets/bug \
       --exclude=assets/bug \
-      -c -f - /assets/ \
+      -c -f - assets \
   | ssh -o StrictHostKeyChecking=no tg458981@ranch.tacc.utexas.edu \
-      "split -b 300G - /stornext/ranch_01/ranch/projects/DesignSafe-Community/geoapi_assets_backup/staging/staging_assets\$(date +%Y-%m-%d).tar."
+      split -b 300G - /stornext/ranch_01/ranch/projects/DesignSafe-Community/geoapi_assets_backup/staging/staging_assets$(date +%Y-%m-%d).tar.
 '
 
 echo "Finished with STAGING and beginning PRODUCTION"
@@ -35,14 +33,11 @@ ssh -o StrictHostKeyChecking=no portal@prod.geoapi-services.tacc.utexas.edu bash
   set -Exeuo pipefail
   # skipping /assets/streetview as those are temp files
   tar \
-      --warning=no-absolute-paths \
-      --exclude=/assets/streetview \
+      -C / \
       --exclude=assets/streetview \
-      --exclude=/assets/lost+found \
       --exclude=assets/lost+found \
-      --exclude=/assets/bug \
       --exclude=assets/bug \
-      -c -f - /assets/ \
+      -c -f - assets \
   | ssh -o StrictHostKeyChecking=no tg458981@ranch.tacc.utexas.edu \
-      "split -b 300G - /stornext/ranch_01/ranch/projects/DesignSafe-Community/geoapi_assets_backup/production/production_assets\$(date +%Y-%m-%d).tar."
+      split -b 300G - /stornext/ranch_01/ranch/projects/DesignSafe-Community/geoapi_assets_backup/production/production_assets$(date +%Y-%m-%d).tar.
 '
