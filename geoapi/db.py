@@ -2,6 +2,7 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy import create_engine, Engine
 from litestar import Litestar
 from litestar.plugins.sqlalchemy import (
+    # SyncSessionConfig,
     SQLAlchemySyncConfig,
     base,
     EngineConfig,
@@ -71,10 +72,11 @@ def create_task_session():
         session.close()
 
 
+# db_session_config = SyncSessionConfig(expire_on_commit=False, autoflush=False)
 engine_config = EngineConfig(pool_size=20, max_overflow=20, pool_pre_ping=True)
 sqlalchemy_config = SQLAlchemySyncConfig(
     connection_string=get_db_connection_string(settings),
-    create_all=True,
-    metadata=Base.metadata,
-    before_send_handler="autocommit",
+    # session_config=db_session_config,
+    # create_all=True,
+    # metadata=Base.metadata,
 )

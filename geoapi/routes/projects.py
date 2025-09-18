@@ -175,20 +175,6 @@ class OverlayDTO(SQLAlchemyDTO[Overlay]):
     )
 
 
-class OverlayModel(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
-
-    id: int
-    uuid: str
-    minLon: float
-    minLat: float
-    maxLon: float
-    maxLat: float
-    path: str
-    project_id: int
-    label: str
-
-
 class TileServerDTO(SQLAlchemyDTO[TileServer]):
     config = DTOConfig(
         include={
@@ -772,10 +758,11 @@ class ProjectOverlaysResourceController(Controller):
         operation_id="get_overlays",
         description="Get a list of all the overlays associated with the current map project.",
         guards=[project_permissions_allow_public_guard],
+        return_dto=OverlayDTO,
     )
     def get_overlays(
         self, request: Request, db_session: "Session", project_id: int
-    ) -> list[OverlayModel]:
+    ) -> list[Overlay]:
         """Get a list of overlays for a project."""
         logger.info(
             "Get overlays for project:{} for user:{}".format(
