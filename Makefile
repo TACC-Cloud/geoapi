@@ -58,10 +58,12 @@ deploy:
 .PHONY: deploy-geoapi
 deploy-geoapi:
 	docker push $(GEOAPI_IMAGE):$(TAG)
+	docker push $(GEOAPI_IMAGE):$(DOCKER_IMAGE_BRANCH_TAG)
 
 .PHONY: deploy-workers
 deploy-workers:
 	docker push $(GEOAPI_WORKERS):$(TAG)
+	docker push $(GEOAPI_WORKERS):$(DOCKER_IMAGE_BRANCH_TAG)
 
 .PHONY: build-dev
 build-dev:
