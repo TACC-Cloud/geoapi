@@ -28,11 +28,7 @@ from redis.asyncio import Redis
 from geoapi.models import User
 from geoapi.routes import api_router
 from geoapi.settings import settings
-from geoapi.db import (
-    get_db_connection,
-    close_db_connection,
-    sqlalchemy_config,
-)
+from geoapi.db import sqlalchemy_config
 from geoapi.exceptions import (
     InvalidGeoJSON,
     InvalidEXIFData,
@@ -284,15 +280,12 @@ exception_handlers = {
 app = Litestar(
     route_handlers=[api_router],
     middleware=[
-        # TapisTokenRefreshMiddleware,
         logging_middleware_config.middleware,
         cookie_session_config.middleware,
         session_auth_config.middleware,
         jwt_auth.middleware,
     ],
     plugins=[alchemy, channels],
-    on_startup=[get_db_connection],
-    on_shutdown=[close_db_connection],
     stores=stores,
     exception_handlers=exception_handlers,
     csrf_config=csrf_config,
