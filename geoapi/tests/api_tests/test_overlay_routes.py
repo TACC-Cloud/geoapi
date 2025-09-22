@@ -51,8 +51,8 @@ def test_post_overlay(test_client, projects_fixture, image_file_fixture, db_sess
     )
     data = resp.json()
     assert resp.status_code == 201
-    assert data["minLat"] == str(float(10))
-    assert data["maxLon"] == str(float(25))
+    assert data["minLat"] == float(10)
+    assert data["maxLon"] == float(25)
     assert data["path"] is not None
 
 
@@ -73,8 +73,8 @@ def test_post_overlay_import_tapis(
     )
     data = resp.json()
     assert resp.status_code == 201
-    assert data["minLat"] == str(float(10))
-    assert data["maxLon"] == str(float(25))
+    assert data["minLat"] == float(10)
+    assert data["maxLon"] == float(25)
     assert data["path"] is not None
 
 
