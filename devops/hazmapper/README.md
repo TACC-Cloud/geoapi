@@ -1,1 +1,1 @@
-Devop files for `hazmapper.tacc.utexas.edu`.
+See https://github.com/TACC/Core-Portal-Deployments/tree/main/hazmapper/camino
