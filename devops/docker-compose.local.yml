@@ -92,6 +92,18 @@ services:
     container_name: geoapi_celerybeat
     command: "celery -A geoapi.celery_app beat --schedule=/var/run/celery/celerybeat-schedule -l info --uid=1100 --gid=1100"
 
+  titiler:
+    image: ghcr.io/developmentseed/titiler:0.23.1
+    platform: linux/amd64
+    container_name: geoapi_titiler
+    environment:
+      - TITILER_API_ROOT_PATH=/tiles
+      - GDAL_CACHEMAX=1024
+    volumes:
+      - assets:/assets:ro
+    depends_on:
+      - nginx
+
   backend:
     image: taccaci/geoapi:local
     volumes:

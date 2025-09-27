@@ -1151,6 +1151,59 @@ class ProjectTileServersResourceController(Controller):
         )
 
 
+class ProjectTileServersFilesImportResourceController(Controller):
+    path = "/{project_id:int}/tile-servers/files/import/"
+
+    @post(
+        tags=["projects"],
+        operation_id="import_tile_server_files",
+        description=(
+            "Import one or more raster files (by Tapis system/path) to create COGs and "
+            "register them as tile servers for the project. This is an asynchronous operation."
+        ),
+        guards=[project_permissions_guard],
+        return_dto=TaskDTO,
+    )
+    def import_tile_server_files(
+        self,
+        request: Request,
+        db_session: "Session",
+        project_id: int,
+        data: TapisFileImportModel,
+    ) -> Task:
+        """
+        Accepts a list of raster files (Tapis system/path) to convert to COGS
+        """
+        u = request.user
+        files = data.files
+
+        logger.info(
+            "Import tile-server file(s) for project:%s user:%s files:%s",
+            project_id,
+            u.username,
+            files,
+        )
+
+        # Create a queued Task record
+        task = Task(
+            status="queued",
+            description=f"Import {len(files)} tile server file(s) for project {project_id}",
+        )
+        db_session.add(task)
+        db_session.commit()
+        db_session.refresh(task)
+
+        # TODO
+        # external_data.import_tile_servers_from_tapis.delay(
+        #     u.id,
+        #     [f.model_dump() for f in files],
+        #     project_id,
+        #     task.id,
+        # )
+
+        return task
+
+
 class ProjectTileServerResourceController(Controller):
     path = "/{project_id:int}/tile-servers/{tile_server_id:int}/"
 
@@ -1242,6 +1295,7 @@ projects_router = Router(
         ProjectPointCloudsFileImportResourceController,
         ProjectTasksResourceController,
         ProjectTileServersResourceController,
+        ProjectTileServersFilesImportResourceController,
         ProjectTileServerResourceController,
     ],
     type_encoders={Feature: feature_enc_hook},

@@ -264,6 +264,7 @@ def raster_singleband_byte_SP27GTIF():
     with open(os.path.join(home, "fixtures/raster/SP27GTIF.tiff"), "rb") as f:
         yield f
 
+
 @pytest.fixture(scope="function")
 def raster_singleband_byte_UTM2GTIF():
     # raster in UTM zone 16N
@@ -271,18 +272,25 @@ def raster_singleband_byte_UTM2GTIF():
     with open(os.path.join(home, "fixtures/raster/UTM2GTIF.tiff"), "rb") as f:
         yield f
 
+
 @pytest.fixture(scope="function")
 def raster_threeband_byte_rgbsmall():
     home = os.path.dirname(__file__)
     with open(os.path.join(home, "fixtures/raster/rgbsmall.tif"), "rb") as f:
         yield f
 
+
+# TODO  NEED COG to test import tile server from tapis
+
+
 @pytest.fixture(scope="function")
 def raster_threeband_byte_orthodrone_center100():
     # cropped 100x100 window from the center of Ortho-DroneMapper.tif (red rocks)
     # 4 bands: rgb + alpha
     home = os.path.dirname(__file__)
-    with open(os.path.join(home, "fixtures/raster/Ortho-DroneMapper_center100.tif"), "rb") as f:
+    with open(
+        os.path.join(home, "fixtures/raster/Ortho-DroneMapper_center100.tif"), "rb"
+    ) as f:
         yield f
 
 
