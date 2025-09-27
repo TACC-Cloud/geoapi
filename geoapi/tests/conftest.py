@@ -251,6 +251,42 @@ def image_small_DES_2176_fixture():
 
 
 @pytest.fixture(scope="function")
+def raster_singleband_int16_m30dem():
+    home = os.path.dirname(__file__)
+    with open(os.path.join(home, "fixtures/raster/m30dem.tif"), "rb") as f:
+        yield f
+
+
+@pytest.fixture(scope="function")
+def raster_singleband_byte_SP27GTIF():
+    # raster in state plane (Illinois East, NAD27)
+    home = os.path.dirname(__file__)
+    with open(os.path.join(home, "fixtures/raster/SP27GTIF.tiff"), "rb") as f:
+        yield f
+
+@pytest.fixture(scope="function")
+def raster_singleband_byte_UTM2GTIF():
+    # raster in UTM zone 16N
+    home = os.path.dirname(__file__)
+    with open(os.path.join(home, "fixtures/raster/UTM2GTIF.tiff"), "rb") as f:
+        yield f
+
+@pytest.fixture(scope="function")
+def raster_threeband_byte_rgbsmall():
+    home = os.path.dirname(__file__)
+    with open(os.path.join(home, "fixtures/raster/rgbsmall.tif"), "rb") as f:
+        yield f
+
+@pytest.fixture(scope="function")
+def raster_threeband_byte_orthodrone_center100():
+    # cropped 100x100 window from the center of Ortho-DroneMapper.tif (red rocks)
+    # 4 bands: rgb + alpha
+    home = os.path.dirname(__file__)
+    with open(os.path.join(home, "fixtures/raster/Ortho-DroneMapper_center100.tif"), "rb") as f:
+        yield f
+
+
+@pytest.fixture(scope="function")
 def video_file_fixture():
     home = os.path.dirname(__file__)
     with open(os.path.join(home, "fixtures/video.mov"), "rb") as f:
