@@ -7,6 +7,7 @@ import configparser
 import re
 from typing import List, IO, Dict
 
+from geoapi.services.tile_server import TileService
 from geoapi.services.videos import VideoService
 from shapely.geometry import Point, shape
 import fiona
@@ -401,9 +402,7 @@ class FeaturesService:
 
         fileObj.close()
 
-        return FeaturesService.addTileServer(
-            database_session, projectId, tile_server_data
-        )
+        return TileService.addTileServer(database_session, projectId, tile_server_data)
 
     @staticmethod
     def fromFileObj(
@@ -745,53 +744,3 @@ class FeaturesService:
         delete_assets(projectId=projectId, uuid=ov.uuid)
         database_session.delete(ov)
         database_session.commit()
-
-    @staticmethod
-    def addTileServer(database_session, projectId: int, data: Dict):
-        """
-        :param projectId: int
-        :param data: Dict
-        :return: ts: TileServer
-        """
-        ts = TileServer()
-
-        for key, value in data.items():
-            setattr(ts, key, value)
-
-        ts.project_id = projectId
-
-        database_session.add(ts)
-        database_session.commit()
-        return ts
-
-    @staticmethod
-    def getTileServers(database_session, projectId: int) -> List[TileServer]:
-        tile_servers = (
-            database_session.query(TileServer).filter_by(project_id=projectId).all()
-        )
-        return tile_servers
-
-    @staticmethod
-    def deleteTileServer(database_session, tileServerId: int) -> None:
-        ts = database_session.get(TileServer, tileServerId)
-        database_session.delete(ts)
-        database_session.commit()
-
-    @staticmethod
-    def updateTileServer(database_session, tileServerId: int, data: dict):
-        ts = database_session.get(TileServer, tileServerId)
-        for key, value in data.items():
-            setattr(ts, key, value)
-        database_session.commit()
-        return ts
-
-    @staticmethod
-    def updateTileServers(database_session, dataList: List[dict]):
-        ret_list = []
-        for tsv in dataList:
-            ts = database_session.get(TileServer, int(tsv["id"]))
-            for key, value in tsv.items():
-                setattr(ts, key, value)
-            ret_list.append(ts)
-            database_session.commit()
-        return ret_list

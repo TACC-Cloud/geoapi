@@ -1,16 +1,15 @@
 import os
 import subprocess
-import tempfile
-from datetime import datetime
 from pathlib import Path
 from uuid import uuid4
 
-from celery import current_task
+from geoapi.utils.assets import make_project_asset_dir
 
 from geoapi.celery_app import app
 from geoapi.db import create_task_session
 from geoapi.log import logger
-from geoapi.models import Task, TileServer, User
+from geoapi.models import Task, TaskStatus, TileServer, User
+from geoapi.schema.tapis import TapisFilePath
 from geoapi.utils.external_apis import TapisUtils, TapisFileGetError
 from geoapi.tasks.utils import send_progress_update
 
@@ -30,37 +29,43 @@ def _validate_raster_name(name: str) -> None:
 
 
 def _file_url_for_titiler(p: Path) -> str:
-    return f"file://{p}"
+    """
+    Create a properly encoded file URL for TiTiler.
+    TiTiler expects: file:///path/to/file.tif
+    """
+    # Convert to absolute path string
+    abs_path = str(p.resolve())
+    # URL encode the path (but not the file:// prefix)
+    return f"file://{abs_path}"
 
-
-def _gdal_cogify(src: Path, dst: Path) -> None:
+def gdal_cogify(src: Path, dst: Path) -> None:
     _ensure_dir(dst.parent)
     # TODO check and confirm these are best for TiTiler and our use case
     cmd = [
         "gdal_translate",
         "-of",
         "COG",
+        # Compression settings
         "-co",
         "COMPRESS=DEFLATE",
         "-co",
         "PREDICTOR=2",
         "-co",
         "ZLEVEL=9",
+        # Tiling and performance
         "-co",
         "BLOCKSIZE=512",
         "-co",
         "NUM_THREADS=ALL_CPUS",
         "-co",
         "BIGTIFF=IF_SAFER",
-        "-co",
-        "TILING_SCHEME=GoogleMapsCompatible",
         str(src),
         str(dst),
     ]
     subprocess.run(cmd, check=True)
 
 
-def _is_cog(path: Path) -> bool:
+def is_cog(path: Path) -> bool:
     """
     Detect if a GeoTIFF is a Cloud Optimized GeoTIFF by asking gdalinfo.
     Two robust checks:
@@ -88,160 +93,103 @@ def _is_cog(path: Path) -> bool:
 
 @app.task(queue="heavy")
 def import_tile_servers_from_tapis(
-    userId: int,
-    files: list[dict],
-    projectId: int,
-    taskId: int,
-) -> dict:
+    user_id: int,
+    tapis_file: dict,
+    project_id: int,
+    task_id: int,
+) -> None:
     """
-    Download rasters from Tapis (system/path), store under:
-        /assets/{projectId}/{uuid}/
-    If already a COG -> store as-is ( copy as `data.cog.tif`).
-    If not a COG -> convert to COG as {uuid}/data.cog.tif
+    Download raster from Tapis (system/path), store under:
+        /assets/{projectId}/{uuid}/data.cog.tif
+    If already a COG -> store as-is
+    If not a COG -> convert to COG
     Then register a TileServer pointing to TiTiler.
-
-    Returns:
-        {"tile_server_ids": [int, ...]}
     """
-    created_tile_server_ids: list[int] = []
+    tapis_file = TapisFilePath.model_validate(tapis_file)
+
+    tmp_file = None
     with create_task_session() as session:
-
-        def _set_task(status: str, desc: str | None = None) -> None:
-            t = session.get(Task, taskId)
-            if not t:
-                return
-            t.status = status
-            if desc:
-                t.description = desc
-            t.updated = datetime.utcnow()
-            session.add(t)
-            session.commit()
-
         try:
-            task_uuid = current_task.request.id
-        except Exception:
-            task_uuid = None
-
-        try:
-            user = session.get(User, userId)
+            user = session.get(User, user_id)
             client = TapisUtils(session, user)
 
-            _set_task("RUNNING", f"Importing {len(files)} raster file(s)")
-            if task_uuid:
+            def _update_task_and_progress(
+                status: TaskStatus = TaskStatus.RUNNING, latest_message: str = ""
+            ) -> None:
+                t = session.get(Task, task_id)
+                t.status = status.value  # TODO
+                # t.latest_message = latest_message #  TODO
+                session.add(t)
+                session.commit()
+
                 send_progress_update(
-                    user, task_uuid, "success", "Starting raster import"
+                    user, t.process_id, status.value.lower(), latest_message
                 )
 
-            for idx, f in enumerate(files, start=1):
-                system = f["system"]
-                rpath = f["path"]
-                src_name = Path(rpath).name
-                _validate_raster_name(src_name)
+            _update_task_and_progress(latest_message="Starting import")
 
-                if task_uuid:
-                    send_progress_update(
-                        user,
-                        task_uuid,
-                        "success",
-                        f"[{idx}/{len(files)}] Fetching {system}:{rpath}",
-                    )
+            _validate_raster_name(tapis_file.path)
 
-                # Download file
-                try:
-                    tmp_file = client.getFile(system, rpath)  # temp file-like
-                except TapisFileGetError:
-                    logger.exception("Tapis getFile failed for %s:%s", system, rpath)
-                    _set_task("FAILED", f"Unable to download {system}:{rpath}")
-                    if task_uuid:
-                        send_progress_update(
-                            user,
-                            task_uuid,
-                            "error",
-                            f"Download failed: {system}:{rpath}",
-                        )
-                    raise
+            _update_task_and_progress(latest_message=f"Fetching {tapis_file.path}")
 
-                tmp_file.filename = src_name
-                with tempfile.TemporaryDirectory() as td:
-                    local_src = Path(td) / src_name
-                    with open(local_src, "wb") as outfp:
-                        outfp.write(tmp_file.read())
-                    tmp_file.close()
-
-                    # Choose UUID folder and layout
-                    asset_uuid = uuid4()
-                    asset_dir = (
-                        ASSETS_DIR / str(projectId) / str(asset_uuid)
-                    ).resolve()
-                    _ensure_dir(asset_dir)
-
-                    cog_path = asset_dir / "data.cog.tif"
-
-                    if _is_cog(local_src):
-                        # If already a COG, store it directly
-                        cog_path.write_bytes(local_src.read_bytes())
-                        status_note = " (already COG)"
-                    else:
-                        # Build a COG
-                        if task_uuid:
-                            send_progress_update(
-                                user,
-                                task_uuid,
-                                "success",
-                                f"[{idx}/{len(files)}] Converting to COG",
-                            )
-                        _gdal_cogify(local_src, cog_path)
-                        status_note = ""
-
-                # Create TileServer pointing to TiTiler
-                file_url = _file_url_for_titiler(cog_path)
-                ts = TileServer(
-                    project_id=projectId,
-                    name=f"Raster {asset_uuid}",
-                    type="xyz",
-                    url=f"/tiles/cog/tiles/{{z}}/{{x}}/{{y}}.png?url={file_url}",
-                    attribution="",
-                    tileOptions={"minZoom": 0, "maxZoom": 22},
-                    uiOptions={
-                        "group": "COGs",
-                        "visible": True,
-                        "uuid": str(asset_uuid),
-                    },
-                )
-                # TODO we need to consider deleting COG if TileServer is ever deleted; follow on JIRA.
-                session.add(ts)
-                session.flush()
-                created_tile_server_ids.append(ts.id)
-
-                if task_uuid:
-                    send_progress_update(
-                        user,
-                        task_uuid,
-                        "success",
-                        f"[{idx}/{len(files)}] Registered {asset_uuid}{status_note}",
-                    )
-
-            _set_task("SUCCESS", f"Imported {len(created_tile_server_ids)} raster(s)")
-            if task_uuid:
-                send_progress_update(
-                    user,
-                    task_uuid,
-                    "success",
-                    f"Completed: {len(created_tile_server_ids)} raster(s)",
-                )
-            session.commit()
-            return {"tile_server_ids": created_tile_server_ids}
-
-        except Exception as e:
-            logger.exception("Raster import failed for project:%s", projectId)
-            session.rollback()
-            _set_task("FAILED", f"Import failed: {e}")
             try:
-                user = session.get(User, userId)
-                if task_uuid:
-                    send_progress_update(
-                        user, task_uuid, "error", f"Import failed: {e}"
-                    )
-            except Exception:
-                pass
+                tmp_file = client.getFile(
+                    tapis_file.system, tapis_file.path
+                )  # temp file
+            except TapisFileGetError:
+                logger.exception(
+                    f"Tapis getFile failed for {tapis_file} when "
+                    f"creating tile server for user:{user.username}, project:{project_id})"
+                )
+                _update_task_and_progress(
+                    status=TaskStatus.FAILED,
+                    latest_message=f"Failed to get {tapis_file.path}",
+                )
+                raise RuntimeError(f"Failed to download {tapis_file.path}")
+
+            cog_uuid = uuid4()
+            cog_path = Path(make_project_asset_dir(project_id)) / f"{cog_uuid}.cog.tif"
+
+            src_path = Path(tmp_file.name)
+            if is_cog(src_path):
+                # If already a COG, store it directly
+                cog_path.write_bytes(src_path.read_bytes())
+            else:
+                _update_task_and_progress(latest_message="Processing file")
+                gdal_cogify(src_path, cog_path)
+
+            # Create TileServer pointing to TiTiler
+            file_url = _file_url_for_titiler(cog_path)
+            ts = TileServer(
+                project_id=project_id,
+                name=tapis_file.path,
+                type="xyz",
+                kind="cog",
+                internal=True,
+                url=f"/tiles/cog/tiles/{{z}}/{{x}}/{{y}}.png?url={file_url}",
+                attribution="",
+                tileOptions={"minZoom": 0, "maxZoom": 22},
+                uiOptions={
+                    "visible": True,
+                    "uuid": str(cog_uuid),
+                },
+            )
+            # TODO we need to consider deleting COG if TileServer is ever deleted; create JIRA.
+            session.add(ts)
+            session.flush()
+            session.commit()
+        except Exception as _e:
+            # TODO we should probably remove asset files if existing
+
+            logger.exception(
+                f"Raster import failed for {tapis_file},"
+                f" user:{user.username}, project:{project_id})"
+            )
+            _update_task_and_progress(
+                status=TaskStatus.FAILED,
+                latest_message=f"Import failed {tapis_file.path}",
+            )
             raise
+        finally:
+            if tmp_file is not None:
+                tmp_file.close()

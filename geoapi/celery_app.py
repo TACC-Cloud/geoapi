@@ -18,6 +18,15 @@ app = Celery(
     include=["geoapi.tasks"],
 )
 
+# Import task modules
+app.conf.imports = (
+    "geoapi.tasks.raster",
+    "geoapi.tasks.lidar",
+    "geoapi.tasks.streetview",
+    "geoapi.tasks.projects",
+    "geoapi.tasks.external_data",
+)
+
 # Define the queues
 app.conf.task_queues = {
     "default": {"exchange": "default", "routing_key": "default"},

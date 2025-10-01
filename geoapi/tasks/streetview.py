@@ -146,7 +146,7 @@ def _from_tapis(
             NotificationsService.updateProgress(
                 database_session,
                 task_uuid=task_uuid,
-                status="in_progress",
+                status="RUNNING",
                 message="Collecting files from DesignSafe",
                 progress=int(done_files / files_length * 100),
                 logItem={"uploadFiles": img_list},
@@ -304,7 +304,7 @@ def from_tapis_to_streetview(
                 streetview_instance,
                 user,
                 task_uuid,
-                "error",
+                "ERROR",
                 error_message,
                 logItem={"errorMessage": error_message},
             )

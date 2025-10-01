@@ -76,6 +76,7 @@ services:
     container_name: geoapi_nginx
     depends_on:
       - backend
+      - titiler
 
   workers:
     <<: *worker-base  # Reuses worker-base fragment defined at start
@@ -98,11 +99,16 @@ services:
     container_name: geoapi_titiler
     environment:
       - TITILER_API_ROOT_PATH=/tiles
+      # GDAL settings
       - GDAL_CACHEMAX=1024
+      - GDAL_DISABLE_READDIR_ON_OPEN=EMPTY_DIR
+      - VSI_CACHE=TRUE
+      - VSI_CACHE_SIZE=1000000
+      # CORS settings - CRITICAL
+      - TITILER_API_CORS_ORIGINS=http://localhost:4200,http://localhost:8888
+      - TITILER_API_CORS_ALLOW_CREDENTIALS=true
     volumes:
       - assets:/assets:ro
-    depends_on:
-      - nginx
 
   backend:
     image: taccaci/geoapi:local

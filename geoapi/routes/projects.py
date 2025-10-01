@@ -16,6 +16,7 @@ from geoapi.services.features import FeaturesService
 from geoapi.services.streetview import StreetviewService
 from geoapi.services.point_cloud import PointCloudService
 from geoapi.services.projects import ProjectsService
+from geoapi.services.tile_server import TileService
 from geoapi.tasks import external_data, streetview
 from geoapi.models import Task, Project, Feature, TileServer, Overlay, PointCloud, User
 from geoapi.utils.decorators import (
@@ -29,6 +30,7 @@ from geoapi.utils.decorators import (
     check_access_and_get_project,
     is_anonymous,
 )
+from geoapi.schema.tapis import TapisFilePath
 
 if TYPE_CHECKING:
     from sqlalchemy.orm import Session
@@ -132,15 +134,20 @@ class UserPayloadModel(UserModel):
     admin: bool = False
 
 
-TaskDTO = SQLAlchemyDTO[Task]
+class TaskDTO(SQLAlchemyDTO[Task]):
+    model_config = ConfigDict(from_attributes=True)
+    config = DTOConfig(
+        # skipping process_id
+        include={"id", "status", "description", "created", "updated"},
+    )
 
 
 class TaskModel(BaseModel):
     id: int | None = None
     status: str | None = None
     description: str | None = None
-    created: datetime = None
-    updated: datetime = None
+    created: datetime | None = None
+    updated: datetime | None = None
 
 
 class PointCloudDTO(SQLAlchemyDTO[PointCloud]):
@@ -181,6 +188,9 @@ class TileServerDTO(SQLAlchemyDTO[TileServer]):
             "id",
             "name",
             "type",
+            "kind",
+            "internal",
+            "uuid",
             "url",
             "attribution",
             "tileOptions",
@@ -195,20 +205,19 @@ class TileServerModel(BaseModel):
     id: int | None = None
     name: str | None = None
     type: str | None = None
+    kind: str | None = None
+    internal: bool | None = None
+    uuid: UUID | None = None
     url: str | None = None
     attribution: str | None = None
     tileOptions: dict | None = None
     uiOptions: dict | None = None
 
 
+# TODO: replace with TapisFilePath (and update client software)
 class TapisFileUploadModel(BaseModel):
     system_id: str | None = None
     path: str | None = None
-
-
-class TapisFileModel(BaseModel):
-    system: str
-    path: str
 
 
 class TapisSaveFileModel(BaseModel):
@@ -220,7 +229,7 @@ class TapisSaveFileModel(BaseModel):
 
 
 class TapisFileImportModel(BaseModel):
-    files: list[TapisFileModel]
+    files: list[TapisFilePath]
 
 
 class OverlayPostBody(BaseModel):
@@ -1103,7 +1112,7 @@ class ProjectTileServersResourceController(Controller):
                 project_id, request.user.username, data.name
             )
         )
-        return FeaturesService.addTileServer(db_session, project_id, data.model_dump())
+        return TileService.addTileServer(db_session, project_id, data.model_dump())
 
     @get(
         tags=["projects"],
@@ -1121,7 +1130,7 @@ class ProjectTileServersResourceController(Controller):
                 project_id, request.user.username
             )
         )
-        return FeaturesService.getTileServers(db_session, project_id)
+        return TileService.getTileServers(db_session, project_id)
 
     @put(
         tags=["projects"],
@@ -1145,7 +1154,7 @@ class ProjectTileServersResourceController(Controller):
             )
         )
 
-        return FeaturesService.updateTileServers(
+        return TileService.updateTileServers(
             database_session=db_session,
             dataList=[ts.model_dump(exclude_none=True) for ts in data],
         )
@@ -1163,6 +1172,7 @@ class ProjectTileServersFilesImportResourceController(Controller):
         ),
         guards=[project_permissions_guard],
         return_dto=TaskDTO,
+        status_code=201,
     )
     def import_tile_server_files(
         self,
@@ -1170,38 +1180,23 @@ class ProjectTileServersFilesImportResourceController(Controller):
         db_session: "Session",
         project_id: int,
         data: TapisFileImportModel,
-    ) -> Task:
+    ) -> list[Task]:
         """
-        Accepts a list of raster files (Tapis system/path) to convert to COGS
+        Accepts a list of raster files (Tapis system/path) to convert to COGS for tile server
         """
         u = request.user
         files = data.files
 
         logger.info(
-            "Import tile-server file(s) for project:%s user:%s files:%s",
-            project_id,
-            u.username,
-            files,
+            f"Importing tile-server file(s) for project:{project_id} "
+            f"user:{u.username} files:{files}"
         )
 
-        # Create a queued Task record
-        task = Task(
-            status="queued",
-            description=f"Import {len(files)} tile server file(s) for project {project_id}",
+        tasks = TileService.import_tile_server_files(
+            database_session=db_session, user=u, project_id=project_id, files=files
         )
-        db_session.add(task)
-        db_session.commit()
-        db_session.refresh(task)
 
-        # TODO
-        # external_data.import_tile_servers_from_tapis.delay(
-        #     u.id,
-        #     [f.model_dump() for f in files],
-        #     project_id,
-        #     task.id,
-        # )
-
-        return task
+        return tasks
 
 
 class ProjectTileServerResourceController(Controller):
@@ -1226,7 +1221,7 @@ class ProjectTileServerResourceController(Controller):
                 tile_server_id, project_id, request.user.username
             )
         )
-        FeaturesService.deleteTileServer(db_session, tile_server_id)
+        TileService.deleteTileServer(db_session, tile_server_id)
 
     @put(
         tags=["projects"],
@@ -1249,7 +1244,7 @@ class ProjectTileServerResourceController(Controller):
                 tile_server_id, project_id, request.user.username
             )
         )
-        return FeaturesService.updateTileServer(
+        return TileService.updateTileServer(
             database_session=db_session,
             tileServerId=tile_server_id,
             data=data.model_dump(exclude_none=True),

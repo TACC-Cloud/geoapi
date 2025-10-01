@@ -1,6 +1,7 @@
-from sqlalchemy import Integer, String, ForeignKey
+import uuid
+from sqlalchemy import Boolean, Integer, String, ForeignKey
 from sqlalchemy.orm import relationship, mapped_column
-from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.dialects.postgresql import JSONB, UUID
 from geoapi.db import Base
 
 
@@ -12,6 +13,31 @@ class TileServer(Base):
     )
     name = mapped_column(String(), nullable=False)
     type = mapped_column(String(), nullable=False)
+    kind = mapped_column(
+        String(), nullable=True, comment=("Source kind for what the data is (e.g. cog)")
+    )
+
+    internal = mapped_column(
+        Boolean,
+        nullable=False,
+        default=False,
+        server_default="false",
+        comment=(
+            "True when served internally by our stack (e.g., TiTiler). "
+            "When true, 'uuid' must be non-null. External layers keep this false."
+        ),
+    )
+
+    uuid = mapped_column(
+        UUID(as_uuid=True),
+        nullable=True,
+        index=True,
+        comment=(
+            "Identifier for internally managed assets (e.g., the generated COG file).  "
+            "Required when 'internal' is true; null for external layers."
+        ),
+    )
+
     url = mapped_column(String(), nullable=False)
     attribution = mapped_column(String(), nullable=False)
     tileOptions = mapped_column(JSONB, default={})
