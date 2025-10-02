@@ -77,4 +77,5 @@ engine_config = EngineConfig(pool_size=20, max_overflow=20, pool_pre_ping=True)
 sqlalchemy_config = SQLAlchemySyncConfig(
     connection_string=get_db_connection_string(settings),
     session_config=db_session_config,
+    engine_config=engine_config,
 )
