@@ -228,8 +228,6 @@ session_auth = SessionAuth["User", ServerSideSessionBackend](
         "/auth/login",
         "/auth/callback",
         "/schema",
-        "/streetview/auth/mapillary/login",
-        "/streetview/auth/mapillary/callback",
     ],
     authentication_middleware_class=GeoAPISessionAuthMiddleware,
 )
@@ -241,8 +239,6 @@ jwt_auth = JWTAuth["User"](
         "/auth/login",
         "/auth/callback",
         "/schema",
-        "/streetview/auth/mapillary/login",
-        "/streetview/auth/mapillary/callback",
     ],
     auth_header="X-Tapis-Token",
     verify_expiry=True,
