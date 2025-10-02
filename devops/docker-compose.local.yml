@@ -113,7 +113,7 @@ services:
     stdin_open: true
     tty: true
     container_name: geoapi_backend
-    command: "litestar run --reload --host 0.0.0.0 --port 8000 --debug"
+    command: "litestar run -W 8 --reload --host 0.0.0.0 --port 8000 --debug"
     extra_hosts:
       - "host.docker.internal:host-gateway"
     depends_on:
