@@ -1,4 +1,5 @@
 import os
+import json
 import subprocess
 from pathlib import Path
 from uuid import uuid4
@@ -16,10 +17,6 @@ from geoapi.tasks.utils import send_progress_update
 ASSETS_DIR = Path(os.getenv("ASSETS_BASE_DIR", "/assets")).resolve()
 
 
-def _ensure_dir(p: Path) -> None:
-    p.mkdir(parents=True, exist_ok=True)
-
-
 def _validate_raster_name(name: str) -> None:
     ok = (".tif", ".tiff", ".geotiff")
     if not name.lower().endswith(ok):
@@ -28,68 +25,48 @@ def _validate_raster_name(name: str) -> None:
         )
 
 
-def _file_url_for_titiler(p: Path) -> str:
-    """
-    Create a properly encoded file URL for TiTiler.
-    TiTiler expects: file:///path/to/file.tif
-    """
-    # Convert to absolute path string
-    abs_path = str(p.resolve())
-    # URL encode the path (but not the file:// prefix)
-    return f"file://{abs_path}"
-
 def gdal_cogify(src: Path, dst: Path) -> None:
-    _ensure_dir(dst.parent)
-    # TODO check and confirm these are best for TiTiler and our use case
+    """Convert to COG"""
+    # When creating cog, we convert to Web Mercator + GoogleMapsCompatible
+    # for optimal TiTiler performance
     cmd = [
-        "gdal_translate",
-        "-of",
-        "COG",
-        # Compression settings
-        "-co",
-        "COMPRESS=DEFLATE",
-        "-co",
-        "PREDICTOR=2",
-        "-co",
-        "ZLEVEL=9",
-        # Tiling and performance
-        "-co",
-        "BLOCKSIZE=512",
-        "-co",
-        "NUM_THREADS=ALL_CPUS",
-        "-co",
-        "BIGTIFF=IF_SAFER",
+        "gdalwarp",
+        "-of", "COG",
+        "-t_srs", "EPSG:3857",  #  Web Mercator
+        "-co", "COMPRESS=DEFLATE",
+        "-co", "BLOCKSIZE=512",
+        "-co", "TILING_SCHEME=GoogleMapsCompatible",
         str(src),
         str(dst),
     ]
     subprocess.run(cmd, check=True)
 
 
-def is_cog(path: Path) -> bool:
-    """
-    Detect if a GeoTIFF is a Cloud Optimized GeoTIFF by asking gdalinfo.
-    Two robust checks:
-      1) Plain text contains 'Cloud Optimized GeoTIFF: Yes'
-      2) JSON has metadata flagging COG layout (varies by GDAL version)
-    """
-    try:
-        # Text mode check (stable across many GDAL versions)
-        proc = subprocess.run(
-            ["gdalinfo", str(path)], capture_output=True, text=True, check=True
-        )
-        if "Cloud Optimized GeoTIFF: Yes" in proc.stdout:
-            return True
-        # Fallback JSON probe
-        procj = subprocess.run(
-            ["gdalinfo", "-json", str(path)], capture_output=True, text=True, check=True
-        )
-        return (
-            '"Cloud Optimized GeoTIFF": "Yes"' in procj.stdout
-            or '"LAYOUT": "COG"' in procj.stdout
-        )
-    except Exception:
-        return False
+def get_cog_metadata(path: Path) -> dict:
+    """Extract useful metadata from a COG for tileOptions."""
+    result = subprocess.run(
+        ["gdalinfo", "-json", str(path)],
+        capture_output=True,
+        text=True,
+        check=True
+    )
+    info = json.loads(result.stdout)
 
+    # Get the polygon from wgs84Extent
+    polygon = info.get('wgs84Extent', {}).get('coordinates', [[]])[0]
+
+    # Extract min/max lat/lng from polygon
+    lngs = [coord[0] for coord in polygon]
+    lats = [coord[1] for coord in polygon]
+
+    # Convert to Leaflet bounds format: [[south, west], [north, east]]
+    bounds = [[min(lats), min(lngs)], [max(lats), max(lngs)]]
+
+    return {
+        "minZoom": 0,
+        "maxZoom": 22,  # fixed/not-optimal (i.e. not based on input geotiff's resolution)
+        "bounds": bounds
+    }
 
 @app.task(queue="heavy")
 def import_tile_servers_from_tapis(
@@ -151,27 +128,27 @@ def import_tile_servers_from_tapis(
             cog_path = Path(make_project_asset_dir(project_id)) / f"{cog_uuid}.cog.tif"
 
             src_path = Path(tmp_file.name)
-            if is_cog(src_path):
-                # If already a COG, store it directly
-                cog_path.write_bytes(src_path.read_bytes())
-            else:
-                _update_task_and_progress(latest_message="Processing file")
-                gdal_cogify(src_path, cog_path)
+
+            _update_task_and_progress(latest_message="Processing file")
+            gdal_cogify(src_path, cog_path)
+
+            tile_options = get_cog_metadata(cog_path)
 
             # Create TileServer pointing to TiTiler
-            file_url = _file_url_for_titiler(cog_path)
             ts = TileServer(
                 project_id=project_id,
                 name=tapis_file.path,
                 type="xyz",
                 kind="cog",
                 internal=True,
-                url=f"/tiles/cog/tiles/{{z}}/{{x}}/{{y}}.png?url={file_url}",
+                url=str(cog_path),  # /assets/{project_id}/{uuid}.cog.tif",
                 attribution="",
-                tileOptions={"minZoom": 0, "maxZoom": 22},
+                tileOptions=tile_options,
                 uiOptions={
                     "visible": True,
-                    "uuid": str(cog_uuid),
+                    # "zIndex": -1, #  TODO pass in this value; add ticket to keep this somewhere
+                    "opacity": 1,
+                    "isActive": True,
                 },
             )
             # TODO we need to consider deleting COG if TileServer is ever deleted; create JIRA.

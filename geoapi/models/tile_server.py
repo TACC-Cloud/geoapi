@@ -38,7 +38,10 @@ class TileServer(Base):
         ),
     )
 
-    url = mapped_column(String(), nullable=False)
+    url = mapped_column(String(), nullable=False,     comment=(
+        "For internal=true: file path to asset (e.g., /assets/3/uuid.cog.tif)."
+        "For internal=false: full tile URL template with {z}/{x}/{y} placeholders."
+    ))
     attribution = mapped_column(String(), nullable=False)
     tileOptions = mapped_column(JSONB, default={})
     uiOptions = mapped_column(JSONB, default={})

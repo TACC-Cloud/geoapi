@@ -98,7 +98,6 @@ services:
     platform: linux/amd64
     container_name: geoapi_titiler
     environment:
-      - TITILER_API_ROOT_PATH=/tiles
       # GDAL settings
       - GDAL_CACHEMAX=1024
       - GDAL_DISABLE_READDIR_ON_OPEN=EMPTY_DIR
