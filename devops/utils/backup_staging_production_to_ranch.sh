@@ -6,9 +6,8 @@ ssh -o StrictHostKeyChecking=no tg458981@ranch.tacc.utexas.edu \
   'find /scoutfs/projects/DesignSafe-Community/geoapi_assets_backup/staging/ -mtime +7 -type f -exec rm {} +'
 
 echo "Backing up staging"
-ssh -o StrictHostKeyChecking=no portal@staging.geoapi-services.tacc.utexas.edu bash -c \
-'set -euo pipefail; tar -C / --exclude=assets/streetview --exclude=assets/lost+found --exclude=assets/bug -c -f - assets | ssh -o StrictHostKeyChecking=no tg458981@ranch.tacc.utexas.edu split -b 300G - /scoutfs/projects/DesignSafe-Community/geoapi_assets_backup/staging/staging_assets$(date +%F).tar.'
-
+ssh -o StrictHostKeyChecking=no portal@staging.geoapi-services.tacc.utexas.edu bash -euo pipefail -c \
+'tar -C / --exclude=assets/streetview --exclude=assets/lost+found --exclude=assets/bug -c -f - assets | ssh -o StrictHostKeyChecking=no tg458981@ranch.tacc.utexas.edu split -b 300G - /scoutfs/projects/DesignSafe-Community/geoapi_assets_backup/staging/staging_assets$(date +%F).tar.'
 
 # size check for STAGING (>= 1 TiB)
 ssh -o StrictHostKeyChecking=no tg458981@ranch.tacc.utexas.edu '
@@ -26,8 +25,8 @@ ssh -o StrictHostKeyChecking=no tg458981@ranch.tacc.utexas.edu \
   'find /scoutfs/projects/DesignSafe-Community/geoapi_assets_backup/production/ -mtime +21 -type f -exec rm {} +'
 
 echo "Backing up production"
-ssh -o StrictHostKeyChecking=no portal@prod.geoapi-services.tacc.utexas.edu bash -c \
-'set -euo pipefail; tar -C / --exclude=assets/streetview --exclude=assets/lost+found --exclude=assets/bug -c -f - assets | ssh -o StrictHostKeyChecking=no tg458981@ranch.tacc.utexas.edu split -b 300G - /scoutfs/projects/DesignSafe-Community/geoapi_assets_backup/production/production_assets$(date +%F).tar.'
+ssh -o StrictHostKeyChecking=no portal@prod.geoapi-services.tacc.utexas.edu bash -euo pipefail -c \
+'tar -C / --exclude=assets/streetview --exclude=assets/lost+found --exclude=assets/bug -c -f - assets | ssh -o StrictHostKeyChecking=no tg458981@ranch.tacc.utexas.edu split -b 300G - /scoutfs/projects/DesignSafe-Community/geoapi_assets_backup/production/production_assets$(date +%F).tar.'
 
 # size check for PRODUCTION over today + yesterday (>= 3 TB)
 ssh -o StrictHostKeyChecking=no tg458981@ranch.tacc.utexas.edu '
