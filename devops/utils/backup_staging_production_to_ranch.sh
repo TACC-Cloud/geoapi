@@ -3,7 +3,7 @@ set -Exeuo pipefail
 
 echo "Removing backups older than 1 week (i.e. 7 days) (STAGING)"
 ssh -o StrictHostKeyChecking=no tg458981@ranch.tacc.utexas.edu \
-  'find /stornext/ranch_01/ranch/projects/DesignSafe-Community/geoapi_assets_backup/staging/ -mtime +7 -type f -exec rm {} +'
+  'find /scoutfs/projects/DesignSafe-Community/geoapi_assets_backup/staging/ -mtime +7 -type f -exec rm {} +'
 
 echo "Backing up staging"
 ssh -o StrictHostKeyChecking=no portal@staging.geoapi-services.tacc.utexas.edu bash -lc '
@@ -17,7 +17,7 @@ ssh -o StrictHostKeyChecking=no portal@staging.geoapi-services.tacc.utexas.edu b
       --exclude=assets/bug \
       -c -f - assets \
   | ssh -o StrictHostKeyChecking=no tg458981@ranch.tacc.utexas.edu \
-      split -b 300G - /stornext/ranch_01/ranch/projects/DesignSafe-Community/geoapi_assets_backup/staging/staging_assets$(date +%Y-%m-%d).tar.
+      split -b 300G - /scoutfs/projects/DesignSafe-Community/geoapi_assets_backup/staging/staging_assets$(date +%Y-%m-%d).tar.
 '
 
 echo "Finished with STAGING and beginning PRODUCTION"
@@ -26,7 +26,7 @@ echo "--------------------------------------------------"
 
 echo "Removing backups older than 3 weeks (i.e. 21 days) (PRODUCTION)"
 ssh -o StrictHostKeyChecking=no tg458981@ranch.tacc.utexas.edu \
-  'find /stornext/ranch_01/ranch/projects/DesignSafe-Community/geoapi_assets_backup/production/ -mtime +21 -type f -exec rm {} +'
+  'find /scoutfs/projects/DesignSafe-Community/geoapi_assets_backup/production/ -mtime +21 -type f -exec rm {} +'
 
 echo "Backing up production"
 ssh -o StrictHostKeyChecking=no portal@prod.geoapi-services.tacc.utexas.edu bash -lc '
@@ -39,5 +39,5 @@ ssh -o StrictHostKeyChecking=no portal@prod.geoapi-services.tacc.utexas.edu bash
       --exclude=assets/bug \
       -c -f - assets \
   | ssh -o StrictHostKeyChecking=no tg458981@ranch.tacc.utexas.edu \
-      split -b 300G - /stornext/ranch_01/ranch/projects/DesignSafe-Community/geoapi_assets_backup/production/production_assets$(date +%Y-%m-%d).tar.
+      split -b 300G - /scoutfs/projects/DesignSafe-Community/geoapi_assets_backup/production/production_assets$(date +%Y-%m-%d).tar.
 '
