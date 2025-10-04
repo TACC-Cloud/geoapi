@@ -1,6 +1,7 @@
 import os
 import json
 import subprocess
+import math
 from pathlib import Path
 from uuid import uuid4
 
@@ -31,11 +32,16 @@ def gdal_cogify(src: Path, dst: Path) -> None:
     # for optimal TiTiler performance
     cmd = [
         "gdalwarp",
-        "-of", "COG",
-        "-t_srs", "EPSG:3857",  #  Web Mercator
-        "-co", "COMPRESS=DEFLATE",
-        "-co", "BLOCKSIZE=512",
-        "-co", "TILING_SCHEME=GoogleMapsCompatible",
+        "-of",
+        "COG",
+        "-t_srs",
+        "EPSG:3857",  #  Web Mercator
+        "-co",
+        "COMPRESS=DEFLATE",
+        "-co",
+        "BLOCKSIZE=512",
+        "-co",
+        "TILING_SCHEME=GoogleMapsCompatible",
         str(src),
         str(dst),
     ]
@@ -45,15 +51,12 @@ def gdal_cogify(src: Path, dst: Path) -> None:
 def get_cog_metadata(path: Path) -> dict:
     """Extract useful metadata from a COG for tileOptions."""
     result = subprocess.run(
-        ["gdalinfo", "-json", str(path)],
-        capture_output=True,
-        text=True,
-        check=True
+        ["gdalinfo", "-json", str(path)], capture_output=True, text=True, check=True
     )
     info = json.loads(result.stdout)
 
     # Get the polygon from wgs84Extent
-    polygon = info.get('wgs84Extent', {}).get('coordinates', [[]])[0]
+    polygon = info.get("wgs84Extent", {}).get("coordinates", [[]])[0]
 
     # Extract min/max lat/lng from polygon
     lngs = [coord[0] for coord in polygon]
@@ -62,11 +65,14 @@ def get_cog_metadata(path: Path) -> dict:
     # Convert to Leaflet bounds format: [[south, west], [north, east]]
     bounds = [[min(lats), min(lngs)], [max(lats), max(lngs)]]
 
-    return {
-        "minZoom": 0,
-        "maxZoom": 22,  # fixed/not-optimal (i.e. not based on input geotiff's resolution)
-        "bounds": bounds
-    }
+    # Calculate actual max zoom based on pixel resolution
+    pixel_size = abs(info["geoTransform"][1])  # pixel width in meters (Web Mercator)
+    # Web Mercator at equator: zoom 0 = 156543.03 meters/pixel
+    max_zoom = math.floor(math.log2(156543.03 / pixel_size))
+    max_zoom = min(max(max_zoom, 0), 24)
+
+    return {"minZoom": 0, "maxZoom": max_zoom, "bounds": bounds}
+
 
 @app.task(queue="heavy")
 def import_tile_servers_from_tapis(
@@ -141,12 +147,12 @@ def import_tile_servers_from_tapis(
                 type="xyz",
                 kind="cog",
                 internal=True,
-                url=str(cog_path),  # /assets/{project_id}/{uuid}.cog.tif",
+                url=str(cog_path),  # e.g. /assets/{project_id}/{uuid}.cog.tif",
                 attribution="",
                 tileOptions=tile_options,
                 uiOptions={
                     "visible": True,
-                    # "zIndex": -1, #  TODO pass in this value; add ticket to keep this somewhere
+                    "zIndex": 0,  # frontend can readjust
                     "opacity": 1,
                     "isActive": True,
                 },
