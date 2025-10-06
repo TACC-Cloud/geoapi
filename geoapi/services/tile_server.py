@@ -88,6 +88,7 @@ class TileService:
                 process_id=celery_task_uuid,
                 status="QUEUED",
                 description=f"Add tile-server for {f.path}",
+                project_id=project_id,
             )
             database_session.add(task)
             database_session.flush()  # assigns task.id

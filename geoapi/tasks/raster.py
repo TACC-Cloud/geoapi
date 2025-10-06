@@ -15,7 +15,7 @@ from geoapi.db import create_task_session
 from geoapi.log import logger
 from geoapi.models import Task, TaskStatus, TileServer, User
 from geoapi.utils.external_apis import TapisUtils, TapisFileGetError
-from geoapi.tasks.utils import send_progress_update
+from geoapi.tasks.utils import update_task_and_send_progress_update
 from geoapi.schema.tapis import TapisFilePath
 
 
@@ -123,38 +123,30 @@ def import_tile_servers_from_tapis(
 
     tapis_file = TapisFilePath.model_validate(tapis_file)
     tmp_file = None
+    cog_uuid = None
     with create_task_session() as session:
         try:
             user = session.get(User, user_id)
             client = TapisUtils(session, user)
 
-            def _update_task_and_progress(
-                status: TaskStatus = TaskStatus.RUNNING, latest_message: str = ""
-            ) -> None:
-                t = session.get(Task, task_id)
-                t.status = status.value
-                # t.latest_message = latest_message #  TODO
-                session.add(t)
-                session.commit()
-
-                send_progress_update(
-                    user, t.process_id, status.value.lower(), latest_message
-                )
+            update_task_and_send_progress_update(
+                session, task_id=task_id, latest_message="Starting import"
+            )
 
             try:
                 _validate_raster_name(tapis_file.path)
             except ValueError as e:
-                _update_task_and_progress(
+                update_task_and_send_progress_update(
+                    session,
+                    task_id=task_id,
                     status=TaskStatus.FAILED,
                     latest_message=f"Invalid file type: {str(e)}",
                 )
                 raise
 
-            _update_task_and_progress(latest_message="Starting import")
-
-            _validate_raster_name(tapis_file.path)
-
-            _update_task_and_progress(latest_message=f"Fetching {tapis_file.path}")
+            update_task_and_send_progress_update(
+                session, task_id=task_id, latest_message=f"Fetching {tapis_file.path}"
+            )
 
             try:
                 tmp_file = client.getFile(
@@ -165,7 +157,9 @@ def import_tile_servers_from_tapis(
                     f"Tapis getFile failed for {tapis_file} when "
                     f"creating tile server for user:{user.username}, project:{project_id})"
                 )
-                _update_task_and_progress(
+                update_task_and_send_progress_update(
+                    session,
+                    task_id=task_id,
                     status=TaskStatus.FAILED,
                     latest_message=f"Failed to get {tapis_file.path}",
                 )
@@ -176,7 +170,9 @@ def import_tile_servers_from_tapis(
 
             src_path = Path(tmp_file.name)
 
-            _update_task_and_progress(latest_message="Processing file")
+            update_task_and_send_progress_update(
+                session, task_id=task_id, latest_message="Processing file"
+            )
             gdal_cogify(src_path, cog_path)
 
             tile_options = get_cog_metadata(cog_path)
@@ -204,7 +200,9 @@ def import_tile_servers_from_tapis(
             session.flush()
             session.commit()
 
-            _update_task_and_progress(
+            update_task_and_send_progress_update(
+                session,
+                task_id=task_id,
                 status=TaskStatus.COMPLETED,
                 latest_message=f"Import completed",
             )
@@ -216,7 +214,9 @@ def import_tile_servers_from_tapis(
             # Only update if not already marked as FAILED
             t = session.get(Task, task_id)
             if t.status != TaskStatus.FAILED.value:
-                _update_task_and_progress(
+                update_task_and_send_progress_update(
+                    session,
+                    task_id=task_id,
                     status=TaskStatus.FAILED,
                     latest_message=f"Import failed: {tapis_file.path}",
                 )
@@ -225,7 +225,7 @@ def import_tile_servers_from_tapis(
             if cog_uuid:
                 delete_assets(projectId=project_id, uuid=str(cog_uuid))
 
-            # We intentionally don't re-raise (Celery will think it succeeded)
+            # We intentionally don't re-raise (Celery will mark it succeeded but we're interested just in geoapi's Task)
         finally:
             if tmp_file is not None:
                 tmp_file.close()

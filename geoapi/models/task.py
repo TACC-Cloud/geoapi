@@ -1,4 +1,4 @@
-from sqlalchemy import Integer, String, DateTime
+from sqlalchemy import Integer, String, DateTime, ForeignKey
 from sqlalchemy.sql import func
 from sqlalchemy.orm import mapped_column, validates
 from litestar.dto import dto_field
@@ -21,9 +21,12 @@ class Task(Base):
     process_id = mapped_column(String(), nullable=False, info=dto_field("private"))
     status = mapped_column(String())
     description = mapped_column(String())
-    # TODO project_id : could be nullable
-    # TODO latest message  so descprition is start
-    # latest_message = mapped_column(String())
+    project_id = mapped_column(
+        ForeignKey("projects.id", ondelete="CASCADE", onupdate="CASCADE"),
+        index=True,
+        nullable=True,
+    )
+    latest_message = mapped_column(String(), nullable=True)
     created = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated = mapped_column(DateTime(timezone=True), onupdate=func.now())
 

@@ -46,6 +46,7 @@ class TileServer(Base):
             "For internal=false: full tile URL template with {z}/{x}/{y} placeholders."
         ),
     )
+
     attribution = mapped_column(String(), nullable=False)
     tileOptions = mapped_column(JSONB, default={})
     uiOptions = mapped_column(JSONB, default={})
