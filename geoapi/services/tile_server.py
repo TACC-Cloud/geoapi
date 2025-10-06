@@ -5,6 +5,7 @@ from geoapi.models import TileServer, Task, User
 from geoapi.schema.tapis import TapisFilePath
 from geoapi.tasks.raster import import_tile_servers_from_tapis
 from geoapi.log import logger
+from geoapi.utils.assets import delete_assets
 
 
 class TileService:
@@ -40,8 +41,14 @@ class TileService:
     @staticmethod
     def deleteTileServer(database_session, tileServerId: int) -> None:
         ts = database_session.get(TileServer, tileServerId)
+        uuid = ts.uuid
+
         database_session.delete(ts)
         database_session.commit()
+
+        # cleanup asset file (if exists)
+        if uuid:
+            delete_assets(projectId=project_id, uuid=str(cog_uuid))
 
     @staticmethod
     def updateTileServer(database_session, tileServerId: int, data: dict):

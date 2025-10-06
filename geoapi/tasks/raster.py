@@ -5,15 +5,19 @@ import math
 from pathlib import Path
 from uuid import uuid4
 
-from geoapi.utils.assets import make_project_asset_dir
+from geoapi.utils.assets import (
+    make_project_asset_dir,
+    delete_assets,
+)
 
 from geoapi.celery_app import app
 from geoapi.db import create_task_session
 from geoapi.log import logger
 from geoapi.models import Task, TaskStatus, TileServer, User
-from geoapi.schema.tapis import TapisFilePath
 from geoapi.utils.external_apis import TapisUtils, TapisFileGetError
 from geoapi.tasks.utils import send_progress_update
+from geoapi.schema.tapis import TapisFilePath
+
 
 ASSETS_DIR = Path(os.getenv("ASSETS_BASE_DIR", "/assets")).resolve()
 
@@ -28,8 +32,7 @@ def _validate_raster_name(name: str) -> None:
 
 def gdal_cogify(src: Path, dst: Path) -> None:
     """Convert to COG"""
-    # When creating cog, we convert to Web Mercator + GoogleMapsCompatible
-    # for optimal TiTiler performance
+    # When creating cog, we convert to Web Mercator and use GoogleMapsCompatible
     cmd = [
         "gdalwarp",
         "-of",
@@ -39,8 +42,6 @@ def gdal_cogify(src: Path, dst: Path) -> None:
         "-co",
         "COMPRESS=DEFLATE",
         "-co",
-        "BLOCKSIZE=512",
-        "-co",
         "TILING_SCHEME=GoogleMapsCompatible",
         str(src),
         str(dst),
@@ -49,29 +50,60 @@ def gdal_cogify(src: Path, dst: Path) -> None:
 
 
 def get_cog_metadata(path: Path) -> dict:
-    """Extract useful metadata from a COG for tileOptions."""
+    """
+    Extract useful metadata from a COG for tileOptions.
+
+    IMPORTANT: This function assumes the COG is in Web Mercator (EPSG:3857) projection.
+    The zoom level calculations are based on Web Mercator's resolution at the equator
+    and will be incorrect for other projections.
+
+    Raises:
+        ValueError: If the COG is not in EPSG:3857 (Web Mercator) projection
+    """
     result = subprocess.run(
         ["gdalinfo", "-json", str(path)], capture_output=True, text=True, check=True
     )
     info = json.loads(result.stdout)
 
-    # Get the polygon from wgs84Extent
-    polygon = info.get("wgs84Extent", {}).get("coordinates", [[]])[0]
+    # Verify the COG is in Web Mercator
+    srs = info.get("coordinateSystem", {}).get("wkt", "")
+    if "3857" not in srs and "Pseudo-Mercator" not in srs:
+        raise ValueError(
+            f"COG must be in EPSG:3857 (Web Mercator) for accurate zoom calculation. "
+            f"Found: {srs[:100]}..."
+        )
 
-    # Extract min/max lat/lng from polygon
+    # Get bounds
+    polygon = info.get("wgs84Extent", {}).get("coordinates", [[]])[0]
     lngs = [coord[0] for coord in polygon]
     lats = [coord[1] for coord in polygon]
-
-    # Convert to Leaflet bounds format: [[south, west], [north, east]]
     bounds = [[min(lats), min(lngs)], [max(lats), max(lngs)]]
 
-    # Calculate actual max zoom based on pixel resolution
-    pixel_size = abs(info["geoTransform"][1])  # pixel width in meters (Web Mercator)
-    # Web Mercator at equator: zoom 0 = 156543.03 meters/pixel
-    max_zoom = math.floor(math.log2(156543.03 / pixel_size))
-    max_zoom = min(max(max_zoom, 0), 24)
+    # Get base pixel size and image dimensions
+    pixel_size = abs(info["geoTransform"][1])  # In meters (Web Mercator)
+    base_width = info["size"][0]
+    base_height = info["size"][1]
 
-    return {"minZoom": 0, "maxZoom": max_zoom, "bounds": bounds}
+    # Calculate base zoom level
+    # Use ceil() to round up. For example, if pixel size is 0.075m and log2 gives 20.99,
+    # the data is closer to zoom 21 resolution than zoom 20, so round up to 21
+    # Formula: zoom level where 1 pixel = pixel_size meters (at equator in Web Mercator)
+    base_zoom = math.ceil(math.log2(156543.03 / pixel_size))
+
+    logger.info(f"=== COG Analysis: {path.name} ===")
+    logger.info(f"Base image size: {base_width}x{base_height}")
+    logger.info(f"Base pixel size: {pixel_size:.6f} meters")
+    logger.info(f"Calculated base zoom: {base_zoom}")
+
+    max_zoom = min(max(base_zoom, 0), 24)
+    logger.info(f"maxZoom: {max_zoom}")
+
+    return {
+        "minZoom": 0,
+        "maxZoom": max_zoom,
+        "maxNativeZoom": max_zoom,
+        "bounds": bounds,
+    }
 
 
 @app.task(queue="heavy")
@@ -88,8 +120,8 @@ def import_tile_servers_from_tapis(
     If not a COG -> convert to COG
     Then register a TileServer pointing to TiTiler.
     """
-    tapis_file = TapisFilePath.model_validate(tapis_file)
 
+    tapis_file = TapisFilePath.model_validate(tapis_file)
     tmp_file = None
     with create_task_session() as session:
         try:
@@ -100,7 +132,7 @@ def import_tile_servers_from_tapis(
                 status: TaskStatus = TaskStatus.RUNNING, latest_message: str = ""
             ) -> None:
                 t = session.get(Task, task_id)
-                t.status = status.value  # TODO
+                t.status = status.value
                 # t.latest_message = latest_message #  TODO
                 session.add(t)
                 session.commit()
@@ -108,6 +140,15 @@ def import_tile_servers_from_tapis(
                 send_progress_update(
                     user, t.process_id, status.value.lower(), latest_message
                 )
+
+            try:
+                _validate_raster_name(tapis_file.path)
+            except ValueError as e:
+                _update_task_and_progress(
+                    status=TaskStatus.FAILED,
+                    latest_message=f"Invalid file type: {str(e)}",
+                )
+                raise
 
             _update_task_and_progress(latest_message="Starting import")
 
@@ -151,28 +192,40 @@ def import_tile_servers_from_tapis(
                 attribution="",
                 tileOptions=tile_options,
                 uiOptions={
-                    "visible": True,
-                    "zIndex": 0,  # frontend can readjust
+                    "zIndex": 0,  # frontend will readjust as needed
                     "opacity": 1,
                     "isActive": True,
+                    "showInput": False,
+                    "showDescription": False,
                 },
             )
-            # TODO we need to consider deleting COG if TileServer is ever deleted; create JIRA.
+            # TODO we need deleting COG TileServer is ever deleted
             session.add(ts)
             session.flush()
             session.commit()
-        except Exception as _e:
-            # TODO we should probably remove asset files if existing
 
+            _update_task_and_progress(
+                status=TaskStatus.COMPLETED,
+                latest_message=f"Import completed",
+            )
+        except Exception as _e:
             logger.exception(
                 f"Raster import failed for {tapis_file},"
                 f" user:{user.username}, project:{project_id})"
             )
-            _update_task_and_progress(
-                status=TaskStatus.FAILED,
-                latest_message=f"Import failed {tapis_file.path}",
-            )
-            raise
+            # Only update if not already marked as FAILED
+            t = session.get(Task, task_id)
+            if t.status != TaskStatus.FAILED.value:
+                _update_task_and_progress(
+                    status=TaskStatus.FAILED,
+                    latest_message=f"Import failed: {tapis_file.path}",
+                )
+
+            # cleanup asset file (if exists)
+            if cog_uuid:
+                delete_assets(projectId=project_id, uuid=str(cog_uuid))
+
+            # We intentionally don't re-raise (Celery will think it succeeded)
         finally:
             if tmp_file is not None:
                 tmp_file.close()
