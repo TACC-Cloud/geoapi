@@ -186,6 +186,8 @@ def import_tile_servers_from_tapis(
                 internal=True,
                 url=str(cog_path),  # e.g. /assets/{project_id}/{uuid}.cog.tif",
                 attribution="",
+                original_system=tapis_file.system,
+                original_path=tapis_file.path,
                 tileOptions=tile_options,
                 uiOptions={
                     "zIndex": 0,  # frontend will readjust as needed

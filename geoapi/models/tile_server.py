@@ -48,6 +48,20 @@ class TileServer(Base):
     )
 
     attribution = mapped_column(String(), nullable=False)
+
+    original_system = mapped_column(
+        String(),
+        nullable=True,
+        index=True,
+        comment="Tapis system where the original file was sourced from (if applicable)",
+    )
+
+    original_path = mapped_column(
+        String(),
+        nullable=True,
+        comment="Original file path on the source system (if applicable)",
+    )
+
     tileOptions = mapped_column(JSONB, default={})
     uiOptions = mapped_column(JSONB, default={})
 
