@@ -32,6 +32,7 @@ def send_progress_update(user: User, task_id: str, status: str, message: str) ->
 
 def update_task_and_send_progress_update(
     database_session,
+    user: User,
     task_id: int,
     status: TaskStatus = TaskStatus.RUNNING,
     latest_message: str = "",

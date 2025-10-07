@@ -138,7 +138,15 @@ class TaskDTO(SQLAlchemyDTO[Task]):
     model_config = ConfigDict(from_attributes=True)
     config = DTOConfig(
         # skipping process_id
-        include={"id", "status", "description", "created", "updated"},
+        include={
+            "id",
+            "status",
+            "description",
+            "project_id",
+            "latest_message",
+            "created",
+            "updated",
+        },
     )
 
 
@@ -146,6 +154,8 @@ class TaskModel(BaseModel):
     id: int | None = None
     status: str | None = None
     description: str | None = None
+    project_id: int | None = None
+    latest_message: str | None = None
     created: datetime | None = None
     updated: datetime | None = None
 

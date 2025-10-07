@@ -130,7 +130,7 @@ def import_tile_servers_from_tapis(
             client = TapisUtils(session, user)
 
             update_task_and_send_progress_update(
-                session, task_id=task_id, latest_message="Starting import"
+                session, user=user, task_id=task_id, latest_message="Starting import"
             )
 
             try:
@@ -138,6 +138,7 @@ def import_tile_servers_from_tapis(
             except ValueError as e:
                 update_task_and_send_progress_update(
                     session,
+                    user=user,
                     task_id=task_id,
                     status=TaskStatus.FAILED,
                     latest_message=f"Invalid file type: {str(e)}",
@@ -145,7 +146,10 @@ def import_tile_servers_from_tapis(
                 raise
 
             update_task_and_send_progress_update(
-                session, task_id=task_id, latest_message=f"Fetching {tapis_file.path}"
+                session,
+                user=user,
+                task_id=task_id,
+                latest_message=f"Fetching {tapis_file.path}",
             )
 
             try:
@@ -159,6 +163,7 @@ def import_tile_servers_from_tapis(
                 )
                 update_task_and_send_progress_update(
                     session,
+                    user=user,
                     task_id=task_id,
                     status=TaskStatus.FAILED,
                     latest_message=f"Failed to get {tapis_file.path}",
@@ -171,7 +176,7 @@ def import_tile_servers_from_tapis(
             src_path = Path(tmp_file.name)
 
             update_task_and_send_progress_update(
-                session, task_id=task_id, latest_message="Processing file"
+                session, user=user, task_id=task_id, latest_message="Processing file"
             )
             gdal_cogify(src_path, cog_path)
 
@@ -204,6 +209,7 @@ def import_tile_servers_from_tapis(
 
             update_task_and_send_progress_update(
                 session,
+                user=user,
                 task_id=task_id,
                 status=TaskStatus.COMPLETED,
                 latest_message=f"Import completed",
@@ -218,6 +224,7 @@ def import_tile_servers_from_tapis(
             if t.status != TaskStatus.FAILED.value:
                 update_task_and_send_progress_update(
                     session,
+                    user=user,
                     task_id=task_id,
                     status=TaskStatus.FAILED,
                     latest_message=f"Import failed: {tapis_file.path}",
