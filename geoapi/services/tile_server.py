@@ -41,14 +41,13 @@ class TileService:
     @staticmethod
     def deleteTileServer(database_session, tileServerId: int) -> None:
         ts = database_session.get(TileServer, tileServerId)
-        uuid = ts.uuid
 
         database_session.delete(ts)
         database_session.commit()
 
         # cleanup asset file (if exists)
-        if uuid:
-            delete_assets(projectId=project_id, uuid=str(cog_uuid))
+        if ts.uuid:
+            delete_assets(projectId=ts.project_id, uuid=str(ts.uuid))
 
     @staticmethod
     def updateTileServer(database_session, tileServerId: int, data: dict):
