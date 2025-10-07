@@ -3,7 +3,6 @@ from celery import uuid as celery_uuid
 
 from geoapi.models import TileServer, Task, User
 from geoapi.schema.tapis import TapisFilePath
-from geoapi.tasks.raster import import_tile_servers_from_tapis
 from geoapi.log import logger
 from geoapi.utils.assets import delete_assets
 
@@ -78,6 +77,8 @@ class TileService:
         Queue conversion of raster(s) at Tapis paths into COGs and register tile servers.
         Returns a list of Task rows (one per file).
         """
+        from geoapi.tasks.raster import import_tile_servers_from_tapis
+
         pending_tasks: list[Tuple[int, str, TapisFilePath]] = []
 
         # Create tasks and flush to get IDs

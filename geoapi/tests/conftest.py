@@ -10,6 +10,7 @@ from typing import TYPE_CHECKING
 from collections.abc import Iterator
 from litestar.testing import TestClient
 from geoapi.db import Base, sqlalchemy_config
+from geoapi.models import TaskStatus
 from geoapi.models.users import User
 from geoapi.models.project import Project, ProjectUser
 from geoapi.models.feature import Feature
@@ -214,8 +215,15 @@ def point_cloud_fixture(
 
 
 @pytest.fixture(scope="function")
-def task_fixture(db_session: "sqlalchemy_config.Session") -> "Iterator[Task]":
-    task = Task(process_id="1234", status="SUCCESS", description="description")
+def task_fixture(
+    db_session: "sqlalchemy_config.Session", projects_fixture
+) -> "Iterator[Task]":
+    task = Task(
+        process_id="some-process-id",
+        project_id=projects_fixture.id,
+        status=TaskStatus.COMPLETED,
+        description="description",
+    )
     db_session.add(task)
     db_session.commit()
     yield task

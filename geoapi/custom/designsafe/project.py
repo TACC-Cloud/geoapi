@@ -1,6 +1,5 @@
 import json
 from geoapi.log import logger
-from geoapi.services.tile_server import TileService
 from geoapi.settings import settings
 from geoapi.custom.designsafe.default_basemap_layers import default_layers
 from geoapi.models import User, Project
@@ -35,7 +34,7 @@ def on_project_creation(database_session, user: User, project: Project):
             f"Adding two default layers for user:{user.username}"
             f" project:{project.id} project_uuid:{project.uuid} "
         )
-        from geoapi.services.features import FeaturesService
+        from geoapi.services.features import TileService
 
         for layer in default_layers:
             TileService.addTileServer(
