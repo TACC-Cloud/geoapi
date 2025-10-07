@@ -113,7 +113,7 @@ class TileService:
                     },
                     task_id=celery_task_uuid,
                 )
-            except Exception as e:
+            except Exception:
                 logger.exception(
                     "Failed to publish Celery job for task_id=%s", task_db_id
                 )

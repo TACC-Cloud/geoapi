@@ -44,7 +44,7 @@ def upgrade():
             sa.Boolean(),
             server_default="false",
             nullable=False,
-            comment="True when served internally by our stack (e.g., TiTiler). When true, 'uuid' must be non-null. External layers keep this false.",
+            comment="True when served internally by our stack (e.g., TiTiler). When true, 'uuid' must be non-null. External layers keep this false.",  # noqa: E501
         ),
     )
     op.add_column(
@@ -53,7 +53,7 @@ def upgrade():
             "uuid",
             sa.UUID(),
             nullable=True,
-            comment="Identifier for internally managed assets (e.g., the generated COG file).  Required when 'internal' is true; null for external layers.",
+            comment="Identifier for internally managed assets (e.g., the generated COG file).  Required when 'internal' is true; null for external layers.",  # noqa: E501
         ),
     )
     op.create_index(

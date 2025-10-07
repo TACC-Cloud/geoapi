@@ -38,7 +38,7 @@ def gdal_cogify(src: Path, dst: Path) -> None:
         "-of",
         "COG",
         "-t_srs",
-        "EPSG:3857",  #  Web Mercator
+        "EPSG:3857",  # Web Mercator
         "-co",
         "COMPRESS=DEFLATE",
         "-co",
@@ -212,9 +212,9 @@ def import_tile_servers_from_tapis(
                 user=user,
                 task_id=task_id,
                 status=TaskStatus.COMPLETED,
-                latest_message=f"Import completed",
+                latest_message="Import completed",
             )
-        except Exception as _e:
+        except Exception:
             logger.exception(
                 f"Raster import failed for {tapis_file},"
                 f" user:{user.username}, project:{project_id})"

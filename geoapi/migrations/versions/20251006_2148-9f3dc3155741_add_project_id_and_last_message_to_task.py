@@ -35,7 +35,7 @@ def upgrade():
         "tile_servers",
         "url",
         existing_type=sa.VARCHAR(),
-        comment="For internal=true: file path to asset (e.g., /assets/3/uuid.cog.tif).For internal=false: full tile URL template with {z}/{x}/{y} placeholders.",
+        comment="For internal=true: file path to asset (e.g., /assets/3/uuid.cog.tif).For internal=false: full tile URL template with {z}/{x}/{y} placeholders.",  # noqa: E501
         existing_nullable=False,
     )
     # ### end Alembic commands ###
@@ -48,7 +48,7 @@ def downgrade():
         "url",
         existing_type=sa.VARCHAR(),
         comment=None,
-        existing_comment="For internal=true: file path to asset (e.g., /assets/3/uuid.cog.tif).For internal=false: full tile URL template with {z}/{x}/{y} placeholders.",
+        existing_comment="For internal=true: file path to asset (e.g., /assets/3/uuid.cog.tif).For internal=false: full tile URL template with {z}/{x}/{y} placeholders.",  # noqa: E501
         existing_nullable=False,
     )
     op.drop_constraint(
