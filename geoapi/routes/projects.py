@@ -1096,7 +1096,7 @@ class ProjectTasksResourceController(Controller):
                 project_id, request.user.username
             )
         )
-        return db_session.query(Task).all()
+        return db_session.query(Task).filter(Task.project_id == project_id).all()
 
 
 class ProjectTileServersResourceController(Controller):
