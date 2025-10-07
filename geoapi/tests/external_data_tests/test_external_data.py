@@ -4,7 +4,7 @@ import os
 import re
 import subprocess
 
-from geoapi.models import Feature, ImportedFile
+from geoapi.models import Feature, ImportedFile, TaskStatus
 from geoapi.db import create_task_session
 from geoapi.tasks.external_data import (
     import_from_tapis,
@@ -357,7 +357,7 @@ def test_import_point_clouds_from_tapis(
 
     db_session.refresh(point_cloud_fixture)
     point_cloud = point_cloud_fixture
-    assert point_cloud.task.status == "FINISHED"
+    assert point_cloud.task.status == TaskStatus.COMPLETED
     assert point_cloud.task.description == ""
     assert len(os.listdir(get_project_asset_dir(point_cloud.project_id))) == 2
     assert (
