@@ -3,7 +3,7 @@ import secrets
 from typing import TYPE_CHECKING, Any
 from datetime import datetime, timedelta
 from urllib.parse import urlencode
-from litestar import Controller, get, Request, Response
+from litestar import Controller, get, Request, delete
 from litestar.response import Redirect
 from litestar.exceptions import HTTPException
 from geoapi.services.users import UserService
@@ -54,6 +54,8 @@ class StreetviewMapillaryAuthController(Controller):
         session["mapillary_auth_state"] = get_auth_state()
         session["to"] = to
         session["clientBaseUrl"] = client_url
+        session["username"] = username
+        session["tenant_id"] = request.user.tenant_id
 
         callback_url = f"{get_deployed_geoapi_url()}/streetview/auth/mapillary/callback"
 
@@ -160,18 +162,16 @@ class StreetviewMapillaryAuthController(Controller):
         # Redirect back to the client application
         return Redirect(client_redirect_uri)
 
-    @get(
+    @delete(
         "/mapillary/",
         operation_id="mapillary_auth_delete",
         description="Delete Mapillary OAuth authentication",
     )
     async def mapillary_auth_delete(
         self, request: "Request[User, Any, Any]", db_session: "Session"
-    ) -> Response:
+    ) -> None:
         """
         Delete Mapillary OAuth authentication for the current user.
         """
         user = request.user
         StreetviewService.deleteAuthByService(db_session, user, service="mapillary")
-
-        return Response(status_code=204)
