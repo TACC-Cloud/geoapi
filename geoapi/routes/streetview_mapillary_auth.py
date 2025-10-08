@@ -3,7 +3,7 @@ import secrets
 from typing import TYPE_CHECKING, Any
 from datetime import datetime, timedelta
 from urllib.parse import urlencode
-from litestar import Controller, get, Request, Response, delete
+from litestar import Controller, get, Request, delete
 from litestar.response import Redirect
 from litestar.exceptions import HTTPException
 from geoapi.services.users import UserService
