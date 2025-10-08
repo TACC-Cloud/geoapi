@@ -169,11 +169,9 @@ class StreetviewMapillaryAuthController(Controller):
     )
     async def mapillary_auth_delete(
         self, request: "Request[User, Any, Any]", db_session: "Session"
-    ) -> Response:
+    ) -> None:
         """
         Delete Mapillary OAuth authentication for the current user.
         """
         user = request.user
         StreetviewService.deleteAuthByService(db_session, user, service="mapillary")
-
-        return Response(status_code=204)
