@@ -3,7 +3,7 @@ import secrets
 from typing import TYPE_CHECKING, Any
 from datetime import datetime, timedelta
 from urllib.parse import urlencode
-from litestar import Controller, get, Request, Response
+from litestar import Controller, get, Request, Response, delete
 from litestar.response import Redirect
 from litestar.exceptions import HTTPException
 from geoapi.services.users import UserService
@@ -162,7 +162,7 @@ class StreetviewMapillaryAuthController(Controller):
         # Redirect back to the client application
         return Redirect(client_redirect_uri)
 
-    @get(
+    @delete(
         "/mapillary/",
         operation_id="mapillary_auth_delete",
         description="Delete Mapillary OAuth authentication",
