@@ -120,7 +120,7 @@ class StreetviewMapillaryAuthController(Controller):
         }
 
         # Make token exchange request
-        token_request_timestamp = datetime.now(datetime.timezone.utc)
+        token_request_timestamp = datetime.utcnow()
         response = requests.post(
             settings.MAPILLARY_API_URL + "/token", headers=headers, json=token_data
         )
