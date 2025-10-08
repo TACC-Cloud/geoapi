@@ -4,6 +4,7 @@ from typing import Any, TYPE_CHECKING
 from os import urandom
 from litestar import Litestar, Request, Response, status_codes
 from litestar.config.csrf import CSRFConfig
+from litestar.config.compression import CompressionConfig
 from litestar.logging.config import LoggingConfig
 from litestar.middleware.logging import LoggingMiddlewareConfig
 from litestar.middleware.session.server_side import (
@@ -228,8 +229,6 @@ session_auth = SessionAuth["User", ServerSideSessionBackend](
         "/auth/login",
         "/auth/callback",
         "/schema",
-        "/streetview/auth/mapillary/login",
-        "/streetview/auth/mapillary/callback",
     ],
     authentication_middleware_class=GeoAPISessionAuthMiddleware,
 )
@@ -241,8 +240,6 @@ jwt_auth = JWTAuth["User"](
         "/auth/login",
         "/auth/callback",
         "/schema",
-        "/streetview/auth/mapillary/login",
-        "/streetview/auth/mapillary/callback",
     ],
     auth_header="X-Tapis-Token",
     verify_expiry=True,
@@ -253,8 +250,19 @@ jwt_auth = JWTAuth["User"](
 
 
 alchemy = SQLAlchemyPlugin(config=sqlalchemy_config)
-logging_middleware_config = LoggingMiddlewareConfig()
-cookie_session_config = CookieBackendConfig(secret=urandom(16))  # type: ignore
+logging_middleware_config = LoggingMiddlewareConfig(
+    request_headers_to_obfuscate=["X-Tapis-Token", "Authorization", "cookie"],
+    request_log_fields=[
+        "path",
+        "method",
+        "content_type",
+        "headers",
+        "query",
+        "path_params",
+        "body",
+    ],
+)
+cookie_session_config = CookieBackendConfig(secret=urandom(16))
 openapi_config = OpenAPIConfig(
     title="GeoAPI",
     version="3.0.0",
@@ -289,6 +297,7 @@ app = Litestar(
     stores=stores,
     exception_handlers=exception_handlers,
     csrf_config=csrf_config,
+    compression_config=CompressionConfig(backend="gzip"),
     logging_config=LoggingConfig(
         root={"level": "DEBUG", "handlers": ["console"]},
         formatters={

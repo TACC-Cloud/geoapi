@@ -34,6 +34,9 @@ COPY devops/poetry.lock devops/pyproject.toml ./
 # install runtime deps - uses $POETRY_VIRTUALENVS_IN_PROJECT internally
 RUN poetry install
 
+RUN groupadd -g 1100 celeryuser
+RUN useradd -s /sbin/nologin -u 1100 -g 1100 celeryuser
+
 ##############
 # `development` image target is used for local development
 FROM python-base AS development
@@ -49,6 +52,8 @@ COPY geoapi /app/geoapi
 
 ENV PYTHONPATH=/app
 
+USER 1100:1100
+
 WORKDIR /app/geoapi
 
 ##############
@@ -61,5 +66,7 @@ COPY --from=python-base $PYSETUP_PATH $PYSETUP_PATH
 COPY geoapi /app/geoapi
 
 ENV PYTHONPATH=/app
+
+USER 1100:1100
 
 WORKDIR /app/geoapi

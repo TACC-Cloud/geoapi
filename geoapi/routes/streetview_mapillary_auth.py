@@ -30,21 +30,6 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
-# # TODO: this is a work around for lack of sessions
-# #  endpoint can be removed once sessions are completed. See WG-472
-# @api.route("/mapillary/prepare")
-# class MapillaryLoginPrepare(Resource):
-#     @jwt_decoder
-#     def post(self):
-#         payload = {
-#             "username": request.current_user.username,
-#             "tenant": request.current_user.tenant_id,
-#             "exp": datetime.utcnow() + timedelta(minutes=5),
-#         }
-#         temp_token = jwt.encode(payload, settings.SECRET_KEY, algorithm="HS256")
-#         return jsonify({"tempToken": temp_token})
-
-
 class StreetviewMapillaryAuthController(Controller):
     path = "/streetview/auth"
 
@@ -53,9 +38,8 @@ class StreetviewMapillaryAuthController(Controller):
         operation_id="mapillary_login",
         description="Login via Mapillary OAuth",
     )
-    async def mapillary_login(
-        self, request: "Request[User, Any, Any]", session: dict[str, Any]
-    ) -> Redirect:
+    async def mapillary_login(self, request: "Request[User, Any, Any]") -> Redirect:
+        session = request.session
         username = request.user.username
         logger.info(
             f"Staring Mapillary's OAuth 2.0 authorization "
@@ -63,8 +47,9 @@ class StreetviewMapillaryAuthController(Controller):
         )
         to = request.query_params.get("to", "/")
 
-        validate_referrer_url(request.headers.get("referrer"))
-        client_url = get_client_url(request.headers.get("referrer"))
+        referrer = request.headers.get("referer")
+        validate_referrer_url(referrer)
+        client_url = get_client_url(referrer)
 
         session["mapillary_auth_state"] = get_auth_state()
         session["to"] = to
@@ -93,9 +78,9 @@ class StreetviewMapillaryAuthController(Controller):
     async def mapillary_callback(
         self,
         request: "Request[User, Any, Any]",
-        session: dict[str, Any],
         db_session: "Session",
     ) -> Redirect:
+        session = request.session
         logger.info(
             f"Handling callback from Mapillary's OAuth 2.0 authorization "
             f"code flow for user:{session.get('username')}"
