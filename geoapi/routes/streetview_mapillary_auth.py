@@ -54,6 +54,8 @@ class StreetviewMapillaryAuthController(Controller):
         session["mapillary_auth_state"] = get_auth_state()
         session["to"] = to
         session["clientBaseUrl"] = client_url
+        session["username"] = username
+        session["tenant_id"] = request.user.tenant_id
 
         callback_url = f"{get_deployed_geoapi_url()}/streetview/auth/mapillary/callback"
 
@@ -118,7 +120,7 @@ class StreetviewMapillaryAuthController(Controller):
         }
 
         # Make token exchange request
-        token_request_timestamp = datetime.utcnow()
+        token_request_timestamp = datetime.now(datetime.timezone.utc)
         response = requests.post(
             settings.MAPILLARY_API_URL + "/token", headers=headers, json=token_data
         )
