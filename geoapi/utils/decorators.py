@@ -1,3 +1,4 @@
+
 from uuid import UUID
 from typing import TYPE_CHECKING
 from litestar.connection import ASGIConnection
@@ -96,7 +97,6 @@ def project_permissions_allow_public_guard(
         project_id=project_id,
         allow_public_use=True,
     )
-
 
 def project_admin_or_creator_permissions_guard(
     connection: ASGIConnection, _: BaseRouteHandler
