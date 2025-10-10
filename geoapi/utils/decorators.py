@@ -98,6 +98,7 @@ def project_permissions_allow_public_guard(
         allow_public_use=True,
     )
 
+
 def project_admin_or_creator_permissions_guard(
     connection: ASGIConnection, _: BaseRouteHandler
 ) -> None:
