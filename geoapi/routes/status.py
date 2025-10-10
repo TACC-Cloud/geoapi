@@ -1,22 +1,17 @@
-from flask_restx import Resource, Namespace, fields
+from litestar import Controller, get, Request
+from pydantic import BaseModel
 from geoapi.log import logging
-from geoapi.utils.decorators import jwt_decoder
 
 logger = logging.getLogger(__name__)
 
-api = Namespace("status", decorators=[jwt_decoder])
 
-status_response = api.model(
-    "StatusResponse",
-    {
-        "status": fields.String(),
-    },
-)
+class StatusResponse(BaseModel):
+    status: str
 
 
-@api.route("/")
-class Status(Resource):
-    @api.doc(id="get", description="Get status")
-    @api.marshal_with(status_response)
-    def get(self):
-        return {"status": "OK"}
+class StatusController(Controller):
+    path = "/status"
+
+    @get("/", tags=["status"])
+    async def get_status(self, request: Request) -> StatusResponse:
+        return StatusResponse(status="OK")

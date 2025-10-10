@@ -9,136 +9,121 @@ designed to support both Mapillary and Google Street View, which is why it follo
 this structure.
 """
 
+from datetime import datetime
+from pydantic import BaseModel, ConfigDict
+from litestar import Controller, get, Request, post, delete, put
+from typing import TYPE_CHECKING
+from litestar.plugins.sqlalchemy import SQLAlchemyDTO
 from geoapi.services.streetview import StreetviewService
 from geoapi.tasks import streetview
 from geoapi.log import logging
-from geoapi.utils.decorators import jwt_decoder
-from geoapi.db import db_session
-from flask_restx import Namespace, Resource, fields
-from flask_restx.marshalling import marshal_with
-from flask import request
-
+from geoapi.models import StreetviewOrganization, Streetview
+from litestar.channels import ChannelsPlugin
 
 logger = logging.getLogger(__name__)
 
-api = Namespace("streetview", decorators=[jwt_decoder])
 
-streetview_service_resource_param = api.model(
-    "StreetviewParams",
-    {
-        "service": fields.String(required=False),
-        "service_user": fields.String(required=False),
-        "token": fields.String(required=False),
-    },
-)
-
-ok_response = api.model("OkResponse", {"message": fields.String(default="accepted")})
-
-tapis_file = api.model(
-    "TapisFile",
-    {"system": fields.String(required=True), "path": fields.String(required=True)},
-)
-
-streetview_folder_import = api.model(
-    "TapisFolderImport",
-    {
-        "service": fields.Nested(tapis_file),
-        "system_id": fields.String(),
-        "path": fields.String(),
-    },
-)
-
-streetview_sequence = api.model(
-    "StreetviewSequence",
-    {
-        "id": fields.Integer(),
-        "streetview_instance_id": fields.Integer(),
-        "start_date": fields.DateTime(dt_format="rfc822", required=False),
-        "end_date": fields.DateTime(dt_format="rfc822", required=False),
-        "bbox": fields.String(required=False),
-        "sequence_id": fields.String(required=False),
-        "organization_id": fields.String(required=False),
-    },
-)
-
-streetview_organization = api.model(
-    "StreetviewOrganization",
-    {
-        "id": fields.Integer(required=False),
-        "streetview_id": fields.Integer(required=False),
-        "name": fields.String(),
-        "slug": fields.String(),
-        "key": fields.String(),
-    },
-)
-
-streetview_instance = api.model(
-    "StreetviewInstance",
-    {
-        "id": fields.Integer(),
-        "streetview_id": fields.Integer(),
-        "system_id": fields.String(),
-        "path": fields.String(),
-        "sequences": fields.List(fields.Nested(streetview_sequence), allow_null=True),
-    },
-)
-
-streetview_service = api.model(
-    "Streetview",
-    {
-        "id": fields.Integer(),
-        "user_id": fields.Integer(),
-        "token": fields.String(),
-        "token_expires_at": fields.String(),
-        "service": fields.String(),
-        "service_user": fields.String(),
-        "organizations": fields.List(
-            fields.Nested(streetview_organization), allow_null=True
-        ),
-        "instances": fields.List(fields.Nested(streetview_instance), allow_null=True),
-    },
-)
+if TYPE_CHECKING:
+    from sqlalchemy.orm import Session
 
 
-@api.route("/services/")
-class StreetviewServiceResources(Resource):
-    @api.doc(
-        id="getStreetviewServiceResources",
+class StreetviewParams(BaseModel):
+    service: str | None = None
+    service_user: str | None = None
+    token: str | None = None
+
+
+class OkResponse(BaseModel):
+    message: str = "accepted"
+
+
+class TapisFile(BaseModel):
+    system: str
+    path: str
+
+
+class TapisFolderImport(BaseModel):
+    service: TapisFile
+    system_id: str
+    path: str
+
+
+class StreetviewSequenceModel(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    streetview_instance_id: int
+    start_date: datetime | None = None  # rfc822
+    end_date: datetime | None = None  # rfc822
+    bbox: str | None = None
+    sequence_id: str | None = None
+    organization_id: str | None = None
+
+
+StreetviewOrganizationDTO = SQLAlchemyDTO[StreetviewOrganization]
+
+
+class StreetviewOrganizationModel(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int | None = None
+    streetview_id: int | None = None
+    name: str | None = None
+    slug: str | None = None
+    key: str | None = None
+
+
+class StreetviewInstanceModel(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    streetview_id: int
+    system_id: str
+    path: str
+    sequences: list[StreetviewSequenceModel] | None = None
+
+
+class StreetviewController(Controller):
+    path = "streetview"
+
+    @get(
+        "/services",
+        operation_id="get_streetview_service_resources",
         description="Get all streetview service objects for a user",
     )
-    @api.marshal_with(streetview_service, as_list=True)
-    def get(self):
-        u = request.current_user
+    def get_streetview_service_resources(
+        self, request: Request, db_session: "Session"
+    ) -> list[Streetview]:
+        u = request.user
         logger.info("Get all streetview objects user:{}".format(u.username))
         return StreetviewService.list(db_session, u)
 
-    # TODO after angular version is retired, remove this as auth occurs now in backend
-    @api.doc(
-        id="createStreetviewServiceResource",
+    @post(
+        "/services",
+        operation_id="create_streetview_service_resource",
         description="Create streetview service object for a user",
     )
-    @api.expect(streetview_service_resource_param)
-    @api.marshal_with(streetview_service)
-    def post(self):
-        u = request.current_user
-        service = api.payload.get("service")
+    def create_streetview_service_resource(
+        self, request: Request, db_session: "Session", data: StreetviewParams
+    ) -> Streetview:
+        u = request.user
+        service = data.service
         logger.info(
             "Create streetview object for user:{} and service:{}".format(
                 u.username, service
             )
         )
-        return StreetviewService.create(db_session, u, api.payload)
+        return StreetviewService.create(db_session, u, data.model_dump())
 
-
-@api.route("/services/<service>/")
-class StreetviewServiceResource(Resource):
-    @api.doc(
-        id="getStreetviewServiceResource",
+    @get(
+        "/services/{service:str}/",
+        operation_id="get_streetview_service_resource",
         description="Get a streetview service resource by service name",
     )
-    @api.marshal_with(streetview_service)
-    def get(self, service: str):
-        u = request.current_user
+    def get_streetview_service_resource(
+        self, request: Request, db_session: "Session", service: str
+    ) -> Streetview:
+        u = request.user
         logger.info(
             "Get streetview service object for service:{} for user:{}".format(
                 service, u.username
@@ -146,132 +131,167 @@ class StreetviewServiceResource(Resource):
         )
         return StreetviewService.getByService(db_session, u, service)
 
-    @api.doc(
-        id="deleteStreetviewServiceResource",
+    @delete(
+        "/services/{service:str}/",
+        operation_id="delete_streetview_service_resource",
         description="Delete a streetview service resource by service name",
     )
-    def delete(self, service: str):
-        u = request.current_user
+    def delete_streetview_service_resource(
+        self, request: Request, db_session: "Session", service: str
+    ) -> None:
+        u = request.user
         logger.info(
             "Delete streetview object for service:{} for user:{}".format(
                 service, u.username
             )
         )
-        return StreetviewService.deleteByService(db_session, u, service)
+        StreetviewService.deleteByService(db_session, u, service)
 
-    @api.doc(
-        id="updateStreetviewServiceResource",
+    @put(
+        "/services/{service:str}/",
+        operation_id="update_streetview_service_resource",
         description="Update streetview service resource for a user by service name",
     )
-    @api.expect(streetview_service_resource_param)
-    @api.marshal_with(streetview_service)
-    def put(self, service: str):
-        u = request.current_user
+    def update_streetview_service_resource(
+        self,
+        request: Request,
+        db_session: "Session",
+        service: str,
+        data: StreetviewParams,
+    ) -> Streetview:
+        u = request.user
         logger.info(
             "Update streetview service resource for service:{} user:{}".format(
                 service, u.username
             )
         )
-        return StreetviewService.updateByService(db_session, u, service, api.payload)
+        return StreetviewService.updateByService(
+            db_session, u, service, data.model_dump(exclude_none=True)
+        )
 
-
-@api.route("/services/<service>/organization/")
-class StreetviewOrganizationsResource(Resource):
-    @api.doc(
-        id="getStreetviewOrganizations",
-        description="Get organizations from streetview service resource",
+    @get(
+        "/services/{service:str}/organization/",
+        operation_id="get_streetview_organizations",
+        return_dto=StreetviewOrganizationDTO,
     )
-    @api.marshal_with(streetview_organization)
-    def get(self, service: str):
-        u = request.current_user
+    def get_streetview_organizations(
+        self, request: Request, db_session: "Session", service: str
+    ) -> list[StreetviewOrganization]:
+        u = request.user
         logger.info(
-            "Get streetview organizations from streetview service resource for user:{}".format(
-                u.username
+            "Get streetview organizations for service:{} user:{}".format(
+                service, u.username
             )
         )
         return StreetviewService.getAllOrganizations(db_session, u, service)
 
-    @api.doc(
-        id="createStreetviewOrganizations",
-        description="Create organizations for a streetview object",
+    @post(
+        "/services/{service:str}/organization/",
+        operation_id="create_streetview_organization",
+        return_dto=StreetviewOrganizationDTO,
     )
-    @api.expect(streetview_organization)
-    @api.marshal_with(streetview_organization)
-    def post(self, service: str):
-        u = request.current_user
+    def create_streetview_organization(
+        self,
+        request: Request,
+        db_session: "Session",
+        service: str,
+        data: StreetviewOrganizationModel,
+    ) -> StreetviewOrganization:
+        u = request.user
         logger.info(
-            "Create streetview organization for a streetview service resource for user:{}".format(
-                u.username
+            "Create streetview organization for service:{} user:{}".format(
+                service, u.username
             )
         )
-        return StreetviewService.createOrganization(db_session, u, service, api.payload)
+        return StreetviewService.createOrganization(
+            db_session, u, service, data.model_dump()
+        )
 
-
-@api.route("/services/<service>/organization/<organization_id>/")
-class StreetviewOrganizationResource(Resource):
-    @api.doc(
-        id="deleteStreetviewOrganization",
+    @delete(
+        "/services/{service:str}/organization/{organization_id:int}/",
+        operation_id="delete_streetview_organization",
         description="Delete organization from streetview service resource",
     )
-    def delete(self, service: str, organization_id: int):
-        u = request.current_user
+    def delete_streetview_organization(
+        self,
+        request: Request,
+        db_session: "Session",
+        service: str,
+        organization_id: int,
+    ) -> None:
+        u = request.user
         logger.info(
-            "Delete streetview organization from streetview service resource for user:{} and streetview service: {}".format(
-                u.username, service
+            "Delete streetview organization for service:{} user:{} organization_id:{}".format(
+                service, u.username, organization_id
             )
         )
         StreetviewService.deleteOrganization(db_session, organization_id)
 
-    @api.doc(
-        id="updateStreetviewOrganization",
+    @put(
+        "/services/{service:str}/organization/{organization_id:int}/",
+        operation_id="update_streetview_organization",
         description="Update organization from streetview service resource",
+        return_dto=StreetviewOrganizationDTO,
     )
-    @api.expect(streetview_organization)
-    def put(self, service: str, organization_id: int):
-        u = request.current_user
+    def update_streetview_organization(
+        self,
+        request: Request,
+        db_session: "Session",
+        service: str,
+        organization_id: int,
+        data: StreetviewOrganizationModel,
+    ) -> StreetviewOrganization:
+        u = request.user
         logger.info(
-            "Update streetview organization in streetview service resource for user:{} and streetview servicde: {}".format(
-                u.username, service
+            "Update streetview organization for service:{} user:{} organization_id:{}".format(
+                service, u.username, organization_id
             )
         )
         return StreetviewService.updateOrganization(
-            db_session, organization_id, api.payload
+            db_session, organization_id, data.model_dump(exclude_none=True)
         )
 
-
-@api.route("/instances/<instance_id>/")
-class StreetviewInstanceResource(Resource):
-    @api.doc(id="deleteStreetviewInstance", description="Delete streetview instance")
-    def delete(self, instance_id: int):
-        u = request.current_user
-        logger.info("Delete streetview instance for user:{}".format(u.username))
-        StreetviewService.deleteInstance(db_session, instance_id)
-
-
-@api.route("/sequences/")
-class StreetviewSequencesResource(Resource):
-    @api.doc(
-        id="addStreetviewSequence", description="Add sequences to streetview instance"
+    @delete(
+        "/instances/{instance_id:int}/",
+        operation_id="delete_streetview_instance",
+        description="Delete streetview instance",
     )
-    def post(self):
-        u = request.current_user
-        payload = request.json
+    def delete_streetview_instance(
+        self, request: Request, db_session: "Session", instance_id: int
+    ) -> None:
+        u = request.user
         logger.info(
-            "Add streetview sequence to streetview instance for user:{}".format(
-                u.username
+            "Delete streetview instance for user:{} instance_id:{}".format(
+                u.username, instance_id
             )
         )
-        StreetviewService.addSequenceToInstance(db_session, u, payload)
+        StreetviewService.deleteInstance(db_session, instance_id)
 
-
-@api.route("/sequences/<sequence_id>/")
-class StreetviewSequenceResource(Resource):
-    @api.doc(
-        id="getStreetviewSequence", description="Get a streetview service's sequence"
+    @post(
+        "/sequences/",
+        operation_id="add_streetview_sequence",
+        description="Add sequences to streetview instance",
     )
-    @marshal_with(streetview_sequence)
-    def get(self, sequence_id: str):
-        u = request.current_user
+    def add_streetview_sequence(
+        self, request: Request, db_session: "Session", data: StreetviewSequenceModel
+    ) -> None:
+        u = request.user
+        logger.info(
+            "Add streetview sequence for user:{} sequence_id:{}".format(
+                u.username, data.sequence_id
+            )
+        )
+        StreetviewService.addSequenceToInstance(db_session, u, data.model_dump())
+
+    @get(
+        "/sequences/{sequence_id:int}/",
+        operation_id="get_streetview_sequence",
+        description="Get a streetview service's sequence",
+    )
+    def get_streetview_sequence(
+        self, request: Request, db_session: "Session", sequence_id: str
+    ) -> StreetviewSequenceModel:
+        u = request.user
         logger.info(
             "Get streetview sequence of id:{} for user:{}".format(
                 sequence_id, u.username
@@ -279,12 +299,15 @@ class StreetviewSequenceResource(Resource):
         )
         return StreetviewService.getSequenceFromId(db_session, sequence_id)
 
-    @api.doc(
-        id="deleteStreetviewSequence",
+    @delete(
+        "/sequences/{sequence_id:int}/",
+        operation_id="delete_streetview_sequence",
         description="Delete a streetview service's sequence",
     )
-    def delete(self, sequence_id: int):
-        u = request.current_user
+    def delete_streetview_sequence(
+        self, request: Request, db_session: "Session", sequence_id: int
+    ) -> None:
+        u = request.user
         logger.info(
             "Delete streetview sequence of id:{} for user:{}".format(
                 sequence_id, u.username
@@ -292,36 +315,44 @@ class StreetviewSequenceResource(Resource):
         )
         StreetviewService.deleteSequence(db_session, sequence_id)
 
-    @api.doc(
-        id="updateStreetviewSequence",
+    @put(
+        "/sequences/{sequence_id:int}/",
+        operation_id="update_streetview_sequence",
         description="Update a streetview service's sequence",
     )
-    @api.expect(streetview_organization)
-    @marshal_with(streetview_sequence)
-    def put(self, sequence_id: int):
-        u = request.current_user
+    def update_streetview_sequence(
+        self,
+        request: Request,
+        db_session: "Session",
+        sequence_id: int,
+        data: StreetviewOrganizationModel,
+    ) -> StreetviewSequenceModel:
+        u = request.user
         logger.info(
             "Update streetview sequence of id:{} for user:{}".format(
                 sequence_id, u.username
             )
         )
         return StreetviewService.updateSequence(
-            db_session, db_session, sequence_id, api.payload
+            db_session, sequence_id, data.model_dump(exclude_none=True)
         )
 
-
-@api.route("/publish/")
-class StreetviewPublishFilesResource(Resource):
-    @api.doc(
-        id="publishFilesToStreetview",
-        description="Import all files in a directory into a project from Tapis. The files should "
-        "contain GPano metadata for compatibility with streetview services. This"
-        "is an asynchronous operation, files will be imported in the background",
+    @post(
+        "/publish/",
+        operation_id="publish_files_to_streetview",
+        description="Publish files to streetview",
+        summary="""Import all files in a directory into a project from Tapis.
+        The files should contain GPano metadata for compatibility with streetview services.
+        This is an asynchronous operation, files will be imported in the background""",
     )
-    @api.expect(streetview_folder_import)
-    @api.marshal_with(ok_response)
-    def post(self):
-        u = request.current_user
+    def publish_files_to_streetview(
+        self,
+        request: Request,
+        db_session: "Session",
+        data: TapisFolderImport,
+        channels: "ChannelsPlugin",
+    ) -> OkResponse:
+        u = request.user
         logger.info("Publish images to streetview for user:{}".format(u.username))
-        streetview.publish(db_session, u, api.payload)
-        return {"message": "accepted"}
+        streetview.publish(db_session, u, data.model_dump(), channels)
+        return OkResponse(message="accepted")

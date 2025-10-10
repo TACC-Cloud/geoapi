@@ -4,7 +4,7 @@ from geoapi.utils.streetview import (
     get_project_streetview_dir,
     remove_project_streetview_dir,
 )
-from geoapi.db import db_session
+
 from unittest.mock import patch, MagicMock
 import os
 import pytest
@@ -48,7 +48,11 @@ def mock_notifications_service():
 
 
 def test_get_file_to_path(
-    user1, task_fixture, mock_notifications_service, tapis_utils_with_image_file
+    user1,
+    task_fixture,
+    mock_notifications_service,
+    tapis_utils_with_image_file,
+    db_session,
 ):
     system_id = "foo"
     path = "path/"

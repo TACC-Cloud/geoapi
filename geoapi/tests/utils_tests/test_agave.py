@@ -3,7 +3,6 @@ import os
 import tempfile
 from unittest.mock import patch
 from geoapi.utils.external_apis import TapisUtils, TapisFileGetError
-from geoapi.db import db_session
 
 
 @pytest.fixture(scope="function")
@@ -15,7 +14,12 @@ def retry_sleep_seconds_mock():
 
 
 def test_get_file(
-    user1, tapis_url, requests_mock, retry_sleep_seconds_mock, image_file_fixture
+    user1,
+    tapis_url,
+    requests_mock,
+    retry_sleep_seconds_mock,
+    image_file_fixture,
+    db_session,
 ):
     system = "system"
     path = "path"
@@ -35,6 +39,7 @@ def test_get_file_to_path(
     projects_fixture,
     retry_sleep_seconds_mock,
     image_file_fixture,
+    db_session,
 ):
     system = "system"
     path = "path"
@@ -53,7 +58,12 @@ def test_get_file_to_path(
 
 
 def test_get_file_retry_after_first_attempt(
-    user1, tapis_url, requests_mock, retry_sleep_seconds_mock, image_file_fixture
+    user1,
+    tapis_url,
+    requests_mock,
+    retry_sleep_seconds_mock,
+    image_file_fixture,
+    db_session,
 ):
     system = "system"
     path = "path"
@@ -65,7 +75,7 @@ def test_get_file_retry_after_first_attempt(
 
 
 def test_get_file_retry_too_many_attempts(
-    user1, tapis_url, requests_mock, retry_sleep_seconds_mock
+    user1, tapis_url, requests_mock, retry_sleep_seconds_mock, db_session
 ):
     system = "system"
     path = "path"

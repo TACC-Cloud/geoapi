@@ -1,23 +1,23 @@
 import uuid
-from sqlalchemy import Column, Integer, String, Numeric, ForeignKey
-from sqlalchemy.orm import relationship
+from sqlalchemy import Integer, String, Numeric, ForeignKey
+from sqlalchemy.orm import relationship, mapped_column
 from sqlalchemy.dialects.postgresql import UUID
 from geoapi.db import Base
 
 
 class Overlay(Base):
     __tablename__ = "overlays"
-    id = Column(Integer, primary_key=True)
-    project_id = Column(
+    id = mapped_column(Integer, primary_key=True)
+    project_id = mapped_column(
         ForeignKey("projects.id", ondelete="CASCADE", onupdate="CASCADE"), index=True
     )
-    path = Column(String(), nullable=False)
-    minLat = Column(Numeric(), nullable=False)
-    minLon = Column(Numeric(), nullable=False)
-    maxLat = Column(Numeric(), nullable=False)
-    maxLon = Column(Numeric(), nullable=False)
-    label = Column(String(), nullable=False)
-    uuid = Column(UUID(as_uuid=True), default=uuid.uuid4, nullable=False)
+    path = mapped_column(String(), nullable=False)
+    minLat = mapped_column(Numeric(), nullable=False)
+    minLon = mapped_column(Numeric(), nullable=False)
+    maxLat = mapped_column(Numeric(), nullable=False)
+    maxLon = mapped_column(Numeric(), nullable=False)
+    label = mapped_column(String(), nullable=False)
+    uuid = mapped_column(UUID(as_uuid=True), default=uuid.uuid4, nullable=False)
 
     project = relationship("Project")
 

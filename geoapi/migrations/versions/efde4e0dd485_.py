@@ -56,7 +56,7 @@ def upgrade():
             ["user_id"], ["users.id"], onupdate="CASCADE", ondelete="CASCADE"
         ),
         sa.PrimaryKeyConstraint("id"),
-        sa.UniqueConstraint("service"),
+        sa.UniqueConstraint("service", name="streetview_service_key"),
     )
     op.create_index(
         op.f("ix_streetview_user_id"), "streetview", ["user_id"], unique=False

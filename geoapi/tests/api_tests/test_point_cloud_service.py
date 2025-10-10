@@ -2,7 +2,7 @@ import pytest
 import os
 from unittest.mock import patch
 
-from geoapi.db import db_session
+
 from geoapi.services.point_cloud import PointCloudService
 from geoapi.services.features import FeaturesService
 from geoapi.models import User, Feature, FeatureAsset, PointCloud
@@ -23,7 +23,7 @@ def celery_task_always_eager():
     app.conf.task_always_eager = False
 
 
-def test_add_point_cloud(projects_fixture):
+def test_add_point_cloud(projects_fixture, db_session):
     u1 = db_session.get(User, 1)
 
     point_cloud = PointCloudService.create(
@@ -39,7 +39,7 @@ def test_add_point_cloud(projects_fixture):
     assert db_session.query(PointCloud).count() == 1
 
 
-def test_delete_point_cloud(projects_fixture):
+def test_delete_point_cloud(projects_fixture, db_session):
     u1 = db_session.get(User, 1)
 
     point_cloud = PointCloudService.create(
@@ -62,6 +62,7 @@ def test_delete_point_cloud_feature(
     projects_fixture,
     point_cloud_fixture,
     lidar_las1pt2_file_fixture,
+    db_session,
 ):
     # create a point cloud feature so we can delete it
     MockTapisUtils().getFile.return_value = lidar_las1pt2_file_fixture
@@ -76,6 +77,7 @@ def test_delete_point_cloud_feature(
 
     # delete point cloud feature
     FeaturesService.delete(db_session, point_cloud.feature.id)
+    db_session.refresh(point_cloud_fixture)
 
     assert db_session.query(PointCloud).count() == 1
     assert db_session.get(PointCloud, 1).feature is None
@@ -88,7 +90,7 @@ def test_delete_point_cloud_feature(
 
 
 def test_update_point_cloud(
-    projects_fixture, point_cloud_fixture, convert_to_potree_mock
+    projects_fixture, point_cloud_fixture, convert_to_potree_mock, db_session
 ):
     data = {"description": "new description", "conversion_parameters": "--scale 5.0"}
     point_cloud = PointCloudService.update(
@@ -100,7 +102,7 @@ def test_update_point_cloud(
 
 
 def test_update_point_cloud_without_changing_conversion_parameters(
-    projects_fixture, point_cloud_fixture, convert_to_potree_mock
+    projects_fixture, point_cloud_fixture, convert_to_potree_mock, db_session
 ):
     data = {"description": "new description"}
     point_cloud = PointCloudService.update(

@@ -1,6 +1,5 @@
 import pytest
 
-from geoapi.db import db_session
 
 from geoapi.services.projects import ProjectsService
 from geoapi.models import User
@@ -8,7 +7,7 @@ from geoapi.models.project import Project, ProjectUser
 from geoapi.exceptions import ProjectSystemPathWatchFilesAlreadyExists
 
 
-def test_create_project(user1):
+def test_create_project(user1, db_session):
     data = {
         "name": "test name",
         "description": "test description",
@@ -27,7 +26,9 @@ def test_create_project(user1):
     assert not project.project_users[0].admin
 
 
-def test_delete_project(projects_fixture, remove_project_assets_mock, user1):
+def test_delete_project(
+    projects_fixture, remove_project_assets_mock, user1, db_session
+):
     ProjectsService.delete(db_session, user1, projects_fixture.id)
     projects = db_session.query(Project).all()
     assert projects == []
@@ -38,6 +39,7 @@ def test_create_watch_users_watch_content_project(
     get_system_users_mock,
     tapis_utils_with_geojson_file_mock,
     import_from_tapis_mock,
+    db_session,
 ):
     data = {
         "name": "test name",
@@ -76,6 +78,7 @@ def test_create_watch_content_project_already_exists(
     tapis_utils_with_geojson_file_mock,
     import_from_tapis_mock,
     get_system_users_mock,
+    db_session,
 ):
     user = db_session.get(User, 1)
     data = {
@@ -92,32 +95,32 @@ def test_create_watch_content_project_already_exists(
         ProjectsService.create(db_session, data, user)
 
 
-def test_get_with_project_id(projects_fixture):
+def test_get_with_project_id(projects_fixture, db_session):
     project = ProjectsService.get(
         database_session=db_session, project_id=projects_fixture.id
     )
     assert project.id == projects_fixture.id
 
 
-def test_get_with_uid(projects_fixture):
+def test_get_with_uid(projects_fixture, db_session):
     project = ProjectsService.get(
         database_session=db_session, uuid=projects_fixture.uuid
     )
     assert project.uuid == projects_fixture.uuid
 
 
-def test_get_missing_argument(projects_fixture):
+def test_get_missing_argument(projects_fixture, db_session):
     with pytest.raises(ValueError):
         ProjectsService.get(db_session)
 
 
-def test_get_features(projects_fixture, feature_fixture):
+def test_get_features(projects_fixture, feature_fixture, db_session):
     project_features = ProjectsService.getFeatures(db_session, projects_fixture.id)
     assert len(project_features["features"]) == 1
 
 
 def test_get_features_filter_type(
-    projects_fixture, feature_fixture, image_feature_fixture
+    projects_fixture, feature_fixture, image_feature_fixture, db_session
 ):
     project_features = ProjectsService.getFeatures(db_session, projects_fixture.id)
     assert len(project_features["features"]) == 2
@@ -135,7 +138,7 @@ def test_get_features_filter_type(
     assert len(project_features["features"]) == 0
 
 
-def test_update_project(projects_fixture):
+def test_update_project(projects_fixture, db_session):
     data = {"name": "new name", "description": "new description"}
     proj = ProjectsService.update(db_session, projects_fixture.id, data)
     assert proj.name == "new name"

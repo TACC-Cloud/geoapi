@@ -1,4 +1,4 @@
-FROM python:3.11-slim AS python-base
+FROM python:3.12-slim AS python-base
 
 LABEL maintainer="DesignSafe-CI <designsafe-ci@tacc.utexas.edu>"
 
@@ -55,20 +55,21 @@ RUN wget -q -O miniforge.sh https://github.com/conda-forge/miniforge/releases/la
 
 ENV PATH="/opt/conda/bin:${PATH}"
 
-# Create a conda environment with Python 3.11 and activate it
-RUN conda create -n py311env python=3.11 -y
-SHELL ["conda", "run", "-n", "py311env", "/bin/bash", "-c"]
+# Create a conda environment with Python 3.12 and activate it
+RUN conda create -n py312env python=3.12 -y
+SHELL ["conda", "run", "-n", "py312env", "/bin/bash", "-c"]
 
 # Install PDAL using conda
 RUN conda install -c conda-forge pdal -y
 
 # https://python-poetry.org/docs/configuration/#using-environment-variables
-ENV POETRY_VERSION=1.8 \
+ENV POETRY_VERSION=2.1 \
     POETRY_HOME="/opt/poetry" \
     POETRY_VIRTUALENVS_IN_PROJECT=true \
     PYSETUP_PATH="/opt/pysetup" \
     VENV_PATH="/opt/pysetup/.venv"
 
+# prepend venv and poetry to path
 ENV PATH="$VENV_PATH/bin:$POETRY_HOME/bin:$PATH"
 
 # Install poetry version $POETRY_VERSION to $POETRY_HOME
@@ -76,7 +77,12 @@ RUN pip3 install --no-cache-dir --upgrade pip setuptools wheel \
     && python3 -m venv "$POETRY_HOME" \
     && "$POETRY_HOME/bin/pip" install --no-cache-dir poetry=="$POETRY_VERSION"
 
-COPY devops/pyproject.toml devops/poetry.lock ./
+# Copy project requirement files to ensure they will be cached.
+WORKDIR $PYSETUP_PATH
+COPY devops/poetry.lock devops/pyproject.toml ./
+
+# install runtime deps - uses $POETRY_VIRTUALENVS_IN_PROJECT internally
+RUN poetry install
 
 # Create an entrypoint script that activates our conda environment
 RUN echo '#!/bin/bash' > /usr/local/bin/entrypoint.sh && \
@@ -84,7 +90,7 @@ RUN echo '#!/bin/bash' > /usr/local/bin/entrypoint.sh && \
     echo '' >> /usr/local/bin/entrypoint.sh && \
     echo '# Activate conda and the specific environment' >> /usr/local/bin/entrypoint.sh && \
     echo '. /opt/conda/etc/profile.d/conda.sh' >> /usr/local/bin/entrypoint.sh && \
-    echo 'conda activate py311env' >> /usr/local/bin/entrypoint.sh && \
+    echo 'conda activate py312env' >> /usr/local/bin/entrypoint.sh && \
     echo '' >> /usr/local/bin/entrypoint.sh && \
     echo '# Execute the passed command' >> /usr/local/bin/entrypoint.sh && \
     echo 'exec "$@"' >> /usr/local/bin/entrypoint.sh && \
@@ -95,7 +101,11 @@ ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
 
 # activate conda (to handle when user starts a bash via docker exec)
 RUN echo '. /opt/conda/etc/profile.d/conda.sh' >> /root/.bashrc && \
-    echo 'conda activate py311env' >> /root/.bashrc
+    echo 'conda activate py312env' >> /root/.bashrc
+
+RUN groupadd -g 1100 celeryuser
+RUN useradd -s /sbin/nologin -u 1100 -g 1100 celeryuser
+RUN mkdir -p /var/run/celery && chown -R 1100:1100 /var/run/celery
 
 # Set a default command (can be overridden by docker-compose)
 CMD ["bash"]
@@ -104,8 +114,12 @@ CMD ["bash"]
 # `development` image target is used for local development
 FROM python-base AS development
 
+# copy in our built poetry + venv
+COPY --from=python-base $POETRY_HOME $POETRY_HOME
+COPY --from=python-base $PYSETUP_PATH $PYSETUP_PATH
+
 # Install dev dependencies
-RUN "$POETRY_HOME/bin/poetry" install --with dev,flask,worker
+RUN poetry install --with dev
 
 COPY geoapi /app/geoapi
 
@@ -118,7 +132,7 @@ WORKDIR /app/geoapi
 FROM python-base AS production
 
 # Install runtime dependencies
-RUN "$POETRY_HOME/bin/poetry" install --with flask,worker
+COPY --from=python-base $PYSETUP_PATH $PYSETUP_PATH
 
 COPY geoapi /app/geoapi
 

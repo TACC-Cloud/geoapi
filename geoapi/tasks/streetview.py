@@ -1,18 +1,15 @@
-from geoapi.models.feature import Feature, FeatureAsset
-from geoapi.services.users import UserService
 import os
 import uuid
-from uuid import UUID
-from typing import Dict
-from pathlib import Path
 import requests
 import json
 import celery
-from celery import uuid as celery_uuid
-
+from uuid import UUID
+from typing import Dict, TYPE_CHECKING
+from pathlib import Path
 from geoalchemy2.shape import from_shape
 from shapely.geometry import Point, LineString
-
+from geoapi.models.feature import Feature, FeatureAsset
+from geoapi.services.users import UserService
 from geoapi.celery_app import app
 from geoapi.exceptions import (
     StreetviewAuthException,
@@ -32,11 +29,15 @@ from geoapi.utils import features as features_util
 from geoapi.services.streetview import StreetviewService
 from geoapi.services.notifications import NotificationsService
 from geoapi.db import create_task_session
+from geoapi.tasks.utils import send_progress_update
 
 logger = logging.getLogger(__file__)
 
+if TYPE_CHECKING:
+    from litestar.channels import ChannelsPlugin
 
-def publish(database_session, user: User, params: Dict):
+
+def publish(database_session, user: User, params: Dict, channels: "ChannelsPlugin"):
     service = params["service"]
     system_id = params["system_id"]
     path = params["path"]
@@ -55,7 +56,9 @@ def publish(database_session, user: User, params: Dict):
     # TODO: Find better solution for limiting uploads.
     if len(NotificationsService.getProgressStatus(database_session, "in_progress")) > 5:
         message = "Maximum number of uploads in progress!"
-        NotificationsService.create(database_session, user, "warning", message)
+        NotificationsService.create(
+            database_session, user, "warning", message, channels
+        )
         raise StreetviewLimitException(message)
 
     # TODO: Implement retry
@@ -68,13 +71,13 @@ def progress_error(
     database_session,
     user: User,
     task_uuid: UUID,
-    status: str = None,
-    message: str = None,
+    status: str,
+    message: str,
     logItem: Dict = None,
 ):
     logger.error(message)
     message = "Error occurred"
-    NotificationsService.create(database_session, user, status, message)
+    send_progress_update(user, task_uuid, status, message)
     NotificationsService.updateProgress(
         database_session,
         task_uuid=task_uuid,
@@ -89,8 +92,8 @@ def clean_session(
     streetview_instance: StreetviewInstance,
     user: User,
     task_uuid: UUID,
-    status: str = None,
-    message: str = None,
+    status: str,
+    message: str,
     logItem: dict = None,
 ):
     StreetviewService.deleteInstance(database_session, streetview_instance.id)
@@ -264,7 +267,7 @@ def from_tapis_to_streetview(
                 f"Error checking existing upload for user:{user.username} "
                 f"system_id:{system_id}, path:{path}, {e})"
             )
-            NotificationsService.create(session, user, "warning", str(e))
+            send_progress_update(user, task_uuid, "warning", str(e))
             return
 
         # Initialize progress notification and streetview object
@@ -369,7 +372,7 @@ def process_streetview_sequences(
     """
     streetview_sequence = database_session.get(StreetviewSequence, sequenceId)
 
-    celery_task_id = celery_uuid()
+    celery_task_id = celery.uuid()
     task = Task()
     task.process_id = celery_task_id
     task.status = "RUNNING"

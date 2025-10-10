@@ -3,11 +3,13 @@ import os
 import json
 import tempfile
 import shutil
+import laspy
 from unittest.mock import patch, MagicMock
 from werkzeug.datastructures import FileStorage
-import laspy
-
-from geoapi.db import Base, engine, db_session
+from typing import TYPE_CHECKING
+from collections.abc import Iterator
+from litestar.testing import TestClient
+from geoapi.db import Base, sqlalchemy_config
 from geoapi.models.users import User
 from geoapi.models.project import Project, ProjectUser
 from geoapi.models.feature import Feature
@@ -15,30 +17,66 @@ from geoapi.models.task import Task
 from geoapi.services.point_cloud import PointCloudService
 from geoapi.services.features import FeaturesService
 from geoapi.services.users import UserService
-from geoapi.app import app
+from geoapi.app import app, session_auth_config
 from geoapi.utils.assets import get_project_asset_dir
 from geoapi.utils.external_apis import TapisFileListing, SystemUser
 from geoapi.utils.tenants import get_tapis_api_server
 from geoapi.utils.jwt_utils import create_token_expiry_hours_from_now
 from geoapi.exceptions import InvalidCoordinateReferenceSystem
 
+if TYPE_CHECKING:
+    from litestar import Litestar
 
-@pytest.fixture
-def test_client():
-    # Disable propagating of exceptions (which is enabled by default in testing/debug)
-    # to allow for testing of api exceptions/messages
-    app.config["PROPAGATE_EXCEPTIONS"] = False
 
-    with app.app_context():
-        Base.metadata.drop_all(engine)
-        Base.metadata.create_all(engine)
-        yield app.test_client()
-        db_session.remove()
-        Base.metadata.drop_all(engine)
+@pytest.fixture(scope="session")
+def db_engine() -> "Iterator[sqlalchemy_config.Engine]":
+    """Create the database engine for testing."""
+    db_engine = sqlalchemy_config.get_engine()
+    yield db_engine
+
+
+@pytest.fixture(scope="function")
+def create_tables(db_engine) -> "Iterator[None]":
+    """Create the database tables for testing."""
+    Base.metadata.drop_all(db_engine)
+    Base.metadata.create_all(db_engine)
+    yield db_engine
+    Base.metadata.drop_all(db_engine)
+
+
+@pytest.fixture(scope="function")
+def db_session(db_engine, create_tables) -> "Iterator[sqlalchemy_config.Session]":
+    """Create a database session for testing."""
+    sqlalchemy_config.engine_instance = db_engine
+    with sqlalchemy_config.get_session() as session:
+        yield session
+
+
+@pytest.fixture(scope="function")
+def test_client_user1() -> "Iterator[TestClient[Litestar]]":
+
+    with TestClient(app=app, session_config=session_auth_config) as client:
+        client.set_session_data({"username": "test1", "tenant": "test"})
+        yield client
+
+
+@pytest.fixture(scope="function")
+def test_client_user2() -> "Iterator[TestClient[Litestar]]":
+
+    with TestClient(app=app, session_config=session_auth_config) as client:
+        client.set_session_data({"username": "test2", "tenant": "test"})
+        yield client
+
+
+@pytest.fixture(scope="function")
+def test_client() -> "Iterator[TestClient[Litestar]]":
+
+    with TestClient(app=app, session_config=session_auth_config) as client:
+        yield client
 
 
 @pytest.fixture(autouse=True, scope="function")
-def userdata(test_client):
+def userdata(create_tables, db_engine) -> "Iterator[User]":
     user1JWT = "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiJjY2Q2Y2UwZS0xNTY4LTRjNTItYTVlYy03MGE3YTc2M2M0YTMiLCJpc3MiOiJodHRwczovL2Rlc2lnbnNhZmUudGFwaXMuaW8vdjMvdG9rZW5zIiwic3ViIjoidGVzdDNAZGVzaWduc2FmZSIsInRhcGlzL3RlbmFudF9pZCI6InRlc3QiLCJ0YXBpcy90b2tlbl90eXBlIjoiYWNjZXNzIiwidGFwaXMvZGVsZWdhdGlvbiI6ZmFsc2UsInRhcGlzL2RlbGVnYXRpb25fc3ViIjpudWxsLCJ0YXBpcy91c2VybmFtZSI6InRlc3QxIiwidGFwaXMvYWNjb3VudF90eXBlIjoidXNlciIsImV4cCI6MTcwODExOTU1OCwidGFwaXMvY2xpZW50X2lkIjoiaGF6bWFwcGVyLnRlc3QiLCJ0YXBpcy9ncmFudF90eXBlIjoiaW1wbGljaXQifQ.ILmDPdffMv9BuSbXifiPam4OTMFnUrcrPsgywQK6RSG4PYuZZyJ5IQhcr06bqdv3xieFI623HVOK_wUi4mgrckeFf3sU5eT9Wv6cEjiBxsO1-PT8QNFzAEvBlpVFjlZ_XzimoR6G3Jg636zejkNOhlNkgVIvv7iUta0oLIJHMei_gvIqRYjisTfva8NxhpG5aUBxTgOP_UEpJyM7k0UrEhqc9LtcFgstUp9PemSMMdRfbD4TftxeAD6EKrRrofRpsi3hmpP-aWXOOZRGiqx87GvMCUzZ-5T2uLBBFF7SDcM-JEGY90awC4oAlDk5RIFdWo-oIOzQyuj1f2Wg3USPfhpF0CRqp_ISQ9c4gjFaEQn299nobCq5fKI-BVYOCYfHgh0fsrMhri7g53M_ozhmi9RPUFfRXr4xhlUfvfZVCDE78GyeQfRu_oJcezxgXVLuVyajwQbPfLZ1xJ2952vTj-uA5pAXW0SR5jkIM_0M2YfqhW0JhPyw8xw7lFDaR0C2DFDQ8hqxFnh1keqNM6fWS4jFLLqcnEYnw2-g_BLXE96AIcw18bWtafHmyJ4Zun2OEByvGlywbYtknO3NpJiBUiLXpdNdGELAO9NKvyCIeOjfstXl75SHYi1DC6YAc_ZzL3F0-ZXtz3NASQejn8ceu0awoVESU1mMPXUHu2bJYts"  # noqa: E501
     user2JWT = "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiJjY2Q2Y2UwZS0xNTY4LTRjNTItYTVlYy03MGE3YTc2M2M0YTMiLCJpc3MiOiJodHRwczovL2Rlc2lnbnNhZmUudGFwaXMuaW8vdjMvdG9rZW5zIiwic3ViIjoidGVzdDNAZGVzaWduc2FmZSIsInRhcGlzL3RlbmFudF9pZCI6InRlc3QiLCJ0YXBpcy90b2tlbl90eXBlIjoiYWNjZXNzIiwidGFwaXMvZGVsZWdhdGlvbiI6ZmFsc2UsInRhcGlzL2RlbGVnYXRpb25fc3ViIjpudWxsLCJ0YXBpcy91c2VybmFtZSI6InRlc3QyIiwidGFwaXMvYWNjb3VudF90eXBlIjoidXNlciIsImV4cCI6MTcwODExOTU1OCwidGFwaXMvY2xpZW50X2lkIjoiaGF6bWFwcGVyLnRlc3QiLCJ0YXBpcy9ncmFudF90eXBlIjoiaW1wbGljaXQifQ.lsa8XEIXkb_4rkzFdVpuwCIcWrwAolLN7Gx0K2V6KdcTVWLrUn_5ZONr5AoCPOeV6SR14Bs5kpZdZB5bxfyf0z7OWIRbsRJgyThSle3LS-bdA8ltflFOW-coZsDd4C_eXfj-8b0RM1JTRHCkS3daFUeJOLL6QDnhoENiY4FlT-1WTydgw_f2T4BRPatqwQPZajBfnOVs9cwlhsS0HuDJVRWV4zh78jckW3jPdZ_JybjwGy9w32cSFm2BTASdvUfuCN4CJfY1QwJP7jlZno377MJnsCypW-CJyF57LbEZ_dqgQVVFVGLWS_zd5zmhctxtDtaC80e8jkS6Ld1F1duNHSU0GUfURBg_aoi1vBzlE6h49MfLxCtX0oOhiysoQeiZpBV4F-ZkNhULw_GrKm7JNUsHvTsRUb61tkje2uVN-YefqsZYQ7apwRQ7S5oU0ccNXubCp_uk6TNSHB7cZMiElnWJalRZlOo0MD7Lx7NXlohCaK_ICh5BMSS1jKzhBxj-ug5O2R3oGIztNkHlUp3F476aWN8bRtVOobFgk4MhRBahWqAgrbpLHbk5OSyCeSQ_brB9avjoNl8e23mJTKQIO6HDc_QqsA586buXT3deb5d4QaqzGWkSwmZs6_kozDnbOItYJC-6E4qm25AX8ew4NHmLrPvtYW66FT-UCI5LiBU"  # noqa: E501
     user3JWT = "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiJjY2Q2Y2UwZS0xNTY4LTRjNTItYTVlYy03MGE3YTc2M2M0YTMiLCJpc3MiOiJodHRwczovL2Rlc2lnbnNhZmUudGFwaXMuaW8vdjMvdG9rZW5zIiwic3ViIjoidGVzdDNAZGVzaWduc2FmZSIsInRhcGlzL3RlbmFudF9pZCI6InRlc3QiLCJ0YXBpcy90b2tlbl90eXBlIjoiYWNjZXNzIiwidGFwaXMvZGVsZWdhdGlvbiI6ZmFsc2UsInRhcGlzL2RlbGVnYXRpb25fc3ViIjpudWxsLCJ0YXBpcy91c2VybmFtZSI6InRlc3QzIiwidGFwaXMvYWNjb3VudF90eXBlIjoidXNlciIsImV4cCI6MTcwODExOTU1OCwidGFwaXMvY2xpZW50X2lkIjoiaGF6bWFwcGVyLnRlc3QiLCJ0YXBpcy9ncmFudF90eXBlIjoiaW1wbGljaXQifQ.Ojtx5fCZGFHxl7zXdH6j2OPBdVHvp_MCGJMeg_sTNuAqT-gVf_L81h1Zqrh9gdLR4og1n-V4yQp8aYQsUJ_jBv_9OIvF4KuYa2hAN9Bn-FAL0VngJUU1wHvkLYlTpLGmTnhgTdtOi2Xj_geNNKgs3EsWacqZwE7-lUKv0YtsVvjb_Z5fZUjXzjxg4jWIx7FhHqz2bodT8WNU7eMPE2oNgwPFjkouoi5yELLmAHE_8bvudlW4sbIiO16cFGfH3xdzDi7TsfZa_Nmqg1x6BHHQ-n47yB0q87ntJ4MiS7cGio8C0x1j25eohjFkQ0ztj3F3KfQMuVb9nFc3JBjtycDbfqvIIzFIqf7eLso5oWqioPPnAi0DG7THIad2XzRPPB6Ri2jtbc8cDHlVOadwXNndud8fjdPSOQ68mFwMMj4-24ndhxf-Tp8MrvXpo91It66KescGQyFt5tFNGDZtzXdve4L6HUHdP9yaYEPmPEtvAODqUJTLAx088NuIxIcDvSRe_pHWKnkkYNPvdsJcXspw2KYTJjNRrVxjIY5mOLMsCtJQug8VZVWJ6wk7zDnpvnaD8CzFIl2ge5ECZtAuD1MtBfIR45j0shynDs8JiX2vH6-0z03zFU_OWSXXGppZBLIjrgcIJEVIFF0F64na3ZH6Zlt56ZoZngRjNGHypD3XZGA"  # noqa: E501
@@ -47,16 +85,18 @@ def userdata(test_client):
     user2JWT = create_token_expiry_hours_from_now(user2JWT)
     user3JWT = create_token_expiry_hours_from_now(user3JWT)
 
-    u1 = UserService.create(
-        db_session, username="test1", access_token=user1JWT, tenant="test"
-    )
-    UserService.create(
-        db_session, username="test2", access_token=user2JWT, tenant="test"
-    )
-    UserService.create(
-        db_session, username="test3", access_token=user3JWT, tenant="test"
-    )
-    yield u1
+    sqlalchemy_config.engine_instance = db_engine
+    with sqlalchemy_config.get_session() as session:
+        u1 = UserService.create(
+            session, username="test1", access_token=user1JWT, tenant="test"
+        )
+        UserService.create(
+            session, username="test2", access_token=user2JWT, tenant="test"
+        )
+        UserService.create(
+            session, username="test3", access_token=user3JWT, tenant="test"
+        )
+        yield u1
 
 
 @pytest.fixture(autouse=True, scope="function")
@@ -65,17 +105,17 @@ def tapis_url(user1):
 
 
 @pytest.fixture(scope="function")
-def user1(userdata):
+def user1(userdata, db_session: "sqlalchemy_config.Session") -> "Iterator[User]":
     yield db_session.query(User).filter(User.username == "test1").first()
 
 
 @pytest.fixture(scope="function")
-def user2(userdata):
+def user2(userdata, db_session: "sqlalchemy_config.Session") -> "Iterator[User]":
     yield db_session.query(User).filter(User.username == "test2").first()
 
 
 @pytest.fixture(scope="function")
-def projects_fixture():
+def projects_fixture(db_session: "sqlalchemy_config.Session") -> "Iterator[Project]":
     """Project with 1 user and test1 is an admin"""
     project = Project(name="test", description="description")
     u1 = db_session.query(User).filter(User.username == "test1").first()
@@ -100,7 +140,9 @@ def projects_fixture():
 
 
 @pytest.fixture(scope="function")
-def projects_fixture2(user1, user2):
+def projects_fixture2(
+    user1, user2, db_session: "sqlalchemy_config.Session"
+) -> "Iterator[Project]":
     """Project with 2 users and test1 is creator"""
     ""
     project = Project(name="test2", description="description2")
@@ -127,7 +169,9 @@ def projects_fixture2(user1, user2):
 
 
 @pytest.fixture(scope="function")
-def public_projects_fixture(projects_fixture):
+def public_projects_fixture(
+    projects_fixture, db_session: "sqlalchemy_config.Session"
+) -> "Iterator[Project]":
     projects_fixture.public = True
     db_session.add(projects_fixture)
     db_session.commit()
@@ -135,7 +179,9 @@ def public_projects_fixture(projects_fixture):
 
 
 @pytest.fixture(scope="function")
-def watch_content_users_projects_fixture():
+def watch_content_users_projects_fixture(
+    db_session: "sqlalchemy_config.Session",
+) -> "Iterator[Project]":
     u1 = db_session.query(User).filter(User.username == "test1").first()
     project = Project(
         name="test_observable",
@@ -158,7 +204,9 @@ def watch_content_users_projects_fixture():
 
 
 @pytest.fixture(scope="function")
-def point_cloud_fixture():
+def point_cloud_fixture(
+    db_session: "sqlalchemy_config.Session",
+) -> "Iterator[PointCloudService]":
     u1 = db_session.query(User).filter(User.username == "test1").first()
     data = {"description": "description"}
     point_cloud = PointCloudService.create(db_session, projectId=1, data=data, user=u1)
@@ -166,7 +214,7 @@ def point_cloud_fixture():
 
 
 @pytest.fixture(scope="function")
-def task_fixture():
+def task_fixture(db_session: "sqlalchemy_config.Session") -> "Iterator[Task]":
     task = Task(process_id="1234", status="SUCCESS", description="description")
     db_session.add(task)
     db_session.commit()
@@ -379,7 +427,9 @@ def feature_properties_file_fixture():
 
 
 @pytest.fixture(scope="function")
-def feature_fixture(projects_fixture):
+def feature_fixture(
+    projects_fixture, db_session: "sqlalchemy_config.Session"
+) -> "Iterator[Feature]":
     home = os.path.dirname(__file__)
     with open(os.path.join(home, "fixtures/properties.json"), "rb") as f:
         feat = Feature.fromGeoJSON(json.loads(f.read()))
@@ -390,7 +440,9 @@ def feature_fixture(projects_fixture):
 
 
 @pytest.fixture(scope="function")
-def image_feature_fixture(image_file_fixture):
+def image_feature_fixture(
+    image_file_fixture, db_session: "sqlalchemy_config.Session"
+) -> "Iterator[FeaturesService]":
     yield FeaturesService.fromImage(db_session, 1, image_file_fixture, metadata={})
 
 
@@ -482,7 +534,10 @@ def tapis_utils_with_geojson_file_mock(tapis_file_listings_mock, geojson_file_fi
 
 
 @pytest.fixture(scope="function")
-def get_system_users_mock(userdata):
+def get_system_users_mock(
+    userdata,
+    db_session: "sqlalchemy_config.Session",
+) -> "Iterator[MagicMock]":
     u1 = db_session.get(User, 1)
     u2 = db_session.get(User, 2)
     users = [

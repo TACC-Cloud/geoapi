@@ -1,10 +1,13 @@
 from typing import Dict
+from pydantic import BaseModel
 import jwt
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
 import base64
 import time
+import redis
+import json
 from geoapi.settings import settings
 from geoapi.log import logging
 
@@ -92,16 +95,17 @@ def get_token_expiry(token: str) -> int:
     return decoded_token.get("exp")
 
 
-def token_will_expire_soon(token: str) -> bool:
+def token_will_expire_soon(token: str, buffer: int | None) -> bool:
     """
-    Check if the token will expire in the next few minutes.
+    Check if the token will expire within a certain buffer time.
 
     :param token: str
+    :param buffer: int (seconds before expiration)
     :return: bool
     """
     exp = get_token_expiry(token)
     current_time = int(time.time())
-    return current_time > exp - BUFFER_TIME_FOR_EXPIRING_TOKENS
+    return current_time > exp - (buffer or BUFFER_TIME_FOR_EXPIRING_TOKENS)
 
 
 def compare_token_expiry(token_a, token_b):
@@ -124,6 +128,7 @@ def compare_token_expiry(token_a, token_b):
         return exp_a > exp_b
 
     except jwt.InvalidTokenError:
+        logger.exception("Invalid token provided for comparison.")
         raise ValueError("One or both tokens are invalid.")
 
 
@@ -161,3 +166,26 @@ def create_token_expiry_hours_from_now(token: str, hours_from_now: int = 4) -> s
         return modified_token
     except jwt.InvalidTokenError:
         raise ValueError("Invalid token provided.")
+
+
+class AuthTokenModel(BaseModel):
+    token: str
+    expiresAt: str
+
+
+class AuthStateModel(BaseModel):
+    username: str
+    authToken: AuthTokenModel
+
+
+def send_refreshed_token_websocket(user, auth_state: AuthStateModel):
+    """Send refreshed token to user via redis pub/sub litestar websocket channel.
+    Used to notify connected client of token refreshes that take place within celery tasks.
+    """
+
+    r = redis.Redis(
+        host=settings.REDIS_HOST,
+        port=settings.REDIS_PORT,
+        db=0,
+    )
+    r.publish(f"notifications-{user.id}", json.dumps(auth_state))

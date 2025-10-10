@@ -9,9 +9,13 @@ CELERY_CONNECTION_STRING = "amqp://{user}:{pwd}@{hostname}/{vhost}".format(
     hostname=settings.RABBITMQ_HOSTNAME,
     vhost=settings.RABBITMQ_VHOST,
 )
+redis_url = f"redis://{settings.REDIS_HOST}:{settings.REDIS_PORT}/0"
 
 app = Celery(
-    "hello", backend="rpc", broker=CELERY_CONNECTION_STRING, include=["geoapi.tasks"]
+    "geoapi",
+    backend=redis_url,
+    broker=CELERY_CONNECTION_STRING,
+    include=["geoapi.tasks"],
 )
 
 # Define the queues

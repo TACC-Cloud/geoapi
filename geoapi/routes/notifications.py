@@ -1,42 +1,22 @@
-from flask import request
-from flask_restx import Resource, Namespace, fields
-
-from geoapi.db import db_session
-from geoapi.log import logging
-from geoapi.utils.decorators import jwt_decoder, not_anonymous
-from geoapi.services.notifications import NotificationsService
+from pydantic import BaseModel, field_validator
 from dateutil import parser, tz
+from datetime import datetime
+from typing import TYPE_CHECKING
+from litestar import Controller, get, delete, Request
+from litestar.plugins.sqlalchemy import SQLAlchemyDTO
+from litestar.dto import DTOConfig
+from geoapi.log import logging
+from geoapi.utils.decorators import not_anonymous_guard
+from geoapi.services.notifications import (
+    NotificationsService,
+    Notification,
+    ProgressNotification,
+)
 
 logger = logging.getLogger(__name__)
 
-api = Namespace("notifications", decorators=[jwt_decoder])
-
-notification_response = api.model(
-    "NotificationResponse",
-    {
-        "status": fields.String(),
-        "message": fields.String(),
-        "created": fields.DateTime(),
-        "viewed": fields.Boolean(),
-        "id": fields.Integer(),
-    },
-)
-
-progress_notification_response = api.model(
-    "ProgressNotificationResponse",
-    {
-        "status": fields.String(),
-        "message": fields.String(),
-        "progress": fields.Integer(),
-        "uuid": fields.String(),
-        "created": fields.DateTime(),
-        "viewed": fields.Boolean(),
-        "id": fields.Integer(),
-        "logs": fields.Raw(),
-    },
-)
-
-ok_response = api.model("OkResponse", {"message": fields.String(default="accepted")})
+if TYPE_CHECKING:
+    from sqlalchemy.orm import Session
 
 
 def utc_datetime(value):
@@ -45,47 +25,98 @@ def utc_datetime(value):
     return dt
 
 
-@api.route("/")
-class Notifications(Resource):
-    parser = api.parser()
-    parser.add_argument(
-        "startDate",
-        location="args",
-        type=utc_datetime,
-        help="Only return notifications created more recently than startDate",
+class NotificationDTO(SQLAlchemyDTO[Notification]):
+    config = DTOConfig(exclude={"username", "tenant_id"})
+
+
+class ProgressNotificationDTO(SQLAlchemyDTO[ProgressNotification]):
+    config = DTOConfig(exclude={"user_id", "username", "tenant_id"})
+
+
+class OkResponse(BaseModel):
+    message: str = "accepted"
+
+
+class NotificationsQuery(BaseModel):
+    startDate: datetime | str | None = None
+
+    @field_validator("startDate", mode="before")
+    @classmethod
+    def validate_start_date(cls, value: datetime | str | None) -> datetime | None:
+        if value is None:
+            return None
+        if isinstance(value, datetime):
+            return value
+        if isinstance(value, str):
+            # Accept ISO8601 and fix legacy " 00:00" if needed
+            value = value.replace(" 00:00", "+00:00")
+            return utc_datetime(value)
+        raise ValueError("Invalid startDate format")
+
+
+class NotificationsController(Controller):
+    path = "/notifications"
+
+    @get(
+        "/",
+        tags=["notifications"],
+        operation_id="get_notifications",
+        description="Get a list of notifications",
+        guards=[not_anonymous_guard],
+        return_dto=NotificationDTO,
     )
+    def get_notifications(
+        self, request: Request, query: NotificationsQuery, db_session: "Session"
+    ) -> list[Notification]:
+        """Get a list of notifications."""
+        u = request.user
+        return NotificationsService.get(db_session, u, query.model_dump())
 
-    @api.doc(id="get", description="Get a list of notifications")
-    @api.marshal_with(notification_response, as_list=True)
-    @not_anonymous
-    def get(self):
-        query = self.parser.parse_args()
-        u = request.current_user
-        return NotificationsService.get(db_session, u, query)
-
-
-@api.route("/progress")
-class ProgressNotifications(Resource):
-    @api.doc(id="get", description="Get a list of progress notifications")
-    @api.marshal_with(progress_notification_response, as_list=True)
-    def get(self):
-        u = request.current_user
+    @get(
+        "/progress",
+        tags=["notifications"],
+        operation_id="get_progress_notifications",
+        description="Get a list of progress notifications",
+        return_dto=ProgressNotificationDTO,
+    )
+    def get_progress_notifications(
+        self, request: Request, db_session: "Session"
+    ) -> list[ProgressNotification]:
+        """Get a list of progress notifications."""
+        u = request.user
         return NotificationsService.getProgress(db_session, u)
 
-    @api.doc(id="delete", description="Delete all done progress notifications")
-    @api.marshal_with(progress_notification_response, as_list=True)
-    def delete(self):
-        return NotificationsService.deleteAllDoneProgress(db_session)
+    @delete(
+        "/progress",
+        tags=["notifications"],
+        operation_id="delete_done_progress_notifications",
+        description="Delete all done progress notifications",
+    )
+    def delete_done_progress_notifications(self, db_session: "Session") -> None:
+        """Delete all done progress notifications."""
+        NotificationsService.deleteAllDoneProgress(db_session)
 
-
-@api.route("/progress/<string:progressUUID>")
-class ProgressNotificationResource(Resource):
-    @api.doc(id="get", description="Get a specific progress notification")
-    @api.marshal_with(progress_notification_response)
-    def get(self, progressUUID):
+    @get(
+        "/progress/{progressUUID: str}",
+        tags=["notifications"],
+        operation_id="get_progress_notification_id",
+        description="Get a specific progress notification",
+        return_dto=ProgressNotificationDTO,
+    )
+    def get_progress_notification_id(
+        self, progressUUID: str, db_session: "Session"
+    ) -> ProgressNotification:
+        """Get a specific progress notification."""
         return NotificationsService.getProgressUUID(db_session, progressUUID)
 
-    @api.doc(id="delete", description="Delete a specific progress notification")
-    @api.marshal_with(ok_response)
-    def delete(self, progressUUID):
-        return NotificationsService.deleteProgress(db_session, progressUUID)
+    @delete(
+        "/progress/{progressUUID: str}",
+        tags=["notifications"],
+        operation_id="delete_progress_notification_id",
+        description="Delete a specific progress notification",
+    )
+    def delete_progress_notification_id(
+        self, progressUUID: str, db_session: "Session"
+    ) -> None:
+        """Delete a specific progress notification."""
+        NotificationsService.deleteProgress(db_session, progressUUID)

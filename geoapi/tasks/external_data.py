@@ -1,12 +1,13 @@
 import os
-import concurrent
-from pathlib import Path
-import concurrent.futures
-from enum import Enum
+import json
 import time
 import datetime
-from celery import uuid as celery_uuid
-import json
+import concurrent
+import concurrent.futures
+from pathlib import Path
+from enum import Enum
+
+from celery import uuid as celery_uuid, current_task
 from sqlalchemy import true
 
 from geoapi.celery_app import app
@@ -36,13 +37,13 @@ from geoapi.tasks.lidar import (
     PointCloudConversionException,
 )
 from geoapi.db import create_task_session
-from geoapi.services.notifications import NotificationsService
 from geoapi.services.users import UserService
 from geoapi.utils.additional_file import AdditionalFile
 from geoapi.utils.geo_location import (
     parse_rapid_geolocation,
     get_geolocation_from_file_metadata,
 )
+from geoapi.tasks.utils import send_progress_update
 
 
 class ImportState(Enum):
@@ -175,6 +176,7 @@ def import_file_from_tapis(userId: int, systemId: str, path: str, projectId: int
     expected to be embedded in the imported file.
     """
     with create_task_session() as session:
+        task_id = current_task.request.id
         try:
             user = session.get(User, userId)
             client = TapisUtils(session, user)
@@ -195,18 +197,16 @@ def import_file_from_tapis(userId: int, systemId: str, path: str, projectId: int
                 additional_files=additional_files,
                 location=optional_location_from_metadata,
             )
-            NotificationsService.create(
-                session, user, "success", "Imported {f}".format(f=path)
+            send_progress_update(
+                user, task_id, "success", f"Imported {path} successfully"
             )
             temp_file.close()
-        except Exception as e:  # noqa: E722
+        except Exception:  # noqa: E722
             logger.exception(
-                "Could not import file from tapis: {} :: {}".format(systemId, path)
+                "Could not import file from tapis: %s :: %s", systemId, path
             )
-            NotificationsService.create(
-                session, user, "error", "Error importing {f}".format(f=path)
-            )
-            raise e
+            send_progress_update(user, task_id, "error", f"Error importing {path}")
+            raise
 
 
 def _update_point_cloud_task(
@@ -233,9 +233,9 @@ def _handle_point_cloud_conversion_error(
         _update_point_cloud_task(
             session, pointCloudId, description=error_description, status="FAILED"
         )
-        NotificationsService.create(
-            session,
+        send_progress_update(
             user,
+            current_task.request.id,
             "error",
             f"Processing failed for point cloud ({pointCloudId})!",
         )
@@ -277,7 +277,7 @@ def import_point_clouds_from_tapis(userId: int, files, pointCloudId: int):
                 ),
             )
 
-            NotificationsService.create(session, user, "success", task.description)
+            send_progress_update(user, celery_task_id, "success", task.description)
 
             system_id = file["system"]
             path = file["path"]
@@ -322,7 +322,7 @@ def import_point_clouds_from_tapis(userId: int, files, pointCloudId: int):
                 _update_point_cloud_task(
                     session, pointCloudId, description=failed_message, status="FAILED"
                 )
-                NotificationsService.create(session, user, "error", failed_message)
+                send_progress_update(user, celery_task_id, "error", failed_message)
                 return
 
         point_cloud.files_info = get_point_cloud_info(session, pointCloudId)
@@ -336,13 +336,12 @@ def import_point_clouds_from_tapis(userId: int, files, pointCloudId: int):
             description="Running potree converter",
             status="RUNNING",
         )
-        NotificationsService.create(
-            session,
+        send_progress_update(
             user,
+            celery_task_id,
             "success",
-            "Running potree converter (for point cloud {}).".format(pointCloudId),
+            "Running potree converter (for point cloud {})".format(pointCloudId),
         )
-
     try:
         # use potree converter to convert las to web-friendly format
         # this operation is memory-intensive and time-consuming.
@@ -352,9 +351,9 @@ def import_point_clouds_from_tapis(userId: int, files, pointCloudId: int):
             logger.info(
                 f"point cloud:{pointCloudId} conversion completed for user:{user.username} and files:{files}"
             )
-            NotificationsService.create(
-                session,
+            send_progress_update(
                 user,
+                celery_task_id,
                 "success",
                 "Completed potree converter (for point cloud {}).".format(pointCloudId),
             )
@@ -416,9 +415,9 @@ def import_files_recursively_from_path(
         logger.exception(
             f"Unable to perform file listing on {systemId}/{path} when importing for project:{projectId}"
         )
-        NotificationsService.create(
-            session,
+        send_progress_update(
             user,
+            current_task.request.id,
             "error",
             f"Error importing as unable to access {systemId}/{path}",
         )
@@ -490,9 +489,9 @@ def import_files_recursively_from_path(
                         # remove newly-created placeholder feature if we fail to create an asset
                         FeaturesService.delete(session, feat.id)
                         raise RuntimeError("Unable to create feature asset")
-                    NotificationsService.create(
-                        session,
+                    send_progress_update(
                         user,
+                        current_task.request.id,
                         "success",
                         "Imported {f}".format(f=item_system_path),
                     )
@@ -530,9 +529,9 @@ def import_files_recursively_from_path(
                         additional_files=additional_files,
                         location=optional_location_from_metadata,
                     )
-                    NotificationsService.create(
-                        session,
+                    send_progress_update(
                         user,
+                        current_task.request.id,
                         "success",
                         "Imported {f}".format(f=item_system_path),
                     )
@@ -545,9 +544,9 @@ def import_files_recursively_from_path(
                     continue
                 import_state = ImportState.SUCCESS
             except Exception as e:
-                NotificationsService.create(
-                    session,
+                send_progress_update(
                     user,
+                    current_task.request.id,
                     "error",
                     "Error importing {f}".format(f=item_system_path),
                 )
@@ -668,7 +667,7 @@ def refresh_projects_watch_users():
     start_time = time.time()
     with create_task_session() as session:
         try:
-            logger.info("Starting to refresh all projects where watch_content is True")
+            logger.info("Starting to refresh all projects where watch_users is True")
             projects_with_watch_users = (
                 session.query(Project).filter(Project.watch_users.is_(true())).all()
             )

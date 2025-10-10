@@ -5,7 +5,7 @@ import re
 import subprocess
 
 from geoapi.models import Feature, ImportedFile
-from geoapi.db import db_session, create_task_session
+from geoapi.db import create_task_session
 from geoapi.tasks.external_data import (
     import_from_tapis,
     import_point_clouds_from_tapis,
@@ -194,12 +194,26 @@ def tapis_utils_listing_with_single_trash_folder_of_image(image_file_fixture):
             yield MockTapis
 
 
+@pytest.fixture(autouse=True)
+def mock_task_update_webhook(requests_mock):
+    """
+    Mock the Celery->Litestar webhook so tests don't make real HTTP calls.
+    """
+    requests_mock.post(
+        "http://test:8888/webhooks/task-update",
+        json={"ok": True},
+        status_code=200,
+    )
+    yield requests_mock
+
+
 @pytest.mark.worker
 def test_external_data_good_files(
     metadata_geolocation_30long_20lat_fixture,
     user1,
     projects_fixture,
     tapis_utils_with_geojson_file,
+    db_session,
 ):
     import_from_tapis(
         projects_fixture.tenant_id,
@@ -235,7 +249,11 @@ def test_external_data_good_files(
 
 @pytest.mark.worker
 def test_external_data_bad_files(
-    metadata_none_fixture, user1, projects_fixture, tapis_utils_with_bad_image_file
+    metadata_none_fixture,
+    user1,
+    projects_fixture,
+    tapis_utils_with_bad_image_file,
+    db_session,
 ):
     import_from_tapis(
         projects_fixture.tenant_id,
@@ -269,7 +287,10 @@ def test_external_data_bad_files(
 
 @pytest.mark.worker
 def test_external_data_no_files_except_for_trash(
-    user1, projects_fixture, tapis_utils_listing_with_single_trash_folder_of_image
+    user1,
+    projects_fixture,
+    tapis_utils_listing_with_single_trash_folder_of_image,
+    db_session,
 ):
     import_from_tapis(
         projects_fixture.tenant_id, user1.id, "testSystem", "/", projects_fixture.id
@@ -288,7 +309,7 @@ def test_external_data_no_files_except_for_trash(
 
 @pytest.mark.worker
 def test_external_data_rapp(
-    user1, projects_fixture, tapis_utils_with_image_file_from_rapp_folder
+    user1, projects_fixture, tapis_utils_with_image_file_from_rapp_folder, db_session
 ):
     import_from_tapis(
         projects_fixture.tenant_id, user1.id, "testSystem", "/Rapp", projects_fixture.id
@@ -310,6 +331,7 @@ def test_external_data_rapp_missing_geospatial_metadata(
     projects_fixture,
     tapis_utils_with_image_file_from_rapp_folder,
     metadata_but_no_geolocation_fixture,
+    db_session,
 ):
     import_from_tapis(
         projects_fixture.tenant_id, user1.id, "testSystem", "/Rapp", projects_fixture.id
@@ -326,6 +348,7 @@ def test_import_point_clouds_from_tapis(
     projects_fixture,
     point_cloud_fixture,
     lidar_las1pt2_file_fixture,
+    db_session,
 ):
     MockTapisUtils().getFile.return_value = lidar_las1pt2_file_fixture
 
@@ -383,6 +406,7 @@ def test_import_point_clouds_from_tapis_check_point_cloud_missing_crs(
     projects_fixture,
     point_cloud_fixture,
     lidar_las1pt2_file_fixture,
+    db_session,
 ):
     MockTapisUtils().getFile.return_value = lidar_las1pt2_file_fixture
     check_mock.side_effect = InvalidCoordinateReferenceSystem()
@@ -417,6 +441,7 @@ def test_import_point_clouds_from_tapis_check_point_cloud_unknown(
     projects_fixture,
     point_cloud_fixture,
     lidar_las1pt2_file_fixture,
+    db_session,
 ):
     MockTapisUtils().getFile.return_value = lidar_las1pt2_file_fixture
     check_mock.side_effect = Exception("dummy")
@@ -453,6 +478,7 @@ def test_import_point_clouds_from_tapis_conversion_error(
     projects_fixture,
     point_cloud_fixture,
     lidar_las1pt2_file_fixture,
+    db_session,
 ):
     MockTapisUtils().getFile.return_value = lidar_las1pt2_file_fixture
     convert_mock.side_effect = Exception("dummy")
@@ -486,6 +512,7 @@ def test_import_point_clouds_from_tapis_conversion_error_due_to_memory_sigterm(
     projects_fixture,
     point_cloud_fixture,
     lidar_las1pt2_file_fixture,
+    db_session,
 ):
     MockTapisUtils().getFile.return_value = lidar_las1pt2_file_fixture
 
@@ -573,6 +600,7 @@ def test_refresh_projects_watch_users(
     watch_content_users_projects_fixture,
     get_system_users_mock,
     caplog,
+    db_session,
 ):
     assert len(watch_content_users_projects_fixture.project_users) == 1
     # single user with no admin but is creator
@@ -601,6 +629,7 @@ def test_refresh_projects_watch_content(
     watch_content_users_projects_fixture,
     get_system_users_mock,
     caplog,
+    db_session,
 ):
     refresh_projects_watch_content()
 
