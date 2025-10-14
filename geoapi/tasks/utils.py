@@ -30,6 +30,22 @@ def send_progress_update(user: User, task_id: str, status: str, message: str) ->
         )
 
 
+def _map_task_status_to_notification(status: TaskStatus) -> str | None:
+    """
+    Map TaskStatus to frontend notification status: 'success' | 'error'.
+    Returns None for statuses that shouldn't trigger notifications.
+    """
+    mapping = {
+        TaskStatus.COMPLETED: "success",
+        TaskStatus.FAILED: "error",
+        TaskStatus.ERROR: "error",
+        # QUEUED and RUNNING don't trigger notifications
+        TaskStatus.QUEUED: None,
+        TaskStatus.RUNNING: None,
+    }
+    return mapping.get(status)
+
+
 def update_task_and_send_progress_update(
     database_session,
     user: User,
@@ -39,6 +55,9 @@ def update_task_and_send_progress_update(
 ) -> None:
     """
     Update task status and latest_message, then send progress update to user.
+
+    Progress/notification update is only sent to user when the task is at
+    a terminal state; see _map_task_status_to_notification
     """
     t = database_session.get(Task, task_id)
     t.status = status.value
@@ -46,4 +65,6 @@ def update_task_and_send_progress_update(
     database_session.add(t)
     database_session.commit()
 
-    send_progress_update(user, t.process_id, status.value.lower(), latest_message)
+    notification_status = _map_task_status_to_notification(status)
+    if notification_status is not None:
+        send_progress_update(user, t.process_id, notification_status, latest_message)
