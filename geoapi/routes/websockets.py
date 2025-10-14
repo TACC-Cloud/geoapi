@@ -13,7 +13,9 @@ async def websocket_handler(socket: WebSocket, channels: ChannelsPlugin) -> None
     user = socket.scope.get("user")
 
     try:
-        async with channels.start_subscription([f"notifications-{user.id}"]) as subscriber:
+        async with channels.start_subscription(
+            [f"notifications-{user.id}"]
+        ) as subscriber:
             async for message in subscriber.iter_events():
                 try:
                     await socket.send_text(message)
