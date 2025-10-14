@@ -189,6 +189,7 @@ def import_tile_servers_from_tapis(
                 type="xyz",
                 kind="cog",
                 internal=True,
+                uuid=cog_uuid,
                 url=str(cog_path),  # e.g. /assets/{project_id}/{uuid}.cog.tif",
                 attribution="",
                 original_system=tapis_file.system,
