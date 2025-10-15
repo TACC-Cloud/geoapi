@@ -46,6 +46,8 @@ def gdal_cogify(src: Path, dst: Path) -> None:
         str(src),
         str(dst),
     ]
+    logger.info(f"Converting to cog by running command: {' '.join(cmd)}")
+
     subprocess.run(cmd, check=True)
 
 
@@ -60,6 +62,7 @@ def get_cog_metadata(path: Path) -> dict:
     Raises:
         ValueError: If the COG is not in EPSG:3857 (Web Mercator) projection
     """
+    logger.info(f"Extracting metadata from COG: {path}")
     result = subprocess.run(
         ["gdalinfo", "-json", str(path)], capture_output=True, text=True, check=True
     )
@@ -120,6 +123,8 @@ def import_tile_servers_from_tapis(
     If not a COG -> convert to COG
     Then register a TileServer pointing to TiTiler.
     """
+    logger.info(f"Starting tile server import task to create COG and related TileServer "
+                f"task:{task_id} user:{user_id} project:{project_id} tapis file: {tapis_file}")
 
     tapis_file = TapisFilePath.model_validate(tapis_file)
     tmp_file = None
@@ -153,6 +158,7 @@ def import_tile_servers_from_tapis(
             )
 
             try:
+                logger.info(f"Fetching {tapis_file}")
                 tmp_file = client.getFile(
                     tapis_file.system, tapis_file.path
                 )  # temp file
@@ -203,7 +209,6 @@ def import_tile_servers_from_tapis(
                     "showDescription": False,
                 },
             )
-            # TODO we need deleting COG TileServer is ever deleted
             session.add(ts)
             session.flush()
             session.commit()
