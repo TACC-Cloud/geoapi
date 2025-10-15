@@ -125,8 +125,6 @@ COPY geoapi /app/geoapi
 
 ENV PYTHONPATH=/app
 
-USER 1100:1100
-
 WORKDIR /app/geoapi
 
 ##############
@@ -139,7 +137,5 @@ COPY --from=python-base $PYSETUP_PATH $PYSETUP_PATH
 COPY geoapi /app/geoapi
 
 ENV PYTHONPATH=/app
-
-USER 1100:1100
 
 WORKDIR /app/geoapi
