@@ -204,9 +204,7 @@ async def retrieve_session_user_handler(
 # Litestar application configuration
 if settings.TESTING:
     root_store = MemoryStore()
-    session_auth_config = ServerSideSessionConfig(
-        store=root_store, key=f"session-{settings.APP_ENV}"
-    )
+    session_auth_config = ServerSideSessionConfig(store=root_store)
     stores = None
     csrf_config = None
     channels = ChannelsPlugin(
@@ -216,7 +214,9 @@ if settings.TESTING:
 else:
     redis_url = f"redis://{settings.REDIS_HOST}:{settings.REDIS_PORT}/0"
     root_store = RedisStore.with_client(url=redis_url)
-    session_auth_config = ServerSideSessionConfig(httponly=False, secure=True)
+    session_auth_config = ServerSideSessionConfig(
+        httponly=False, secure=True, key=f"session-{settings.APP_ENV}"
+    )
     stores = StoreRegistry(default_factory=root_store.with_namespace)
     csrf_config = CSRFConfig(
         secret=settings.SECRET_KEY,
