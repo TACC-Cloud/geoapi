@@ -268,7 +268,9 @@ logging_middleware_config = LoggingMiddlewareConfig(
         "body",
     ],
 )
-cookie_session_config = CookieBackendConfig(secret=urandom(16))
+cookie_session_config = CookieBackendConfig(
+    secret=urandom(16), key=f"session-{settings.APP_ENV}"
+)
 openapi_config = OpenAPIConfig(
     title="GeoAPI",
     version="3.0.0",
