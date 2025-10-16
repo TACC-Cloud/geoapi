@@ -123,8 +123,10 @@ def import_tile_servers_from_tapis(
     If not a COG -> convert to COG
     Then register a TileServer pointing to TiTiler.
     """
-    logger.info(f"Starting tile server import task to create COG and related TileServer "
-                f"task:{task_id} user:{user_id} project:{project_id} tapis file: {tapis_file}")
+    logger.info(
+        f"Starting tile server import task to create COG and related TileServer "
+        f"task:{task_id} user:{user_id} project:{project_id} tapis file: {tapis_file}"
+    )
 
     tapis_file = TapisFilePath.model_validate(tapis_file)
     tmp_file = None
