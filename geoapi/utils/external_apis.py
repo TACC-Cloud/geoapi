@@ -21,10 +21,12 @@ from geoapi.custom import custom_system_user_retrieval
 from geoapi.models import User
 from geoapi.services.users import UserService, ExpiredTokenError, RefreshTokenError
 from geoapi.utils import jwt_utils
+from geoapi.utils.assets import get_temp_dir
 
 logger = logging.getLogger(__name__)
 
 SLEEP_SECONDS_BETWEEN_RETRY = 2
+ASSETS_TEMP_DIR = get_temp_dir()
 
 
 class TapisListingError(Exception):
@@ -267,7 +269,7 @@ class TapisUtils(ApiUtils):
                         systemId, path, r.status_code, r.content
                     )
                 )
-            tmpFile = NamedTemporaryFile()
+            tmpFile = NamedTemporaryFile(dir=ASSETS_TEMP_DIR)
             for chunk in r.iter_content(1024 * 1024):
                 tmpFile.write(chunk)
             tmpFile.seek(0)
