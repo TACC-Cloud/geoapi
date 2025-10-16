@@ -48,7 +48,11 @@ def gdal_cogify(src: Path, dst: Path) -> None:
     ]
     logger.info(f"Converting to cog by running command: {' '.join(cmd)}")
 
-    subprocess.run(cmd, check=True)
+    # GDAL creates temp files in the current working directory during COG conversion,
+    # so we run it from the destination directory where Celery has write permissions.
+    working_directory = dst.parent
+
+    subprocess.run(cmd, check=True, cwd=working_directory)
 
 
 def get_cog_metadata(path: Path) -> dict:
