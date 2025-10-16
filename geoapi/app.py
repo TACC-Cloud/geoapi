@@ -222,6 +222,7 @@ else:
         secret=settings.SECRET_KEY,
         exclude=["/webhooks"],
         cookie_name=f"csrftoken-{settings.APP_ENV}",
+        header_name=f"x-csrftoken-{settings.APP_ENV}",
     )
     channels = ChannelsPlugin(
         backend=RedisChannelsPubSubBackend(redis=Redis.from_url(redis_url)),
