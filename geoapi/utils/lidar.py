@@ -3,7 +3,7 @@ import json
 import laspy
 from shapely.geometry import MultiPolygon, Polygon
 from shapely.ops import unary_union
-from pyproj import Proj, transform
+from pyproj import Transformer
 from geoapi.exceptions import InvalidCoordinateReferenceSystem
 from typing import List
 
@@ -15,16 +15,13 @@ def _transform_to_geojson(proj4, point: tuple) -> tuple:
     :param point
     :return: point
     """
-    input_projection = Proj(proj4)
-    geojson_default_projection = Proj(init="epsg:4326")
-    x, y, _ = transform(
-        input_projection,
-        geojson_default_projection,
-        point[0],
-        point[1],
-        point[2],
-        errcheck=True,
+    # Create transformer from source CRS to EPSG:4326
+    transformer = Transformer.from_crs(
+        proj4, "EPSG:4326", always_xy=True  # Ensures longitude, latitude order
     )
+
+    x, y, z = transformer.transform(point[0], point[1], point[2])
+
     return x, y
 
 
