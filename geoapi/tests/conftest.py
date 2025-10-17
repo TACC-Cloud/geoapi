@@ -107,6 +107,17 @@ def userdata(create_tables, db_engine) -> "Iterator[User]":
         yield u1
 
 
+@pytest.fixture(scope="function")
+def mock_task_update_webhook(requests_mock):
+    """Mock the Celery->Litestar webhook."""
+    requests_mock.post(
+        "http://test:8888/webhooks/task-update",
+        json={"ok": True},
+        status_code=200,
+    )
+    yield requests_mock
+
+
 @pytest.fixture(autouse=True, scope="function")
 def tapis_url(user1):
     yield get_tapis_api_server(user1.tenant_id)
@@ -268,7 +279,7 @@ def image_small_DES_2176_fixture():
 @pytest.fixture(scope="function")
 def raster_singleband_int16_m30dem():
     home = os.path.dirname(__file__)
-    with open(os.path.join(home, "fixtures/raster/m30dem.tif"), "rb") as f:
+    with open(os.path.join(home, "fixtures/rasters/m30dem.tif"), "rb") as f:
         yield f
 
 
@@ -276,7 +287,7 @@ def raster_singleband_int16_m30dem():
 def raster_singleband_byte_SP27GTIF():
     # raster in state plane (Illinois East, NAD27)
     home = os.path.dirname(__file__)
-    with open(os.path.join(home, "fixtures/raster/SP27GTIF.tiff"), "rb") as f:
+    with open(os.path.join(home, "fixtures/rasters/SP27GTIF.tiff"), "rb") as f:
         yield f
 
 
@@ -284,18 +295,15 @@ def raster_singleband_byte_SP27GTIF():
 def raster_singleband_byte_UTM2GTIF():
     # raster in UTM zone 16N
     home = os.path.dirname(__file__)
-    with open(os.path.join(home, "fixtures/raster/UTM2GTIF.tiff"), "rb") as f:
+    with open(os.path.join(home, "fixtures/rasters/UTM2GTIF.tiff"), "rb") as f:
         yield f
 
 
 @pytest.fixture(scope="function")
 def raster_threeband_byte_rgbsmall():
     home = os.path.dirname(__file__)
-    with open(os.path.join(home, "fixtures/raster/rgbsmall.tif"), "rb") as f:
+    with open(os.path.join(home, "fixtures/rasters/rgbsmall.tif"), "rb") as f:
         yield f
-
-
-# TODO  NEED COG to test import tile server from tapis
 
 
 @pytest.fixture(scope="function")
@@ -304,7 +312,7 @@ def raster_threeband_byte_orthodrone_center100():
     # 4 bands: rgb + alpha
     home = os.path.dirname(__file__)
     with open(
-        os.path.join(home, "fixtures/raster/Ortho-DroneMapper_center100.tif"), "rb"
+        os.path.join(home, "fixtures/rasters/Ortho-DroneMapper_center100.tif"), "rb"
     ) as f:
         yield f
 
