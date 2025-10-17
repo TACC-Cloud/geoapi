@@ -214,9 +214,16 @@ if settings.TESTING:
 else:
     redis_url = f"redis://{settings.REDIS_HOST}:{settings.REDIS_PORT}/0"
     root_store = RedisStore.with_client(url=redis_url)
-    session_auth_config = ServerSideSessionConfig(httponly=False, secure=True)
+    session_auth_config = ServerSideSessionConfig(
+        httponly=False, secure=True, key=f"session-{settings.APP_ENV}"
+    )
     stores = StoreRegistry(default_factory=root_store.with_namespace)
-    csrf_config = CSRFConfig(secret=settings.SECRET_KEY, exclude=["/webhooks"])
+    csrf_config = CSRFConfig(
+        secret=settings.SECRET_KEY,
+        exclude=["/webhooks"],
+        cookie_name=f"csrftoken-{settings.APP_ENV}",
+        header_name=f"x-csrftoken-{settings.APP_ENV}",
+    )
     channels = ChannelsPlugin(
         backend=RedisChannelsPubSubBackend(redis=Redis.from_url(redis_url)),
         arbitrary_channels_allowed=True,
@@ -262,7 +269,9 @@ logging_middleware_config = LoggingMiddlewareConfig(
         "body",
     ],
 )
-cookie_session_config = CookieBackendConfig(secret=urandom(16))
+cookie_session_config = CookieBackendConfig(
+    secret=urandom(16), key=f"session-{settings.APP_ENV}"
+)
 openapi_config = OpenAPIConfig(
     title="GeoAPI",
     version="3.0.0",
