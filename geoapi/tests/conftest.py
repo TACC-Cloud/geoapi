@@ -1,5 +1,11 @@
-import pytest
 import os
+
+# Suppress Litestar warnings about synchronous route handlers during tests.
+# TestClient runs synchronously anyway, so these warnings are not actionable in test context.
+os.environ["LITESTAR_WARN_IMPLICIT_SYNC_TO_THREAD"] = "0"
+
+# flake8: noqa: E402 (module imports after env setup)
+import pytest
 import json
 import tempfile
 import shutil
@@ -24,6 +30,7 @@ from geoapi.utils.external_apis import TapisFileListing, SystemUser
 from geoapi.utils.tenants import get_tapis_api_server
 from geoapi.utils.jwt_utils import create_token_expiry_hours_from_now
 from geoapi.exceptions import InvalidCoordinateReferenceSystem
+
 
 if TYPE_CHECKING:
     from litestar import Litestar
