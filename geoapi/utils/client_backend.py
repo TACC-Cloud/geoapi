@@ -32,8 +32,6 @@ def get_client_url(url):
 
     base_domains = [
         "https://hazmapper.tacc.utexas.edu",
-        # TODO remove hazmapper-tmp https://tacc-main.atlassian.net/browse/WG-51
-        "https://hazmapper-tmp.tacc.utexas.edu",
     ]
     base_domain_paths = [
         "hazmapper",
