@@ -76,6 +76,7 @@ services:
     container_name: geoapi_nginx
     depends_on:
       - backend
+      - titiler
 
   workers:
     <<: *worker-base  # Reuses worker-base fragment defined at start
@@ -91,6 +92,22 @@ services:
     <<: *worker-base  # Reuses worker-base fragment defined at start
     container_name: geoapi_celerybeat
     command: "celery -A geoapi.celery_app beat --schedule=/var/run/celery/celerybeat-schedule -l info --uid=1100 --gid=1100"
+
+  titiler:
+    image: ghcr.io/developmentseed/titiler:0.23.1
+    platform: linux/amd64
+    container_name: geoapi_titiler
+    environment:
+      # GDAL settings
+      - GDAL_CACHEMAX=1024
+      - GDAL_DISABLE_READDIR_ON_OPEN=EMPTY_DIR
+      - VSI_CACHE=TRUE
+      - VSI_CACHE_SIZE=1000000
+      # CORS settings - CRITICAL
+      - TITILER_API_CORS_ORIGINS=http://localhost:4200,http://localhost:8888
+      - TITILER_API_CORS_ALLOW_CREDENTIALS=true
+    volumes:
+      - assets:/assets:ro
 
   backend:
     image: taccaci/geoapi:local

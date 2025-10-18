@@ -1,7 +1,7 @@
 from .project import Project, ProjectUser
 from .feature import Feature, FeatureAsset
 from .point_cloud import PointCloud
-from .task import Task
+from .task import Task, TaskStatus
 from .users import User
 from .auth import Auth
 from .overlay import Overlay

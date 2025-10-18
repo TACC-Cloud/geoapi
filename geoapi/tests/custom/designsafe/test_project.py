@@ -1,5 +1,5 @@
 from geoapi.custom.designsafe.project import on_project_creation, on_project_deletion
-from geoapi.services.features import FeaturesService
+from geoapi.services.features import TileService
 from geoapi.settings import settings
 
 from urllib.parse import quote
@@ -26,7 +26,7 @@ def test_on_project_creation(
 
     on_project_creation(db_session, user1, project)
 
-    assert len(FeaturesService.getTileServers(db_session, projectId=project.id)) == 2
+    assert len(TileService.getTileServers(db_session, projectId=project.id)) == 2
 
     assert len(requests_mock.request_history) == 3
     update_metadata_request = requests_mock.request_history[2]

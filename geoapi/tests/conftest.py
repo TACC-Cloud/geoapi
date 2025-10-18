@@ -1,5 +1,11 @@
-import pytest
 import os
+
+# Suppress Litestar warnings about synchronous route handlers during tests.
+# TestClient runs synchronously anyway, so these warnings are not actionable in test context.
+os.environ["LITESTAR_WARN_IMPLICIT_SYNC_TO_THREAD"] = "0"
+
+# flake8: noqa: E402 (module imports after env setup)
+import pytest
 import json
 import tempfile
 import shutil
@@ -10,6 +16,7 @@ from typing import TYPE_CHECKING
 from collections.abc import Iterator
 from litestar.testing import TestClient
 from geoapi.db import Base, sqlalchemy_config
+from geoapi.models import TaskStatus
 from geoapi.models.users import User
 from geoapi.models.project import Project, ProjectUser
 from geoapi.models.feature import Feature
@@ -23,6 +30,7 @@ from geoapi.utils.external_apis import TapisFileListing, SystemUser
 from geoapi.utils.tenants import get_tapis_api_server
 from geoapi.utils.jwt_utils import create_token_expiry_hours_from_now
 from geoapi.exceptions import InvalidCoordinateReferenceSystem
+
 
 if TYPE_CHECKING:
     from litestar import Litestar
@@ -97,6 +105,17 @@ def userdata(create_tables, db_engine) -> "Iterator[User]":
             session, username="test3", access_token=user3JWT, tenant="test"
         )
         yield u1
+
+
+@pytest.fixture(scope="function")
+def mock_task_update_webhook(requests_mock):
+    """Mock the Celery->Litestar webhook."""
+    requests_mock.post(
+        "http://test:8888/webhooks/task-update",
+        json={"ok": True},
+        status_code=200,
+    )
+    yield requests_mock
 
 
 @pytest.fixture(autouse=True, scope="function")
@@ -214,8 +233,15 @@ def point_cloud_fixture(
 
 
 @pytest.fixture(scope="function")
-def task_fixture(db_session: "sqlalchemy_config.Session") -> "Iterator[Task]":
-    task = Task(process_id="1234", status="SUCCESS", description="description")
+def task_fixture(
+    db_session: "sqlalchemy_config.Session", projects_fixture
+) -> "Iterator[Task]":
+    task = Task(
+        process_id="some-process-id",
+        project_id=projects_fixture.id,
+        status=TaskStatus.COMPLETED,
+        description="description",
+    )
     db_session.add(task)
     db_session.commit()
     yield task
@@ -247,6 +273,47 @@ def image_file_no_location_fixture():
 def image_small_DES_2176_fixture():
     home = os.path.dirname(__file__)
     with open(os.path.join(home, "fixtures/image_small_file_DES_2176.jpg"), "rb") as f:
+        yield f
+
+
+@pytest.fixture(scope="function")
+def raster_singleband_int16_m30dem():
+    home = os.path.dirname(__file__)
+    with open(os.path.join(home, "fixtures/rasters/m30dem.tif"), "rb") as f:
+        yield f
+
+
+@pytest.fixture(scope="function")
+def raster_singleband_byte_SP27GTIF():
+    # raster in state plane (Illinois East, NAD27)
+    home = os.path.dirname(__file__)
+    with open(os.path.join(home, "fixtures/rasters/SP27GTIF.tiff"), "rb") as f:
+        yield f
+
+
+@pytest.fixture(scope="function")
+def raster_singleband_byte_UTM2GTIF():
+    # raster in UTM zone 16N
+    home = os.path.dirname(__file__)
+    with open(os.path.join(home, "fixtures/rasters/UTM2GTIF.tiff"), "rb") as f:
+        yield f
+
+
+@pytest.fixture(scope="function")
+def raster_threeband_byte_rgbsmall():
+    home = os.path.dirname(__file__)
+    with open(os.path.join(home, "fixtures/rasters/rgbsmall.tif"), "rb") as f:
+        yield f
+
+
+@pytest.fixture(scope="function")
+def raster_threeband_byte_orthodrone_center100():
+    # cropped 100x100 window from the center of Ortho-DroneMapper.tif (red rocks)
+    # 4 bands: rgb + alpha
+    home = os.path.dirname(__file__)
+    with open(
+        os.path.join(home, "fixtures/rasters/Ortho-DroneMapper_center100.tif"), "rb"
+    ) as f:
         yield f
 
 

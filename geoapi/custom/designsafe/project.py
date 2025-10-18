@@ -34,10 +34,10 @@ def on_project_creation(database_session, user: User, project: Project):
             f"Adding two default layers for user:{user.username}"
             f" project:{project.id} project_uuid:{project.uuid} "
         )
-        from geoapi.services.features import FeaturesService
+        from geoapi.services.features import TileService
 
         for layer in default_layers:
-            FeaturesService.addTileServer(
+            TileService.addTileServer(
                 database_session=database_session, projectId=project.id, data=layer
             )
 

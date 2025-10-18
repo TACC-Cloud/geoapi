@@ -16,7 +16,7 @@ from geoapi.exceptions import (
     StreetviewLimitException,
     StreetviewExistsException,
 )
-from geoapi.models import User, StreetviewInstance, StreetviewSequence, Task
+from geoapi.models import User, StreetviewInstance, StreetviewSequence, Task, TaskStatus
 from geoapi.utils.external_apis import TapisUtils
 from geoapi.utils.streetview import (
     get_project_streetview_dir,
@@ -146,7 +146,7 @@ def _from_tapis(
             NotificationsService.updateProgress(
                 database_session,
                 task_uuid=task_uuid,
-                status="in_progress",
+                status="RUNNING",
                 message="Collecting files from DesignSafe",
                 progress=int(done_files / files_length * 100),
                 logItem={"uploadFiles": img_list},
@@ -304,7 +304,7 @@ def from_tapis_to_streetview(
                 streetview_instance,
                 user,
                 task_uuid,
-                "error",
+                "ERROR",
                 error_message,
                 logItem={"errorMessage": error_message},
             )
@@ -482,7 +482,7 @@ def convert_streetview_sequence_to_feature(self, projectId, sequenceId, token):
 
         feature.the_geom = from_shape(LineString(point_features), srid=4326)
 
-        streetview_sequence.task.status = "FINISHED"
+        streetview_sequence.task.status = TaskStatus.COMPLETED
         streetview_sequence.task.description = ""
 
         logger.info(

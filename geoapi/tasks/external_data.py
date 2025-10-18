@@ -15,7 +15,7 @@ from geoapi.exceptions import (
     InvalidCoordinateReferenceSystem,
     GetUsersForProjectNotSupported,
 )
-from geoapi.models import Project, User, ProjectUser, Task
+from geoapi.models import Project, User, ProjectUser, Task, TaskStatus
 from geoapi.utils.external_apis import (
     TapisUtils,
     SystemUser,
@@ -231,7 +231,10 @@ def _handle_point_cloud_conversion_error(
             f"error:  {error_description}"
         )
         _update_point_cloud_task(
-            session, pointCloudId, description=error_description, status="FAILED"
+            session,
+            pointCloudId,
+            description=error_description,
+            status=TaskStatus.FAILED,
         )
         send_progress_update(
             user,
@@ -259,7 +262,7 @@ def import_point_clouds_from_tapis(userId: int, files, pointCloudId: int):
         # request. See https://jira.tacc.utexas.edu/browse/WG-85
         task = Task()
         task.process_id = celery_task_id
-        task.status = "RUNNING"
+        task.status = TaskStatus.RUNNING
 
         point_cloud.task = task
         session.add(point_cloud)
@@ -320,7 +323,10 @@ def import_point_clouds_from_tapis(userId: int, files, pointCloudId: int):
                     logger.info("removing {}".format(file_path))
                     os.remove(file_path)
                 _update_point_cloud_task(
-                    session, pointCloudId, description=failed_message, status="FAILED"
+                    session,
+                    pointCloudId,
+                    description=failed_message,
+                    status=TaskStatus.FAILED,
                 )
                 send_progress_update(user, celery_task_id, "error", failed_message)
                 return
@@ -334,7 +340,7 @@ def import_point_clouds_from_tapis(userId: int, files, pointCloudId: int):
             session,
             pointCloudId,
             description="Running potree converter",
-            status="RUNNING",
+            status=TaskStatus.RUNNING,
         )
         send_progress_update(
             user,

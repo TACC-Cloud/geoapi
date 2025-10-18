@@ -1,7 +1,7 @@
 import os
 
 from werkzeug.datastructures import FileStorage
-from geoapi.services.features import FeaturesService
+from geoapi.services.features import FeaturesService, TileService
 from geoapi.models import Feature, FeatureAsset, TileServer
 from geoapi.utils.assets import get_project_asset_dir, get_asset_path
 from geoapi.utils.geo_location import GeoLocation
@@ -202,7 +202,7 @@ def test_create_tile_server(projects_fixture, db_session):
         "attribution": "contributors",
     }
 
-    tile_server = FeaturesService.addTileServer(
+    tile_server = TileService.addTileServer(
         database_session=db_session, projectId=projects_fixture.id, data=data
     )
     assert tile_server.name == "Test"
@@ -219,10 +219,10 @@ def test_remove_tile_server(projects_fixture, db_session):
         "attribution": "contributors",
     }
 
-    tile_server = FeaturesService.addTileServer(
+    tile_server = TileService.addTileServer(
         database_session=db_session, projectId=projects_fixture.id, data=data
     )
-    FeaturesService.deleteTileServer(db_session, tile_server.id)
+    TileService.deleteTileServer(db_session, tile_server.id)
 
     assert db_session.query(TileServer).count() == 0
 
@@ -235,7 +235,7 @@ def test_update_tile_server(projects_fixture, db_session):
         "attribution": "contributors",
     }
 
-    FeaturesService.addTileServer(
+    TileService.addTileServer(
         database_session=db_session, projectId=projects_fixture.id, data=data
     )
 
@@ -243,7 +243,7 @@ def test_update_tile_server(projects_fixture, db_session):
         "name": "NewTestName",
     }
 
-    updated_tile_server = FeaturesService.updateTileServer(
+    updated_tile_server = TileService.updateTileServer(
         database_session=db_session, tileServerId=1, data=updated_data
     )
     assert updated_tile_server.name == "NewTestName"
@@ -257,10 +257,10 @@ def test_update_tile_servers(projects_fixture, db_session):
         "attribution": "contributors",
     }
 
-    resp1 = FeaturesService.addTileServer(
+    resp1 = TileService.addTileServer(
         db_session, projectId=projects_fixture.id, data=data
     )
-    resp2 = FeaturesService.addTileServer(
+    resp2 = TileService.addTileServer(
         db_session, projectId=projects_fixture.id, data=data
     )
 
@@ -269,7 +269,7 @@ def test_update_tile_servers(projects_fixture, db_session):
         {"id": resp2.id, "name": "NewTestName2"},
     ]
 
-    updated_tile_server_list = FeaturesService.updateTileServers(
+    updated_tile_server_list = TileService.updateTileServers(
         database_session=db_session, dataList=updated_data
     )
 

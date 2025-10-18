@@ -12,7 +12,7 @@ from geoapi.utils.lidar import getProj4, get_bounding_box_2d
 from geoapi.utils import geometries
 from geoapi.celery_app import app
 from geoapi.db import create_task_session
-from geoapi.models import Task
+from geoapi.models import Task, TaskStatus
 from geoapi.utils.assets import (
     make_project_asset_dir,
     get_asset_path,
@@ -203,7 +203,7 @@ def convert_to_potree(self, pointCloudId: int) -> None:
                 point_cloud.feature = feature
 
             feature.the_geom = from_shape(geometries.convert_3D_2D(outline), srid=4326)
-            point_cloud.task.status = "FINISHED"
+            point_cloud.task.status = TaskStatus.COMPLETED
             point_cloud.task.description = ""
 
             point_cloud_asset_path = get_asset_path(feature.assets[0].path)

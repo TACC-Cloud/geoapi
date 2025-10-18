@@ -185,7 +185,11 @@ def project_point_cloud_not_processing_guard(
     point_cloud_id = connection.path_params["point_cloud_id"]
 
     point_cloud = PointCloudService.get(db_session, point_cloud_id)
-    if point_cloud.task and point_cloud.task.status not in ["FINISHED", "FAILED"]:
+    if point_cloud.task and point_cloud.task.status not in [
+        "COMPLETED",
+        "FINISHED",
+        "FAILED",
+    ]:
         logger.info(f"point cloud:{point_cloud_id} is not in terminal state")
         raise HTTPException(
             status_code=404, detail="Point cloud is currently being updated"

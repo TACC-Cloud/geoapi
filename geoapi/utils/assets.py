@@ -1,8 +1,20 @@
 import os
-import pathlib
+from pathlib import Path
 import glob
 import shutil
 from geoapi.settings import settings
+
+
+def get_temp_dir() -> Path:
+    """
+    Get temp dir for downloading files etc.
+
+    Relying on /tmp is problematic as there might not be enough space,
+    while we know /assets has lots of space.
+    """
+    temp_dir = Path(settings.ASSETS_BASE_DIR) / "tmp"
+    temp_dir.mkdir(parents=True, exist_ok=True)
+    return temp_dir
 
 
 def make_project_asset_dir(projectId: int) -> str:
@@ -12,7 +24,7 @@ def make_project_asset_dir(projectId: int) -> str:
     :return:
     """
     base_filepath = os.path.join(settings.ASSETS_BASE_DIR, str(projectId))
-    pathlib.Path(base_filepath).mkdir(parents=True, exist_ok=True)
+    Path(base_filepath).mkdir(parents=True, exist_ok=True)
     return base_filepath
 
 
