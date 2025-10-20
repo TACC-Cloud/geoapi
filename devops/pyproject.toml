@@ -1,6 +1,6 @@
 [project]
 name = "geoapi"
-version = "3.0.0"
+version = "2.4.2"
 description = "GeoAPI Backend for Hazmapper"
 authors = [
   { name = "DesignSafe-CI", email = "designsafe-ci@tacc.utexas.edu" },
