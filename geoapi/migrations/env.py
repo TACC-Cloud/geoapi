@@ -161,7 +161,7 @@ def run_migrations_online():
     #     poolclass=pool.NullPool,
     # )
 
-    with engine.connect() as connection:
+    with migrate_engine.connect() as connection:
         context.configure(
             connection=connection,
             target_metadata=target_metadata,
