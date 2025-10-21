@@ -36,7 +36,7 @@ def close_db_connection(app: Litestar) -> None:
         cast("Engine", app.state.engine).dispose()
 
 
-def create_engine_for_context(context=None):
+def create_engine_for_migrate(context=None):
     return create_engine(
         get_db_connection_string(settings),
         echo=False,  # default value
@@ -45,24 +45,56 @@ def create_engine_for_context(context=None):
     )
 
 
-engine = create_engine_for_context()
-
-
-# class Base(DeclarativeBase):
-#     pass
+migrate_engine = create_engine_for_migrate()
 Base = base.DefaultBase
+
+# The one shared engine for all Celery tasks
+_celery_engine = None
+_celery_sessionmaker = None
+
+
+def get_celery_engine():
+    """Get or create the shared Celery engine.
+
+    This ensures all Celery tasks share ONE connection pool
+    instead of creating a new engine (and pool) for every task.
+    """
+    global _celery_engine
+    if _celery_engine is None:
+        logger.info("Creating shared Celery database engine")
+        _celery_engine = create_engine(
+            get_db_connection_string(settings, app_name="geoapi_celery"),
+            echo=False,
+            pool_size=10,  # 10 persistent connections
+            max_overflow=20,  # Up to 30 total connections
+            pool_pre_ping=True,  # Check connection health before using
+            pool_recycle=3600,  # Replace connections after 1 hour
+            pool_timeout=30,  # Wait 30s for available connection
+        )
+    return _celery_engine
+
+
+def get_celery_sessionmaker():
+    """Get or create the shared Celery session maker."""
+    global _celery_sessionmaker
+    if _celery_sessionmaker is None:
+        _celery_sessionmaker = sessionmaker(
+            autocommit=False,
+            autoflush=False,
+            bind=get_celery_engine(),
+        )
+    return _celery_sessionmaker
 
 
 @contextmanager
 def create_task_session():
-    """Create session
+    """Create session for Celery tasks using a shared engine.
 
-    Session is used by celery tasks: it ensures they are removed and handles rollback in case of exceptions
+    This ensures all tasks share ONE connection pool instead of
+    creating new engines (and pools) for every task.
     """
-    Session = sessionmaker(
-        autocommit=False, autoflush=False, bind=create_engine_for_context()
-    )
-    session = Session()
+    SessionLocal = get_celery_sessionmaker()
+    session = SessionLocal()
     try:
         yield session
     except:  # noqa: E722
@@ -76,7 +108,13 @@ def create_task_session():
 
 
 db_session_config = SyncSessionConfig(expire_on_commit=False, autoflush=False)
-engine_config = EngineConfig(pool_size=20, max_overflow=20, pool_pre_ping=True)
+engine_config = EngineConfig(
+    pool_size=20,
+    max_overflow=20,
+    pool_pre_ping=True,
+    pool_recycle=3600,
+    pool_timeout=30,
+)
 sqlalchemy_config = SQLAlchemySyncConfig(
     connection_string=get_db_connection_string(settings, app_name="geoapi_backend_litestar"),
     session_config=db_session_config,
