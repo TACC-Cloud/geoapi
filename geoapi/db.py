@@ -116,7 +116,9 @@ engine_config = EngineConfig(
     pool_timeout=30,
 )
 sqlalchemy_config = SQLAlchemySyncConfig(
-    connection_string=get_db_connection_string(settings, app_name="geoapi_backend_litestar"),
+    connection_string=get_db_connection_string(
+        settings, app_name="geoapi_backend_litestar"
+    ),
     session_config=db_session_config,
     engine_config=engine_config,
 )
