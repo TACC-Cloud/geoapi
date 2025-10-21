@@ -13,8 +13,11 @@ from geoapi.settings import settings
 from geoapi.log import logger
 
 
-def get_db_connection_string(conf):
-    return f"postgresql://{conf.DB_USERNAME}:{conf.DB_PASSWD}@{conf.DB_HOST}/{conf.DB_NAME}"
+def get_db_connection_string(conf, app_name=None):
+    connection_string = f"postgresql://{conf.DB_USERNAME}:{conf.DB_PASSWD}@{conf.DB_HOST}/{conf.DB_NAME}"
+    if app_name:
+        connection_string += f"?application_name={app_name}"
+    return connection_string
 
 
 def get_db_connection(app: Litestar) -> Engine:
@@ -75,7 +78,7 @@ def create_task_session():
 db_session_config = SyncSessionConfig(expire_on_commit=False, autoflush=False)
 engine_config = EngineConfig(pool_size=20, max_overflow=20, pool_pre_ping=True)
 sqlalchemy_config = SQLAlchemySyncConfig(
-    connection_string=get_db_connection_string(settings),
+    connection_string=get_db_connection_string(settings, app_name="geoapi_backend_litestar"),
     session_config=db_session_config,
     engine_config=engine_config,
 )
