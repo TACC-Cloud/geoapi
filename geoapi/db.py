@@ -27,7 +27,7 @@ def close_db_connection(app: Litestar) -> None:
 
 def create_engine_for_migrate(context=None):
     return create_engine(
-        get_db_connection_string(settings),
+        get_db_connection_string(settings, app_name="migrate"),
         echo=False,  # default value
         pool_pre_ping=True,
         pool_reset_on_return=True,
@@ -99,11 +99,13 @@ def create_task_session():
 db_session_config = SyncSessionConfig(expire_on_commit=False, autoflush=False)
 
 # Connection pool sizing for Litestar HTTP workers:
-# - 8 persistent + 7 overflow = 15 total connections per Litestar worker
-# - 9 Litestar workers (configured in docker-compose.yml with -W 9) × 15 = 135 connections
-# - Celery workers use separate shared pool: ~30 connections
-# - Total: ~165 connections (so under PostgreSQL's max_connections=200 for geoapi-database)
-engine_config = EngineConfig(
+# - 8 persistent + 7 overflow = 15 connections per Litestar worker
+# - 9 Litestar workers (docker-compose.yml -W 9) × 15 = 135 connections
+# - 135 connections to geoapi-database.tacc.utexas.edu
+#
+# Note: Celery workers run separately on geoapi-workers and connect directly
+# to PostgreSQL with shared pool (~30 connections via create_task_session). See get_celery_engine
+litestar_engine_config = EngineConfig(
     pool_size=8,  # 8 persistent connections per Litestar worker
     max_overflow=7,  # Up to 7 additional connections per Litestar worker (8+7=15 total per worker)
     pool_pre_ping=True,
@@ -115,5 +117,5 @@ sqlalchemy_config = SQLAlchemySyncConfig(
         settings, app_name="geoapi_backend_litestar"
     ),
     session_config=db_session_config,
-    engine_config=engine_config,
+    engine_config=litestar_engine_config,
 )
