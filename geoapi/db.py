@@ -19,16 +19,6 @@ def get_db_connection_string(conf, app_name):
     return connection_string
 
 
-def get_db_connection(app: Litestar) -> Engine:
-    """Returns the db engine.
-
-    If it doesn't exist, creates it and saves it in on the application state object
-    """
-    if not getattr(app.state, "engine", None):
-        app.state.engine = create_engine(get_db_connection_string(settings))
-    return cast("Engine", app.state.engine)
-
-
 def close_db_connection(app: Litestar) -> None:
     """Closes the db connection stored in the application State object."""
     if getattr(app.state, "engine", None):
