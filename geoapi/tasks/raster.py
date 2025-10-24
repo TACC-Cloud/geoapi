@@ -46,6 +46,7 @@ def gdal_cogify(src: Path, dst: Path) -> None:
         str(src),
         str(dst),
     ]
+
     logger.info(f"Converting to cog by running command: {' '.join(cmd)}")
 
     # GDAL creates temp files in the current working directory during COG conversion,

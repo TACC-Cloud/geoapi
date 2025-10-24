@@ -7,7 +7,7 @@ from geoapi.db import Base, engine, get_db_connection_string
 
 
 def setup_local_dev_database():
-    db_url = get_db_connection_string(settings)
+    db_url = get_db_connection_string(settings, app_name="testing")
 
     # Create database if it doesn't exist
     if not database_exists(db_url):
@@ -27,7 +27,7 @@ def setup_local_dev_database():
 
 
 def setup_unit_test_database():
-    db_url = get_db_connection_string(UnitTestingConfig)
+    db_url = get_db_connection_string(UnitTestingConfig, app_name="testing")
 
     # Drop the database if it exists and recreate it
     if database_exists(db_url):
