@@ -1,4 +1,4 @@
-from unittest.mock import patch
+from unittest.mock import patch, Mock
 import pytest
 import os
 import re
@@ -52,19 +52,16 @@ def get_system_users_mock(user1, user2):
     ) as get_system_users:
         yield get_system_users
 
-
 @pytest.fixture(scope="function")
 def task_session_commit_throws_exception():
-    # Create a real session object
-    real_session = create_task_session().__enter__()
-
-    with patch("geoapi.db.sessionmaker") as mock_create_task_session:
-        # Patch the commit method of the real session
-        with patch.object(real_session, "commit") as mock_commit:
-            mock_create_task_session.return_value.return_value = real_session
-            mock_commit.side_effect = Exception("Session commit failed")
-            yield real_session
-    real_session.__exit__(None, None, None)  # Ensure __exit__ is called
+    # Create a real session using the current approach
+    with create_task_session() as real_session:
+        # Patch commit to raise
+        with patch.object(real_session, "commit", side_effect=Exception("Session commit failed")):
+            # Patch get_celery_sessionmaker to return a factory that yields our session
+            mock_factory = Mock(return_value=real_session)
+            with patch("geoapi.db.get_celery_sessionmaker", return_value=mock_factory):
+                yield real_session
 
 
 @pytest.fixture(scope="function")
