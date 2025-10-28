@@ -15,7 +15,7 @@ from geoapi.log import logger
 
 def get_db_connection_string(conf, app_name):
     connection_string = f"postgresql://{conf.DB_USERNAME}:{conf.DB_PASSWD}@{conf.DB_HOST}/{conf.DB_NAME}"
-    connection_string += f"?application_name={app_name}_{conf.env}"
+    connection_string += f"?application_name={app_name}_{conf.APP_ENV}"
     return connection_string
 
 
