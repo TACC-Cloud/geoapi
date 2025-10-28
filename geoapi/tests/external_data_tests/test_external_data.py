@@ -52,12 +52,15 @@ def get_system_users_mock(user1, user2):
     ) as get_system_users:
         yield get_system_users
 
+
 @pytest.fixture(scope="function")
 def task_session_commit_throws_exception():
     # Create a real session using the current approach
     with create_task_session() as real_session:
         # Patch commit to raise
-        with patch.object(real_session, "commit", side_effect=Exception("Session commit failed")):
+        with patch.object(
+            real_session, "commit", side_effect=Exception("Session commit failed")
+        ):
             # Patch get_celery_sessionmaker to return a factory that yields our session
             mock_factory = Mock(return_value=real_session)
             with patch("geoapi.db.get_celery_sessionmaker", return_value=mock_factory):
