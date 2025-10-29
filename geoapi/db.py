@@ -55,10 +55,10 @@ def get_celery_engine():
             get_db_connection_string(settings, app_name="geoapi_celery"),
             echo=False,
             pool_size=10,  # 10 persistent connections
-            max_overflow=20,  # Up to 30 total connections
+            max_overflow=45,  # Up to 55 total connections
             pool_pre_ping=True,  # Check connection health before using
             pool_recycle=3600,  # Replace connections after 1 hour
-            pool_timeout=30,  # Wait 30s for available connection
+            pool_timeout=60,  # Wait up to 60s for connection
         )
     return _celery_engine
 
@@ -103,8 +103,12 @@ db_session_config = SyncSessionConfig(expire_on_commit=False, autoflush=False)
 # - 9 Litestar workers (docker-compose.yml -W 9) × 15 = 135 connections
 # - 135 connections to geoapi-database.tacc.utexas.edu
 #
-# Note: Celery workers run separately on geoapi-workers and connect directly
-# to PostgreSQL with shared pool (~30 connections via create_task_session). See get_celery_engine
+# Note: Celery workers run separately with shared pool supporting ~52 concurrent tasks
+# (46 default queue on prod + 6 heavy queue). Pool: 20 + 35 overflow = 55 connections max.
+# See get_celery_engine()
+#
+# Total production connections: ~135 (Litestar) + 55 (Celery) = 190 of 200 max
+# Across 3 environments (prod/staging/dev): prod uses ~190
 litestar_engine_config = EngineConfig(
     pool_size=8,  # 8 persistent connections per Litestar worker
     max_overflow=7,  # Up to 7 additional connections per Litestar worker (8+7=15 total per worker)
