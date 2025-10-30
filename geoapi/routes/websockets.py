@@ -1,7 +1,5 @@
 from litestar import WebSocket, websocket
 from litestar.channels import ChannelsPlugin
-
-from geoapi.settings import settings
 from geoapi.utils.decorators import not_anonymous_guard
 from websockets.exceptions import ConnectionClosedOK, ConnectionClosedError
 import logging
@@ -13,10 +11,6 @@ logger = logging.getLogger(__name__)
 async def websocket_handler(socket: WebSocket, channels: ChannelsPlugin) -> None:
     await socket.accept()
     user = socket.scope.get("user")
-
-    if settings.APP_ENV == "local":
-        # Short time out so we speed up hot reload when code changes
-        socket._send_timeout = 4
 
     try:
         async with channels.start_subscription(
