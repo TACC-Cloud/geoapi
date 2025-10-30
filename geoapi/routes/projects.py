@@ -673,7 +673,7 @@ class ProjectFeaturesFilsResourceController(Controller):
         file_obj = io.BytesIO(file_bytes)
         file_obj.filename = file.filename
         logger.info(
-            "UPLOAD Add feature to project:{} for user:{}: {}".format(
+            "Add feature (via http upload) to project:{} for user:{}: {}".format(
                 project_id, request.user.username, file.filename
             )
         )
