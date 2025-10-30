@@ -133,6 +133,9 @@ def managed_litestar_db_session(app_state=None, scope=None):
         yield db_session
         db_session.commit()
     except Exception:
+        logger.exception(
+            "Error occurred. Performing rollback of current database transaction"
+        )
         db_session.rollback()
         raise
     finally:
