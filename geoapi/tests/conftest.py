@@ -509,8 +509,15 @@ def feature_fixture(
 @pytest.fixture(scope="function")
 def image_feature_fixture(
     image_file_fixture, db_session: "sqlalchemy_config.Session"
-) -> "Iterator[FeaturesService]":
-    yield FeaturesService.fromImage(db_session, 1, image_file_fixture, metadata={})
+) -> Feature:
+    yield FeaturesService.fromImage(
+        db_session,
+        1,
+        image_file_fixture,
+        metadata={},
+        original_system="system",
+        original_path="original/path.jpg",
+    )
 
 
 @pytest.fixture(scope="function")

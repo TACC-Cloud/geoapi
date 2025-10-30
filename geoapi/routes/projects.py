@@ -47,6 +47,7 @@ class AssetModel(BaseModel):
     path: str | None = None
     uuid: UUID | None = None
     asset_type: str | None = None
+    original_system: str | None = None
     original_path: str | None = None
     original_name: str | None = None
     display_path: str | None = None
@@ -672,7 +673,7 @@ class ProjectFeaturesFilsResourceController(Controller):
         file_obj = io.BytesIO(file_bytes)
         file_obj.filename = file.filename
         logger.info(
-            "Add feature to project:{} for user:{}: {}".format(
+            "UPLOAD Add feature to project:{} for user:{}: {}".format(
                 project_id, request.user.username, file.filename
             )
         )

@@ -64,9 +64,10 @@ class FeatureAsset(Base):
     uuid = mapped_column(UUID(as_uuid=True), default=uuid.uuid4, nullable=False)
     # system or project id or both
     path = mapped_column(String(), nullable=False)
+    display_path = mapped_column(String(), nullable=True)
     original_name = mapped_column(String(), nullable=True)
     original_path = mapped_column(String(), nullable=True, index=True)
-    display_path = mapped_column(String(), nullable=True)
+    original_system = mapped_column(String(), nullable=True, index=True)
     asset_type = mapped_column(String(), nullable=False, default="image")
     feature = relationship("Feature", overlaps="assets")
 
