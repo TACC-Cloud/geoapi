@@ -116,10 +116,24 @@ litestar_engine_config = EngineConfig(
     pool_recycle=3600,
     pool_timeout=30,
 )
-sqlalchemy_config = SQLAlchemySyncConfig(
+litestar_sqlalchemy_config = SQLAlchemySyncConfig(
     connection_string=get_db_connection_string(
         settings, app_name="geoapi_backend_litestar"
     ),
     session_config=db_session_config,
     engine_config=litestar_engine_config,
 )
+
+
+@contextmanager
+def managed_litestar_db_session(app_state=None, scope=None):
+    db_session = litestar_sqlalchemy_config.provide_session(app_state, scope)
+
+    try:
+        yield db_session
+        db_session.commit()
+    except Exception:
+        db_session.rollback()
+        raise
+    finally:
+        db_session.close()
