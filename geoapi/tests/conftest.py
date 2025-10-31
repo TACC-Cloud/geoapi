@@ -15,7 +15,7 @@ from werkzeug.datastructures import FileStorage
 from typing import TYPE_CHECKING
 from collections.abc import Iterator
 from litestar.testing import TestClient
-from geoapi.db import Base, sqlalchemy_config
+from geoapi.db import Base, litestar_sqlalchemy_config as sqlalchemy_config
 from geoapi.models import TaskStatus
 from geoapi.models.users import User
 from geoapi.models.project import Project, ProjectUser

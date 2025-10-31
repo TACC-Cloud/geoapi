@@ -153,7 +153,7 @@ def run_migrations_online():
     and associate a connection with the context.
 
     """
-    from geoapi.db import engine
+    from geoapi.db import migrate_engine
 
     # connectable = engine_from_config(
     #     config.get_section(config.config_ini_section),
@@ -161,7 +161,7 @@ def run_migrations_online():
     #     poolclass=pool.NullPool,
     # )
 
-    with engine.connect() as connection:
+    with migrate_engine.connect() as connection:
         context.configure(
             connection=connection,
             target_metadata=target_metadata,

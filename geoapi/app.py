@@ -1,6 +1,6 @@
 """GeoAPI Application Module"""
 
-from typing import Any, TYPE_CHECKING
+from typing import Any
 from os import urandom
 from litestar import Litestar, Request, Response, status_codes
 from litestar.config.csrf import CSRFConfig
@@ -29,7 +29,7 @@ from redis.asyncio import Redis
 from geoapi.models import User
 from geoapi.routes import api_router
 from geoapi.settings import settings
-from geoapi.db import sqlalchemy_config
+from geoapi.db import litestar_sqlalchemy_config, managed_litestar_db_session
 from geoapi.exceptions import (
     InvalidGeoJSON,
     InvalidEXIFData,
@@ -48,9 +48,6 @@ from geoapi.middleware import (
     GeoAPIJWTAuthMiddleware,
     GeoAPIToken,
 )
-
-if TYPE_CHECKING:
-    from sqlalchemy.orm import Session
 
 
 # Exception handlers for Litestar
@@ -148,38 +145,37 @@ async def retrieve_jwt_user_handler(
 ) -> User | AnonymousUser:
     """Used by the JWTAuth Middleware to retrieve the user from the JWT token."""
 
-    db_session: "Session" = sqlalchemy_config.provide_session(
+    with managed_litestar_db_session(
         connection.app.state, connection.scope
-    )
-
-    # If no token, check for guest UUID
-    if not token:
-        # if JWT is not provided in header/cookie, then this is a guest user
-        # and if hazmapper/taggit, a guest uuid is provided in the header
-        guest_uuid = connection.headers.get("X-Guest-UUID")
-        user = AnonymousUser(guest_unique_id=guest_uuid)
-    else:
-        try:
-            username = token.extras["tapis/username"]
-            tenant = token.extras["tapis/tenant_id"]
-        except Exception as e:
-            raise InternalServerException(
-                f"There is an issue decoding the JWT: {e}"
-            ) from e
-
-        user = UserService.getUser(db_session, username, tenant)
-        if not user:
-            user = UserService.create(
-                db_session, username=username, access_token=token, tenant=tenant
-            )
+    ) as db_session:
+        # If no token, check for guest UUID
+        if not token:
+            # if JWT is not provided in header/cookie, then this is a guest user
+            # and if hazmapper/taggit, a guest uuid is provided in the header
+            guest_uuid = connection.headers.get("X-Guest-UUID")
+            user = AnonymousUser(guest_unique_id=guest_uuid)
         else:
-            # Update the jwt access token
-            #   (It is more common that user will be using an auth flow where hazmapper will auth
-            #   with geoapi to get the token. BUT we can't assume that as it is also possible that
-            #   user just uses geoapi as a service with token generated somewhere else. So we need
-            #   to get/update just their access token for these cases)
-            UserService.update_access_token(db_session, user, token.token)
-    return user
+            try:
+                username = token.extras["tapis/username"]
+                tenant = token.extras["tapis/tenant_id"]
+            except Exception as e:
+                raise InternalServerException(
+                    f"There is an issue decoding the JWT: {e}"
+                ) from e
+
+            user = UserService.getUser(db_session, username, tenant)
+            if not user:
+                user = UserService.create(
+                    db_session, username=username, access_token=token, tenant=tenant
+                )
+            else:
+                # Update the jwt access token
+                #   (It is more common that user will be using an auth flow where hazmapper will auth
+                #   with geoapi to get the token. BUT we can't assume that as it is also possible that
+                #   user just uses geoapi as a service with token generated somewhere else. So we need
+                #   to get/update just their access token for these cases)
+                UserService.update_access_token(db_session, user, token.token)
+        return user
 
 
 async def retrieve_session_user_handler(
@@ -187,18 +183,17 @@ async def retrieve_session_user_handler(
     connection: ASGIConnection[Any, Any, Any, Any],
 ) -> User | AnonymousUser:
     """Used by the SessionAuth Middleware to retrieve the user from the session."""
-    db_session = sqlalchemy_config.provide_session(
+    with managed_litestar_db_session(
         connection.app.state, connection.scope
-    )
+    ) as db_session:
+        if session is Empty or not session:
+            return AnonymousUser()
 
-    if session is Empty or not session:
-        return AnonymousUser()
-
-    username = session.get("username")
-    tenant = session.get("tenant")
-    return UserService.getUser(
-        database_session=db_session, username=username, tenant=tenant
-    )
+        username = session.get("username")
+        tenant = session.get("tenant")
+        return UserService.getUser(
+            database_session=db_session, username=username, tenant=tenant
+        )
 
 
 # Litestar application configuration
@@ -256,7 +251,7 @@ jwt_auth = JWTAuth["User"](
 )
 
 
-alchemy = SQLAlchemyPlugin(config=sqlalchemy_config)
+alchemy = SQLAlchemyPlugin(config=litestar_sqlalchemy_config)
 logging_middleware_config = LoggingMiddlewareConfig(
     request_headers_to_obfuscate=["X-Tapis-Token", "Authorization", "cookie"],
     request_log_fields=[
