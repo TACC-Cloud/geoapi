@@ -193,6 +193,7 @@ def import_file_from_tapis(userId: int, systemId: str, path: str, projectId: int
                 projectId,
                 temp_file,
                 {},
+                original_system=systemId,
                 original_path=path,
                 additional_files=additional_files,
                 location=optional_location_from_metadata,
@@ -531,7 +532,8 @@ def import_files_recursively_from_path(
                         projectId,
                         tmp_file,
                         {},
-                        original_path=item_system_path,
+                        original_system=systemId,
+                        original_path=path,
                         additional_files=additional_files,
                         location=optional_location_from_metadata,
                     )
