@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 
 from geoapi.log import logger
 from geoapi.models import Feature, FeatureAsset
-from geoapi.routes.projects import FeatureAssetModel, TaskModel
+from geoapi.schema.projects import FeatureAssetModel, TaskModel
 from geoapi.utils.decorators import project_permissions_guard
 from geoapi.tasks.file_location_check import check_and_update_file_locations
 
