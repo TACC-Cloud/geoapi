@@ -3,24 +3,20 @@ from sqlalchemy.sql import func
 
 from datetime import datetime, timezone
 
-from geoapi.models.public_system_access_check import PublicSystemAccessCheck
+from geoapi.models.file_location_check import FileLocationCheck
 from geoapi.models import Task, TaskStatus
 
 from sqlalchemy.orm import Session
 
 
-class PublicSystemAccessService:
+class FileLocationStatusService:
     """Service for managing checking if files are accessible from public systems."""
 
     @staticmethod
     def start_check(
         db_session: "Session", project_id: int, celery_task_uuid: str
-    ) -> PublicSystemAccessCheck:
-        check = (
-            db_session.query(PublicSystemAccessCheck)
-            .filter(PublicSystemAccessCheck.project_id == project_id)
-            .first()
-        )
+    ) -> FileLocationCheck:
+        check = FileLocationStatusService.get(db_session, project_id)
 
         task = Task(
             process_id=celery_task_uuid,
@@ -36,7 +32,7 @@ class PublicSystemAccessService:
             check.completed_at = None
             check.task_id = task.id
         else:
-            check = PublicSystemAccessCheck(project_id=project_id, task_id=task.id)
+            check = FileLocationCheck(project_id=project_id, task_id=task.id)
             db_session.add(check)
 
         db_session.commit()
@@ -45,7 +41,7 @@ class PublicSystemAccessService:
     @staticmethod
     def complete_check(db_session: "Session", project_id: int) -> None:
         """Mark the check as completed."""
-        check = PublicSystemAccessService.get(db_session, project_id)
+        check = FileLocationStatusService.get(db_session, project_id)
         if not check:
             raise ValueError(f"No check found for project {project_id}")
         check.completed_at = func.now()
@@ -55,23 +51,25 @@ class PublicSystemAccessService:
     def has_running_check(db_session: Session, project_id: int) -> bool:
         """Check if there's currently a running refresh for this project."""
         running = (
-            db_session.query(PublicSystemAccessCheck)
+            db_session.query(FileLocationCheck)
             .filter(
                 and_(
-                    PublicSystemAccessCheck.project_id == project_id,
-                    PublicSystemAccessCheck.started_at.isnot(None),
-                    PublicSystemAccessCheck.completed_at.is_(None),
+                    FileLocationCheck.project_id == project_id,
+                    FileLocationCheck.started_at.isnot(None),
+                    FileLocationCheck.completed_at.is_(None),
                 )
             )
             .first()
         )
         return running is not None
 
+    # TODO add error check
+
     @staticmethod
-    def get(db_session: "Session", project_id: int) -> PublicSystemAccessCheck | None:
+    def get(db_session: "Session", project_id: int) -> FileLocationCheck | None:
         """Get the currently running refresh for this project."""
         return (
-            db_session.query(PublicSystemAccessCheck)
-            .filter(PublicSystemAccessCheck.project_id == project_id)
+            db_session.query(FileLocationCheck)
+            .filter(FileLocationCheck.project_id == project_id)
             .first()
         )

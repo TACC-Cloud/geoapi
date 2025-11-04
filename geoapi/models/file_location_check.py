@@ -4,14 +4,14 @@ from sqlalchemy.sql import func
 from geoapi.db import Base
 
 
-class PublicSystemAccessCheck(Base):
+class FileLocationCheck(Base):
     """
-    Tracks when a project's files were checked for public status.
+    Tracks when a project's files were checked for location (including if accessible to public)
 
     This model stores metadata about this public-system-access checks. Individual file status
     is tracked via FeatureAsset.is_on_public_system and FeatureAsset.last_public_check.
 
-    Note just one check per file. It can be re-run but we only keep info about a
+    Note just one check per file. It can be re-run, but we only keep info about a
     single (i.e. current or last) check.
     """
 

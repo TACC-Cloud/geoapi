@@ -51,6 +51,8 @@ class FeatureAssetModel(BaseModel):
     original_path: str | None = None
     original_name: str | None = None
     display_path: str | None = None
+    current_system: str | None = None
+    current_path: str | None = None
     is_on_public_system: bool | None = None
 
 
@@ -1286,9 +1288,9 @@ def feature_enc_hook(feature: Feature) -> FeatureModel:
     )
 
 
-from geoapi.routes.public_system_access import (
-    ProjectPublicStatusController,
-)  # noqa: E402
+from geoapi.routes.file_location_status import (  # noqa: E402
+    ProjectFileLocationStatusController,
+)
 
 
 projects_router = Router(
@@ -1319,7 +1321,7 @@ projects_router = Router(
         ProjectTileServersResourceController,
         ProjectTileServersFilesImportResourceController,
         ProjectTileServerResourceController,
-        ProjectPublicStatusController,
+        ProjectFileLocationStatusController,
     ],
     type_encoders={Feature: feature_enc_hook},
 )

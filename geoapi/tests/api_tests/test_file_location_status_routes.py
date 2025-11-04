@@ -5,7 +5,7 @@ from unittest.mock import patch, MagicMock
 @pytest.fixture
 def check_public_paths_mock():
     with patch(
-        "geoapi.routes.public_system_access.check_and_update_system_paths"  # Patch where it's used
+        "geoapi.routes.file_location_status.check_and_update_file_locations"  # Patch where it's used
     ) as mock_task:
         mock_task.apply_async.return_value = MagicMock(id="mock-task-id")
         yield mock_task
@@ -15,7 +15,7 @@ def test_start_public_status_refresh(
     test_client, projects_fixture, user1, check_public_paths_mock
 ):
     resp = test_client.post(
-        f"/projects/{projects_fixture.id}/public-system-access/",
+        f"/projects/{projects_fixture.id}/file-location-status/",
         headers={"X-Tapis-Token": user1.jwt},
     )
     assert resp.status_code == 202
@@ -33,13 +33,13 @@ def test_start_public_status_refresh_already_running(
 ):
     # Start first refresh
     test_client.post(
-        f"/projects/{projects_fixture.id}/public-system-access/",
+        f"/projects/{projects_fixture.id}/file-location-status/",
         headers={"X-Tapis-Token": user1.jwt},
     )
 
     # Try to start second refresh
     resp = test_client.post(
-        f"/projects/{projects_fixture.id}/public-system-access/",
+        f"/projects/{projects_fixture.id}/file-location-status/",
         headers={"X-Tapis-Token": user1.jwt},
     )
     assert resp.status_code == 202
@@ -50,14 +50,14 @@ def test_start_public_status_refresh_already_running(
 def test_start_public_status_refresh_unauthorized(
     test_client, projects_fixture, check_public_paths_mock
 ):
-    resp = test_client.post(f"/projects/{projects_fixture.id}/public-system-access/")
+    resp = test_client.post(f"/projects/{projects_fixture.id}/file-location-status/")
     assert resp.status_code == 401
     check_public_paths_mock.apply_async.assert_not_called()
 
 
 def test_start_public_status_refresh_forbidden(test_client, projects_fixture, user2):
     resp = test_client.post(
-        f"/projects/{projects_fixture.id}/public-system-access/",
+        f"/projects/{projects_fixture.id}/file-location-status/",
         headers={"X-Tapis-Token": user2.jwt},
     )
     assert resp.status_code == 403
@@ -65,7 +65,7 @@ def test_start_public_status_refresh_forbidden(test_client, projects_fixture, us
 
 def test_get_public_files_status_empty(test_client, projects_fixture, user1):
     resp = test_client.get(
-        f"/projects/{projects_fixture.id}/public-system-access/files",
+        f"/projects/{projects_fixture.id}/file-location-status/files",
         headers={"X-Tapis-Token": user1.jwt},
     )
     assert resp.status_code == 200
@@ -79,7 +79,7 @@ def test_get_public_files_status_with_features(
     test_client, projects_fixture, image_feature_fixture, user1
 ):
     resp = test_client.get(
-        f"/projects/{projects_fixture.id}/public-system-access/files",
+        f"/projects/{projects_fixture.id}/file-location-status/files",
         headers={"X-Tapis-Token": user1.jwt},
     )
     assert resp.status_code == 200
@@ -91,14 +91,14 @@ def test_get_public_files_status_with_features(
 
 def test_get_public_files_status_unauthorized(test_client, projects_fixture):
     resp = test_client.get(
-        f"/projects/{projects_fixture.id}/public-system-access/files"
+        f"/projects/{projects_fixture.id}/file-location-status/files"
     )
     assert resp.status_code == 401
 
 
 def test_get_public_files_status_forbidden(test_client, projects_fixture, user2):
     resp = test_client.get(
-        f"/projects/{projects_fixture.id}/public-system-access/files",
+        f"/projects/{projects_fixture.id}/file-location-status/files",
         headers={"X-Tapis-Token": user2.jwt},
     )
     assert resp.status_code == 403
