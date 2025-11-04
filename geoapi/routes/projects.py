@@ -40,7 +40,7 @@ class OkResponse(BaseModel):
     message: str = "accepted"
 
 
-class AssetModel(BaseModel):
+class FeatureAssetModel(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: int | None = None
@@ -51,6 +51,7 @@ class AssetModel(BaseModel):
     original_path: str | None = None
     original_name: str | None = None
     display_path: str | None = None
+    is_on_public_system: bool | None = None
 
 
 class FeatureModel(BaseModel):
@@ -61,7 +62,7 @@ class FeatureModel(BaseModel):
     geometry: dict
     properties: dict | None = None
     styles: dict | None = None
-    assets: list[AssetModel] | None = None
+    assets: list[FeatureAssetModel] | None = None
 
 
 class FeatureReturnDTO(SQLAlchemyDTO[Feature]):
@@ -1285,6 +1286,11 @@ def feature_enc_hook(feature: Feature) -> FeatureModel:
     )
 
 
+from geoapi.routes.public_system_access import (
+    ProjectPublicStatusController,
+)  # noqa: E402
+
+
 projects_router = Router(
     path="/projects",
     route_handlers=[
@@ -1313,6 +1319,7 @@ projects_router = Router(
         ProjectTileServersResourceController,
         ProjectTileServersFilesImportResourceController,
         ProjectTileServerResourceController,
+        ProjectPublicStatusController,
     ],
     type_encoders={Feature: feature_enc_hook},
 )

@@ -1,5 +1,5 @@
 import uuid
-from sqlalchemy import Integer, String, ForeignKey, Index, DateTime
+from sqlalchemy import Integer, String, ForeignKey, Index, DateTime, Boolean
 import shapely
 from litestar.dto import dto_field
 from sqlalchemy.dialects.postgresql import JSONB
@@ -65,9 +65,22 @@ class FeatureAsset(Base):
     # system or project id or both
     path = mapped_column(String(), nullable=False)
     display_path = mapped_column(String(), nullable=True)
+
+    # Original source file location
     original_name = mapped_column(String(), nullable=True)
     original_path = mapped_column(String(), nullable=True, index=True)
     original_system = mapped_column(String(), nullable=True, index=True)
+
+    # Current location of the original source file (typically updated when task
+    # sees that it or a copy is in a publicly accessible location)
+    current_path = mapped_column(String(), nullable=True, index=True)
+    current_system = mapped_column(String(), nullable=True, index=True)
+
+    # Is current_system a public-accessable system
+    is_on_public_system = mapped_column(Boolean(), nullable=True)
+    # Track when this asset was last checked for public availability
+    last_public_system_check = mapped_column(DateTime(timezone=True), nullable=True)
+
     asset_type = mapped_column(String(), nullable=False, default="image")
     feature = relationship("Feature", overlaps="assets")
 
