@@ -113,8 +113,7 @@ def get_file_tree_for_published_project(
     )
 
     logger.info(
-        f"Built file tree for {system_id}: "
-        f"{len(file_index)} unique filenames"
+        f"Built file tree for {system_id}: " f"{len(file_index)} unique filenames"
     )
 
     return file_index
@@ -268,7 +267,9 @@ def check_and_update_file_locations(user_id: int, project_id: int):
 
                         if asset.current_system not in file_tree_cache:
                             # First time seeing this system - fetch and cache it
-                            logger.info(f"Discovering new system {asset.current_system}, building file tree")
+                            logger.info(
+                                f"Discovering new system {asset.current_system}, building file tree"
+                            )
                             file_tree_cache[asset.current_system] = (
                                 get_file_tree_for_published_project(
                                     session, user, asset.current_system
@@ -345,8 +346,10 @@ def check_and_update_file_locations(user_id: int, project_id: int):
                 )
 
             if failed_assets:
-                final_message = (f"Checked {total_checked} files: {file_location_check.files_checked} successful,"
-                                 f" {len(failed_assets)} failed")
+                final_message = (
+                    f"Checked {total_checked} files: {file_location_check.files_checked} successful,"
+                    f" {len(failed_assets)} failed"
+                )
             else:
                 final_message = f"Successfully checked all {total_checked} files"
 
