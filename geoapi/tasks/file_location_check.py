@@ -240,6 +240,9 @@ def check_and_update_file_locations(user_id: int, project_id: int):
                     # Update timestamp
                     asset.last_public_system_check = datetime.now(timezone.utc)
 
+                    # TODO If missing, original_path we can derive from some like point cloud (by
+                    # looking at point cloud matched with this feature and then looking at files_info.
+
                     # Backfill current_system/current_path for legacy data
                     if not asset.current_system:
                         asset.current_system = asset.original_system
@@ -251,32 +254,36 @@ def check_and_update_file_locations(user_id: int, project_id: int):
                         asset.is_on_public_system = True
                         session.add(asset)
                     else:
-                        if not asset.current_system:
-                            # some legacy data is missing original_system
-                            # so let's assume that if this map project is connected to a project
-                            # then that data comes from there.  We don't update original_system
-                            # though to reflect what we knew at that time.
-                            asset.current_system = project.system_id
+                        current_system = asset.current_system
+                        if not current_system:
+                            # some legacy data is missing original_system (and then current_system)
+                            # We don't update original_system as to be accurate about what was
+                            # recorded at the time of feature creation.
+                            #
+                            # But we can make assume that if the map project is connected to a
+                            # DS project, then it is possible this is the system where the data
+                            # resides and so we can search there for a match.
+                            #
+                            # Note: we wait until we find the file in the published project before
+                            # setting `asset.current_system` so this is why we are using a variable
+                            # (`current_system`) instead immediately setting `asset.current_system``
+                            current_system = project.system_id
 
                         # TODO We should use https://www.designsafe-ci.org/api/publications/v2/PRJ-1234 endpoint to look
-                        # at files (e.g fileObjs) but does not appear complete and and missing a previous-path attribute
+                        # at files (e.g fileObjs) but currently does not appear complete and and missing a previous-path attribute
 
-                        # FIND published project from original_system
-
-                        # If missing, original_path we can derive from some like point cloud
-
-                        if asset.current_system not in file_tree_cache:
+                        if current_system not in file_tree_cache:
                             # First time seeing this system - fetch and cache it
                             logger.info(
-                                f"Discovering new system {asset.current_system}, building file tree"
+                                f"Discovering new system {current_system}, building file tree"
                             )
-                            file_tree_cache[asset.current_system] = (
+                            file_tree_cache[current_system] = (
                                 get_file_tree_for_published_project(
-                                    session, user, asset.current_system
+                                    session, user, current_system
                                 )
                             )
 
-                        file_tree = file_tree_cache.get(asset.current_system)
+                        file_tree = file_tree_cache.get(current_system)
 
                         # Check if file exists in published tree
                         is_published, new_system, new_path = determine_if_published(
