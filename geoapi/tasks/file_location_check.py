@@ -119,6 +119,16 @@ def get_file_tree_for_published_project(
     return file_index
 
 
+def file_exists(client, system_id: str, path: str) -> bool:
+    """Check if file exists by trying to list it directly"""
+    try:
+        listing = client.listing(system_id, path)
+        # If listing succeeds, file exists
+        return len(listing) > 0
+    except TapisListingError:
+        return False
+
+
 def determine_if_published(
     file_tree: Dict | None, asset: FeatureAsset
 ) -> tuple[bool, str | None, str | None]:
@@ -223,6 +233,8 @@ def check_and_update_file_locations(user_id: int, project_id: int):
                 latest_message=f"Checking {total_checked} files for public availability",
             )
 
+            tapis_client = TapisUtils(session, user)
+
             # Calculate the file tree of DS project associated with this map project and place in a cache
             # that will hold it and then possibly from other systems/projects
             # (we assume most files will be from here, but they could be from other DS projects as well)
@@ -254,36 +266,36 @@ def check_and_update_file_locations(user_id: int, project_id: int):
                         asset.is_on_public_system = True
                         session.add(asset)
                     else:
-                        current_system = asset.current_system
-                        if not current_system:
-                            # some legacy data is missing original_system (and then current_system)
+                        if not asset.current_system:
+                            # some legacy data is missing original_system (as so also current_system)
                             # We don't update original_system as to be accurate about what was
                             # recorded at the time of feature creation.
                             #
                             # But we can make assume that if the map project is connected to a
                             # DS project, then it is possible this is the system where the data
-                            # resides and so we can search there for a match.
+                            # resides, and so we can check there for a match.
                             #
-                            # Note: we wait until we find the file in the published project before
-                            # setting `asset.current_system` so this is why we are using a variable
-                            # (`current_system`) instead immediately setting `asset.current_system``
-                            current_system = project.system_id
+                            # Note: we'll also check the published project again and might update it one more time
+                            if file_exists(
+                                tapis_client, project.system_id, asset.current_path
+                            ):
+                                asset.current_system = project.system_id
 
                         # TODO We should use https://www.designsafe-ci.org/api/publications/v2/PRJ-1234 endpoint to look
                         # at files (e.g fileObjs) but currently does not appear complete and and missing a previous-path attribute
 
-                        if current_system not in file_tree_cache:
+                        if asset.current_system not in file_tree_cache:
                             # First time seeing this system - fetch and cache it
                             logger.info(
-                                f"Discovering new system {current_system}, building file tree"
+                                f"Discovering new system {asset.current_system}, building file tree"
                             )
-                            file_tree_cache[current_system] = (
+                            file_tree_cache[asset.current_system] = (
                                 get_file_tree_for_published_project(
-                                    session, user, current_system
+                                    session, user, asset.current_system
                                 )
                             )
 
-                        file_tree = file_tree_cache.get(current_system)
+                        file_tree = file_tree_cache.get(asset.current_system)
 
                         # Check if file exists in published tree
                         is_published, new_system, new_path = determine_if_published(
