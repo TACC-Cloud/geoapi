@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from pydantic import BaseModel, ConfigDict
 from litestar import Controller, get, post, Request
 from celery import uuid as celery_uuid
@@ -19,6 +19,9 @@ class FileLocationStatusModel(BaseModel):
     started_at: datetime
     completed_at: datetime | None = None
     task: TaskModel | None = None
+    total_files: int | None = None
+    files_checked: int | None = None
+    files_failed: int | None = None
 
 
 class StartFileLocationStatusRefreshResponse(BaseModel):
@@ -55,6 +58,7 @@ class ProjectFileLocationStatusController(Controller):
         current_system/current_path if they're found in the published location.
         """
         from geoapi.services.file_location_status import FileLocationStatusService
+        from geoapi.models import TaskStatus
 
         user = request.user
         logger.info(
@@ -71,23 +75,38 @@ class ProjectFileLocationStatusController(Controller):
             )
 
         # Generate Celery task UUID
-        celery_task_uuid = celery_uuid()
+        celery_task_uuid = str(celery_uuid())
 
         # Create the check record and Task in database
-        public_access_check = FileLocationStatusService.start_check(
+        file_location_check = FileLocationStatusService.start_check(
             db_session, project_id, celery_task_uuid=celery_task_uuid
         )
 
-        # Start Celery task with the UUID we generated
-        check_and_update_file_locations.apply_async(
-            args=[user.id, project_id, public_access_check.id],
-            task_id=celery_task_uuid,
-        )
+        # Try to start Celery task
+        try:
+            check_and_update_file_locations.apply_async(
+                args=[user.id, project_id],
+                task_id=celery_task_uuid,
+            )
+        except Exception as e:
+            # Mark task as failed if we couldn't queue it
+            logger.error(
+                f"Failed to queue file location check task for project:{project_id}: {e}"
+            )
+            if file_location_check.task:
+                file_location_check.task.status = TaskStatus.FAILED
+                file_location_check.task.latest_message = (
+                    f"Failed to queue task: {str(e)}"
+                )
+            file_location_check.completed_at = datetime.now(timezone.utc)
+            db_session.commit()
+
+            raise  # Re-raise to return 500 to client
 
         return StartFileLocationStatusRefreshResponse(
             message="Public status refresh started",
-            public_status_id=public_access_check.id,
-            task_id=public_access_check.task_id,  # Return the database task.id
+            public_status_id=file_location_check.id,
+            task_id=file_location_check.task_id,
         )
 
     @get(
@@ -98,7 +117,7 @@ class ProjectFileLocationStatusController(Controller):
         guards=[project_permissions_guard],
     )
     def get_files_status(
-        self, request: Request, db_session: "Session", project_id: int
+        self, request: Request, db_session: Session, project_id: int
     ) -> ProjectFileLocationStatusSummary:
         """
         Get detailed status of which files are public vs private.
@@ -115,9 +134,7 @@ class ProjectFileLocationStatusController(Controller):
         # Get all feature assets
         # NOTE: Only includes Features with FeatureAssets. Features without assets
         #       (geometry-only, like manually drawn shapes) are excluded from this list.
-        # TODO WG-600: Handle "source file" FeatureAssets (shapefiles, geojson) that represent
-        #              the file that created the feature. These show up in results if they
-        #              have original_system/path set, but may need different UI treatment.
+        #       See WG-600. Also consider tile layers (internal cogs)
         feature_assets = (
             db_session.query(FeatureAsset)
             .join(Feature, Feature.id == FeatureAsset.feature_id)
@@ -135,12 +152,23 @@ class ProjectFileLocationStatusController(Controller):
             FeatureAssetModel.model_validate(asset) for asset in feature_assets
         ]
 
+        # Convert check with nested task validation
+        check_data = None
+        if public_access_check:
+            check_data = FileLocationStatusModel(
+                id=public_access_check.id,
+                project_id=public_access_check.project_id,
+                started_at=public_access_check.started_at,
+                completed_at=public_access_check.completed_at,
+                task=(
+                    TaskModel.model_validate(public_access_check.task)
+                    if public_access_check.task
+                    else None
+                ),
+            )
+
         return ProjectFileLocationStatusSummary(
             project_id=project_id,
-            check=(
-                FileLocationStatusModel.model_validate(public_access_check)
-                if public_access_check
-                else None
-            ),
+            check=check_data,
             files=files_status,
         )

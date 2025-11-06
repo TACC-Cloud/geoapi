@@ -25,6 +25,7 @@ app.conf.imports = (
     "geoapi.tasks.streetview",
     "geoapi.tasks.projects",
     "geoapi.tasks.external_data",
+    "geoapi.tasks.file_location_check",
 )
 
 # Define the queues

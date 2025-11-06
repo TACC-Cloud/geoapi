@@ -27,7 +27,7 @@ class FeatureAssetModel(BaseModel):
     display_path: str | None = None
     current_system: str | None = None
     current_path: str | None = None
-    last_public_check: datetime | None = None
+    last_public_system_check: datetime | None = None
     is_on_public_system: bool | None = None
 
 
@@ -130,6 +130,8 @@ class TaskDTO(SQLAlchemyDTO[Task]):
 
 
 class TaskModel(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: int | None = None
     status: str | None = None
     description: str | None = None

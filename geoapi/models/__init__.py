@@ -1,5 +1,6 @@
 from .project import Project, ProjectUser
 from .feature import Feature, FeatureAsset
+from .file_location_check import FileLocationCheck
 from .point_cloud import PointCloud
 from .task import Task, TaskStatus
 from .users import User

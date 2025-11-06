@@ -508,11 +508,13 @@ def feature_fixture(
 
 @pytest.fixture(scope="function")
 def image_feature_fixture(
-    image_file_fixture, db_session: "sqlalchemy_config.Session"
+    image_file_fixture,
+    db_session: "sqlalchemy_config.Session",
+    projects_fixture,
 ) -> Feature:
     yield FeaturesService.fromImage(
         db_session,
-        1,
+        projects_fixture.id,
         image_file_fixture,
         metadata={},
         original_system="system",

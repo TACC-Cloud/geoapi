@@ -1,5 +1,5 @@
 from sqlalchemy import Integer, ForeignKey, DateTime
-from sqlalchemy.orm import relationship, mapped_column
+from sqlalchemy.orm import Mapped, relationship, mapped_column
 from sqlalchemy.sql import func
 from geoapi.db import Base
 
@@ -9,7 +9,7 @@ class FileLocationCheck(Base):
     Tracks when a project's files were checked for location (including if accessible to public)
 
     This model stores metadata about this public-system-access checks. Individual file status
-    is tracked via FeatureAsset.is_on_public_system and FeatureAsset.last_public_check.
+    is tracked via FeatureAsset.is_on_public_system and FeatureAsset.last_public_system_check.
 
     Note just one check per file. It can be re-run, but we only keep info about a
     single (i.e. current or last) check.
@@ -31,6 +31,10 @@ class FileLocationCheck(Base):
     # Timestamps
     started_at = mapped_column(DateTime(timezone=True), server_default=func.now())
     completed_at = mapped_column(DateTime(timezone=True), nullable=True)
+
+    total_files: Mapped[int | None] = mapped_column(Integer, default=0)
+    files_checked: Mapped[int | None] = mapped_column(Integer, default=0)
+    files_failed: Mapped[int | None] = mapped_column(Integer, default=0)
 
     # Relationships
     project = relationship("Project")
