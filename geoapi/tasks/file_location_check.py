@@ -7,11 +7,11 @@ from datetime import datetime, timezone
 from typing import Dict
 import os
 
-from sqlalchemy import and_
+from sqlalchemy import and_, or_
 
 from geoapi.celery_app import app
 from geoapi.db import create_task_session
-from geoapi.models import Project, Feature, User, TaskStatus
+from geoapi.models import Project, Feature, User, TaskStatus, PointCloud
 from geoapi.models.feature import FeatureAsset
 from geoapi.services.file_location_status import FileLocationStatusService
 from geoapi.utils.external_apis import TapisUtils, get_session, TapisListingError
@@ -53,7 +53,10 @@ def build_file_index_from_tapis(
     try:
         listing = client.listing(system_id, path)
     except TapisListingError:
-        logger.exception(f"Unable to list {system_id}/{path}")
+        # TODO handle 404 better as we might just be missing published project
+        logger.exception(
+            f"Unable to list {system_id}/{path}.  If 404, Project might not be published yet"
+        )
         return file_index
 
     for item in listing:
@@ -129,40 +132,137 @@ def file_exists(client, system_id: str, path: str) -> bool:
         return False
 
 
-def determine_if_published(
-    file_tree: Dict | None, asset: FeatureAsset
-) -> tuple[bool, str | None, str | None]:
+def determine_if_exists_in_tree(
+    file_tree: Dict | None, current_file_path: str
+) -> tuple[bool, str | None]:
     """
-    Check if asset's file exists in the published file tree.
+    Check if asset's file exists in the file tree.
 
     Returns:
         tuple of (is_published, system, path)
     """
-    if file_tree is None or not asset.current_path:
-        return (False, None, None)
+    if file_tree is None or not current_file_path:
+        return (False, None)
 
-    filename = os.path.basename(asset.current_path)
+    filename = os.path.basename(current_file_path)
 
     if filename in file_tree:
         published_paths = file_tree[filename]
 
         if len(published_paths) > 1:
             logger.info(
-                f"Multiple matches found for asset {asset.id} file '{filename}': "
+                f"Multiple matches found for asset file '{current_file_path}': "
                 f"{published_paths}"
             )
 
         # Use first match - path only (no system)
         path = "/" + published_paths[0].lstrip("/")
 
-        logger.debug(
-            f"Asset {asset.id} found in published system: "
-            f"{DESIGNSAFE_PUBLISHED_SYSTEM}{path}"
+        logger.debug(f"Asset '{current_file_path}' found in system at: {path}")
+
+        return (True, path)
+
+    return (False, None)
+
+
+def get_filename_from_point_cloud_asset(session, asset: FeatureAsset) -> str | None:
+    """
+    Get the point cloud filename from a point cloud asset by querying the associated
+    PointCloud and extracting the first .laz file from files_info.
+
+    Returns the name of the first .laz file found, or None if no point cloud
+    or .laz file exists.
+
+    Note: If there are multiple .laz files, only the first one is returned.
+    """
+    # Query for the PointCloud associated with this feature
+    point_cloud = (
+        session.query(PointCloud).filter_by(feature_id=asset.feature_id).first()
+    )
+
+    # Return None if no point cloud exists or files_info is empty/None
+    if not point_cloud or not point_cloud.files_info:
+        return None
+
+    # Look for the first .laz file in files_info
+    # Note: Taking the first .laz file found; multiple files are not handled
+    for file_info in point_cloud.files_info:
+        name = file_info.get("name", None)
+        return name
+    return None
+
+
+def fix_and_backfill(
+    session,
+    tapis_client,
+    project: Project,
+    asset: FeatureAsset,
+    project_system: str,
+    project_system_file_tree: Dict,
+):
+    """This method attempts to fix and backfill any information
+
+    There are missing information that we can try to fix. These things have been fixed for
+    newly created features, but we are trying to correct them for older features.
+    They are:
+      * (A) missing original_system                  -- only original_path was stored (original_system,
+                                                    current_system, current_path came later) but we
+                                                    might find the file in the system associated with
+                                                    the map
+      * (B) missing current_system, current_path    -- can baac with original_path and original_system
+      * (C) original_path missing for point clouds   -- but can be derived from the point_cloud model
+      * (E) features derived from geojson or shapefiles don't have file info; TODO in WG-600
+      * (D) raster files (tile layers) missing current path and current system (TODO)
+
+      This methods fixes these things except for (D) and (E)
+    """
+    logger.debug(f"Checking asset={asset.id} to see if we can fix anything")
+    # (C) See if point cloud can be fixed (we do this first as results
+    # might be used by B or A steps)
+    if asset.original_path is None and asset.asset_type == "point_cloud":
+        file_name = get_filename_from_point_cloud_asset(session, asset)
+        logger.info(
+            f"Point cloud asset missing original_path. Will try to fix by looking for {file_name} in systems files"
         )
+        exists, found_path = determine_if_exists_in_tree(
+            project_system_file_tree, file_name
+        )
+        if exists:
+            logger.info(
+                f"Found path for point cloud asset={asset.id} and fixing original_path to {found_path}"
+            )
+            asset.original_path = found_path
+            asset.original_system = project_system
+        else:
+            logger.info("Did not find a matching path")
 
-        return (True, DESIGNSAFE_PUBLISHED_SYSTEM, path)
+    # (A) some legacy data is missing original_system
+    if not asset.original_system:
+        # We can make assume that if the map project is connected to a
+        # DS project, then it is possible that is the system where the data resides.
+        # We check that system for the file and update original_system if there is a match.
+        logger.debug(
+            f"Missing original_system for asset={asset.id} so seeing if we see file on current DS project"
+        )
+        if file_exists(tapis_client, project.system_id, asset.original_path):
+            logger.debug(
+                f"Found file on current DS project so updating original_system to {project.system_id} "
+            )
+            asset.original_system = project.system_id
 
-    return (False, None, None)
+    # (B) Backfill current_system/current_path for legacy data
+    if not asset.current_system and asset.original_system:
+        logger.debug(
+            f"Updated current_system for asset={asset.id} to {asset.original_system}"
+        )
+        asset.current_system = asset.original_system
+    if not asset.current_path and asset.original_path:
+        logger.debug(
+            f"Updated current_path for asset={asset.id} to {asset.original_path} "
+        )
+        asset.current_path = asset.original_path
+
+    logger.debug(f"Completed checking asset={asset.id}")
 
 
 @app.task(queue="default")
@@ -199,7 +299,10 @@ def check_and_update_file_locations(user_id: int, project_id: int):
 
             # Get all feature assets for this project
             # NOTE: This only includes Features that have FeatureAssets (photos, videos, etc.)
-            # Features without assets (geometry-only) are excluded - they have no files to check.
+            #
+            # * Features without assets (geometry-only) are excluded - they have no files to check. (WG-600)
+            # * Point cloud assets without original_path are included for backfilling from PointCloud.files_info
+            #
             # TODO WG-600: Consider how to handle "source" FeatureAssets (shapefiles, etc.)
             #              that represent the file that created the feature rather than
             #              assets belonging to the feature. Currently these are checked if they
@@ -210,7 +313,10 @@ def check_and_update_file_locations(user_id: int, project_id: int):
                 .filter(
                     and_(
                         Feature.project_id == project_id,
-                        FeatureAsset.original_path.isnot(None),
+                        or_(
+                            FeatureAsset.original_path.isnot(None),
+                            FeatureAsset.asset_type == "point_cloud",
+                        ),
                     )
                 )
                 .all()
@@ -235,16 +341,44 @@ def check_and_update_file_locations(user_id: int, project_id: int):
 
             tapis_client = TapisUtils(session, user)
 
-            # Calculate the file tree of DS project associated with this map project and place in a cache
+            # Calculate the file tree of published DS project associated with this map project and place in a cache
             # that will hold it and then possibly from other systems/projects
             # (we assume most files will be from here, but they could be from other DS projects as well)
-            file_tree_cache = {}
+            published_file_tree_cache = {}
             if project.system_id:
-                file_tree_cache[project.system_id] = (
+                published_file_tree_cache[project.system_id] = (
                     get_file_tree_for_published_project(
                         session, user, project.system_id
                     )
                 )
+
+            # Check if any point clouds are missing original path
+            has_point_cloud_missing_original_path = (
+                session.query(FeatureAsset)
+                .join(Feature, Feature.id == FeatureAsset.feature_id)
+                .filter(
+                    and_(
+                        Feature.project_id == project_id,
+                        FeatureAsset.asset_type == "point_cloud",
+                        FeatureAsset.original_path.is_(None),
+                    )
+                )
+                .first()
+                is not None
+            )
+
+            unpublished_project_file_index = {}
+            if has_point_cloud_missing_original_path and is_designsafe_project(
+                project.system_id
+            ):
+                logger.info(
+                    "Point cloud asset(s) are missing original_path so we gather file listing to attempt to fix that"
+                )
+                # Create a listing for current project in case we need to
+                unpublished_project_file_index = build_file_index_from_tapis(
+                    tapis_client, system_id=project.system_id, path="//"
+                )
+                logger.info(f"Indexed {len(unpublished_project_file_index)} files")
 
             # Process each asset
             for i, asset in enumerate(feature_assets):
@@ -252,61 +386,65 @@ def check_and_update_file_locations(user_id: int, project_id: int):
                     # Update timestamp
                     asset.last_public_system_check = datetime.now(timezone.utc)
 
-                    # TODO If missing, original_path we can derive from some like point cloud (by
-                    # looking at point cloud matched with this feature and then looking at files_info.
+                    logger.debug(
+                        f"Processing asset={asset.id} asset_type={asset.asset_type}"
+                        f" original_path={asset.original_path} original_system={asset.original_system}"
+                        f" current_path={asset.current_path} current_system={asset.current_system}"
+                    )
 
-                    # Backfill current_system/current_path for legacy data
-                    if not asset.current_system:
-                        asset.current_system = asset.original_system
-                    if not asset.current_path:
-                        asset.current_path = asset.original_path
+                    # Fix attributes of any assets missing info as they were created in the past
+                    fix_and_backfill(
+                        session=session,
+                        tapis_client=tapis_client,
+                        project=project,
+                        asset=asset,
+                        project_system=project.system_id,
+                        project_system_file_tree=unpublished_project_file_index,
+                    )
 
                     # Skip if already on a public system
                     if asset.current_system in PUBLIC_SYSTEMS:
                         asset.is_on_public_system = True
                         session.add(asset)
                     else:
-                        if not asset.current_system:
-                            # some legacy data is missing original_system (as so also current_system)
-                            # We don't update original_system as to be accurate about what was
-                            # recorded at the time of feature creation.
-                            #
-                            # But we can make assume that if the map project is connected to a
-                            # DS project, then it is possible this is the system where the data
-                            # resides, and so we can check there for a match.
-                            #
-                            # Note: we'll also check the published project again and might update it one more time
-                            if file_exists(
-                                tapis_client, project.system_id, asset.current_path
-                            ):
-                                asset.current_system = project.system_id
+                        if asset.current_system is None:
+                            logger.warning(
+                                f"We don't know the current system:"
+                                f" asset={asset.id} asset_type={asset.asset_type}"
+                                f" original_path={asset.original_path} original_system={asset.original_system}"
+                                f" current_path={asset.current_path} current_system={asset.current_system} "
+                            )
 
                         # TODO We should use https://www.designsafe-ci.org/api/publications/v2/PRJ-1234 endpoint to look
                         # at files (e.g fileObjs) but currently does not appear complete and and missing a previous-path attribute
-
-                        if asset.current_system not in file_tree_cache:
+                        if (
+                            asset.current_system
+                            and asset.current_system not in published_file_tree_cache
+                        ):
                             # First time seeing this system - fetch and cache it
                             logger.info(
                                 f"Discovering new system {asset.current_system}, building file tree"
                             )
-                            file_tree_cache[asset.current_system] = (
+                            published_file_tree_cache[asset.current_system] = (
                                 get_file_tree_for_published_project(
                                     session, user, asset.current_system
                                 )
                             )
 
-                        file_tree = file_tree_cache.get(asset.current_system)
-
-                        # Check if file exists in published tree
-                        is_published, new_system, new_path = determine_if_published(
-                            file_tree, asset
+                        published_project_file_tree = published_file_tree_cache.get(
+                            asset.current_system, {}
                         )
 
-                        asset.is_on_public_system = is_published
+                        # Check if file exists in published tree
+                        exists, found_path = determine_if_exists_in_tree(
+                            published_project_file_tree, asset.current_path
+                        )
 
-                        if is_published and new_system and new_path:
-                            asset.current_system = new_system
-                            asset.current_path = new_path
+                        asset.is_on_public_system = exists
+
+                        if exists and found_path:
+                            asset.current_system = DESIGNSAFE_PUBLISHED_SYSTEM
+                            asset.current_path = found_path
 
                         session.add(asset)
 

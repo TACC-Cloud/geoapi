@@ -5,7 +5,7 @@ from geoapi.tasks.file_location_check import (
     check_and_update_file_locations,
     extract_project_uuid,
     is_designsafe_project,
-    determine_if_published,
+    determine_if_exists_in_tree,
     build_file_index_from_tapis,
     BATCH_SIZE,
     DESIGNSAFE_PUBLISHED_SYSTEM,
@@ -183,17 +183,13 @@ def test_determine_if_published_found():
         "data.csv": ["/published-data/PRJ-1234/data/data.csv"],
     }
 
-    # Create mock asset
-    asset = MagicMock(spec=FeatureAsset)
-    asset.id = 123
-    asset.current_path = "/private/project/test.jpg"
+    current_path = "/private/project/test.jpg"
 
     # Check if published
-    is_published, system, path = determine_if_published(file_tree, asset)
+    exists, path = determine_if_exists_in_tree(file_tree, current_path)
 
     # Verify
-    assert is_published is True
-    assert system == DESIGNSAFE_PUBLISHED_SYSTEM
+    assert exists is True
     assert path == "/published-data/PRJ-1234/test.jpg"
 
 
@@ -203,14 +199,11 @@ def test_determine_if_published_not_found():
         "other.jpg": ["/published-data/PRJ-1234/other.jpg"],
     }
 
-    asset = MagicMock(spec=FeatureAsset)
-    asset.id = 123
-    asset.current_path = "/private/project/missing.jpg"
+    current_path = "/private/project/missing.jpg"
 
-    is_published, system, path = determine_if_published(file_tree, asset)
+    is_published, path = determine_if_exists_in_tree(file_tree, current_path)
 
     assert is_published is False
-    assert system is None
     assert path is None
 
 
@@ -223,11 +216,9 @@ def test_determine_if_published_multiple_matches():
         ],
     }
 
-    asset = MagicMock(spec=FeatureAsset)
-    asset.id = 123
-    asset.current_path = "/private/project/test.jpg"
+    current_path = "/private/project/test.jpg"
 
-    is_published, system, path = determine_if_published(file_tree, asset)
+    is_published, path = determine_if_exists_in_tree(file_tree, current_path)
 
     # Should use first match
     assert is_published is True
