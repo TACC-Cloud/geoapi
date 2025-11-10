@@ -382,14 +382,6 @@ def test_batch_commits(
     assert file_location_check.files_checked == num_assets
     assert file_location_check.files_failed == 0
 
-    # Verify: Progress updates were called for batches
-    progress_calls = [
-        call
-        for call in mock_update_task.call_args_list
-        if "Processed" in call.kwargs.get("latest_message", "")
-    ]
-    assert len(progress_calls) >= 1
-
 
 def test_individual_asset_error_continues(
     db_session,

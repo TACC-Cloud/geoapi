@@ -72,7 +72,7 @@ def test_get_public_files_status_empty(test_client, projects_fixture, user1):
     data = resp.json()
     assert data["project_id"] == projects_fixture.id
     assert data["check"] is None
-    assert data["files"] == []
+    assert data["featureAssets"] == []
 
 
 def test_get_public_files_status_with_features(
@@ -85,8 +85,8 @@ def test_get_public_files_status_with_features(
     assert resp.status_code == 200
     data = resp.json()
     assert data["project_id"] == projects_fixture.id
-    assert len(data["files"]) == 1
-    assert data["files"][0]["asset_type"] == "image"
+    assert len(data["featureAssets"]) == 1
+    assert data["featureAssets"][0]["asset_type"] == "image"
 
 
 def test_get_public_files_status_unauthorized(test_client, projects_fixture):

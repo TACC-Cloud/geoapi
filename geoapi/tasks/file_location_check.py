@@ -4,14 +4,15 @@ and update their current_system/current_path accordingly.
 """
 
 from datetime import datetime, timezone
-from typing import Dict
+from typing import Dict, Union
 import os
 
 from sqlalchemy import and_, or_
 
 from geoapi.celery_app import app
 from geoapi.db import create_task_session
-from geoapi.models import Project, Feature, User, TaskStatus, PointCloud
+from geoapi.services.tile_server import TileService
+from geoapi.models import Project, Feature, User, TaskStatus, PointCloud, TileServer
 from geoapi.models.feature import FeatureAsset
 from geoapi.services.file_location_status import FileLocationStatusService
 from geoapi.utils.external_apis import TapisUtils, get_session, TapisListingError
@@ -26,7 +27,7 @@ PUBLIC_SYSTEMS = [
     "designsafe.storage.community",
 ]
 
-BATCH_SIZE = 100  # Commit every 100 files
+BATCH_SIZE = 500  # Commit every 500 items
 
 
 def extract_project_uuid(system_id: str) -> str | None:
@@ -110,7 +111,9 @@ def get_file_tree_for_published_project(
 
     tapis_client = TapisUtils(session, user)
 
-    # Build file index starting from root of project
+    # Calculate the file tree of published DS project associated with this map project and place in a cache
+    # that will hold it and then possibly from other systems/projects
+    # (we assume most files will be from here, but they could be from other DS projects as well)
     file_index = build_file_index_from_tapis(
         tapis_client, DESIGNSAFE_PUBLISHED_SYSTEM, f"/published-data/{designsafe_prj}/"
     )
@@ -139,7 +142,7 @@ def determine_if_exists_in_tree(
     Check if asset's file exists in the file tree.
 
     Returns:
-        tuple of (is_published, system, path)
+        tuple of (is_published, path)
     """
     if file_tree is None or not current_file_path:
         return (False, None)
@@ -192,7 +195,25 @@ def get_filename_from_point_cloud_asset(session, asset: FeatureAsset) -> str | N
     return None
 
 
-def fix_and_backfill(
+def backfill_current_location(item: Union[FeatureAsset, TileServer]) -> None:
+    """
+    Backfill current_system/current_path from original_* if missing.
+    Works for both FeatureAsset and TileServer.
+    """
+    if not item.current_system and item.original_system:
+        logger.debug(
+            f"Updated current_system for {type(item).__name__}={item.id} to {item.original_system}"
+        )
+        item.current_system = item.original_system
+
+    if not item.current_path and item.original_path:
+        logger.debug(
+            f"Updated current_path for {type(item).__name__}={item.id} to {item.original_path}"
+        )
+        item.current_path = item.original_path
+
+
+def fix_and_backfill_feature_asset(
     session,
     tapis_client,
     project: Project,
@@ -200,25 +221,17 @@ def fix_and_backfill(
     project_system: str,
     project_system_file_tree: Dict,
 ):
-    """This method attempts to fix and backfill any information
+    """
+    Fix and backfill FeatureAsset-specific information.
 
-    There are missing information that we can try to fix. These things have been fixed for
-    newly created features, but we are trying to correct them for older features.
-    They are:
-      * (A) missing original_system                  -- only original_path was stored (original_system,
-                                                    current_system, current_path came later) but we
-                                                    might find the file in the system associated with
-                                                    the map
-      * (B) missing current_system, current_path    -- can baac with original_path and original_system
-      * (C) original_path missing for point clouds   -- but can be derived from the point_cloud model
-      * (E) features derived from geojson or shapefiles don't have file info; TODO in WG-600
-      * (D) raster files (tile layers) missing current path and current system (TODO)
-
-      This methods fixes these things except for (D) and (E)
+    Handles:
+    - (A) missing original_system
+    - (B) missing current_system, current_path
+    - (C) original_path missing for point clouds
     """
     logger.debug(f"Checking asset={asset.id} to see if we can fix anything")
-    # (C) See if point cloud can be fixed (we do this first as results
-    # might be used by B or A steps)
+
+    # (C) See if point cloud can be fixed (we do this first as results might be used by B or A steps)
     if asset.original_path is None and asset.asset_type == "point_cloud":
         file_name = get_filename_from_point_cloud_asset(session, asset)
         logger.info(
@@ -238,51 +251,84 @@ def fix_and_backfill(
 
     # (A) some legacy data is missing original_system
     if not asset.original_system:
-        # We can make assume that if the map project is connected to a
-        # DS project, then it is possible that is the system where the data resides.
-        # We check that system for the file and update original_system if there is a match.
         logger.debug(
             f"Missing original_system for asset={asset.id} so seeing if we see file on current DS project"
         )
         if file_exists(tapis_client, project.system_id, asset.original_path):
             logger.debug(
-                f"Found file on current DS project so updating original_system to {project.system_id} "
+                f"Found file on current DS project so updating original_system to {project.system_id}"
             )
             asset.original_system = project.system_id
 
     # (B) Backfill current_system/current_path for legacy data
-    if not asset.current_system and asset.original_system:
-        logger.debug(
-            f"Updated current_system for asset={asset.id} to {asset.original_system}"
-        )
-        asset.current_system = asset.original_system
-    if not asset.current_path and asset.original_path:
-        logger.debug(
-            f"Updated current_path for asset={asset.id} to {asset.original_path} "
-        )
-        asset.current_path = asset.original_path
+    backfill_current_location(asset)
 
     logger.debug(f"Completed checking asset={asset.id}")
+
+
+def check_and_update_public_system(
+    item: Union[FeatureAsset, TileServer],
+    published_file_tree_cache: Dict,
+    session,
+    user,
+) -> None:
+    """
+    Check if item is on a public system and update location if found in published tree.
+    Works for both FeatureAsset and TileServer.
+    """
+    item_type = type(item).__name__
+    item_id = item.id
+
+    # Skip if already on a public system
+    if item.current_system in PUBLIC_SYSTEMS:
+        item.is_on_public_system = True
+        return
+
+    if item.current_system is None:
+        logger.warning(
+            f"We don't know the current system: {item_type}={item_id}"
+            f" original_path={item.original_path} original_system={item.original_system}"
+            f" current_path={item.current_path} current_system={item.current_system}"
+        )
+        return
+
+    # Cache published file tree for this system if not already cached
+    if item.current_system not in published_file_tree_cache:
+        logger.info(f"Discovering new system {item.current_system}, building file tree")
+        published_file_tree_cache[item.current_system] = (
+            get_file_tree_for_published_project(session, user, item.current_system)
+        )
+
+    published_project_file_tree = published_file_tree_cache.get(item.current_system, {})
+
+    # Check if file exists in published tree
+    exists, found_path = determine_if_exists_in_tree(
+        published_project_file_tree, item.current_path
+    )
+
+    item.is_on_public_system = exists
+
+    if exists and found_path:
+        item.current_system = DESIGNSAFE_PUBLISHED_SYSTEM
+        item.current_path = found_path
 
 
 @app.task(queue="default")
 def check_and_update_file_locations(user_id: int, project_id: int):
     """
-    Check all feature assets in a project and update where they are located (i.e. new published
-    location) and then check if they are located tapis system that is publicly accessible
+    Check all feature assets and tile servers in a project and update where they are located
+    (i.e. new published location) and then check if they are on a publicly accessible system.
 
     Updates:
-    - FeatureAsset.current_system and current_path if file found in public system
-    - FeatureAsset.is_on_public_system based on current_system
-    - FeatureAsset.last_public_system_check timestamp
-    - FileLocationCheck record with new info
+    - FeatureAsset/TileServer: current_system, current_path, is_on_public_system, last_public_system_check
+    - FileLocationCheck record with check metadata
     """
     logger.info(f"Starting file location check for project:{project_id} user:{user_id}")
 
     with create_task_session() as session:
         user = None
         file_location_check = None
-        failed_assets = []
+        failed_items = []
 
         try:
             user = session.get(User, user_id)
@@ -322,14 +368,20 @@ def check_and_update_file_locations(user_id: int, project_id: int):
                 .all()
             )
 
-            total_checked = len(feature_assets)
+            # Get all internal tile servers for this project
+            # Only check internal tile servers (served by geoapi)
+            # External tile servers are using external URLs and don't need checking
+            tile_servers = TileService.getTileServers(session, projectId=project_id, internal=True)
+
+            total_checked = len(feature_assets) + len(tile_servers)
 
             # Set total files count
             file_location_check.total_files = total_checked
             session.commit()
 
             logger.info(
-                f"Starting check for project {project_id}: {total_checked} assets to check"
+                f"Starting check for project {project_id}: "
+                f"{len(feature_assets)} feature assets + {len(tile_servers)} tile servers = {total_checked} items to check"
             )
 
             update_task_and_send_progress_update(
@@ -341,9 +393,7 @@ def check_and_update_file_locations(user_id: int, project_id: int):
 
             tapis_client = TapisUtils(session, user)
 
-            # Calculate the file tree of published DS project associated with this map project and place in a cache
-            # that will hold it and then possibly from other systems/projects
-            # (we assume most files will be from here, but they could be from other DS projects as well)
+            # Build published file tree cache
             published_file_tree_cache = {}
             if project.system_id:
                 published_file_tree_cache[project.system_id] = (
@@ -352,21 +402,13 @@ def check_and_update_file_locations(user_id: int, project_id: int):
                     )
                 )
 
-            # Check if any point clouds are missing original path
-            has_point_cloud_missing_original_path = (
-                session.query(FeatureAsset)
-                .join(Feature, Feature.id == FeatureAsset.feature_id)
-                .filter(
-                    and_(
-                        Feature.project_id == project_id,
-                        FeatureAsset.asset_type == "point_cloud",
-                        FeatureAsset.original_path.is_(None),
-                    )
-                )
-                .first()
-                is not None
+            # Check if any point clouds need unpublished project file index
+            has_point_cloud_missing_original_path = any(
+                asset.original_path is None and asset.asset_type == "point_cloud"
+                for asset in feature_assets
             )
 
+            # Create a listing for current project in case we need to use it
             unpublished_project_file_index = {}
             if has_point_cloud_missing_original_path and is_designsafe_project(
                 project.system_id
@@ -374,13 +416,12 @@ def check_and_update_file_locations(user_id: int, project_id: int):
                 logger.info(
                     "Point cloud asset(s) are missing original_path so we gather file listing to attempt to fix that"
                 )
-                # Create a listing for current project in case we need to
                 unpublished_project_file_index = build_file_index_from_tapis(
                     tapis_client, system_id=project.system_id, path="//"
                 )
                 logger.info(f"Indexed {len(unpublished_project_file_index)} files")
 
-            # Process each asset
+            # Process each feature asset
             for i, asset in enumerate(feature_assets):
                 try:
                     # Update timestamp
@@ -393,7 +434,7 @@ def check_and_update_file_locations(user_id: int, project_id: int):
                     )
 
                     # Fix attributes of any assets missing info as they were created in the past
-                    fix_and_backfill(
+                    fix_and_backfill_feature_asset(
                         session=session,
                         tapis_client=tapis_client,
                         project=project,
@@ -402,71 +443,19 @@ def check_and_update_file_locations(user_id: int, project_id: int):
                         project_system_file_tree=unpublished_project_file_index,
                     )
 
-                    # Skip if already on a public system
-                    if asset.current_system in PUBLIC_SYSTEMS:
-                        asset.is_on_public_system = True
-                        session.add(asset)
-                    else:
-                        if asset.current_system is None:
-                            logger.warning(
-                                f"We don't know the current system:"
-                                f" asset={asset.id} asset_type={asset.asset_type}"
-                                f" original_path={asset.original_path} original_system={asset.original_system}"
-                                f" current_path={asset.current_path} current_system={asset.current_system} "
-                            )
+                    # Check and update public system status
+                    check_and_update_public_system(
+                        asset, published_file_tree_cache, session, user
+                    )
 
-                        # TODO We should use https://www.designsafe-ci.org/api/publications/v2/PRJ-1234 endpoint to look
-                        # at files (e.g fileObjs) but currently does not appear complete and and missing a previous-path attribute
-                        if (
-                            asset.current_system
-                            and asset.current_system not in published_file_tree_cache
-                        ):
-                            # First time seeing this system - fetch and cache it
-                            logger.info(
-                                f"Discovering new system {asset.current_system}, building file tree"
-                            )
-                            published_file_tree_cache[asset.current_system] = (
-                                get_file_tree_for_published_project(
-                                    session, user, asset.current_system
-                                )
-                            )
+                    session.add(asset)
 
-                        published_project_file_tree = published_file_tree_cache.get(
-                            asset.current_system, {}
-                        )
-
-                        # Check if file exists in published tree
-                        exists, found_path = determine_if_exists_in_tree(
-                            published_project_file_tree, asset.current_path
-                        )
-
-                        asset.is_on_public_system = exists
-
-                        if exists and found_path:
-                            asset.current_system = DESIGNSAFE_PUBLISHED_SYSTEM
-                            asset.current_path = found_path
-
-                        session.add(asset)
-
-                    # Commit and clear cache in batches
+                    # Commit in large batches for memory management (rare 5000+ item cases)
                     if (i + 1) % BATCH_SIZE == 0:
                         session.commit()
                         session.expire_all()
-
-                        # Update counts
-                        file_location_check.files_checked = i + 1 - len(failed_assets)
-                        file_location_check.files_failed = len(failed_assets)
-                        session.commit()
-
                         logger.info(
-                            f"Batch: {i + 1}/{total_checked} processed, {len(failed_assets)} errors"
-                        )
-
-                        update_task_and_send_progress_update(
-                            session,
-                            user,
-                            task_id=file_location_check.task.id,
-                            latest_message=f"Processed {i + 1}/{total_checked} files ({len(failed_assets)} errors)",
+                            f"Batch: {i + 1}/{total_checked} processed, {len(failed_items)} errors"
                         )
 
                 except Exception as e:
@@ -475,10 +464,60 @@ def check_and_update_file_locations(user_id: int, project_id: int):
                         f"Error checking asset {asset.id} ({asset.original_path}): {e}"
                     )
 
-                    failed_assets.append(
+                    failed_items.append(
                         {
-                            "asset_id": asset.id,
+                            "type": "feature_asset",
+                            "id": asset.id,
                             "path": asset.original_path or "unknown",
+                            "error": error_msg,
+                        }
+                    )
+
+                    session.rollback()
+                    continue
+
+            # Process each tile server
+            for i, tile_server in enumerate(tile_servers, start=len(feature_assets)):
+                try:
+                    # Update timestamp
+                    tile_server.last_public_system_check = datetime.now(timezone.utc)
+
+                    logger.debug(
+                        f"Processing tile_server={tile_server.id} name={tile_server.name}"
+                        f" original_path={tile_server.original_path} original_system={tile_server.original_system}"
+                        f" current_path={tile_server.current_path} current_system={tile_server.current_system}"
+                    )
+
+                    # Backfill current_system/current_path if missing
+                    backfill_current_location(tile_server)
+
+                    # Check and update public system status
+                    check_and_update_public_system(
+                        tile_server, published_file_tree_cache, session, user
+                    )
+
+                    session.add(tile_server)
+
+                    # Commit in large batches
+                    if (i + 1) % BATCH_SIZE == 0:
+                        session.commit()
+                        session.expire_all()
+                        logger.info(
+                            f"Batch: {i + 1}/{total_checked} processed, {len(failed_items)} errors"
+                        )
+
+                except Exception as e:
+                    error_msg = str(e)[:100]
+                    logger.exception(
+                        f"Error checking tile_server {tile_server.id} ({tile_server.name}): {e}"
+                    )
+
+                    failed_items.append(
+                        {
+                            "type": "tile_server",
+                            "id": tile_server.id,
+                            "name": tile_server.name,
+                            "path": tile_server.original_path or "unknown",
                             "error": error_msg,
                         }
                     )
@@ -491,24 +530,22 @@ def check_and_update_file_locations(user_id: int, project_id: int):
 
             # Update final counts
             file_location_check.completed_at = datetime.now(timezone.utc)
-            file_location_check.files_checked = total_checked - len(failed_assets)
-            file_location_check.files_failed = len(failed_assets)
+            file_location_check.files_checked = total_checked - len(failed_items)
+            file_location_check.files_failed = len(failed_items)
             session.add(file_location_check)
             session.commit()
 
-            if failed_assets:
+            if failed_items:
                 logger.warning(
-                    f"File location check completed with {len(failed_assets)} failures for project {project_id}. "
-                    f"Failed assets: {failed_assets}"
+                    f"File location check completed with {len(failed_items)} failures for project {project_id}. "
+                    f"Failed items: {failed_items}"
                 )
 
-            if failed_assets:
-                final_message = (
-                    f"Checked {total_checked} files: {file_location_check.files_checked} successful,"
-                    f" {len(failed_assets)} failed"
-                )
-            else:
-                final_message = f"Successfully checked all {total_checked} files"
+            final_message = (
+                f"Checked {total_checked} files: {file_location_check.files_checked} successful, {len(failed_items)} failed"
+                if failed_items
+                else f"Successfully checked all {total_checked} files"
+            )
 
             logger.info(f"Check completed for project {project_id}: {final_message}")
 
@@ -527,7 +564,6 @@ def check_and_update_file_locations(user_id: int, project_id: int):
             try:
                 if file_location_check:
                     file_location_check.completed_at = datetime.now(timezone.utc)
-                    # Keep existing counts if we got that far
                     session.add(file_location_check)
 
                 if file_location_check and file_location_check.task and user:
@@ -543,7 +579,6 @@ def check_and_update_file_locations(user_id: int, project_id: int):
             except Exception as cleanup_error:
                 logger.exception(f"Failed to mark task as failed: {cleanup_error}")
                 session.rollback()
-
                 # Re-raise to mark Celery task as failed as we can't even mark our internal
-                # task as failed
+                # task as faile
                 raise

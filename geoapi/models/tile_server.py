@@ -2,9 +2,10 @@ from sqlalchemy import Boolean, Integer, String, ForeignKey
 from sqlalchemy.orm import relationship, mapped_column
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from geoapi.db import Base
+from geoapi.models.file_location_tracking_mixin import FileLocationTrackingMixin
 
 
-class TileServer(Base):
+class TileServer(Base, FileLocationTrackingMixin):
     __tablename__ = "tile_servers"
     id = mapped_column(Integer, primary_key=True)
     project_id = mapped_column(
@@ -48,18 +49,9 @@ class TileServer(Base):
 
     attribution = mapped_column(String(), nullable=False)
 
-    original_system = mapped_column(
-        String(),
-        nullable=True,
-        index=True,
-        comment="Tapis system where the original file was sourced from (if applicable)",
-    )
-
-    original_path = mapped_column(
-        String(),
-        nullable=True,
-        comment="Original file path on the source system (if applicable)",
-    )
+    # Note: original_system, original_path, current_system, current_path,
+    #       is_on_public_system, and last_public_system_check are inherited
+    #       from FileLocationTrackingMixin
 
     tileOptions = mapped_column(JSONB, default={})
     uiOptions = mapped_column(JSONB, default={})

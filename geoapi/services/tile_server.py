@@ -1,4 +1,4 @@
-from typing import List, Dict, Tuple
+from typing import List, Dict, Tuple, Optional
 from celery import uuid as celery_uuid
 
 from geoapi.models import TileServer, Task, User
@@ -52,11 +52,30 @@ class TileService:
         return ts
 
     @staticmethod
-    def getTileServers(database_session, projectId: int) -> List[TileServer]:
-        tile_servers = (
-            database_session.query(TileServer).filter_by(project_id=projectId).all()
-        )
-        return tile_servers
+    def getTileServers(
+        database_session,
+        projectId: int,
+        internal: Optional[
+            bool
+        ] = None,
+    ) -> List[TileServer]:
+        """
+        Get tile servers for a project.
+
+        Args:
+            database_session: Database session
+            projectId: Project ID
+            internal: Optional filter - None=all, True=internal only, False=external only
+
+        Returns:
+            List of TileServer objects
+        """
+        query = database_session.query(TileServer).filter_by(project_id=projectId)
+
+        if internal is not None:
+            query = query.filter(TileServer.internal.is_(internal))
+
+        return query.all()
 
     @staticmethod
     def deleteTileServer(database_session, tile_server_id: int) -> None:

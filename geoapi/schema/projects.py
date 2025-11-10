@@ -186,6 +186,13 @@ class TileServerDTO(SQLAlchemyDTO[TileServer]):
             "attribution",
             "tileOptions",
             "uiOptions",
+            # File location tracking fields (from FileLocationTrackingMixin)
+            "original_system",
+            "original_path",
+            "current_system",
+            "current_path",
+            "is_on_public_system",
+            "last_public_system_check",
         }
     )
 
@@ -203,6 +210,14 @@ class TileServerModel(BaseModel):
     attribution: str | None = None
     tileOptions: dict | None = None
     uiOptions: dict | None = None
+
+    # File location tracking fields (from FileLocationTrackingMixin)
+    original_system: str | None = None
+    original_path: str | None = None
+    current_system: str | None = None
+    current_path: str | None = None
+    is_on_public_system: bool | None = None
+    last_public_system_check: datetime | None = None
 
 
 # TODO: replace with TapisFilePath (and update client software)

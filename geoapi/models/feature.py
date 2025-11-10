@@ -1,5 +1,5 @@
 import uuid
-from sqlalchemy import Integer, String, ForeignKey, Index, DateTime, Boolean
+from sqlalchemy import Integer, String, ForeignKey, Index, DateTime
 import shapely
 from litestar.dto import dto_field
 from sqlalchemy.dialects.postgresql import JSONB
@@ -9,6 +9,7 @@ from sqlalchemy.dialects.postgresql import UUID
 from geoalchemy2 import Geometry
 from geoalchemy2.shape import from_shape, to_shape
 from geoapi.db import Base
+from geoapi.models.file_location_tracking_mixin import FileLocationTrackingMixin
 from geoapi.utils import geometries
 
 
@@ -55,7 +56,7 @@ class Feature(Base):
         return shapely.geometry.mapping(to_shape(self.the_geom))
 
 
-class FeatureAsset(Base):
+class FeatureAsset(Base, FileLocationTrackingMixin):
     __tablename__ = "feature_assets"
     id = mapped_column(Integer, primary_key=True)
     feature_id = mapped_column(
@@ -68,18 +69,10 @@ class FeatureAsset(Base):
 
     # Original source file location
     original_name = mapped_column(String(), nullable=True)
-    original_path = mapped_column(String(), nullable=True, index=True)
-    original_system = mapped_column(String(), nullable=True, index=True)
 
-    # Current location of the original source file (typically updated when task
-    # sees that it or a copy is in a publicly accessible location)
-    current_path = mapped_column(String(), nullable=True, index=True)
-    current_system = mapped_column(String(), nullable=True, index=True)
-
-    # Is current_system a public-accessable system
-    is_on_public_system = mapped_column(Boolean(), nullable=True)
-    # Track when this asset was last checked for public availability
-    last_public_system_check = mapped_column(DateTime(timezone=True), nullable=True)
+    # Note: original_system, original_path, current_system, current_path,
+    #       is_on_public_system, and last_public_system_check are inherited
+    #       from FileLocationTrackingMixin
 
     asset_type = mapped_column(String(), nullable=False, default="image")
     feature = relationship("Feature", overlaps="assets")
