@@ -332,7 +332,10 @@ def import_point_clouds_from_tapis(userId: int, files, pointCloudId: int):
                 send_progress_update(user, celery_task_id, "error", failed_message)
                 return
 
-        point_cloud.files_info = get_point_cloud_info(session, pointCloudId)
+        # add to our files_info with these new files
+        point_cloud.files_info = (point_cloud.files_info or []) + get_point_cloud_info(
+            files
+        )
 
         session.add(point_cloud)
         session.commit()

@@ -50,21 +50,18 @@ def check_point_cloud(file_path: str) -> None:
     getProj4(file_path)
 
 
-def get_point_cloud_info(database_session, pointCloudId: int) -> dict:
+def get_point_cloud_info(files: list) -> list:
     """
-    Get info on las files
-    :param pointCloudId: int
-    :return: None
+    Get info from source files
     """
-    from geoapi.services.point_cloud import PointCloudService
-
-    point_cloud = PointCloudService.get(database_session, pointCloudId)
-    path_to_original_point_clouds = get_asset_path(
-        point_cloud.path, PointCloudService.ORIGINAL_FILES_DIR
-    )
-    input_files = get_point_cloud_files(path_to_original_point_clouds)
-
-    return [{"name": os.path.basename(f)} for f in input_files]
+    return [
+        {
+            "original_system": file["system"],
+            "original_path": file["path"],
+            "name": os.path.basename(file["path"]),
+        }
+        for file in files
+    ]
 
 
 class PointCloudProcessingTask(celery.Task):
@@ -139,12 +136,7 @@ def convert_to_potree(self, pointCloudId: int) -> None:
             point_cloud.path, PointCloudService.PROCESSED_DIR
         )
 
-    input_files = [
-        get_asset_path(path_to_original_point_clouds, file)
-        for file in os.listdir(path_to_original_point_clouds)
-        if pathlib.Path(file).suffix.lstrip(".").lower()
-        in PointCloudService.LIDAR_FILE_EXTENSIONS
-    ]
+    input_files = get_point_cloud_files(path_to_original_point_clouds)
 
     outline = get_bounding_box_2d(input_files)
 
@@ -192,12 +184,22 @@ def convert_to_potree(self, pointCloudId: int) -> None:
                 asset_uuid = uuid.uuid4()
                 base_filepath = make_project_asset_dir(point_cloud.project_id)
                 asset_path = os.path.join(base_filepath, str(asset_uuid))
+
+                # Grab first file as we will associate the FeatureAsset with just one file
+                first_file = point_cloud.files_info[0] if point_cloud.files_info else {}
+                original_system = first_file.get("original_system")
+                original_path = first_file.get("original_path")
+
                 fa = FeatureAsset(
                     uuid=asset_uuid,
                     asset_type="point_cloud",
                     path=get_asset_relative_path(asset_path),
                     display_path=point_cloud.description,
                     feature=feature,
+                    original_system=original_system,
+                    original_path=original_path,
+                    current_system=original_system,
+                    current_path=original_path,
                 )
                 feature.assets.append(fa)
                 point_cloud.feature = feature

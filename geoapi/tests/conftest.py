@@ -568,18 +568,6 @@ def check_point_cloud_mock_missing_crs():
 
 
 @pytest.fixture(scope="function")
-def get_point_cloud_info_mock():
-    with patch(
-        "geoapi.services.point_cloud.get_point_cloud_info"
-    ) as mock_get_point_cloud_info:
-        mock_result = MagicMock()
-        mock_result.get.return_value = [{"name": "test.las"}]
-
-        mock_get_point_cloud_info.return_value = mock_result
-        yield mock_get_point_cloud_info
-
-
-@pytest.fixture(scope="function")
 def tapis_file_listings_mock():
     filesListing = [
         TapisFileListing(
