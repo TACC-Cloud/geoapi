@@ -55,9 +55,7 @@ class TileService:
     def getTileServers(
         database_session,
         projectId: int,
-        internal: Optional[
-            bool
-        ] = None,
+        internal: Optional[bool] = None,
     ) -> List[TileServer]:
         """
         Get tile servers for a project.

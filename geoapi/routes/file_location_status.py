@@ -5,11 +5,12 @@ from celery import uuid as celery_uuid
 from sqlalchemy.orm import Session
 
 from geoapi.log import logger
-from geoapi.models import Feature, FeatureAsset, TileServer
+from geoapi.models import Feature, FeatureAsset
 from geoapi.schema.projects import FeatureAssetModel, TileServerModel, TaskModel
 from geoapi.utils.decorators import project_permissions_guard
 from geoapi.tasks.file_location_check import check_and_update_file_locations
 from geoapi.services.tile_server import TileService
+
 
 class FileLocationStatusModel(BaseModel):
     model_config = ConfigDict(from_attributes=True)
@@ -164,7 +165,6 @@ class ProjectFileLocationStatusController(Controller):
             .filter(Feature.project_id == project_id)
             .all()
         )
-
 
         # Calculate summary counts for context
         total_features = (

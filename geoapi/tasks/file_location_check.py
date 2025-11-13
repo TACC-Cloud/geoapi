@@ -371,7 +371,9 @@ def check_and_update_file_locations(user_id: int, project_id: int):
             # Get all internal tile servers for this project
             # Only check internal tile servers (served by geoapi)
             # External tile servers are using external URLs and don't need checking
-            tile_servers = TileService.getTileServers(session, projectId=project_id, internal=True)
+            tile_servers = TileService.getTileServers(
+                session, projectId=project_id, internal=True
+            )
 
             total_checked = len(feature_assets) + len(tile_servers)
 
