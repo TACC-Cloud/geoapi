@@ -10,7 +10,6 @@ from geoapi.exceptions import ApiException
 
 from geoapi.models import PointCloud, Project, User, Task
 from geoapi.log import logging
-from geoapi.tasks.lidar import convert_to_potree
 from geoapi.utils.assets import (
     make_project_asset_dir,
     delete_assets,
@@ -22,7 +21,7 @@ logger = logging.getLogger(__name__)
 
 
 class PointCloudService:
-    LIDAR_FILE_EXTENSIONS = ("las", "laz")
+    POINT_CLOUD_FILE_EXTENSIONS = ("las", "laz")
     ORIGINAL_FILES_DIR = "original_files"
 
     PROCESSED_DIR = "point_cloud"
@@ -119,7 +118,7 @@ class PointCloudService:
         :raises: ApiException
         """
         file_ext = pathlib.Path(file_name).suffix.lstrip(".").lower()
-        if file_ext not in PointCloudService.LIDAR_FILE_EXTENSIONS:
+        if file_ext not in PointCloudService.POINT_CLOUD_FILE_EXTENSIONS:
             raise ApiException("Invalid file type for point clouds.")
 
     @staticmethod
@@ -173,7 +172,9 @@ class PointCloudService:
             )
         )
 
-        # Process asynchronously lidar file and add a feature asset
+        from geoapi.tasks.point_cloud import convert_to_potree
+
+        # Process asynchronously point_cloud file and add a feature asset
         convert_to_potree.apply_async(args=[pointCloudId], task_id=celery_task_id)
 
         return task

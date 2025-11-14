@@ -14,7 +14,7 @@ from geoapi.services.streetview import StreetviewService
 from geoapi.services.point_cloud import PointCloudService
 from geoapi.services.projects import ProjectsService
 from geoapi.services.tile_server import TileService
-from geoapi.tasks import external_data, streetview
+from geoapi.tasks import external_data, streetview, point_cloud
 from geoapi.models import Task, Project, Feature, TileServer, Overlay, PointCloud, User
 from geoapi.utils.decorators import (
     project_permissions_allow_public_guard,
@@ -865,7 +865,7 @@ class ProjectPointCloudsFileImportResourceController(Controller):
         for file in files:
             PointCloudService.check_file_extension(file.path)
 
-        external_data.import_point_clouds_from_tapis.delay(
+        point_cloud.import_point_clouds_from_tapis.delay(
             u.id, [file.model_dump() for file in files], point_cloud_id
         )
         return OkResponse(message="Task created for point cloud import")

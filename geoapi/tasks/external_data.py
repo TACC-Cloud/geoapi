@@ -7,15 +7,14 @@ import concurrent.futures
 from pathlib import Path
 from enum import Enum
 
-from celery import uuid as celery_uuid, current_task
+from celery import current_task
 from sqlalchemy import true
 
 from geoapi.celery_app import app
 from geoapi.exceptions import (
-    InvalidCoordinateReferenceSystem,
     GetUsersForProjectNotSupported,
 )
-from geoapi.models import Project, User, ProjectUser, Task, TaskStatus
+from geoapi.models import Project, User, ProjectUser
 from geoapi.utils.external_apis import (
     TapisUtils,
     SystemUser,
@@ -29,13 +28,6 @@ from geoapi.log import logger
 from geoapi.services.features import FeaturesService
 from geoapi.services.imports import ImportsService
 from geoapi.services.vectors import SHAPEFILE_FILE_ADDITIONAL_FILES
-import geoapi.services.point_cloud as pointcloud
-from geoapi.tasks.lidar import (
-    convert_to_potree,
-    check_point_cloud,
-    get_point_cloud_info,
-    PointCloudConversionException,
-)
 from geoapi.db import create_task_session
 from geoapi.services.users import UserService
 from geoapi.utils.additional_file import AdditionalFile
@@ -208,175 +200,6 @@ def import_file_from_tapis(userId: int, systemId: str, path: str, projectId: int
             )
             send_progress_update(user, task_id, "error", f"Error importing {path}")
             raise
-
-
-def _update_point_cloud_task(
-    database_session, pointCloudId: int, description: str = None, status: str = None
-):
-    task = pointcloud.PointCloudService.get(database_session, pointCloudId).task
-    if description is not None:
-        task.description = description
-    if status is not None:
-        task.status = status
-    database_session.add(task)
-    database_session.commit()
-
-
-def _handle_point_cloud_conversion_error(
-    pointCloudId, userId, files, error_description
-):
-    with create_task_session() as session:
-        user = session.get(User, userId)
-        logger.exception(
-            f"point cloud:{pointCloudId} conversion failed for user:{user.username} and files:{files}. "
-            f"error:  {error_description}"
-        )
-        _update_point_cloud_task(
-            session,
-            pointCloudId,
-            description=error_description,
-            status=TaskStatus.FAILED,
-        )
-        send_progress_update(
-            user,
-            current_task.request.id,
-            "error",
-            f"Processing failed for point cloud ({pointCloudId})!",
-        )
-
-
-@app.task(queue="heavy")
-def import_point_clouds_from_tapis(userId: int, files, pointCloudId: int):
-    with create_task_session() as session:
-        user = session.get(User, userId)
-        client = TapisUtils(session, user)
-
-        point_cloud = pointcloud.PointCloudService.get(session, pointCloudId)
-        celery_task_id = celery_uuid()
-
-        logger.info(
-            f"point cloud:{pointCloudId} conversion started for user:{user.username} and files:{files}"
-        )
-
-        # this initial geoapi.model.Task setup should probably be moved out of the celery task and performed
-        # in the request processing (i.e. in ProjectPointCloudsFileImportResource) so that a task can be returned in the
-        # request. See https://jira.tacc.utexas.edu/browse/WG-85
-        task = Task()
-        task.process_id = celery_task_id
-        task.status = TaskStatus.RUNNING
-
-        point_cloud.task = task
-        session.add(point_cloud)
-        session.add(task)
-        session.commit()
-
-        new_asset_files = []
-        failed_message = None
-        for file in files:
-            _update_point_cloud_task(
-                session,
-                pointCloudId,
-                description="Importing file ({}/{})".format(
-                    len(new_asset_files) + 1, len(files)
-                ),
-            )
-
-            send_progress_update(user, celery_task_id, "success", task.description)
-
-            system_id = file["system"]
-            path = file["path"]
-
-            try:
-                tmp_file = client.getFile(system_id, path)
-                tmp_file.filename = Path(path).name
-                file_path = (
-                    pointcloud.PointCloudService.putPointCloudInOriginalsFileDir(
-                        point_cloud.path, tmp_file, tmp_file.filename
-                    )
-                )
-                tmp_file.close()
-
-                # save file path as we might need to delete it if there is a problem
-                new_asset_files.append(file_path)
-
-                # check if file is okay
-                check_point_cloud(file_path)
-
-            except InvalidCoordinateReferenceSystem:
-                logger.error(
-                    f"Could not import point cloud file ( point cloud: {pointCloudId} , "
-                    f"for user:{user.username} due to missing coordinate reference system: {system_id}:{path}"
-                )
-                failed_message = (
-                    "Error importing {}: missing coordinate reference system".format(
-                        path
-                    )
-                )
-            except Exception as e:
-                logger.exception(
-                    f"Could not import point cloud file for user:{user.username} point cloud: {pointCloudId}"
-                    f"from tapis: {system_id}/{path} : {e}"
-                )
-                failed_message = "Unknown error importing {}:{}".format(system_id, path)
-
-            if failed_message:
-                for file_path in new_asset_files:
-                    logger.info("removing {}".format(file_path))
-                    os.remove(file_path)
-                _update_point_cloud_task(
-                    session,
-                    pointCloudId,
-                    description=failed_message,
-                    status=TaskStatus.FAILED,
-                )
-                send_progress_update(user, celery_task_id, "error", failed_message)
-                return
-
-        # add to our files_info with these new files
-        point_cloud.files_info = (point_cloud.files_info or []) + get_point_cloud_info(
-            files
-        )
-
-        session.add(point_cloud)
-        session.commit()
-
-        _update_point_cloud_task(
-            session,
-            pointCloudId,
-            description="Running potree converter",
-            status=TaskStatus.RUNNING,
-        )
-        send_progress_update(
-            user,
-            celery_task_id,
-            "success",
-            "Running potree converter (for point cloud {})".format(pointCloudId),
-        )
-    try:
-        # use potree converter to convert las to web-friendly format
-        # this operation is memory-intensive and time-consuming.
-        convert_to_potree(pointCloudId)
-        with create_task_session() as session:
-            user = session.get(User, userId)
-            logger.info(
-                f"point cloud:{pointCloudId} conversion completed for user:{user.username} and files:{files}"
-            )
-            send_progress_update(
-                user,
-                celery_task_id,
-                "success",
-                "Completed potree converter (for point cloud {}).".format(pointCloudId),
-            )
-    except PointCloudConversionException as e:
-        error_description = e.message
-        _handle_point_cloud_conversion_error(
-            pointCloudId, userId, files, error_description
-        )
-    except Exception:
-        error_description = "Unknown error occurred"
-        _handle_point_cloud_conversion_error(
-            pointCloudId, userId, files, error_description
-        )
 
 
 @app.task(rate_limit="5/s")
