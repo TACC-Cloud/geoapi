@@ -538,9 +538,7 @@ def import_from_tapis_mock():
 
 @pytest.fixture(scope="function")
 def convert_to_potree_mock():
-    with patch(
-        "geoapi.tasks.point_cloud.convert_to_potree"
-    ) as mock_convert_to_potree:
+    with patch("geoapi.tasks.point_cloud.convert_to_potree") as mock_convert_to_potree:
 
         class FakeAsyncResult:
             id = "b53fdb0a-de1a-11e9-b641-0242c0a80004"
