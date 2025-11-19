@@ -1,6 +1,6 @@
 TAG := $(shell git log --format=%h -1)
-GEOAPI_IMAGE=taccaci/geoapi
-GEOAPI_WORKERS=taccaci/geoapi-workers
+GEOAPI_IMAGE=taccwma/geoapi
+GEOAPI_WORKERS=taccwma/geoapi-workers
 
 
 ####
