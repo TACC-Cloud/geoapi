@@ -27,6 +27,7 @@ class FeatureAssetModel(BaseModel):
     display_path: str | None = None
     current_system: str | None = None
     current_path: str | None = None
+    designsafe_project_id: str | None = None
     last_public_system_check: datetime | None = None
     is_on_public_system: bool | None = None
 
@@ -88,6 +89,7 @@ class ProjectDTO(SQLAlchemyDTO[Project]):
             "system_file",
             "system_id",
             "system_path",
+            "designsafe_project_id",
             "deletable",
         },
     )
@@ -191,6 +193,7 @@ class TileServerDTO(SQLAlchemyDTO[TileServer]):
             "original_path",
             "current_system",
             "current_path",
+            "designsafe_project_id",
             "is_on_public_system",
             "last_public_system_check",
         }

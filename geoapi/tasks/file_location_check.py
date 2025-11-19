@@ -19,6 +19,11 @@ from geoapi.utils.external_apis import TapisUtils, get_session, TapisListingErro
 from geoapi.log import logger
 from geoapi.tasks.utils import update_task_and_send_progress_update
 from geoapi.settings import settings
+from geoapi.custom.designsafe.utils import (
+    get_designsafe_project_id,
+    extract_project_uuid,
+    is_designsafe_project,
+)
 
 
 DESIGNSAFE_PUBLISHED_SYSTEM = "designsafe.storage.published"
@@ -26,18 +31,7 @@ PUBLIC_SYSTEMS = [
     DESIGNSAFE_PUBLISHED_SYSTEM,
     "designsafe.storage.community",
 ]
-
 BATCH_SIZE = 500  # Commit every 500 items
-
-
-def extract_project_uuid(system_id: str) -> str | None:
-    if system_id.startswith("project-"):
-        return system_id.removeprefix("project-")
-    return None
-
-
-def is_designsafe_project(system_id: str) -> bool:
-    return system_id.startswith("project-")
 
 
 def build_file_index_from_tapis(
@@ -266,6 +260,52 @@ def fix_and_backfill_feature_asset(
     logger.debug(f"Completed checking asset={asset.id}")
 
 
+def check_and_update_designsafe_project_id(
+    item: Union[FeatureAsset, TileServer],
+    session,
+    user,
+) -> None:
+    """
+    Check and update the designsafe_project_id for an item based on its current_system.
+    Uses module-level caching to minimize API calls to DesignSafe.
+
+    Args:
+        item: FeatureAsset or TileServer to update
+        session: Database session
+        user: User for API calls
+    """
+
+    if item.designsafe_project_id:
+        logger.debug("Nothing to do as item has designsafe_project_id")
+        return
+
+    # Check if we can derive PRJ from published projects path
+    if (
+        item.original_system == "designsafe.storage.published"
+        and item.original_path
+        and item.original_path.startswith("/published-data/PRJ-")
+    ):
+        parts = item.original_path.split("/")
+        item.designsafe_project_id = parts[2]  # PRJ-XXXX
+        return
+
+    # Determine which system to use
+    system_to_check = item.original_system or item.current_system
+
+    if not system_to_check:
+        logger.debug(f"No system to check for {type(item).__name__}={item.id}")
+        return
+
+    if not is_designsafe_project(system_to_check):
+        logger.debug(f"System {system_to_check} is not a DesignSafe project, skipping")
+        return
+
+    designsafe_project_id = get_designsafe_project_id(session, user, system_to_check)
+    if designsafe_project_id:
+        logger.debug(f"Setting item's designsafe_project_id to {designsafe_project_id}")
+        item.designsafe_project_id = designsafe_project_id
+
+
 def check_and_update_public_system(
     item: Union[FeatureAsset, TileServer],
     published_file_tree_cache: Dict,
@@ -423,6 +463,14 @@ def check_and_update_file_locations(user_id: int, project_id: int):
                 )
                 logger.info(f"Indexed {len(unpublished_project_file_index)} files")
 
+            if not project.designsafe_project_id:
+                designsafe_project_id = get_designsafe_project_id(
+                    database_session=session, user=user, system_id=project.system_id
+                )
+                if designsafe_project_id:
+                    project.designsafe_project_id = designsafe_project_id
+                    session.add(project)
+
             # Process each feature asset
             for i, asset in enumerate(feature_assets):
                 try:
@@ -443,6 +491,11 @@ def check_and_update_file_locations(user_id: int, project_id: int):
                         asset=asset,
                         project_system=project.system_id,
                         project_system_file_tree=unpublished_project_file_index,
+                    )
+
+                    # Check and update DesignSafe project ID
+                    check_and_update_designsafe_project_id(
+                        session=session, item=asset, user=user
                     )
 
                     # Check and update public system status

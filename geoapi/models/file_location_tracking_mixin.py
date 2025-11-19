@@ -39,6 +39,12 @@ class FileLocationTrackingMixin:
         comment="Current Tapis system (updated if file is published or moved)",
     )
 
+    designsafe_project_id = mapped_column(
+        String(),
+        nullable=True,
+        index=True,
+        comment="DesignSafe project ID, e.g. 'PRJ-1234', associated with current_system/original_system",
+    )
     is_on_public_system = mapped_column(
         Boolean(),
         nullable=True,
