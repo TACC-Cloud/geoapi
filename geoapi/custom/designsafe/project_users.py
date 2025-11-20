@@ -1,30 +1,5 @@
 from geoapi.exceptions import GetUsersForProjectNotSupported
-from geoapi.log import logger
-from geoapi.settings import settings
-from geoapi.models import User
-
-
-def get_project_data(database_session, user: User, system_id: str) -> dict:
-    """
-    Get project data for a certain system
-
-    :param database_session: db session
-    :param user: user to use when querying system from DesignSafe
-    :param system_id: str
-    :return: project data
-
-    """
-    from geoapi.utils.external_apis import ApiUtils
-
-    logger.debug(f"Getting project metadata for system:{system_id}")
-
-    uuid = system_id[len("project-") :]
-    client = ApiUtils(database_session, user, settings.DESIGNSAFE_URL)
-    resp = client.get(f"/api/projects/v2/{uuid}/")
-    resp.raise_for_status()
-
-    project = resp.json()["baseProject"]["value"]
-    return project
+from geoapi.custom.designsafe.utils import get_designsafe_project_data
 
 
 def _is_designsafe_project_guest_user(user):
@@ -52,7 +27,9 @@ def get_system_users(database_session, user, system_id: str):
             f"System:{system_id} is not a project so unable to get users"
         )
 
-    project = get_project_data(database_session, user, system_id)
+    project = get_designsafe_project_data(
+        database_session=database_session, user=user, system_id=system_id
+    )
 
     users = {}
     for u in project["users"]:

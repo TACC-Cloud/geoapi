@@ -388,7 +388,7 @@ def test_get_project_features_analytics_with_headers(
 
 
 def test_get_project_features_single_feature(
-    test_client, projects_fixture, feature_fixture, user1
+    test_client, projects_fixture, image_feature_fixture, user1
 ):
     resp = test_client.get(
         f"/projects/{projects_fixture.id}/features/",
@@ -396,7 +396,13 @@ def test_get_project_features_single_feature(
     )
     data = resp.json()
     assert resp.status_code == 200
-    assert len(data["features"]) != 0
+    assert len(data["features"]) == 1
+
+    asset = data["features"][0]["assets"][0]
+    assert asset["asset_type"] == "image"
+
+    assert asset["original_path"] == image_feature_fixture.assets[0].original_path
+    assert asset["original_system"] == image_feature_fixture.assets[0].original_system
 
 
 def test_get_project_features_single_feature_public_access(

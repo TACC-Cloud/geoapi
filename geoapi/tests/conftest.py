@@ -508,9 +508,18 @@ def feature_fixture(
 
 @pytest.fixture(scope="function")
 def image_feature_fixture(
-    image_file_fixture, db_session: "sqlalchemy_config.Session"
-) -> "Iterator[FeaturesService]":
-    yield FeaturesService.fromImage(db_session, 1, image_file_fixture, metadata={})
+    image_file_fixture,
+    db_session: "sqlalchemy_config.Session",
+    projects_fixture,
+) -> Feature:
+    yield FeaturesService.fromImage(
+        db_session,
+        projects_fixture.id,
+        image_file_fixture,
+        metadata={},
+        original_system="system",
+        original_path="original/path.jpg",
+    )
 
 
 @pytest.fixture(scope="function")
@@ -529,9 +538,7 @@ def import_from_tapis_mock():
 
 @pytest.fixture(scope="function")
 def convert_to_potree_mock():
-    with patch(
-        "geoapi.services.point_cloud.convert_to_potree"
-    ) as mock_convert_to_potree:
+    with patch("geoapi.tasks.point_cloud.convert_to_potree") as mock_convert_to_potree:
 
         class FakeAsyncResult:
             id = "b53fdb0a-de1a-11e9-b641-0242c0a80004"
@@ -556,18 +563,6 @@ def check_point_cloud_mock_missing_crs():
     ) as mock_check_point_cloud_mock:
         mock_check_point_cloud_mock.side_effect = InvalidCoordinateReferenceSystem()
         yield mock_check_point_cloud_mock
-
-
-@pytest.fixture(scope="function")
-def get_point_cloud_info_mock():
-    with patch(
-        "geoapi.services.point_cloud.get_point_cloud_info"
-    ) as mock_get_point_cloud_info:
-        mock_result = MagicMock()
-        mock_result.get.return_value = [{"name": "test.las"}]
-
-        mock_get_point_cloud_info.return_value = mock_result
-        yield mock_get_point_cloud_info
 
 
 @pytest.fixture(scope="function")

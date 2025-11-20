@@ -21,10 +21,11 @@ app = Celery(
 # Import task modules
 app.conf.imports = (
     "geoapi.tasks.raster",
-    "geoapi.tasks.lidar",
+    "geoapi.tasks.point_cloud",
     "geoapi.tasks.streetview",
     "geoapi.tasks.projects",
     "geoapi.tasks.external_data",
+    "geoapi.tasks.file_location_check",
 )
 
 # Define the queues
