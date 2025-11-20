@@ -13,7 +13,9 @@ def extract_project_uuid(system_id: str) -> str | None:
 
 
 def is_designsafe_project(system_id: str) -> bool:
-    return system_id.startswith("project-")
+    if system_id and system_id.startswith("project-"):
+        return True
+    return False
 
 
 def get_designsafe_project_data(database_session, user: User, system_id: str) -> dict:

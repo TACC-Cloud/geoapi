@@ -276,7 +276,9 @@ def check_and_update_designsafe_project_id(
     """
 
     if item.designsafe_project_id:
-        logger.debug(f"Nothing to do as item has designsafe_project_id:{item.designsafe_project_id}")
+        logger.debug(
+            f"Nothing to do as item has designsafe_project_id:{item.designsafe_project_id}"
+        )
         return
 
     # Check if we can derive PRJ from published projects path

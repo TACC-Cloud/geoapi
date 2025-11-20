@@ -13,6 +13,7 @@ class FileLocationTrackingMixin:
     - Last check timestamp: when accessibility was last verified
     - DesignSafe project id, e.g. 'PRJ-1234', associated with the system
     """
+
     original_system = mapped_column(
         String(),
         nullable=True,

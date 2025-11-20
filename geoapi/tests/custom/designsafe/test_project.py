@@ -20,7 +20,8 @@ def test_on_project_creation(
 
     metadata_url = settings.DESIGNSAFE_URL + f"/api/projects/v2/{designsafe_uuid}/"
     requests_mock.get(
-        metadata_url, json={"baseProject": {"value": {"hazmapperMaps": []}}}
+        metadata_url,
+        json={"baseProject": {"value": {"hazmapperMaps": [], "projectId": "PRJ-1234"}}},
     )
     requests_mock.post(metadata_url)
 
@@ -28,8 +29,8 @@ def test_on_project_creation(
 
     assert len(TileService.getTileServers(db_session, projectId=project.id)) == 2
 
-    assert len(requests_mock.request_history) == 3
-    update_metadata_request = requests_mock.request_history[2]
+    assert len(requests_mock.request_history) == 4
+    update_metadata_request = requests_mock.request_history[3]
     assert json.loads(update_metadata_request.text) == {
         "patchMetadata": {
             "hazmapperMaps": [
