@@ -276,7 +276,7 @@ def check_and_update_designsafe_project_id(
     """
 
     if item.designsafe_project_id:
-        logger.debug("Nothing to do as item has designsafe_project_id")
+        logger.debug(f"Nothing to do as item has designsafe_project_id:{item.designsafe_project_id}")
         return
 
     # Check if we can derive PRJ from published projects path
@@ -545,6 +545,11 @@ def check_and_update_file_locations(user_id: int, project_id: int):
 
                     # Backfill current_system/current_path if missing
                     backfill_current_location(tile_server)
+
+                    # Check and update DesignSafe project ID
+                    check_and_update_designsafe_project_id(
+                        session=session, item=tile_server, user=user
+                    )
 
                     # Check and update public system status
                     check_and_update_public_system(

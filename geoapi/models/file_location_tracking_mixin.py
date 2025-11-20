@@ -11,8 +11,8 @@ class FileLocationTrackingMixin:
     - Current location: where the file is now (may differ if published/moved)
     - Public accessibility: whether current location is publicly accessible
     - Last check timestamp: when accessibility was last verified
+    - DesignSafe project id, e.g. 'PRJ-1234', associated with the system
     """
-
     original_system = mapped_column(
         String(),
         nullable=True,
@@ -25,7 +25,6 @@ class FileLocationTrackingMixin:
         index=True,  # Adding index for TileServer too
         comment="Original file path on the source system",
     )
-
     current_path = mapped_column(
         String(),
         nullable=True,
@@ -38,7 +37,6 @@ class FileLocationTrackingMixin:
         index=True,
         comment="Current Tapis system (updated if file is published or moved)",
     )
-
     designsafe_project_id = mapped_column(
         String(),
         nullable=True,

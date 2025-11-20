@@ -220,6 +220,7 @@ class TileServerModel(BaseModel):
     current_system: str | None = None
     current_path: str | None = None
     is_on_public_system: bool | None = None
+    designsafe_project_id: str | None = None
     last_public_system_check: datetime | None = None
 
 
