@@ -36,7 +36,7 @@ class FileLocationSummary(BaseModel):
 
     total_features: int
     features_with_assets: int  # Checked
-    features_without_assets: int  # Not checked ✗
+    features_without_assets: int  # Not checked
     total_tile_servers: int
     internal_tile_servers: int  # Checked
     external_tile_servers: int  # Not checked
@@ -225,6 +225,9 @@ class ProjectFileLocationStatusController(Controller):
                 project_id=public_access_check.project_id,
                 started_at=public_access_check.started_at,
                 completed_at=public_access_check.completed_at,
+                total_files=public_access_check.total_files,
+                files_checked=public_access_check.files_checked,
+                files_failed=public_access_check.files_failed,
                 task=(
                     TaskModel.model_validate(public_access_check.task)
                     if public_access_check.task
