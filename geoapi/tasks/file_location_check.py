@@ -47,12 +47,16 @@ def build_file_index_from_tapis(
 
     try:
         listing = client.listing(system_id, path)
-    except TapisListingError:
-        # TODO handle 404 better as we might just be missing published project
-        logger.exception(
-            f"Unable to list {system_id}/{path}.  If 404, Project might not be published yet"
-        )
-        return file_index
+    except TapisListingError as e:
+        if system_id == DESIGNSAFE_PUBLISHED_SYSTEM and e.response.status_code == 404:
+            # Not found implies that the project has not been published yet
+            logger.debug(f"Unable to list {system_id}/{path} as not published yet")
+            return file_index
+        else:
+            logger.exception(
+                f"Unable to list {system_id}/{path}.  If 404, Project might not be published yet"
+            )
+            return file_index
 
     for item in listing:
         if item.type == "dir" and not str(item.path).endswith(".Trash"):
@@ -75,14 +79,27 @@ def build_file_index_from_tapis(
     return file_index
 
 
-def get_project_id(user, system_id):
-    """Get project id (PRJ-123) for system attached to system_id"""
+def get_project_id(user, system_id) -> str | None:
+    """Get project id (PRJ-123) for system attached to system_id.
+
+    Returns None if project is not found (e.g., deleted in pprd).
+    """
     designsafe_uuid = extract_project_uuid(system_id)
+
+    if designsafe_uuid is None:
+        return None
 
     client = get_session(user)
     response = client.get(
         settings.DESIGNSAFE_URL + f"/api/projects/v2/{designsafe_uuid}/"
     )
+
+    if response.status_code == 404 or response.status_code == 403:
+        logger.warning(
+            f"Project not found for system_id={system_id} (uuid={designsafe_uuid})"
+        )
+        return None
+
     response.raise_for_status()
     return response.json()["baseProject"]["value"]["projectId"]
 
@@ -102,6 +119,9 @@ def get_file_tree_for_published_project(
         return None
 
     designsafe_prj = get_project_id(user, system_id)
+
+    if designsafe_prj is None:
+        return None
 
     tapis_client = TapisUtils(session, user)
 
