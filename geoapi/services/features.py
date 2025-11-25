@@ -103,18 +103,26 @@ class FeaturesService:
 
     @staticmethod
     def addGeoJSON(
-        database_session, projectId: int, feature: Dict, original_path=None
+        database_session,
+        projectId: int,
+        feature: Dict,
+        original_system=None,
+        original_path=None,
     ) -> List[Feature]:
         """
         Add a GeoJSON feature to a project
         :param projectId: int
         :param feature: dict
+        :param original_system: str system of original file location [IGNORED]
+        :param original_path: str path of original file location [IGNORED]
         :return: Feature
         """
         try:
             data = geojson.loads(json.dumps(feature))
         except ValueError:
             raise InvalidGeoJSON
+
+        # TODO original_path, original_system are ignored but should not be ignored after WG-600
         features = []
         if data["type"] == "Feature":
             feat = Feature.fromGeoJSON(data)
@@ -169,7 +177,8 @@ class FeaturesService:
         projectId: int,
         fileObj: IO,
         metadata: Dict,
-        original_path=None,
+        original_system,  # ignored
+        original_path,  # ignored
     ) -> Feature:
 
         # TODO: Fiona should support reading from the file directly, this MemoryFile business
@@ -182,6 +191,8 @@ class FeaturesService:
                 feat.project_id = projectId
                 feat.the_geom = from_shape(geometries.convert_3D_2D(shp), srid=4326)
                 feat.properties = metadata or {}
+                # TODO original_path, original_system are ignored but should not be ignored after WG-600
+
                 database_session.add(feat)
                 database_session.commit()
                 return feat
@@ -192,6 +203,7 @@ class FeaturesService:
         projectId: int,
         fileObj: IO,
         metadata: Dict,
+        original_system: str = None,
         original_path: str = None,
     ) -> List[Feature]:
         """
@@ -204,7 +216,9 @@ class FeaturesService:
         """
         data = json.loads(fileObj.read())
         fileObj.close()
-        return FeaturesService.addGeoJSON(database_session, projectId, data)
+        return FeaturesService.addGeoJSON(
+            database_session, projectId, data, original_system, original_path
+        )
 
     @staticmethod
     def fromShapefile(
@@ -213,6 +227,7 @@ class FeaturesService:
         fileObj: IO,
         metadata: Dict,
         additional_files: List[IO],
+        original_system=None,
         original_path=None,
     ) -> Feature:
         """Create features from shapefile
@@ -232,6 +247,7 @@ class FeaturesService:
             feat.project_id = projectId
             feat.the_geom = from_shape(geometries.convert_3D_2D(geom), srid=4326)
             feat.properties = properties
+            # TODO original_path, original_system are ignored but should not be ignored after WG-600
             database_session.add(feat)
             features.append(feat)
 
@@ -244,7 +260,8 @@ class FeaturesService:
         projectId: int,
         fileObj: IO,
         additional_files: List[IO],
-        original_path: str = None,
+        original_system,
+        original_path,
     ) -> Feature:
         """
         Import RAPP questionnaire
@@ -256,10 +273,11 @@ class FeaturesService:
         :param projectId: int
         :param fileObj: questionnaire rq file
         :param additional_files: list of file objs
+        :param original_system: str path of original system location
         :param original_path: str path of original file location
         :return: Feature
         """
-        logger.info(f"Processing f{original_path}")
+        logger.info(f"Processing {original_system}/{original_path}")
         data = json.loads(fileObj.read())
 
         location = parse_rapid_geolocation(data.get("geolocation"))
@@ -283,7 +301,7 @@ class FeaturesService:
         # write all asset files (i.e jpgs)
         if additional_files is not None:
             logger.info(
-                f"Processing {len(additional_files)} assets for {original_path}"
+                f"Processing {len(additional_files)} assets for {original_system}/{original_path}"
             )
             for asset_file_obj in additional_files:
                 base_filename = os.path.basename(asset_file_obj.filename)
@@ -328,6 +346,7 @@ class FeaturesService:
         fa = FeatureAsset(
             uuid=asset_uuid,
             asset_type="questionnaire",
+            original_system=original_system,
             original_path=original_path,
             display_path=original_path,
             path=get_asset_relative_path(questionnaire_path),
@@ -345,7 +364,6 @@ class FeaturesService:
         projectId: int,
         fileObj: IO,
         metadata: Dict,
-        original_path: str = None,
     ) -> TileServer:
         """
 
@@ -410,6 +428,7 @@ class FeaturesService:
         projectId: int,
         fileObj: IO,
         metadata: Dict,
+        original_system: str = None,
         original_path: str = None,
         additional_files=None,
         location: GeoLocation = None,
@@ -422,6 +441,7 @@ class FeaturesService:
                     projectId,
                     fileObj,
                     metadata,
+                    original_system,
                     original_path,
                     location,
                 )
@@ -429,12 +449,17 @@ class FeaturesService:
         elif ext in features_util.GPX_FILE_EXTENSIONS:
             return [
                 FeaturesService.fromGPX(
-                    database_session, projectId, fileObj, metadata, original_path
+                    database_session,
+                    projectId,
+                    fileObj,
+                    metadata,
+                    original_system,
+                    original_path,
                 )
             ]
         elif ext in features_util.GEOJSON_FILE_EXTENSIONS:
             return FeaturesService.fromGeoJSON(
-                database_session, projectId, fileObj, {}, original_path
+                database_session, projectId, fileObj, {}, original_system, original_path
             )
         elif ext in features_util.SHAPEFILE_FILE_EXTENSIONS:
             return FeaturesService.fromShapefile(
@@ -443,15 +468,19 @@ class FeaturesService:
                 fileObj,
                 {},
                 additional_files,
+                original_system,
                 original_path,
             )
         elif ext in features_util.INI_FILE_EXTENSIONS:
-            return FeaturesService.fromINI(
-                database_session, projectId, fileObj, {}, original_path
-            )
+            return FeaturesService.fromINI(database_session, projectId, fileObj, {})
         elif ext in features_util.RAPP_QUESTIONNAIRE_FILE_EXTENSIONS:
             return FeaturesService.from_rapp_questionnaire(
-                database_session, projectId, fileObj, additional_files, original_path
+                database_session,
+                projectId,
+                fileObj,
+                additional_files,
+                original_system,
+                original_path,
             )
         else:
             raise ApiException(
@@ -464,6 +493,7 @@ class FeaturesService:
         projectId: int,
         fileObj: IO,
         metadata: Dict,
+        original_system: str = None,
         original_path: str = None,
         location: GeoLocation = None,
     ) -> Feature:
@@ -479,7 +509,7 @@ class FeaturesService:
         """
         try:
             logger.debug(
-                f"processing image {original_path} known_geolocation:{location} using_exif_geolocation:{location is None}"
+                f"processing image {original_system}/{original_path} known_geolocation:{location} using_exif_geolocation:{location is None}"
             )
             imdata = ImageService.processImage(
                 fileObj, exif_geolocation=location is None
@@ -500,6 +530,7 @@ class FeaturesService:
         fa = FeatureAsset(
             uuid=asset_uuid,
             asset_type="image",
+            original_system=original_system,
             original_path=original_path,
             display_path=original_path,
             path=get_asset_relative_path(asset_path),
@@ -529,6 +560,7 @@ class FeaturesService:
         projectId: int,
         featureId: int,
         fileObj: IO,
+        original_system: str = None,
         original_path: str = None,
     ) -> Feature:
         """
@@ -542,11 +574,17 @@ class FeaturesService:
         ext = fpath.suffix.lstrip(".").lower()
         if ext in features_util.IMAGE_FILE_EXTENSIONS:
             fa = FeaturesService.createImageFeatureAsset(
-                projectId, fileObj, original_path=original_path
+                projectId,
+                fileObj,
+                original_system=original_system,
+                original_path=original_path,
             )
         elif ext in features_util.VIDEO_FILE_EXTENSIONS:
             fa = FeaturesService.createVideoFeatureAsset(
-                projectId, fileObj, original_path=original_path
+                projectId,
+                fileObj,
+                original_system=original_system,
+                original_path=original_path,
             )
         else:
             raise ApiException("Invalid format for feature assets")
@@ -577,7 +615,12 @@ class FeaturesService:
         fileObj = client.getFile(systemId, path)
         fileObj.filename = pathlib.Path(path).name
         return FeaturesService.createFeatureAsset(
-            database_session, projectId, featureId, fileObj, original_path=path
+            database_session,
+            projectId,
+            featureId,
+            fileObj,
+            original_path=path,
+            original_system=systemId,
         )
 
     @staticmethod
@@ -596,7 +639,10 @@ class FeaturesService:
 
     @staticmethod
     def createImageFeatureAsset(
-        projectId: int, fileObj: IO, original_path: str = None
+        projectId: int,
+        fileObj: IO,
+        original_system: str = None,
+        original_path: str = None,
     ) -> FeatureAsset:
         asset_uuid = uuid.uuid4()
         imdata = ImageService.resizeImage(fileObj)
@@ -607,6 +653,7 @@ class FeaturesService:
         fa = FeatureAsset(
             uuid=asset_uuid,
             asset_type="image",
+            original_system=original_system,
             original_path=original_path,
             display_path=original_path,
             path=get_asset_relative_path(asset_path),
@@ -615,7 +662,7 @@ class FeaturesService:
 
     @staticmethod
     def createVideoFeatureAsset(
-        projectId: int, fileObj: IO, original_path: str = None
+        projectId: int, fileObj: IO, original_system: str, original_path: str = None
     ) -> FeatureAsset:
         """
 
@@ -638,6 +685,7 @@ class FeaturesService:
         os.remove(encoded_path)
         fa = FeatureAsset(
             uuid=asset_uuid,
+            original_system=original_system,
             original_path=original_path,
             display_path=original_path,
             path=get_asset_relative_path(save_path),

@@ -25,7 +25,7 @@ stop:
 
 .PHONY: restart-workers
 restart-workers:  ## Restart workers
-	docker compose -f devops/docker-compose.local.yml --env-file .env restart workers
+	docker compose -f devops/docker-compose.local.yml --env-file .env restart workers workers-heavy
 
 .PHONY: restart-nginx
 restart-nginx:  ## Restart nginx

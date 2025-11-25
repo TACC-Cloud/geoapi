@@ -1,8 +1,48 @@
 import requests
+
+import celery
+
 from geoapi.log import logger
 from geoapi.models import Task, TaskStatus, User
 from geoapi.settings import settings
 from geoapi.utils.client_backend import get_deployed_geoapi_url
+from geoapi.db import create_task_session
+
+
+class GeoAPITask(celery.Task):
+    """
+    Base Celery task for GeoAPI workflows.
+
+    This task provides a safety-net failure handler that updates the GeoAPI
+    Task database record when an unexpected exception escapes the task body.
+    """
+
+    abstract = True  # don't register this as a concrete Celery task
+
+    def on_failure(self, exc, task_id, args, kwargs, einfo):
+        logger.error(f"[Task Failure] {self.name} ({task_id}): {exc}")
+
+        # NOTE: If retryable tasks are introduced, handle celery.exceptions.Retry
+        # here so retries do not trigger FAILED status updates.
+
+        try:
+            with create_task_session() as session:
+                task = session.query(Task).filter(Task.process_id == task_id).first()
+
+                if not task:
+                    return
+
+                # Only mark FAILED if the task didn't explicitly set some other terminal state
+                if task.status != TaskStatus.FAILED:
+                    task.status = TaskStatus.FAILED
+                    task.last_message = str(exc)
+                    session.add(task)
+                    session.commit()
+
+        except Exception as error:
+            logger.exception(
+                f"[Task Failure] Error updating Task status for {task_id}: {error}"
+            )
 
 
 def send_progress_update(user: User, task_id: str, status: str, message: str) -> None:

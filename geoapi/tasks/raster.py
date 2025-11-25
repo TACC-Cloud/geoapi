@@ -208,7 +208,7 @@ def import_tile_servers_from_tapis(
             tile_options = get_cog_metadata(cog_path)
 
             # Extract renderOptions from tile_options (currently
-            # only prepoulated for single banded images)
+            # only prepopulated for single banded images)
             render_options = tile_options.pop("renderOptions", {})
 
             # Create TileServer pointing to TiTiler
@@ -223,6 +223,8 @@ def import_tile_servers_from_tapis(
                 attribution="",
                 original_system=tapis_file.system,
                 original_path=tapis_file.path,
+                current_system=tapis_file.system,
+                current_path=tapis_file.path,
                 tileOptions=tile_options,
                 uiOptions={
                     "zIndex": 0,  # frontend will readjust as needed

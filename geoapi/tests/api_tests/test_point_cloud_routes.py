@@ -78,8 +78,8 @@ def test_delete_point_cloud(
     assert point_cloud is None
 
 
-@patch("geoapi.tasks.external_data.import_point_clouds_from_tapis")
-def test_import_lidar_tapis(
+@patch("geoapi.tasks.point_cloud.import_point_clouds_from_tapis")
+def test_import_point_cloud_tapis(
     import_point_clouds_from_tapis_mock,
     test_client,
     projects_fixture,
@@ -96,7 +96,7 @@ def test_import_lidar_tapis(
     import_point_clouds_from_tapis_mock.delay.assert_called_once()
 
 
-def test_import_lidar_tapis_wrong_file(
+def test_import_point_cloud_tapis_wrong_file(
     test_client, projects_fixture, point_cloud_fixture, db_session
 ):
     u1 = db_session.get(User, 1)

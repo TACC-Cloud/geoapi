@@ -8,12 +8,15 @@ from geoapi.services.features import FeaturesService
 from geoapi.models import User, Feature, FeatureAsset, PointCloud
 from geoapi.utils.assets import get_project_asset_dir, get_asset_path
 from geoapi.celery_app import app
-from geoapi.tasks.external_data import import_point_clouds_from_tapis
+from geoapi.tasks.point_cloud import import_point_clouds_from_tapis
 
 POINT_CLOUD_DATA = {
     "description": "description",
     "conversion_parameters": "--scale 2.0",
 }
+
+# Mock all web hooks for these tests
+pytestmark = pytest.mark.usefixtures("mock_task_update_webhook")
 
 
 @pytest.fixture(scope="function")
@@ -55,7 +58,7 @@ def test_delete_point_cloud(projects_fixture, db_session):
 
 
 @pytest.mark.worker
-@patch("geoapi.tasks.external_data.TapisUtils")
+@patch("geoapi.tasks.point_cloud.TapisUtils")
 def test_delete_point_cloud_feature(
     MockTapisUtils,
     celery_task_always_eager,
