@@ -615,7 +615,12 @@ class FeaturesService:
         fileObj = client.getFile(systemId, path)
         fileObj.filename = pathlib.Path(path).name
         return FeaturesService.createFeatureAsset(
-            database_session, projectId, featureId, fileObj, original_path=path
+            database_session,
+            projectId,
+            featureId,
+            fileObj,
+            original_path=path,
+            original_system=systemId,
         )
 
     @staticmethod

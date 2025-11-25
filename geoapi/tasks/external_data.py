@@ -316,6 +316,7 @@ def import_files_recursively_from_path(
                             projectId,
                             feat.id,
                             tmp_file,
+                            original_system=systemId,
                             original_path=item_system_path,
                         )
                     except:  # noqa: E722

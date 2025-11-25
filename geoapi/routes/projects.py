@@ -434,7 +434,7 @@ class ProjectFeaturesCollectionResourceController(Controller):
             )
         )
         return FeaturesService.createFeatureAssetFromTapis(
-            db_session, u, project_id, feature_id, system_id, path
+            db_session, u, project_id, feature_id, systemId=system_id, path=path
         )
 
 
