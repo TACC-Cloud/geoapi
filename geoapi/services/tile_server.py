@@ -5,12 +5,33 @@ from geoapi.models import TileServer, Task, User
 from geoapi.schema.tapis import TapisFilePath
 from geoapi.log import logger
 from geoapi.utils.assets import delete_assets
+from sqlalchemy import inspect
+from sqlalchemy.dialects.postgresql import JSONB
 
 
 class TileService:
     """
-    Central location of all interactions with tile servers.
+     Central location of all interactions with tile servers.
+
+    This service handles CRUD operations for tile servers and provides
+     special handling for JSONB fields (tileOptions, uiOptions) to merge
+     updates rather than replace them entirely.
     """
+
+    @staticmethod
+    def _get_jsonb_fields(model_class):
+        """
+        Introspect a SQLAlchemy model to find all JSONB column names.
+
+        This is used to identify which fields should be merged on update
+        rather than replaced entirely. JSONB fields (for example:
+        . {'tileOptions', 'uiOptions'} ) often contain nested
+        configuration ( like "tileOptions: bounds [..." ) that should be
+        preserved across partial updates.
+
+        """
+        mapper = inspect(model_class)
+        return {col.key for col in mapper.columns if isinstance(col.type, JSONB)}
 
     @staticmethod
     def addTileServer(database_session, projectId: int, data: Dict):
@@ -52,21 +73,61 @@ class TileService:
 
     @staticmethod
     def updateTileServer(database_session, tileServerId: int, data: dict):
+        """
+        Update a single tile server with partial data.
+        """
         ts = database_session.get(TileServer, tileServerId)
+
+        # Identify JSONB columns that need special merge handling
+        jsonb_fields = TileService._get_jsonb_fields(TileServer)
+
         for key, value in data.items():
-            setattr(ts, key, value)
+            if key in jsonb_fields and value is not None:
+                # Merge JSONB fields to preserve existing nested keys
+                existing = getattr(ts, key) or {}
+                merged = {**existing, **value}
+                setattr(ts, key, merged)
+            else:
+                # Regular fields are replaced as usual
+                setattr(ts, key, value)
+
         database_session.commit()
         return ts
 
     @staticmethod
     def updateTileServers(database_session, dataList: List[dict]):
+        """
+        Update multiple tile servers in a single operation.
+
+        This is commonly used to reorder tile servers or batch update
+        multiple layers at once. Like updateTileServer, this implements
+        partial update semantics with JSONB field merging.
+
+        JSONB fields (tileOptions, uiOptions) are merged with existing
+        values rather than replaced, preserving nested configuration
+        that isn't explicitly included in the update.
+
+        """
+        # Identify JSONB columns that need special merge handling
+        jsonb_fields = TileService._get_jsonb_fields(TileServer)
         ret_list = []
+
         for tsv in dataList:
             ts = database_session.get(TileServer, int(tsv["id"]))
+
             for key, value in tsv.items():
-                setattr(ts, key, value)
+                if key in jsonb_fields and value is not None:
+                    # Merge JSONB fields to preserve existing nested keys
+                    existing = getattr(ts, key) or {}
+                    merged = {**existing, **value}
+                    setattr(ts, key, merged)
+                else:
+                    # Regular fields are replaced as usual
+                    setattr(ts, key, value)
+
             ret_list.append(ts)
             database_session.commit()
+
         return ret_list
 
     def import_tile_server_files(
