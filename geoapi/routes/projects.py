@@ -1145,7 +1145,12 @@ class ProjectTileServersResourceController(Controller):
     @put(
         tags=["projects"],
         operation_id="update_tile_servers",
-        description="Update metadata about tile servers",
+        description="""
+        Update metadata about multiple tile servers.
+        Only provided fields are modified (partial update semantics).
+        For nested objects (tileOptions, uiOptions), provided values are
+        merged with existing data rather than replacing them entirely.
+        """,
         guards=[project_permissions_guard],
         return_dto=TileServerDTO,
     )
@@ -1236,7 +1241,12 @@ class ProjectTileServerResourceController(Controller):
     @put(
         tags=["projects"],
         operation_id="update_tile_server",
-        description="Update metadata about a tile server",
+        description="""
+        Update metadata about a tile server.
+        Only provided fields are modified (partial update semantics).
+        For nested objects (tileOptions, uiOptions), provided values are
+        merged with existing data rather than replacing them entirely.
+        """,
         guards=[project_permissions_guard],
         return_dto=TileServerDTO,
     )

@@ -1,5 +1,7 @@
 # Changelog
 
+# DEPRECATED - no longer maintained
+
 ## [2.20] - 2025-04-15
 
 What's Changed

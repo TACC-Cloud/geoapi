@@ -80,6 +80,9 @@ def get_cog_metadata(path: Path) -> dict:
             f"Found: {srs[:100]}..."
         )
 
+    # Detect number of bands
+    band_count = len(info.get("bands", []))
+
     # Get bounds
     polygon = info.get("wgs84Extent", {}).get("coordinates", [[]])[0]
     lngs = [coord[0] for coord in polygon]
@@ -98,6 +101,7 @@ def get_cog_metadata(path: Path) -> dict:
     base_zoom = math.ceil(math.log2(156543.03 / pixel_size))
 
     logger.info(f"=== COG Analysis: {path.name} ===")
+    logger.info(f"Band count: {band_count}")
     logger.info(f"Base image size: {base_width}x{base_height}")
     logger.info(f"Base pixel size: {pixel_size:.6f} meters")
     logger.info(f"Calculated base zoom: {base_zoom}")
@@ -105,11 +109,20 @@ def get_cog_metadata(path: Path) -> dict:
     max_zoom = min(max(base_zoom, 0), 24)
     logger.info(f"maxZoom: {max_zoom}")
 
+    # Prepare default render options for single-band images
+    default_render_options = {}
+    if band_count == 1:
+        default_render_options["colormap_name"] = "terrain"
+        logger.info(
+            "Single-band image detected - setting default colormap to 'terrain'"
+        )
+
     return {
         "minZoom": 0,
         "maxZoom": max_zoom,
         "maxNativeZoom": max_zoom,
         "bounds": bounds,
+        "renderOptions": default_render_options,
     }
 
 
@@ -194,6 +207,10 @@ def import_tile_servers_from_tapis(
 
             tile_options = get_cog_metadata(cog_path)
 
+            # Extract renderOptions from tile_options (currently
+            # only prepoulated for single banded images)
+            render_options = tile_options.pop("renderOptions", {})
+
             # Create TileServer pointing to TiTiler
             ts = TileServer(
                 project_id=project_id,
@@ -213,6 +230,7 @@ def import_tile_servers_from_tapis(
                     "isActive": True,
                     "showInput": False,
                     "showDescription": False,
+                    "renderOptions": render_options,
                 },
             )
             session.add(ts)

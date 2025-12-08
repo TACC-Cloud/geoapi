@@ -86,6 +86,10 @@ def test_import_tile_server_singleband_success(
     assert tile_server.uiOptions["showInput"] is False
     assert tile_server.uiOptions["showDescription"] is False
 
+    # Verify renderOptions for single-band image
+    assert "renderOptions" in tile_server.uiOptions
+    assert tile_server.uiOptions["renderOptions"]["colormap_name"] == "terrain"
+
     # Verify task status was updated to COMPLETED
     db_session.refresh(task_fixture)
     assert task_fixture.status == TaskStatus.COMPLETED
@@ -118,6 +122,15 @@ def test_import_tile_server_rgb_success(
 
     tile_server = db_session.query(TileServer).first()
     assert tile_server is not None
+
+    assert tile_server.uiOptions["zIndex"] == 0
+    assert tile_server.uiOptions["opacity"] == 1
+    assert tile_server.uiOptions["isActive"] is True
+    assert tile_server.uiOptions["showInput"] is False
+    assert tile_server.uiOptions["showDescription"] is False
+
+    # Verify renderOptions is empty for multi-band images
+    assert tile_server.uiOptions.get("renderOptions", {}) == {}
 
     db_session.refresh(task_fixture)
     assert task_fixture.status == TaskStatus.COMPLETED
