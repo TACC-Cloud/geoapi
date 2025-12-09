@@ -33,6 +33,8 @@ class Project(Base):
     id = mapped_column(Integer, primary_key=True)
     uuid = mapped_column(UUID(as_uuid=True), default=uuid.uuid4, nullable=False)
     tenant_id = mapped_column(String, nullable=False)
+    # associated DesignSafe project
+    designsafe_project_id = mapped_column(String, nullable=True)
     # associated tapis system id
     system_id = mapped_column(String, nullable=True)
     # associated tapis system path

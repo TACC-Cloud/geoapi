@@ -1,5 +1,5 @@
 import pytest
-from geoapi.utils.lidar import getProj4, get_bounding_box_2d
+from geoapi.utils.point_cloud import getProj4, get_bounding_box_2d
 from geoapi.exceptions import InvalidCoordinateReferenceSystem
 
 
