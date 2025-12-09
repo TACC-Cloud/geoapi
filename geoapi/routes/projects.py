@@ -1,15 +1,12 @@
 import io
 from datetime import datetime
 from typing import TYPE_CHECKING, Annotated
-from pydantic import BaseModel, Field, ConfigDict
+from pydantic import BaseModel, Field
 from litestar import Controller, get, Request, post, delete, put, Router
 from litestar.datastructures import UploadFile
 from litestar.params import Body
 from litestar.enums import RequestEncodingType
 from litestar.exceptions import NotAuthorizedException
-from litestar.plugins.sqlalchemy import SQLAlchemyDTO
-from litestar.dto import DTOConfig
-from uuid import UUID
 from geojson_pydantic import Feature as GeoJSONFeature
 from geoapi.log import logger
 from geoapi.services.features import FeaturesService
@@ -17,7 +14,7 @@ from geoapi.services.streetview import StreetviewService
 from geoapi.services.point_cloud import PointCloudService
 from geoapi.services.projects import ProjectsService
 from geoapi.services.tile_server import TileService
-from geoapi.tasks import external_data, streetview
+from geoapi.tasks import external_data, streetview, point_cloud
 from geoapi.models import Task, Project, Feature, TileServer, Overlay, PointCloud, User
 from geoapi.utils.decorators import (
     project_permissions_allow_public_guard,
@@ -30,234 +27,31 @@ from geoapi.utils.decorators import (
     check_access_and_get_project,
     is_anonymous,
 )
-from geoapi.schema.tapis import TapisFilePath
+from geoapi.schema.projects import (
+    OkResponse,
+    FeatureModel,
+    FeatureReturnDTO,
+    FeatureCollectionModel,
+    ProjectPayloadModel,
+    ProjectUpdatePayloadModel,
+    ProjectDTO,
+    UserDTO,
+    UserPayloadModel,
+    TaskDTO,
+    PointCloudDTO,
+    PointCloudModel,
+    OverlayDTO,
+    TileServerDTO,
+    TileServerModel,
+    TapisFileUploadModel,
+    TapisFileImportModel,
+    AddOverlayBody,
+    TapisOverlayImportBody,
+)
+
 
 if TYPE_CHECKING:
     from sqlalchemy.orm import Session
-
-
-class OkResponse(BaseModel):
-    message: str = "accepted"
-
-
-class AssetModel(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
-
-    id: int | None = None
-    path: str | None = None
-    uuid: UUID | None = None
-    asset_type: str | None = None
-    original_path: str | None = None
-    original_name: str | None = None
-    display_path: str | None = None
-
-
-class FeatureModel(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
-
-    id: int
-    project_id: int
-    geometry: dict
-    properties: dict | None = None
-    styles: dict | None = None
-    assets: list[AssetModel] | None = None
-
-
-class FeatureReturnDTO(SQLAlchemyDTO[Feature]):
-    config = DTOConfig(
-        include={
-            "id",
-            "project_id",
-            "geometry",
-            "properties",
-            "styles",
-            "assets",
-        }
-    )
-
-
-class FeatureCollectionModel(BaseModel):
-    type: str = "FeatureCollection"
-    features: list[FeatureModel] | None = None
-
-
-class ProjectPayloadModel(BaseModel):
-    name: str
-    description: str
-    public: bool | None = None
-    system_file: str | None = None
-    system_id: str | None = None
-    system_path: str | None = None
-    watch_content: bool | None = None
-    watch_users: bool | None = None
-
-
-class ProjectUpdatePayloadModel(BaseModel):
-    name: str | None = None
-    description: str | None = None
-    public: bool | None = None
-
-
-class ProjectDTO(SQLAlchemyDTO[Project]):
-    config = DTOConfig(
-        include={
-            "id",
-            "uuid",
-            "name",
-            "description",
-            "public",
-            "system_file",
-            "system_id",
-            "system_path",
-            "deletable",
-        },
-    )
-
-
-class UserDTO(SQLAlchemyDTO[User]):
-    config = DTOConfig(
-        include={
-            "id",
-            "username",
-        }
-    )
-
-
-class UserModel(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
-
-    username: str
-    id: int | None = None
-
-
-class UserPayloadModel(UserModel):
-    admin: bool = False
-
-
-class TaskDTO(SQLAlchemyDTO[Task]):
-    model_config = ConfigDict(from_attributes=True)
-    config = DTOConfig(
-        # skipping process_id
-        include={
-            "id",
-            "status",
-            "description",
-            "project_id",
-            "latest_message",
-            "created",
-            "updated",
-        },
-    )
-
-
-class TaskModel(BaseModel):
-    id: int | None = None
-    status: str | None = None
-    description: str | None = None
-    project_id: int | None = None
-    latest_message: str | None = None
-    created: datetime | None = None
-    updated: datetime | None = None
-
-
-class PointCloudDTO(SQLAlchemyDTO[PointCloud]):
-    config = DTOConfig(
-        include={
-            "id",
-            "description",
-            "conversion_parameters",
-            "files_info",
-            "feature_id",
-            "task",
-            "project_id",
-        },
-    )
-
-
-class PointCloudModel(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
-
-    files_info: dict | None = None
-    id: int | None = None
-    description: str | None = None
-    conversion_parameters: str | None = None
-    feature_id: int | None = None
-    task: TaskModel = None
-    project_id: int | None = None
-
-
-class OverlayDTO(SQLAlchemyDTO[Overlay]):
-    config = DTOConfig(
-        exclude={"project"},
-    )
-
-
-class TileServerDTO(SQLAlchemyDTO[TileServer]):
-    config = DTOConfig(
-        include={
-            "id",
-            "name",
-            "type",
-            "kind",
-            "internal",
-            "uuid",
-            "url",
-            "attribution",
-            "tileOptions",
-            "uiOptions",
-        }
-    )
-
-
-class TileServerModel(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
-
-    id: int | None = None
-    name: str | None = None
-    type: str | None = None
-    kind: str | None = None
-    internal: bool | None = None
-    uuid: UUID | None = None
-    url: str | None = None
-    attribution: str | None = None
-    tileOptions: dict | None = None
-    uiOptions: dict | None = None
-
-
-# TODO: replace with TapisFilePath (and update client software)
-class TapisFileUploadModel(BaseModel):
-    system_id: str | None = None
-    path: str | None = None
-
-
-class TapisSaveFileModel(BaseModel):
-    system_id: str
-    path: str
-    file_name: str
-    observable: bool | None = None
-    watch_content: bool | None = None
-
-
-class TapisFileImportModel(BaseModel):
-    files: list[TapisFilePath]
-
-
-class OverlayPostBody(BaseModel):
-    label: str
-    minLon: float
-    minLat: float
-    maxLon: float
-    maxLat: float
-
-
-class AddOverlayBody(OverlayPostBody):
-    model_config = ConfigDict(arbitrary_types_allowed=True)
-    file: UploadFile
-
-
-class TapisOverlayImportBody(OverlayPostBody):
-    system_id: str
-    path: str
 
 
 class ProjectsListingController(Controller):
@@ -640,7 +434,7 @@ class ProjectFeaturesCollectionResourceController(Controller):
             )
         )
         return FeaturesService.createFeatureAssetFromTapis(
-            db_session, u, project_id, feature_id, system_id, path
+            db_session, u, project_id, feature_id, systemId=system_id, path=path
         )
 
 
@@ -672,7 +466,7 @@ class ProjectFeaturesFilsResourceController(Controller):
         file_obj = io.BytesIO(file_bytes)
         file_obj.filename = file.filename
         logger.info(
-            "Add feature to project:{} for user:{}: {}".format(
+            "Add feature (via http upload) to project:{} for user:{}: {}".format(
                 project_id, request.user.username, file.filename
             )
         )
@@ -1071,7 +865,7 @@ class ProjectPointCloudsFileImportResourceController(Controller):
         for file in files:
             PointCloudService.check_file_extension(file.path)
 
-        external_data.import_point_clouds_from_tapis.delay(
+        point_cloud.import_point_clouds_from_tapis.delay(
             u.id, [file.model_dump() for file in files], point_cloud_id
         )
         return OkResponse(message="Task created for point cloud import")
@@ -1284,6 +1078,11 @@ def feature_enc_hook(feature: Feature) -> FeatureModel:
     )
 
 
+from geoapi.routes.file_location_status import (  # noqa: E402
+    ProjectFileLocationStatusController,
+)
+
+
 projects_router = Router(
     path="/projects",
     route_handlers=[
@@ -1312,6 +1111,7 @@ projects_router = Router(
         ProjectTileServersResourceController,
         ProjectTileServersFilesImportResourceController,
         ProjectTileServerResourceController,
+        ProjectFileLocationStatusController,
     ],
     type_encoders={Feature: feature_enc_hook},
 )

@@ -3,6 +3,11 @@ from geoapi.log import logger
 from geoapi.settings import settings
 from geoapi.custom.designsafe.default_basemap_layers import default_layers
 from geoapi.models import User, Project
+from geoapi.custom.designsafe.utils import (
+    get_designsafe_project_data,
+    is_designsafe_project,
+    extract_project_uuid,
+)
 
 
 def on_project_creation(database_session, user: User, project: Project):
@@ -47,21 +52,43 @@ def on_project_creation(database_session, user: User, project: Project):
             f" project:{project.id} project_uuid:{project.uuid} "
         )
 
-    try:
-        # add metadata to DS projects (i.e. only when system_id starts with "project-"
-        if project.system_id.startswith("project-"):
+    if is_designsafe_project(project.system_id):
+        try:
+            logger.debug(
+                f"Determining related DS project id for user:{user.username}"
+                f" project:{project.id} project_uuid:{project.uuid} "
+            )
+
+            designsafe_project_data = get_designsafe_project_data(
+                database_session=database_session,
+                user=user,
+                system_id=project.system_id,
+            )
+            project.designsafe_project_id = designsafe_project_data["projectId"]
+
+            database_session.add(project)
+            database_session.commit()
+        except Exception:
+            logger.exception(
+                f"Problem determining related DS project id for user:{user.username}"
+                f" project:{project.id} project_uuid:{project.uuid} "
+            )
+
+        try:
             logger.debug(
                 f"Adding metadata for user:{user.username}"
                 f" project:{project.id} project_uuid:{project.uuid} "
             )
+
+            # add metadata to DS projects (i.e. only when system_id starts with "project-"
             update_designsafe_project_hazmapper_metadata(
                 user, project, add_project=True
             )
-    except Exception:
-        logger.exception(
-            f"Problem adding metadata for user:{user.username}"
-            f" project:{project.id} project_uuid:{project.uuid} "
-        )
+        except Exception:
+            logger.exception(
+                f"Problem adding metadata for user:{user.username}"
+                f" project:{project.id} project_uuid:{project.uuid} "
+            )
 
 
 def on_project_deletion(database_session, user: User, project: Project):
@@ -86,7 +113,7 @@ def on_project_deletion(database_session, user: User, project: Project):
 
     try:
         # remove metadata for DS projects (i.e. only when system_id starts with "project-"
-        if project.system_id.startswith("project-"):
+        if is_designsafe_project(project.system_id):
             logger.debug(
                 f"Removing metadata for user:{user.username}"
                 f" during deletion of project:{project.id} project_uuid:{project.uuid} "
@@ -104,7 +131,7 @@ def on_project_deletion(database_session, user: User, project: Project):
 def update_designsafe_project_hazmapper_metadata(
     user: User, project: Project, add_project: bool
 ):
-    designsafe_uuid = project.system_id[len("project-") :]
+    designsafe_uuid = extract_project_uuid(project.system_id)
 
     from geoapi.utils.external_apis import get_session
 

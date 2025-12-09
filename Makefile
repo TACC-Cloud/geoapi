@@ -1,6 +1,6 @@
 TAG := $(shell git log --format=%h -1)
-GEOAPI_IMAGE=taccaci/geoapi
-GEOAPI_WORKERS=taccaci/geoapi-workers
+GEOAPI_IMAGE=taccwma/geoapi
+GEOAPI_WORKERS=taccwma/geoapi-workers
 
 
 ####
@@ -25,7 +25,7 @@ stop:
 
 .PHONY: restart-workers
 restart-workers:  ## Restart workers
-	docker compose -f devops/docker-compose.local.yml --env-file .env restart workers
+	docker compose -f devops/docker-compose.local.yml --env-file .env restart workers workers-heavy
 
 .PHONY: restart-nginx
 restart-nginx:  ## Restart nginx

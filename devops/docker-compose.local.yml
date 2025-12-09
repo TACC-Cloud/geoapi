@@ -9,7 +9,7 @@ networks:
 
 x-worker-base: &worker-base  # Base fragment for worker services
   # See: https://docs.docker.com/reference/compose-file/fragments/
-  image: taccaci/geoapi-workers:local
+  image: taccwma/geoapi-workers:local
   volumes:
     - ../:/app
     - assets:/assets
@@ -110,7 +110,7 @@ services:
       - assets:/assets:ro
 
   backend:
-    image: taccaci/geoapi:local
+    image: taccwma/geoapi:local
     volumes:
       - ../:/app
       - assets:/assets
@@ -140,7 +140,7 @@ services:
         condition: service_completed_successfully
 
   assets-init:
-    image: taccaci/geoapi-workers:local
+    image: taccwma/geoapi-workers:local
     volumes:
       - assets:/assets
     command: ["sh", "-c", "chown -R 1100:1100 /assets && chmod -R 775 /assets"]
