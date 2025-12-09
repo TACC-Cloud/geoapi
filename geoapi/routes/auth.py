@@ -31,21 +31,8 @@ def get_auth_state():
     return secrets.token_hex(24)
 
 
-def get_adjusted_geoapi_url(request: Request):
-    # workaround while we test hazmapper.tmp
-    # TODO https://tacc-main.atlassian.net/browse/WG-513 remove this method and its uses
-    base_url = get_deployed_geoapi_url()
-
-    if "hazmapper-tmp" in request.url.hostname:
-        return base_url.replace("hazmapper", "hazmapper-tmp")
-
-    return base_url
-
-
 def get_client_id_key(request: Request):
     logger.info(f"Getting client id/key for host:{request.url.hostname}")
-    if "hazmapper-tmp" in request.url.hostname:
-        return settings.TMP_TAPIS_CLIENT_ID, settings.TMP_TAPIS_CLIENT_KEY
     return settings.TAPIS_CLIENT_ID, settings.TAPIS_CLIENT_KEY
 
 
@@ -66,12 +53,9 @@ class AuthController(Controller):
         # Assuming always DesignSafe tenant if using this route
         tenant_id = "DESIGNSAFE" if not settings.TESTING else "TEST"
         tapis_server = get_tapis_api_server(tenant_id)
-        # TODO use get_deployed_geoapi_url instead below;
-        #  see  https://tacc-main.atlassian.net/browse/WG-51
-        callback_host = get_adjusted_geoapi_url(request)
+        callback_host = get_deployed_geoapi_url()
         callback_url = f"{callback_host}/auth/callback"
 
-        # TODO Remove see https://tacc-main.atlassian.net/browse/WG-513
         client_id, client_key = get_client_id_key(request)
 
         authorization_url = (
@@ -126,12 +110,9 @@ class AuthController(Controller):
             tapis_server = get_tapis_api_server(
                 "DESIGNSAFE" if not settings.TESTING else "TEST"
             )
-            # TODO use get_deployed_geoapi_url instead below;
-            #  see  https://tacc-main.atlassian.net/browse/WG-51
-            callback_host = get_adjusted_geoapi_url(request)
+            callback_host = get_deployed_geoapi_url()
             callback_url = f"{callback_host}/auth/callback"
 
-            # TODO Remove see https://tacc-main.atlassian.net/browse/WG-513
             client_id, client_key = get_client_id_key(request)
             logger.info(f"Using client_id ({client_id}) and key for auth flow")
 
