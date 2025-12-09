@@ -9,6 +9,7 @@ from sqlalchemy.dialects.postgresql import UUID
 from geoalchemy2 import Geometry
 from geoalchemy2.shape import from_shape, to_shape
 from geoapi.db import Base
+from geoapi.models.file_location_tracking_mixin import FileLocationTrackingMixin
 from geoapi.utils import geometries
 
 
@@ -55,7 +56,7 @@ class Feature(Base):
         return shapely.geometry.mapping(to_shape(self.the_geom))
 
 
-class FeatureAsset(Base):
+class FeatureAsset(Base, FileLocationTrackingMixin):
     __tablename__ = "feature_assets"
     id = mapped_column(Integer, primary_key=True)
     feature_id = mapped_column(
@@ -64,9 +65,15 @@ class FeatureAsset(Base):
     uuid = mapped_column(UUID(as_uuid=True), default=uuid.uuid4, nullable=False)
     # system or project id or both
     path = mapped_column(String(), nullable=False)
-    original_name = mapped_column(String(), nullable=True)
-    original_path = mapped_column(String(), nullable=True, index=True)
     display_path = mapped_column(String(), nullable=True)
+
+    # Original source file location
+    original_name = mapped_column(String(), nullable=True)
+
+    # Note: original_system, original_path, current_system, current_path,
+    #       is_on_public_system, and last_public_system_check are inherited
+    #       from FileLocationTrackingMixin
+
     asset_type = mapped_column(String(), nullable=False, default="image")
     feature = relationship("Feature", overlaps="assets")
 

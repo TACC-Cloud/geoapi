@@ -8,11 +8,11 @@ from geoapi.models import Feature, ImportedFile, TaskStatus
 from geoapi.db import create_task_session
 from geoapi.tasks.external_data import (
     import_from_tapis,
-    import_point_clouds_from_tapis,
     refresh_projects_watch_content,
     refresh_projects_watch_users,
     get_additional_files,
 )
+from geoapi.tasks.point_cloud import import_point_clouds_from_tapis
 from geoapi.utils.features import is_member_of_rapp_project_folder
 from geoapi.utils.external_apis import TapisFileListing, SystemUser
 from geoapi.utils.assets import get_project_asset_dir, get_asset_path
@@ -341,7 +341,7 @@ def test_external_data_rapp_missing_geospatial_metadata(
 
 
 @pytest.mark.worker
-@patch("geoapi.tasks.external_data.TapisUtils")
+@patch("geoapi.tasks.point_cloud.TapisUtils")
 def test_import_point_clouds_from_tapis(
     MockTapisUtils,
     user1,
@@ -397,8 +397,8 @@ def test_import_point_clouds_from_tapis(
 
 
 @pytest.mark.worker
-@patch("geoapi.tasks.external_data.check_point_cloud")
-@patch("geoapi.tasks.external_data.TapisUtils")
+@patch("geoapi.tasks.point_cloud.check_point_cloud")
+@patch("geoapi.tasks.point_cloud.TapisUtils")
 def test_import_point_clouds_from_tapis_check_point_cloud_missing_crs(
     MockTapisUtils,
     check_mock,
@@ -432,8 +432,8 @@ def test_import_point_clouds_from_tapis_check_point_cloud_missing_crs(
 
 
 @pytest.mark.worker
-@patch("geoapi.tasks.external_data.check_point_cloud")
-@patch("geoapi.tasks.external_data.TapisUtils")
+@patch("geoapi.tasks.point_cloud.check_point_cloud")
+@patch("geoapi.tasks.point_cloud.TapisUtils")
 def test_import_point_clouds_from_tapis_check_point_cloud_unknown(
     MockTapisUtils,
     check_mock,
@@ -469,8 +469,8 @@ def test_import_point_clouds_from_tapis_check_point_cloud_unknown(
 
 
 @pytest.mark.worker
-@patch("geoapi.tasks.external_data.convert_to_potree")
-@patch("geoapi.tasks.external_data.TapisUtils")
+@patch("geoapi.tasks.point_cloud.convert_to_potree")
+@patch("geoapi.tasks.point_cloud.TapisUtils")
 def test_import_point_clouds_from_tapis_conversion_error(
     MockTapisUtils,
     convert_mock,
@@ -503,8 +503,8 @@ def test_import_point_clouds_from_tapis_conversion_error(
 
 
 @pytest.mark.worker
-@patch("geoapi.tasks.external_data.TapisUtils")
-@patch("geoapi.tasks.lidar.run_potree_converter")
+@patch("geoapi.tasks.point_cloud.TapisUtils")
+@patch("geoapi.tasks.point_cloud.run_potree_converter")
 def test_import_point_clouds_from_tapis_conversion_error_due_to_memory_sigterm(
     mock_run_potree_converter,
     MockTapisUtils,

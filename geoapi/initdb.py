@@ -3,7 +3,7 @@ from sqlalchemy import text, create_engine
 from alembic.config import Config
 from alembic import command
 from geoapi.settings import settings, UnitTestingConfig
-from geoapi.db import Base, engine, get_db_connection_string
+from geoapi.db import Base, get_db_connection_string
 
 
 def setup_local_dev_database():
@@ -47,8 +47,6 @@ def setup_unit_test_database():
     # Create all tables based on the models
     Base.metadata.create_all(test_engine)
     print("All tables created in the test database based on current models.")
-
-    return engine
 
 
 if __name__ == "__main__":
