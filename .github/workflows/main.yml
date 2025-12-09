@@ -109,8 +109,8 @@ jobs:
           username: ${{ secrets.DOCKER_USER  }}
       - name: Build worker image
         run: |
-          docker pull taccaci/geoapi-workers:latest
-          docker build --cache-from taccaci/geoapi-workers:latest -t taccaci/geoapi-workers:latest -f devops/Dockerfile.worker --target development .
+          docker pull taccwma/geoapi-workers:latest
+          docker build --cache-from taccwma/geoapi-workers:latest -t taccwma/geoapi-workers:latest -f devops/Dockerfile.worker --target development .
       - name: Run worker test
         run: |
-          docker run --network="host" -e APP_ENV='testing' -e DB_HOST='localhost'  taccaci/geoapi-workers:latest pytest -m "worker"
+          docker run --network="host" -e APP_ENV='testing' -e DB_HOST='localhost'  taccwma/geoapi-workers:latest pytest -m "worker"
