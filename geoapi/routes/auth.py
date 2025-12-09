@@ -33,8 +33,6 @@ def get_auth_state():
 
 def get_client_id_key(request: Request):
     logger.info(f"Getting client id/key for host:{request.url.hostname}")
-    if "hazmapper-tmp" in request.url.hostname:
-        return settings.TMP_TAPIS_CLIENT_ID, settings.TMP_TAPIS_CLIENT_KEY
     return settings.TAPIS_CLIENT_ID, settings.TAPIS_CLIENT_KEY
 
 
