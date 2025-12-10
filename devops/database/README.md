@@ -18,7 +18,7 @@ make start
 - Stop the container `make stop`,
 - Edit the config to re-enable line 7 in the `postgresql.conf file`: `#- ./postgresql.conf:/var/lib/postgresql/data/postgresql.conf:ro`,
 - Start the container again with `make start`,
-- It should now successfully run using the custom *.conf file.
+- It should now successfully run using the custom `postgresql.conf` file.
 
 To verify settings in the running container:
 - `ssh geoapi-database.*`                           # ssh into host
