@@ -13,7 +13,7 @@ make start
 - In the /geoapi/devops/database/docker-compose-database.yml file,
 - Before running the intital `make start` command,
 - Comment out line 7: `#- ./postgresql.conf:/var/lib/postgresql/data/postgresql.conf:ro`,
-- IF YOU DO NOT you will encounter read and permission errors on the `/database` folder on the host system.
+- IF YOU DO NOT you will encounter permission errors on the `/database` folder on the host system.
 - After the initial container deployment is running and the db is initialized,
 - Stop the container `make stop`,
 - Edit the config to re-enable line 7 in the `postgresql.conf file`: `#- ./postgresql.conf:/var/lib/postgresql/data/postgresql.conf:ro`,
