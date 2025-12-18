@@ -157,29 +157,33 @@ class UserService:
             RefreshTokenExpired: If the refresh token is expired.
             RefreshTokenError: If there is a problem refreshing the token.
         """
+        username = user.username
+        tenant_id = user.tenant_id
+        user_id = user.id
+
         if not user.has_unexpired_refresh_token():
             logger.error(
-                f"Unable to refresh token for user:{user.username} tenant:{user.tenant_id}"
+                f"Unable to refresh token for user:{username} tenant:{tenant_id}"
                 f" as refresh token is expired (or possibly never existed)"
             )
             raise RefreshTokenExpired
 
         try:
             logger.info(
-                f"Refreshing token for user:{user.username}" f" tenant:{user.tenant_id}"
+                f"Refreshing token for user:{username}" f" tenant:{tenant_id}"
             )
             with database_session.begin_nested():
                 # Acquire lock by selecting the auth row for update
                 # to ensure that only one process is refreshing the tokens at a time
                 locked_auth = (
                     database_session.query(Auth)
-                    .filter(Auth.user_id == user.id)
+                    .filter(Auth.user_id == user_id)
                     .with_for_update()
                     .one()
                 )
                 logger.info(
-                    f"Acquired auth for refreshing token for user:{user.username}"
-                    f" tenant:{user.tenant_id}"
+                    f"Acquired auth for refreshing token for user:{username}"
+                    f" tenant:{tenant_id}"
                 )
 
                 # Check if the tokens were updated while we were getting the `locked_auth`
@@ -192,29 +196,12 @@ class UserService:
                         locked_auth.access_token_expires_at - current_time
                     ) > buffer_time:
                         logger.info(
-                            f"No need to refresh token for user:{user.username}"
-                            f" tenant:{user.tenant_id} as it was recently refreshed"
+                            f"No need to refresh token for user:{username}"
+                            f" tenant:{tenant_id} as it was recently refreshed"
                         )
                         return
 
-                # Check if the tokens were updated while we were getting the `locked_auth`
-                if locked_auth.access_token_expires_at:
-                    current_time = datetime.utcnow().replace(tzinfo=None)
-                    # Make sure `locked_auth.access_token_expires_at` is naive datetime
-                    access_token_expires_at = (
-                        locked_auth.access_token_expires_at.replace(tzinfo=None)
-                    )
-                    buffer_time = timedelta(
-                        seconds=jwt_utils.BUFFER_TIME_WHEN_CHECKING_IF_ACCESS_TOKEN_WAS_RECENTLY_REFRESHED
-                    )
-                    if (access_token_expires_at - current_time) > buffer_time:
-                        logger.info(
-                            f"No need to refresh token for user:{user.username}"
-                            f" tenant:{user.tenant_id} as it was recently refreshed"
-                        )
-                        return
-
-                tapis_server = get_tapis_api_server(user.tenant_id)
+                tapis_server = get_tapis_api_server(tenant_id)
                 body = {
                     "refresh_token": locked_auth.refresh_token,
                 }
@@ -232,38 +219,42 @@ class UserService:
                     locked_auth.refresh_token_expires_at = data["refresh_token"][
                         "expires_at"
                     ]
-                    database_session.commit()
-                    logger.info(
-                        f"Finished refreshing token for user:{user.username}"
-                        f" tenant:{user.tenant_id}"
-                    )
-                    jwt_utils.send_refreshed_token_websocket(
-                        user,
-                        {
-                            "username": user.username,
-                            "authToken": {
-                                "token": locked_auth.access_token,
-                                "expiresAt": locked_auth.access_token_expires_at,
-                            },
-                        },
-                    )
                 else:
                     logger.error(
-                        f"Problem refreshing token for user:{user.username}"
-                        f" tenant:{user.tenant_id}: {response}, {response.text}"
+                        f"Problem refreshing token for user:{username}"
+                        f" tenant:{tenant_id}: {response}, {response.text}"
                     )
                     raise RefreshTokenError
+
+            database_session.commit()
+
+            logger.info(
+                f"Finished refreshing token for user:{username}"
+                f" tenant:{tenant_id}"
+            )
+
             # Re-query the updated user after the transaction is committed
             # (so that the caller has the latest state which includes the updated auth token)
             database_session.refresh(user)
+
+            jwt_utils.send_refreshed_token_websocket(
+                user,
+                {
+                    "username": username,
+                    "authToken": {
+                        "token": locked_auth.access_token,
+                        "expiresAt": locked_auth.access_token_expires_at,
+                    },
+                },
+            )
         except InvalidRequestError as ire:
             logger.exception(
-                f"Transaction error during token refresh for user:{user.username}: {str(ire)}"
+                f"Transaction error during token refresh for user:{username}: {str(ire)}"
             )
             raise RefreshTokenError from ire
         except Exception as e:
             database_session.rollback()
             logger.exception(
-                f"Error during token refresh for user:{user.username}: {str(e)}"
+                f"Error during token refresh for user:{username}: {str(e)}"
             )
             raise RefreshTokenError from e
