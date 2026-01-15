@@ -507,6 +507,13 @@ def refresh_projects_watch_users():
                 session.query(Project).filter(Project.watch_users.is_(true())).all()
             )
             for i, project in enumerate(projects_with_watch_users):
+                # Skip projects without a system_id
+                if project.system_id is None:
+                    logger.warning(
+                        f"Skipping project {project.id} - no system_id set"
+                    )
+                    continue
+
                 # TODO_TAPISv3 refactored into a command (used here and by ProjectService)
                 # or just put into its own method for clarity?
                 try:

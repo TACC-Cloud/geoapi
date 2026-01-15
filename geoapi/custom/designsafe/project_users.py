@@ -22,6 +22,11 @@ def get_system_users(database_session, user, system_id: str):
 
     from geoapi.utils.external_apis import SystemUser
 
+    if system_id is None:
+        raise GetUsersForProjectNotSupported(
+            "System ID is None, cannot get users"
+        )
+
     if not system_id.startswith("project-"):
         raise GetUsersForProjectNotSupported(
             f"System:{system_id} is not a project so unable to get users"

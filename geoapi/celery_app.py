@@ -1,6 +1,7 @@
 from celery import Celery
 from datetime import timedelta
 from geoapi.settings import settings
+import socket
 
 
 CELERY_CONNECTION_STRING = "amqp://{user}:{pwd}@{hostname}/{vhost}".format(
@@ -35,6 +36,24 @@ app.conf.task_queues = {
 }
 
 app.conf.task_default_queue = "default"
+
+# Redis result backend settings
+app.conf.result_backend_transport_options = {
+    'socket_keepalive': True,
+    'socket_keepalive_options': {
+        socket.TCP_KEEPIDLE: 60,
+        socket.TCP_KEEPCNT: 3,
+        socket.TCP_KEEPINTVL: 10,
+    },
+    'retry_on_timeout': True,
+}
+
+# RabbitMQ broker
+app.conf.broker_transport_options = {
+    'confirm_publish': True,
+    'socket_keepalive': True,
+}
+app.conf.broker_heartbeat = 60
 
 app.conf.beat_schedule = {
     "refresh_projects_watch_content": {

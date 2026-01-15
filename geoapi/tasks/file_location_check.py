@@ -31,8 +31,6 @@ PUBLIC_SYSTEMS = [
     DESIGNSAFE_PUBLISHED_SYSTEM,
     "designsafe.storage.community",
 ]
-BATCH_SIZE = 500  # Commit every 500 items
-
 
 def build_file_index_from_tapis(
     client, system_id: str, path: str = "/"
@@ -175,10 +173,11 @@ def determine_if_exists_in_tree(
         # Use first match - path only (no system)
         path = "/" + published_paths[0].lstrip("/")
 
-        logger.debug(f"Asset '{current_file_path}' found in system at: {path}")
+        logger.info(f"Asset '{current_file_path}' found in system at: {path}")
 
         return (True, path)
 
+    logger.info(f"Asset '{current_file_path}' not found in system at.")
     return (False, None)
 
 
@@ -284,22 +283,17 @@ def check_and_update_designsafe_project_id(
     item: Union[FeatureAsset, TileServer],
     session,
     user,
-) -> None:
+) -> bool:
     """
     Check and update the designsafe_project_id for an item based on its current_system.
-    Uses module-level caching to minimize API calls to DesignSafe.
 
-    Args:
-        item: FeatureAsset or TileServer to update
-        session: Database session
-        user: User for API calls
+    Returns True if designsafe_project_id was set, False if no change was made.
     """
-
     if item.designsafe_project_id:
         logger.debug(
             f"Nothing to do as item has designsafe_project_id:{item.designsafe_project_id}"
         )
-        return
+        return False
 
     # Check if we can derive PRJ from published projects path
     if (
@@ -309,23 +303,25 @@ def check_and_update_designsafe_project_id(
     ):
         parts = item.original_path.split("/")
         item.designsafe_project_id = parts[2]  # PRJ-XXXX
-        return
+        return True
 
     # Determine which system to use
     system_to_check = item.original_system or item.current_system
 
     if not system_to_check:
         logger.debug(f"No system to check for {type(item).__name__}={item.id}")
-        return
+        return False
 
     if not is_designsafe_project(system_to_check):
         logger.debug(f"System {system_to_check} is not a DesignSafe project, skipping")
-        return
+        return False
 
     designsafe_project_id = get_designsafe_project_id(session, user, system_to_check)
     if designsafe_project_id:
         logger.debug(f"Setting item's designsafe_project_id to {designsafe_project_id}")
         item.designsafe_project_id = designsafe_project_id
+        return True
+    return False
 
 
 def check_and_update_public_system(
@@ -333,10 +329,13 @@ def check_and_update_public_system(
     published_file_tree_cache: Dict,
     session,
     user,
-) -> None:
+) -> bool:
     """
     Check if item is on a public system and update location if found in published tree.
-    Works for both FeatureAsset and TileServer.
+
+    Updates is_on_public_system and, if found, current_system/current_path.
+
+    Returns True if location was updated, False otherwise.
     """
     item_type = type(item).__name__
     item_id = item.id
@@ -344,7 +343,7 @@ def check_and_update_public_system(
     # Skip if already on a public system
     if item.current_system in PUBLIC_SYSTEMS:
         item.is_on_public_system = True
-        return
+        return False
 
     if item.current_system is None:
         logger.warning(
@@ -352,7 +351,7 @@ def check_and_update_public_system(
             f" original_path={item.original_path} original_system={item.original_system}"
             f" current_path={item.current_path} current_system={item.current_system}"
         )
-        return
+        return False
 
     # Cache published file tree for this system if not already cached
     if item.current_system not in published_file_tree_cache:
@@ -373,6 +372,8 @@ def check_and_update_public_system(
     if exists and found_path:
         item.current_system = DESIGNSAFE_PUBLISHED_SYSTEM
         item.current_path = found_path
+        return True
+    return False
 
 
 @app.task(queue="default")
@@ -492,9 +493,10 @@ def check_and_update_file_locations(user_id: int, project_id: int):
                 if designsafe_project_id:
                     project.designsafe_project_id = designsafe_project_id
                     session.add(project)
+                    session.commit()
 
             # Process each feature asset
-            for i, asset in enumerate(feature_assets):
+            for asset in feature_assets:
                 try:
                     # Update timestamp
                     asset.last_public_system_check = datetime.now(timezone.utc)
@@ -526,14 +528,7 @@ def check_and_update_file_locations(user_id: int, project_id: int):
                     )
 
                     session.add(asset)
-
-                    # Commit in large batches for memory management (rare 5000+ item cases)
-                    if (i + 1) % BATCH_SIZE == 0:
-                        session.commit()
-                        session.expire_all()
-                        logger.info(
-                            f"Batch: {i + 1}/{total_checked} processed, {len(failed_items)} errors"
-                        )
+                    session.commit()
 
                 except Exception as e:
                     error_msg = str(e)[:100]
@@ -554,7 +549,7 @@ def check_and_update_file_locations(user_id: int, project_id: int):
                     continue
 
             # Process each tile server
-            for i, tile_server in enumerate(tile_servers, start=len(feature_assets)):
+            for tile_server in tile_servers:
                 try:
                     # Update timestamp
                     tile_server.last_public_system_check = datetime.now(timezone.utc)
@@ -579,14 +574,7 @@ def check_and_update_file_locations(user_id: int, project_id: int):
                     )
 
                     session.add(tile_server)
-
-                    # Commit in large batches
-                    if (i + 1) % BATCH_SIZE == 0:
-                        session.commit()
-                        session.expire_all()
-                        logger.info(
-                            f"Batch: {i + 1}/{total_checked} processed, {len(failed_items)} errors"
-                        )
+                    session.commit()
 
                 except Exception as e:
                     error_msg = str(e)[:100]
@@ -606,9 +594,6 @@ def check_and_update_file_locations(user_id: int, project_id: int):
 
                     session.rollback()
                     continue
-
-            # Final commit for remaining items
-            session.commit()
 
             # Update final counts
             file_location_check.completed_at = datetime.now(timezone.utc)
@@ -662,5 +647,5 @@ def check_and_update_file_locations(user_id: int, project_id: int):
                 logger.exception(f"Failed to mark task as failed: {cleanup_error}")
                 session.rollback()
                 # Re-raise to mark Celery task as failed as we can't even mark our internal
-                # task as faile
+                # task as failed
                 raise
