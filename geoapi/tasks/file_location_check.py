@@ -59,7 +59,10 @@ def build_file_index_from_tapis(
             return file_index
 
     for item in listing:
-        if item.type == "dir" and not str(item.path).endswith(".Trash"):
+        # Directories and symbolic_links are navigable. Symbolic links are used
+        # in older DesignSafe projects to map to the new structure.
+        is_directory = item.type in ("dir", "symbolic_link")
+        if is_directory and not str(item.path).endswith(".Trash"):
             # Recursively get files from subdirectory
             sub_index = build_file_index_from_tapis(client, system_id, item.path)
             # Merge subdirectory results
