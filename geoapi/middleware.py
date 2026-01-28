@@ -6,18 +6,42 @@ import msgspec
 from typing import TYPE_CHECKING, Any, Sequence
 from datetime import datetime, timezone
 from litestar.exceptions import ImproperlyConfiguredException, NotAuthorizedException
-from litestar.middleware import (
-    AuthenticationResult,
-)
+from litestar.config.csrf import CSRFConfig
+from litestar.middleware import AuthenticationResult, MiddlewareProtocol
 from litestar.security.session_auth import SessionAuthMiddleware
 from litestar.security.jwt import JWTAuthenticationMiddleware
 from litestar.security.jwt.token import Token, JWTDecodeOptions
-from litestar.types import Empty
+from litestar.types import Empty, Scope, Receive, Send, ASGIApp
 from geoapi.utils.users import is_anonymous
+
 
 if TYPE_CHECKING:
     from litestar.connection import ASGIConnection
     from typing_extensions import Self
+
+
+class GeoAPICSRFMiddleware(MiddlewareProtocol):
+    """CSRF middleware that skips JWT-authenticated requests.
+
+    JWT tokens in headers are not vulnerable to CSRF attacks since browsers
+    don't automatically send them (unlike cookies).
+    """
+
+    def __init__(self, app: ASGIApp, csrf_config: CSRFConfig) -> None:
+        from litestar.middleware.csrf import CSRFMiddleware
+
+        self.app = app
+        self.csrf_middleware = CSRFMiddleware(app=app, config=csrf_config)
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        if scope["type"] == "http":
+            headers = dict(scope.get("headers", []))
+            if b"x-tapis-token" in headers:
+                # Skip CSRF for JWT requests
+                await self.app(scope, receive, send)
+                return
+        # Apply CSRF protection for session-based requests
+        await self.csrf_middleware(scope, receive, send)
 
 
 class GeoAPISessionAuthMiddleware(SessionAuthMiddleware):

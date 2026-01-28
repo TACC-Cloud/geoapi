@@ -48,9 +48,11 @@ def test_start_public_status_refresh_already_running(
 
 
 def test_start_public_status_refresh_unauthorized(
-    test_client, projects_fixture, check_public_paths_mock
+    test_client_anonymous_session, projects_fixture, check_public_paths_mock
 ):
-    resp = test_client.post(f"/projects/{projects_fixture.id}/file-location-status/")
+    resp = test_client_anonymous_session.post(
+        f"/projects/{projects_fixture.id}/file-location-status/"
+    )
     assert resp.status_code == 401
     check_public_paths_mock.apply_async.assert_not_called()
 
