@@ -66,22 +66,33 @@ def build_file_index_from_tapis(
         # Directories and symbolic_links are navigable. Symbolic links are used
         # in older DesignSafe projects to map to the new structure.
         is_directory = item.type in ("dir", "symbolic_link")
-        if is_directory and not str(item.path).endswith(".Trash"):
-            # Recursively get files from subdirectory
-            sub_index = build_file_index_from_tapis(client, system_id, item.path)
-            # Merge subdirectory results
-            for filename, paths in sub_index.items():
-                if filename not in file_index:
-                    file_index[filename] = []
-                file_index[filename].extend(paths)
-        else:
+
+        if not is_directory:
             # It's a file - add to index (path only, no system)
             filename = os.path.basename(str(item.path))
-            file_path = str(item.path).lstrip("/")  # Just the path
+            file_path = str(item.path).lstrip("/")
 
             if filename not in file_index:
                 file_index[filename] = []
             file_index[filename].append(file_path)
+            continue
+
+        # Skip trash and known large directories
+        # TODO: note, this is a poor workaround but proper fix would be https://tacc-main.atlassian.net/browse/WG-607
+        skip_names = {"streetview", "google_tiles"}
+        skip_suffixes = {".maptekdb"}
+
+        if item.path.name.lower() in skip_names or item.path.suffix in skip_suffixes:
+            logger.info(f"Build file index: Skipping directory {item.path}")
+            continue
+
+        # Recursively get files from subdirectory
+        sub_index = build_file_index_from_tapis(client, system_id, item.path)
+        # Merge subdirectory results
+        for filename, paths in sub_index.items():
+            if filename not in file_index:
+                file_index[filename] = []
+            file_index[filename].extend(paths)
 
     return file_index
 
@@ -371,6 +382,7 @@ def check_and_update_public_system(
     published_project_file_tree = published_file_tree_cache.get(item.current_system, {})
 
     # Check if file exists in published tree
+    # TODO replace collecting file tree and checking with use of legacyPath. See https://tacc-main.atlassian.net/browse/WG-607
     exists, found_path = determine_if_exists_in_tree(
         published_project_file_tree, item.current_path
     )
