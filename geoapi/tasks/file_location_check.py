@@ -45,16 +45,20 @@ def build_file_index_from_tapis(
     """
     file_index = {}
 
+    logger.debug(f"Build file index: listing {system_id}/{path}")
+
     try:
         listing = client.listing(system_id, path)
     except TapisListingError as e:
         if system_id == DESIGNSAFE_PUBLISHED_SYSTEM and e.response.status_code == 404:
             # Not found implies that the project has not been published yet
-            logger.debug(f"Unable to list {system_id}/{path} as not published yet")
+            logger.debug(
+                f"Build file index: Unable to list {system_id}/{path} as not published yet"
+            )
             return file_index
         else:
             logger.exception(
-                f"Unable to list {system_id}/{path}.  If 404, Project might not be published yet"
+                f"Build file index: Unable to list {system_id}/{path}.  If 404, Project might not be published yet"
             )
             return file_index
 
@@ -447,7 +451,7 @@ def check_and_update_file_locations(user_id: int, project_id: int):
             session.commit()
 
             logger.info(
-                f"Starting check for project {project_id}: "
+                f"Starting check for project:{project_id}: "
                 f"{len(feature_assets)} feature assets + {len(tile_servers)} tile servers = {total_checked} items to check"
             )
 
@@ -463,6 +467,9 @@ def check_and_update_file_locations(user_id: int, project_id: int):
             # Build published file tree cache
             published_file_tree_cache = {}
             if project.system_id:
+                logger.info(
+                    f"Building published file tree for project:{project_id}, system_id:{project.system_id} "
+                )
                 published_file_tree_cache[project.system_id] = (
                     get_file_tree_for_published_project(
                         session, user, project.system_id
@@ -486,7 +493,9 @@ def check_and_update_file_locations(user_id: int, project_id: int):
                 unpublished_project_file_index = build_file_index_from_tapis(
                     tapis_client, system_id=project.system_id, path="//"
                 )
-                logger.info(f"Indexed {len(unpublished_project_file_index)} files")
+                logger.info(
+                    f"Indexed {len(unpublished_project_file_index)} files for project:{project_id}, system_id:{project.system_id} "
+                )
 
             if not project.designsafe_project_id:
                 designsafe_project_id = get_designsafe_project_id(
