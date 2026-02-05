@@ -6,6 +6,7 @@ and update their current_system/current_path accordingly.
 from datetime import datetime, timezone
 from typing import Dict, Union
 import os
+from pathlib import Path
 
 from sqlalchemy import and_, or_
 
@@ -87,12 +88,13 @@ def build_file_index_from_tapis(
         }
         skip_suffixes = {".maptekdb"}
 
-        if item.path.name.lower() in skip_names or item.path.suffix in skip_suffixes:
-            logger.info(f"Build file index: Skipping directory {item.path}")
+        item_path = Path(item.path)
+        if item_path.name.lower() in skip_names or item_path.suffix in skip_suffixes:
+            logger.info(f"Build file index: Skipping directory {item_path}")
             continue
 
         # Recursively get files from subdirectory
-        sub_index = build_file_index_from_tapis(client, system_id, item.path)
+        sub_index = build_file_index_from_tapis(client, system_id, str(item_path))
         # Merge subdirectory results
         for filename, paths in sub_index.items():
             if filename not in file_index:

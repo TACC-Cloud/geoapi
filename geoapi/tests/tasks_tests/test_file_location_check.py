@@ -1,5 +1,6 @@
 import pytest
 from unittest.mock import MagicMock, patch
+from pathlib import Path
 
 from geoapi.tasks.file_location_check import (
     check_and_update_file_locations,
@@ -152,10 +153,10 @@ def test_build_file_index_from_tapis():
     mock_client = MagicMock()
 
     # Create mock file items
-    file1 = MagicMock(type="file", path="/dir1/file1.jpg")
-    file2 = MagicMock(type="file", path="/dir1/file2.jpg")
-    file3 = MagicMock(type="file", path="/dir2/file1.jpg")  # Duplicate filename
-    dir1 = MagicMock(type="dir", path="/dir1")
+    file1 = MagicMock(type="file", path=Path("/dir1/file1.jpg"))
+    file2 = MagicMock(type="file", path=Path("/dir1/file2.jpg"))
+    file3 = MagicMock(type="file", path=Path("/dir2/file1.jpg"))  # Duplicate filename
+    dir1 = MagicMock(type="dir", path=Path("/dir1"))
 
     mock_client.listing.side_effect = [
         [file1, file2, dir1],  # Root listing
