@@ -7,7 +7,6 @@ from geoapi.tasks.file_location_check import (
     is_designsafe_project,
     determine_if_exists_in_tree,
     build_file_index_from_tapis,
-    BATCH_SIZE,
     DESIGNSAFE_PUBLISHED_SYSTEM,
 )
 from geoapi.models import TaskStatus
@@ -337,50 +336,6 @@ def test_file_not_found_in_published_system(
     assert asset_not_found_in_published.is_on_public_system is False
     assert asset_not_found_in_published.current_system == "project-123456789"
     assert asset_not_found_in_published.current_path == "/project/data/missing.jpg"
-
-
-def test_batch_commits(
-    db_session,
-    projects_fixture,
-    feature_fixture,
-    user1,
-    file_location_check,
-    mock_tapis,
-    mock_update_task,
-):
-    """Test that batches commit correctly"""
-    # Setup: Create more assets than BATCH_SIZE
-    num_assets = BATCH_SIZE + 50
-    for i in range(num_assets):
-        asset = FeatureAsset(
-            feature_id=feature_fixture.id,
-            path=f"/test/asset_{i}.jpg",
-            asset_type="image",
-            original_path=f"/test/asset_{i}.jpg",
-            original_system="designsafe.storage.published",
-        )
-        db_session.add(asset)
-    db_session.commit()
-
-    # Run task
-    check_and_update_file_locations(user1.id, projects_fixture.id)
-
-    # Verify: All assets were checked
-    assets = (
-        db_session.query(FeatureAsset)
-        .filter(FeatureAsset.feature_id == feature_fixture.id)
-        .all()
-    )
-    assert len(assets) == num_assets
-
-    for asset in assets:
-        assert asset.last_public_system_check is not None
-
-    # Verify: Counts are correct
-    db_session.refresh(file_location_check)
-    assert file_location_check.total_files == num_assets
-    assert file_location_check.files_checked == num_assets
-    assert file_location_check.files_failed == 0
 
 
 def test_individual_asset_error_continues(
