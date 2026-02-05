@@ -78,7 +78,13 @@ def build_file_index_from_tapis(
 
         # Skip trash and known large directories
         # TODO: note, this is a poor workaround but proper fix would be https://tacc-main.atlassian.net/browse/WG-607
-        skip_names = {"streetview", "google_tiles", "Pix4DMatic", "1_raw", "2_processing"}
+        skip_names = {
+            "streetview",
+            "google_tiles",
+            "Pix4DMatic",
+            "1_raw",
+            "2_processing",
+        }
         skip_suffixes = {".maptekdb"}
 
         if item.path.name.lower() in skip_names or item.path.suffix in skip_suffixes:
