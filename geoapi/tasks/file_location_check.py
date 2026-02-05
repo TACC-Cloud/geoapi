@@ -31,7 +31,6 @@ PUBLIC_SYSTEMS = [
     DESIGNSAFE_PUBLISHED_SYSTEM,
     "designsafe.storage.community",
 ]
-BATCH_SIZE = 500  # Commit every 500 items
 
 
 def build_file_index_from_tapis(
@@ -79,7 +78,7 @@ def build_file_index_from_tapis(
 
         # Skip trash and known large directories
         # TODO: note, this is a poor workaround but proper fix would be https://tacc-main.atlassian.net/browse/WG-607
-        skip_names = {"streetview", "google_tiles"}
+        skip_names = {"streetview", "google_tiles", "Pix4DMatic", "1_raw", "2_processing"}
         skip_suffixes = {".maptekdb"}
 
         if item.path.name.lower() in skip_names or item.path.suffix in skip_suffixes:
@@ -516,6 +515,7 @@ def check_and_update_file_locations(user_id: int, project_id: int):
                 if designsafe_project_id:
                     project.designsafe_project_id = designsafe_project_id
                     session.add(project)
+                    session.commit()
 
             # Process each feature asset
             for i, asset in enumerate(feature_assets):
@@ -550,14 +550,7 @@ def check_and_update_file_locations(user_id: int, project_id: int):
                     )
 
                     session.add(asset)
-
-                    # Commit in large batches for memory management (rare 5000+ item cases)
-                    if (i + 1) % BATCH_SIZE == 0:
-                        session.commit()
-                        session.expire_all()
-                        logger.info(
-                            f"Batch: {i + 1}/{total_checked} processed, {len(failed_items)} errors"
-                        )
+                    session.commit()
 
                 except Exception as e:
                     error_msg = str(e)[:100]
@@ -578,7 +571,7 @@ def check_and_update_file_locations(user_id: int, project_id: int):
                     continue
 
             # Process each tile server
-            for i, tile_server in enumerate(tile_servers, start=len(feature_assets)):
+            for tile_server in tile_servers:
                 try:
                     # Update timestamp
                     tile_server.last_public_system_check = datetime.now(timezone.utc)
@@ -603,14 +596,7 @@ def check_and_update_file_locations(user_id: int, project_id: int):
                     )
 
                     session.add(tile_server)
-
-                    # Commit in large batches
-                    if (i + 1) % BATCH_SIZE == 0:
-                        session.commit()
-                        session.expire_all()
-                        logger.info(
-                            f"Batch: {i + 1}/{total_checked} processed, {len(failed_items)} errors"
-                        )
+                    session.commit()
 
                 except Exception as e:
                     error_msg = str(e)[:100]
@@ -630,9 +616,6 @@ def check_and_update_file_locations(user_id: int, project_id: int):
 
                     session.rollback()
                     continue
-
-            # Final commit for remaining items
-            session.commit()
 
             # Update final counts
             file_location_check.completed_at = datetime.now(timezone.utc)
