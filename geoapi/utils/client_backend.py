@@ -70,6 +70,10 @@ def get_deployed_geoapi_url():
         "staging": "https://hazmapper.tacc.utexas.edu/geoapi-staging",
         "dev": "https://hazmapper.tacc.utexas.edu/geoapi-dev",
         "testing": "http://test:8888",
+        # Next 3 entries are for proxmox-migration. Remove when completed. https://tacc-main.atlassian.net/browse/WG-615
+        "production-tmp": "https://hazmapper.tacc.utexas.edu/geoapi-tmp",
+        "staging-tmp": "https://hazmapper.tacc.utexas.edu/geoapi-staging-tmp",
+        "dev-tmp": "https://hazmapper.tacc.utexas.edu/geoapi-dev-tmp",
     }
     if settings.APP_ENV in geoapi_urls:
         return geoapi_urls[settings.APP_ENV]
