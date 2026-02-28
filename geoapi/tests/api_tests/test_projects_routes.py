@@ -226,8 +226,10 @@ def test_delete_project_not_admin_or_creator(
     assert resp.status_code == 403
 
 
-def test_delete_unauthorized_guest(test_client, projects_fixture, db_session):
-    resp = test_client.delete(f"/projects/{projects_fixture.id}/")
+def test_delete_unauthorized_guest(
+    test_client_anonymous_session, projects_fixture, db_session
+):
+    resp = test_client_anonymous_session.delete(f"/projects/{projects_fixture.id}/")
     assert resp.status_code == 401
     proj = db_session.get(Project, 1)
     assert proj is not None
@@ -259,8 +261,8 @@ def test_add_user_unauthorized(test_client, projects_fixture, user2):
     assert resp.status_code == 403
 
 
-def test_add_user_unauthorized_guest(test_client, projects_fixture):
-    resp = test_client.post(
+def test_add_user_unauthorized_guest(test_client_anonymous_session, projects_fixture):
+    resp = test_client_anonymous_session.post(
         f"/projects/{projects_fixture.id}/users/",
         json={"username": "newUser"},
     )
@@ -496,9 +498,13 @@ def test_update_project(test_client, projects_fixture, user1, db_session):
     assert proj.public
 
 
-def test_update_project_unauthorized_guest(test_client, public_projects_fixture):
+def test_update_project_unauthorized_guest(
+    test_client_anonymous_session, public_projects_fixture
+):
     data = {"name": "Renamed Project", "description": "New Description", "public": True}
-    resp = test_client.put(f"/projects/{public_projects_fixture.id}/", json=data)
+    resp = test_client_anonymous_session.put(
+        f"/projects/{public_projects_fixture.id}/", json=data
+    )
     assert resp.status_code == 401
     assert resp.json()["detail"] == "Must be logged in to access project"
 
@@ -562,7 +568,7 @@ def test_create_project_with_watch_content_watch_users(
     assert proj.name == "Project name"
 
 
-def test_create_project_unauthorized(test_client):
+def test_create_project_unauthorized(test_client_anonymous_session):
     data = {
         "name": "Project name",
         "description": "Project description",
@@ -573,7 +579,7 @@ def test_create_project_unauthorized(test_client):
         "watch_content": False,
     }
 
-    resp = test_client.post("/projects/", json=data)
+    resp = test_client_anonymous_session.post("/projects/", json=data)
 
     assert resp.status_code == 401
 

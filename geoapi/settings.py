@@ -77,6 +77,8 @@ class UnitTestingConfig(LocalDevelopmentConfig):
 APP_ENV = os.environ.get("APP_ENV", "").lower()
 if APP_ENV == "production" or APP_ENV == "staging" or APP_ENV == "dev":
     settings = DeployedConfig
+if APP_ENV.endswith("-tmp"):  # drop after -tmp migration
+    settings = DeployedConfig
 elif APP_ENV == "testing":
     settings = UnitTestingConfig
 elif APP_ENV == "local":

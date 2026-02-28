@@ -6,6 +6,7 @@ and update their current_system/current_path accordingly.
 from datetime import datetime, timezone
 from typing import Dict, Union
 import os
+from pathlib import Path
 
 from sqlalchemy import and_, or_
 
@@ -31,7 +32,6 @@ PUBLIC_SYSTEMS = [
     DESIGNSAFE_PUBLISHED_SYSTEM,
     "designsafe.storage.community",
 ]
-BATCH_SIZE = 500  # Commit every 500 items
 
 
 def build_file_index_from_tapis(
@@ -45,36 +45,61 @@ def build_file_index_from_tapis(
     """
     file_index = {}
 
+    logger.debug(f"Build file index: listing {system_id}/{path}")
+
     try:
         listing = client.listing(system_id, path)
     except TapisListingError as e:
         if system_id == DESIGNSAFE_PUBLISHED_SYSTEM and e.response.status_code == 404:
             # Not found implies that the project has not been published yet
-            logger.debug(f"Unable to list {system_id}/{path} as not published yet")
+            logger.debug(
+                f"Build file index: Unable to list {system_id}/{path} as not published yet"
+            )
             return file_index
         else:
             logger.exception(
-                f"Unable to list {system_id}/{path}.  If 404, Project might not be published yet"
+                f"Build file index: Unable to list {system_id}/{path}.  If 404, Project might not be published yet"
             )
             return file_index
 
     for item in listing:
-        if item.type == "dir" and not str(item.path).endswith(".Trash"):
-            # Recursively get files from subdirectory
-            sub_index = build_file_index_from_tapis(client, system_id, item.path)
-            # Merge subdirectory results
-            for filename, paths in sub_index.items():
-                if filename not in file_index:
-                    file_index[filename] = []
-                file_index[filename].extend(paths)
-        else:
+        # Directories and symbolic_links are navigable. Symbolic links are used
+        # in older DesignSafe projects to map to the new structure.
+        is_directory = item.type in ("dir", "symbolic_link")
+
+        if not is_directory:
             # It's a file - add to index (path only, no system)
             filename = os.path.basename(str(item.path))
-            file_path = str(item.path).lstrip("/")  # Just the path
+            file_path = str(item.path).lstrip("/")
 
             if filename not in file_index:
                 file_index[filename] = []
             file_index[filename].append(file_path)
+            continue
+
+        # Skip trash and known large directories
+        # TODO: note, this is a poor workaround but proper fix would be https://tacc-main.atlassian.net/browse/WG-607
+        skip_names = {
+            "streetview",
+            "google_tiles",
+            "Pix4DMatic",
+            "1_raw",
+            "2_processing",
+        }
+        skip_suffixes = {".maptekdb"}
+
+        item_path = Path(item.path)
+        if item_path.name.lower() in skip_names or item_path.suffix in skip_suffixes:
+            logger.info(f"Build file index: Skipping directory {item_path}")
+            continue
+
+        # Recursively get files from subdirectory
+        sub_index = build_file_index_from_tapis(client, system_id, str(item_path))
+        # Merge subdirectory results
+        for filename, paths in sub_index.items():
+            if filename not in file_index:
+                file_index[filename] = []
+            file_index[filename].extend(paths)
 
     return file_index
 
@@ -364,6 +389,7 @@ def check_and_update_public_system(
     published_project_file_tree = published_file_tree_cache.get(item.current_system, {})
 
     # Check if file exists in published tree
+    # TODO replace collecting file tree and checking with use of legacyPath. See https://tacc-main.atlassian.net/browse/WG-607
     exists, found_path = determine_if_exists_in_tree(
         published_project_file_tree, item.current_path
     )
@@ -444,7 +470,7 @@ def check_and_update_file_locations(user_id: int, project_id: int):
             session.commit()
 
             logger.info(
-                f"Starting check for project {project_id}: "
+                f"Starting check for project:{project_id}: "
                 f"{len(feature_assets)} feature assets + {len(tile_servers)} tile servers = {total_checked} items to check"
             )
 
@@ -460,6 +486,9 @@ def check_and_update_file_locations(user_id: int, project_id: int):
             # Build published file tree cache
             published_file_tree_cache = {}
             if project.system_id:
+                logger.info(
+                    f"Building published file tree for project:{project_id}, system_id:{project.system_id} "
+                )
                 published_file_tree_cache[project.system_id] = (
                     get_file_tree_for_published_project(
                         session, user, project.system_id
@@ -483,7 +512,9 @@ def check_and_update_file_locations(user_id: int, project_id: int):
                 unpublished_project_file_index = build_file_index_from_tapis(
                     tapis_client, system_id=project.system_id, path="//"
                 )
-                logger.info(f"Indexed {len(unpublished_project_file_index)} files")
+                logger.info(
+                    f"Indexed {len(unpublished_project_file_index)} files for project:{project_id}, system_id:{project.system_id} "
+                )
 
             if not project.designsafe_project_id:
                 designsafe_project_id = get_designsafe_project_id(
@@ -492,6 +523,7 @@ def check_and_update_file_locations(user_id: int, project_id: int):
                 if designsafe_project_id:
                     project.designsafe_project_id = designsafe_project_id
                     session.add(project)
+                    session.commit()
 
             # Process each feature asset
             for i, asset in enumerate(feature_assets):
@@ -526,14 +558,7 @@ def check_and_update_file_locations(user_id: int, project_id: int):
                     )
 
                     session.add(asset)
-
-                    # Commit in large batches for memory management (rare 5000+ item cases)
-                    if (i + 1) % BATCH_SIZE == 0:
-                        session.commit()
-                        session.expire_all()
-                        logger.info(
-                            f"Batch: {i + 1}/{total_checked} processed, {len(failed_items)} errors"
-                        )
+                    session.commit()
 
                 except Exception as e:
                     error_msg = str(e)[:100]
@@ -554,7 +579,7 @@ def check_and_update_file_locations(user_id: int, project_id: int):
                     continue
 
             # Process each tile server
-            for i, tile_server in enumerate(tile_servers, start=len(feature_assets)):
+            for tile_server in tile_servers:
                 try:
                     # Update timestamp
                     tile_server.last_public_system_check = datetime.now(timezone.utc)
@@ -579,14 +604,7 @@ def check_and_update_file_locations(user_id: int, project_id: int):
                     )
 
                     session.add(tile_server)
-
-                    # Commit in large batches
-                    if (i + 1) % BATCH_SIZE == 0:
-                        session.commit()
-                        session.expire_all()
-                        logger.info(
-                            f"Batch: {i + 1}/{total_checked} processed, {len(failed_items)} errors"
-                        )
+                    session.commit()
 
                 except Exception as e:
                     error_msg = str(e)[:100]
@@ -606,9 +624,6 @@ def check_and_update_file_locations(user_id: int, project_id: int):
 
                     session.rollback()
                     continue
-
-            # Final commit for remaining items
-            session.commit()
 
             # Update final counts
             file_location_check.completed_at = datetime.now(timezone.utc)

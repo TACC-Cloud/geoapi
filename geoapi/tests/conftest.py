@@ -30,7 +30,7 @@ from geoapi.utils.external_apis import TapisFileListing, SystemUser
 from geoapi.utils.tenants import get_tapis_api_server
 from geoapi.utils.jwt_utils import create_token_expiry_hours_from_now
 from geoapi.exceptions import InvalidCoordinateReferenceSystem
-
+from geoapi import settings
 
 if TYPE_CHECKING:
     from litestar import Litestar
@@ -61,8 +61,27 @@ def db_session(db_engine, create_tables) -> "Iterator[sqlalchemy_config.Session]
 
 
 @pytest.fixture(scope="function")
-def test_client_user1() -> "Iterator[TestClient[Litestar]]":
+def test_client_anonymous_session() -> "Iterator[TestClient[Litestar]]":
+    """Test client with session and CSRF token, but no authenticated user.
 
+    Use for testing auth layer responses (401) without CSRF blocking.
+    """
+    with TestClient(app=app, session_config=session_auth_config) as client:
+        client.set_session_data({})
+
+        # Get CSRF cookie
+        client.get("/projects/")
+        csrf_token = client.cookies.get(f"csrftoken-{settings.APP_ENV}")
+
+        if csrf_token:
+            client.headers[f"x-csrftoken-{settings.APP_ENV}"] = csrf_token
+
+        yield client
+
+
+@pytest.fixture(scope="function")
+def test_client_user1() -> "Iterator[TestClient[Litestar]]":
+    """Test client authenticated as user1 via session."""
     with TestClient(app=app, session_config=session_auth_config) as client:
         client.set_session_data({"username": "test1", "tenant": "test"})
         yield client
@@ -70,7 +89,7 @@ def test_client_user1() -> "Iterator[TestClient[Litestar]]":
 
 @pytest.fixture(scope="function")
 def test_client_user2() -> "Iterator[TestClient[Litestar]]":
-
+    """Test client authenticated as user2 via session."""
     with TestClient(app=app, session_config=session_auth_config) as client:
         client.set_session_data({"username": "test2", "tenant": "test"})
         yield client
@@ -78,7 +97,10 @@ def test_client_user2() -> "Iterator[TestClient[Litestar]]":
 
 @pytest.fixture(scope="function")
 def test_client() -> "Iterator[TestClient[Litestar]]":
+    """Test client with no session or auth.
 
+    Use for JWT auth tests by passing X-Tapis-Token header manually.
+    """
     with TestClient(app=app, session_config=session_auth_config) as client:
         yield client
 

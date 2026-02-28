@@ -6,6 +6,7 @@ from litestar import Litestar, Request, Response, status_codes
 from litestar.config.csrf import CSRFConfig
 from litestar.config.compression import CompressionConfig
 from litestar.logging.config import LoggingConfig
+from litestar.middleware import DefineMiddleware
 from litestar.middleware.logging import LoggingMiddlewareConfig
 from litestar.middleware.session.server_side import (
     ServerSideSessionConfig,
@@ -44,6 +45,7 @@ from geoapi.services.users import UserService
 from geoapi.utils.users import AnonymousUser
 from geoapi.utils.jwt_utils import get_pub_key, PUBLIC_KEY_FOR_TESTING
 from geoapi.middleware import (
+    GeoAPICSRFMiddleware,
     GeoAPISessionAuthMiddleware,
     GeoAPIJWTAuthMiddleware,
     GeoAPIToken,
@@ -197,11 +199,18 @@ async def retrieve_session_user_handler(
 
 
 # Litestar application configuration
+csrf_config = CSRFConfig(
+    secret=settings.SECRET_KEY,
+    exclude=["/webhooks"],
+    cookie_name=f"csrftoken-{settings.APP_ENV}",
+    header_name=f"x-csrftoken-{settings.APP_ENV}",
+)
+
+# Litestar application configuration (continued)
 if settings.TESTING:
     root_store = MemoryStore()
     session_auth_config = ServerSideSessionConfig(store=root_store)
     stores = None
-    csrf_config = None
     channels = ChannelsPlugin(
         backend=MemoryChannelsBackend(),
         arbitrary_channels_allowed=True,
@@ -213,16 +222,14 @@ else:
         httponly=False, secure=True, key=f"session-{settings.APP_ENV}"
     )
     stores = StoreRegistry(default_factory=root_store.with_namespace)
-    csrf_config = CSRFConfig(
-        secret=settings.SECRET_KEY,
-        exclude=["/webhooks"],
-        cookie_name=f"csrftoken-{settings.APP_ENV}",
-        header_name=f"x-csrftoken-{settings.APP_ENV}",
-    )
+
     channels = ChannelsPlugin(
         backend=RedisChannelsPubSubBackend(redis=Redis.from_url(redis_url)),
         arbitrary_channels_allowed=True,
     )
+
+# Create the custom CSRF middleware
+csrf_middleware = DefineMiddleware(GeoAPICSRFMiddleware, csrf_config=csrf_config)
 
 session_auth = SessionAuth["User", ServerSideSessionBackend](
     retrieve_user_handler=retrieve_session_user_handler,
@@ -296,11 +303,12 @@ app = Litestar(
         cookie_session_config.middleware,
         session_auth_config.middleware,
         jwt_auth.middleware,
+        csrf_middleware,
     ],
     plugins=[alchemy, channels],
     stores=stores,
     exception_handlers=exception_handlers,
-    csrf_config=csrf_config,
+    # csrf_config=csrf_config,  # not using; instead using csrf_middleware with csrf_config
     compression_config=CompressionConfig(backend="gzip"),
     logging_config=LoggingConfig(
         root={"level": "DEBUG", "handlers": ["console"]},

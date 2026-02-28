@@ -59,6 +59,12 @@ def get_celery_engine():
             pool_pre_ping=True,  # Check connection health before using
             pool_recycle=3600,  # Replace connections after 1 hour
             pool_timeout=60,  # Wait up to 60s for connection
+            connect_args={
+                "keepalives": 1,
+                "keepalives_idle": 30,  # Send keepalive after 30s idle
+                "keepalives_interval": 10,  # 10s between probes
+                "keepalives_count": 5,  # Drop after 5 failed probes
+            },
         )
     return _celery_engine
 
