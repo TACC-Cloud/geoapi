@@ -37,6 +37,10 @@ def get_client_url(url):
         "hazmapper",
         "staging",
         "dev",
+        # Next 3 entries are for proxmox-migration. Remove when completed. https://tacc-main.atlassian.net/browse/WG-615
+        "hazmapper-tmp",
+        "staging-tmp",
+        "dev-tmp",
         "taggit",
         "taggit-staging",
         "taggit-dev",
