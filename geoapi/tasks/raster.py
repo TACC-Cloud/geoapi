@@ -43,6 +43,8 @@ def gdal_cogify(src: Path, dst: Path) -> None:
         "COMPRESS=DEFLATE",
         "-co",
         "TILING_SCHEME=GoogleMapsCompatible",
+        "-co",
+        "BIGTIFF=YES",
         str(src),
         str(dst),
     ]
