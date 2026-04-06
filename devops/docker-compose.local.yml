@@ -46,6 +46,8 @@ services:
     ports:
       - 15672:15672
     container_name: geoapi_rabbitmq
+    volumes:
+      - ./local_conf/rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf
     environment:
       - RABBITMQ_DEFAULT_USER=dev
       - RABBITMQ_DEFAULT_PASS=dev
