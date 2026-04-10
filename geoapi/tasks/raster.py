@@ -4,6 +4,7 @@ import subprocess
 import math
 from pathlib import Path
 from uuid import uuid4
+from sqlalchemy import func
 
 from geoapi.utils.assets import (
     make_project_asset_dir,
@@ -213,6 +214,14 @@ def import_tile_servers_from_tapis(
             # only prepopulated for single banded images)
             render_options = tile_options.pop("renderOptions", {})
 
+            # Find current max zindex for existing TilserServers
+            max_z = (
+                session.query(func.max(TileServer.uiOptions["zIndex"].as_integer()))
+                .filter(TileServer.project_id == project_id)
+                .scalar()
+            )
+            new_z_index = (max_z + 1) if max_z is not None else 0
+
             # Create TileServer pointing to TiTiler
             ts = TileServer(
                 project_id=project_id,
@@ -229,7 +238,7 @@ def import_tile_servers_from_tapis(
                 current_path=tapis_file.path,
                 tileOptions=tile_options,
                 uiOptions={
-                    "zIndex": 0,  # frontend will readjust as needed
+                    "zIndex": new_z_index,  # frontend will readjust as needed
                     "opacity": 1,
                     "isActive": True,
                     "showInput": False,
