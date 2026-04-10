@@ -40,7 +40,7 @@ class TileService:
         :param data: Dict
         :return: ts: TileServer
         """
-        existing_z = data.get("uiOptions", {}).get("zIndex", 0)
+        existing_z = (data.get("uiOptions") or {}).get("zIndex", 0)
         if existing_z == 0:
             # New layer with default zIndex
             # So, we place on top by finding current top first
