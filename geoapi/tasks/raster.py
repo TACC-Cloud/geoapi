@@ -41,7 +41,11 @@ def gdal_cogify(src: Path, dst: Path) -> None:
         "-t_srs",
         "EPSG:3857",  # Web Mercator
         "-co",
-        "COMPRESS=DEFLATE",
+        "COMPRESS=ZSTD",
+        "-co",
+        "PREDICTOR=YES",
+        "-co",
+        "LEVEL=3",
         "-co",
         "TILING_SCHEME=GoogleMapsCompatible",
         "-co",
