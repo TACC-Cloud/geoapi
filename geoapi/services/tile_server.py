@@ -40,17 +40,21 @@ class TileService:
         :param data: Dict
         :return: ts: TileServer
         """
-        existing_z = data.get('uiOptions', {}).get('zIndex', 0)
+        existing_z = data.get("uiOptions", {}).get("zIndex", 0)
         if existing_z == 0:
             # New layer with default zIndex
             # So, we place on top by finding current top first
-            max_z = database_session.query(
-                func.max(TileServer.uiOptions['zIndex'].as_integer())
-            ).filter(TileServer.project_id == projectId).scalar()
+            max_z = (
+                database_session.query(
+                    func.max(TileServer.uiOptions["zIndex"].as_integer())
+                )
+                .filter(TileServer.project_id == projectId)
+                .scalar()
+            )
 
-            if 'uiOptions' not in data:
-                data['uiOptions'] = {}
-            data['uiOptions']['zIndex'] = (max_z + 1) if max_z is not None else 0
+            if "uiOptions" not in data:
+                data["uiOptions"] = {}
+            data["uiOptions"]["zIndex"] = (max_z + 1) if max_z is not None else 0
 
         ts = TileServer()
 
