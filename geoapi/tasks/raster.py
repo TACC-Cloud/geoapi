@@ -31,6 +31,17 @@ def _validate_raster_name(name: str) -> None:
         )
 
 
+def is_8bit_rgb_or_rgba(src: Path) -> bool:
+    result = subprocess.run(
+        ["gdalinfo", "-json", str(src)],
+        capture_output=True, text=True
+    )
+    info = json.loads(result.stdout)
+    dtype = info["bands"][0]["type"]
+    band_count = len(info["bands"])
+    return dtype == "Byte" and band_count in (3, 4)
+
+
 def gdal_cogify(src: Path, dst: Path) -> None:
     """Convert to COG"""
 
@@ -60,6 +71,23 @@ def gdal_cogify(src: Path, dst: Path) -> None:
         str(src),
         str(dst),
     ]
+
+    if is_8bit_rgb_or_rgba(src):
+        # 8-bit RGB/RGBA imagery (orthomosaics, aerial photos).
+        # So we use JPEG compression
+        compression = ["-co", "COMPRESS=JPEG", "-co", "QUALITY=85"]
+    else:
+        # Everytyhing lese (like DEMs, multi-band, 16-bit, float) we
+        # use a lossless compression as pixel values matter. ZSTD is
+        # lossless with fast decompression..
+        compression = [
+            "-co", "COMPRESS=ZSTD",
+            "-co", "PREDICTOR=YES",
+            "-co", "LEVEL=3",
+        ]
+
+    cmd = cmd + compression + [str(src), str(dst)]
+
     logger.info(f"Converting to cog by running command: {' '.join(cmd)}")
 
     # GDAL creates temp files in the current working directory during COG conversion,
