@@ -33,6 +33,11 @@ def _validate_raster_name(name: str) -> None:
 
 def gdal_cogify(src: Path, dst: Path) -> None:
     """Convert to COG"""
+
+    # Determine how many threads to use
+    heavy_worker_count = 6  # i.e. --concurrency=6 in geoapi_workers_heavy
+    threads_per_worker = max(1, os.cpu_count() // heavy_worker_count)
+
     # When creating cog, we convert to Web Mercator and use GoogleMapsCompatible
     cmd = [
         "gdalwarp",
@@ -40,16 +45,18 @@ def gdal_cogify(src: Path, dst: Path) -> None:
         "COG",
         "-t_srs",
         "EPSG:3857",  # Web Mercator
-        "-co",
-        "COMPRESS=ZSTD",
-        "-co",
-        "PREDICTOR=YES",
-        "-co",
-        "LEVEL=3",
-        "-co",
         "TILING_SCHEME=GoogleMapsCompatible",
         "-co",
         "BIGTIFF=YES",
+        # Parallelize warping across multiple threads. COG finalization
+        # (tiling + overviews) is still single-threaded.
+        "-multi",
+        "-wo", f"NUM_THREADS={threads_per_worker}",
+        # Compression: ZSTD level 3 with predictor gives good ratio and fast reads.
+        # PREDICTOR=YES lets GDAL auto-select horizontal (int) or floating point (float32).
+        "-co", "COMPRESS=ZSTD",
+        "-co", "PREDICTOR=YES",
+        "-co", "LEVEL=3",
         str(src),
         str(dst),
     ]
