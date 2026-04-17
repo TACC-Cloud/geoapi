@@ -1,9 +1,12 @@
 import pytest
 from pathlib import Path
 from unittest.mock import patch, MagicMock
+import json
+import subprocess
 
 from geoapi.tasks.raster import (
     _validate_raster_name,
+    is_8bit_rgb_or_rgba,
     import_tile_servers_from_tapis,
 )
 from geoapi.models import TileServer, TaskStatus
@@ -31,6 +34,14 @@ def test_validate_invalid_extension():
 
     with pytest.raises(ValueError, match="Unsupported raster extension"):
         _validate_raster_name("test.png")
+
+
+def test_is_8bit_rgb_or_rgba_true(raster_threeband_byte_rgbsmall):
+    assert is_8bit_rgb_or_rgba(Path(raster_threeband_byte_rgbsmall.name)) is True
+
+
+def test_is_8bit_rgb_or_rgba_false_singleband(raster_singleband_int16_m30dem):
+    assert is_8bit_rgb_or_rgba(Path(raster_singleband_int16_m30dem.name)) is False
 
 
 @pytest.mark.worker
@@ -98,6 +109,15 @@ def test_import_tile_server_singleband_success(
     cog_path = Path(tile_server.url)
     assert cog_path.exists()
 
+    # Check if output file is correct (e.g. correct compression)
+    cog_path = Path(tile_server.url)
+    result = subprocess.run(
+        ["gdalinfo", "-json", str(cog_path)],
+        capture_output=True, text=True,
+    )
+    info = json.loads(result.stdout)
+    assert info["metadata"]["IMAGE_STRUCTURE"]["COMPRESSION"] == "ZSTD"
+
 
 @pytest.mark.worker
 @patch("geoapi.tasks.raster.TapisUtils")
@@ -134,6 +154,15 @@ def test_import_tile_server_rgb_success(
 
     db_session.refresh(task_fixture)
     assert task_fixture.status == TaskStatus.COMPLETED
+
+    # Check if output file is correct (e.g. correct compression)
+    cog_path = Path(tile_server.url)
+    result = subprocess.run(
+        ["gdalinfo", "-json", str(cog_path)],
+        capture_output=True, text=True,
+    )
+    info = json.loads(result.stdout)
+    assert info["metadata"]["IMAGE_STRUCTURE"]["COMPRESSION"] == "YCbCr JPEG"
 
 
 @pytest.mark.worker

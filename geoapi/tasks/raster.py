@@ -43,59 +43,51 @@ def is_8bit_rgb_or_rgba(src: Path) -> bool:
 
 
 def gdal_cogify(src: Path, dst: Path) -> None:
-    """Convert to COG"""
+    """Convert a raster to a Cloud-Optimized GeoTIFF (COG).
 
-    # Determine how many threads to use
-    heavy_worker_count = 6  # i.e. --concurrency=6 in geoapi_workers_heavy
+    Reprojects to Web Mercator (EPSG:3857) with GoogleMapsCompatible tiling scheme.
+    Uses JPEG for 8-bit RGB/RGBA imagery (lossy, ~10x smaller files).
+    Uses ZSTD for everything else (lossless, preserves pixel values).
+    """
+    heavy_worker_count = 6  # matches --concurrency=6 in geoapi_workers_heavy
     threads_per_worker = max(1, os.cpu_count() // heavy_worker_count)
 
-    # When creating cog, we convert to Web Mercator and use GoogleMapsCompatible
-    cmd = [
+    base_cmd = [
         "gdalwarp",
-        "-of",
-        "COG",
-        "-t_srs",
-        "EPSG:3857",  # Web Mercator
-        "TILING_SCHEME=GoogleMapsCompatible",
-        "-co",
-        "BIGTIFF=YES",
+        "-of", "COG",
+        "-t_srs", "EPSG:3857",
+        "-co", "TILING_SCHEME=GoogleMapsCompatible",
+        "-co", "BIGTIFF=YES",
+        "-co", "STATISTICS=YES",
         # Parallelize warping across multiple threads. COG finalization
         # (tiling + overviews) is still single-threaded.
         "-multi",
         "-wo", f"NUM_THREADS={threads_per_worker}",
-        # Compression: ZSTD level 3 with predictor gives good ratio and fast reads.
-        # PREDICTOR=YES lets GDAL auto-select horizontal (int) or floating point (float32).
-        "-co", "COMPRESS=ZSTD",
-        "-co", "PREDICTOR=YES",
-        "-co", "LEVEL=3",
-        str(src),
-        str(dst),
     ]
 
     if is_8bit_rgb_or_rgba(src):
         # 8-bit RGB/RGBA imagery (orthomosaics, aerial photos).
-        # So we use JPEG compression
+        # So lossy JPG compression is okay and then we save lots of space
+        # Alpha band handled by GDAL.
         compression = ["-co", "COMPRESS=JPEG", "-co", "QUALITY=85"]
     else:
-        # Everytyhing lese (like DEMs, multi-band, 16-bit, float) we
-        # use a lossless compression as pixel values matter. ZSTD is
-        # lossless with fast decompression..
+        # Everything else (DEMs, multi-band, 16-bit, float) where pixel
+        # values matter. ZSTD level 3 with predictor gives good compression
+        # ratio and fast decompression. PREDICTOR=YES lets GDAL auto-select
+        # horizontal (int) or floating point (float32) predictor.
         compression = [
             "-co", "COMPRESS=ZSTD",
             "-co", "PREDICTOR=YES",
             "-co", "LEVEL=3",
         ]
 
-    cmd = cmd + compression + [str(src), str(dst)]
+    cmd = base_cmd + compression + [str(src), str(dst)]
 
-    logger.info(f"Converting to cog by running command: {' '.join(cmd)}")
+    logger.info(f"Converting to COG: {' '.join(cmd)}")
 
-    # GDAL creates temp files in the current working directory during COG conversion,
-    # so we run it from the destination directory where Celery has write permissions.
-    working_directory = dst.parent
-
-    subprocess.run(cmd, check=True, cwd=working_directory)
-
+    # GDAL creates temp files in the current working directory during COG
+    # conversion, so we run from the destination directory.
+    subprocess.run(cmd, check=True, cwd=dst.parent)
 
 def get_cog_metadata(path: Path) -> dict:
     """
