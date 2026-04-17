@@ -52,7 +52,7 @@ class TileService:
                 .scalar()
             )
 
-            if "uiOptions" not in data:
+            if not data.get("uiOptions"):
                 data["uiOptions"] = {}
             data["uiOptions"]["zIndex"] = (max_z + 1) if max_z is not None else 0
 
