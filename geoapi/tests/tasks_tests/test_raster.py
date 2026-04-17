@@ -36,10 +36,12 @@ def test_validate_invalid_extension():
         _validate_raster_name("test.png")
 
 
+@pytest.mark.worker
 def test_is_8bit_rgb_or_rgba_true(raster_threeband_byte_rgbsmall):
     assert is_8bit_rgb_or_rgba(Path(raster_threeband_byte_rgbsmall.name)) is True
 
 
+@pytest.mark.worker
 def test_is_8bit_rgb_or_rgba_false_singleband(raster_singleband_int16_m30dem):
     assert is_8bit_rgb_or_rgba(Path(raster_singleband_int16_m30dem.name)) is False
 
