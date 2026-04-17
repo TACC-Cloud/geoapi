@@ -33,8 +33,7 @@ def _validate_raster_name(name: str) -> None:
 
 def is_8bit_rgb_or_rgba(src: Path) -> bool:
     result = subprocess.run(
-        ["gdalinfo", "-json", str(src)],
-        capture_output=True, text=True
+        ["gdalinfo", "-json", str(src)], capture_output=True, text=True
     )
     info = json.loads(result.stdout)
     dtype = info["bands"][0]["type"]
@@ -54,15 +53,21 @@ def gdal_cogify(src: Path, dst: Path) -> None:
 
     base_cmd = [
         "gdalwarp",
-        "-of", "COG",
-        "-t_srs", "EPSG:3857",
-        "-co", "TILING_SCHEME=GoogleMapsCompatible",
-        "-co", "BIGTIFF=YES",
-        "-co", "STATISTICS=YES",
+        "-of",
+        "COG",
+        "-t_srs",
+        "EPSG:3857",
+        "-co",
+        "TILING_SCHEME=GoogleMapsCompatible",
+        "-co",
+        "BIGTIFF=YES",
+        "-co",
+        "STATISTICS=YES",
         # Parallelize warping across multiple threads. COG finalization
         # (tiling + overviews) is still single-threaded.
         "-multi",
-        "-wo", f"NUM_THREADS={threads_per_worker}",
+        "-wo",
+        f"NUM_THREADS={threads_per_worker}",
     ]
 
     if is_8bit_rgb_or_rgba(src):
@@ -76,9 +81,12 @@ def gdal_cogify(src: Path, dst: Path) -> None:
         # ratio and fast decompression. PREDICTOR=YES lets GDAL auto-select
         # horizontal (int) or floating point (float32) predictor.
         compression = [
-            "-co", "COMPRESS=ZSTD",
-            "-co", "PREDICTOR=YES",
-            "-co", "LEVEL=3",
+            "-co",
+            "COMPRESS=ZSTD",
+            "-co",
+            "PREDICTOR=YES",
+            "-co",
+            "LEVEL=3",
         ]
 
     cmd = base_cmd + compression + [str(src), str(dst)]
@@ -88,6 +96,7 @@ def gdal_cogify(src: Path, dst: Path) -> None:
     # GDAL creates temp files in the current working directory during COG
     # conversion, so we run from the destination directory.
     subprocess.run(cmd, check=True, cwd=dst.parent)
+
 
 def get_cog_metadata(path: Path) -> dict:
     """

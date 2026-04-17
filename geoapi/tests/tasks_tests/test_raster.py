@@ -113,7 +113,8 @@ def test_import_tile_server_singleband_success(
     cog_path = Path(tile_server.url)
     result = subprocess.run(
         ["gdalinfo", "-json", str(cog_path)],
-        capture_output=True, text=True,
+        capture_output=True,
+        text=True,
     )
     info = json.loads(result.stdout)
     assert info["metadata"]["IMAGE_STRUCTURE"]["COMPRESSION"] == "ZSTD"
@@ -159,7 +160,8 @@ def test_import_tile_server_rgb_success(
     cog_path = Path(tile_server.url)
     result = subprocess.run(
         ["gdalinfo", "-json", str(cog_path)],
-        capture_output=True, text=True,
+        capture_output=True,
+        text=True,
     )
     info = json.loads(result.stdout)
     assert info["metadata"]["IMAGE_STRUCTURE"]["COMPRESSION"] == "YCbCr JPEG"
