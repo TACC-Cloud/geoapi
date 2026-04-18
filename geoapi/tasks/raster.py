@@ -46,7 +46,7 @@ def gdal_cogify(src: Path, dst: Path) -> None:
 
     Reprojects to Web Mercator (EPSG:3857) with GoogleMapsCompatible tiling scheme.
     Uses JPEG for 8-bit RGB/RGBA imagery (lossy, ~10x smaller files).
-    Uses ZSTD for everything else (lossless, preserves pixel values).
+    Uses DEFLATE for everything else (lossless, preserves pixel values).
     """
     heavy_worker_count = 6  # matches --concurrency=6 in geoapi_workers_heavy
     threads_per_worker = max(1, os.cpu_count() // heavy_worker_count)
@@ -72,21 +72,25 @@ def gdal_cogify(src: Path, dst: Path) -> None:
 
     if is_8bit_rgb_or_rgba(src):
         # 8-bit RGB/RGBA imagery (orthomosaics, aerial photos).
-        # So lossy JPG compression is okay and then we save lots of space
+        # So lossy JPG compression is okay and then we save lots of space.
         # Alpha band handled by GDAL.
         compression = ["-co", "COMPRESS=JPEG", "-co", "QUALITY=85"]
     else:
         # Everything else (DEMs, multi-band, 16-bit, float) where pixel
-        # values matter. ZSTD level 3 with predictor gives good compression
-        # ratio and fast decompression. PREDICTOR=YES lets GDAL auto-select
-        # horizontal (int) or floating point (float32) predictor.
+        # values matter. DEFLATE with PREDICTOR=YES gives good lossless
+        # compression; PREDICTOR=YES lets GDAL auto-select horizontal
+        # (int) or floating-point (float32) predictor.
+        #
+        # Note: ZSTD level 3 + PREDICTOR=YES benchmarks slightly better
+        # (smaller files, faster decompression), but QGIS 3.44+ on macOS
+        # ships libtiff without the ZSTD codec due to a regression. So
+        # using DEFLATE but can switch to ZSTD at some later time
+        # See: https://github.com/qgis/QGIS/issues/65409
         compression = [
             "-co",
-            "COMPRESS=ZSTD",
+            "COMPRESS=DEFLATE",
             "-co",
             "PREDICTOR=YES",
-            "-co",
-            "LEVEL=3",
         ]
 
     cmd = base_cmd + compression + [str(src), str(dst)]
