@@ -119,7 +119,7 @@ def test_import_tile_server_singleband_success(
         text=True,
     )
     info = json.loads(result.stdout)
-    assert info["metadata"]["IMAGE_STRUCTURE"]["COMPRESSION"] == "ZSTD"
+    assert info["metadata"]["IMAGE_STRUCTURE"]["COMPRESSION"] == "DEFLATE"
 
 
 @pytest.mark.worker
