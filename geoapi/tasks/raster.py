@@ -4,6 +4,7 @@ import subprocess
 import math
 from pathlib import Path
 from uuid import uuid4
+from sqlalchemy import func
 
 from geoapi.utils.assets import (
     make_project_asset_dir,
@@ -30,29 +31,75 @@ def _validate_raster_name(name: str) -> None:
         )
 
 
+def is_8bit_rgb_or_rgba(src: Path) -> bool:
+    result = subprocess.run(
+        ["gdalinfo", "-json", str(src)], capture_output=True, text=True
+    )
+    info = json.loads(result.stdout)
+    dtype = info["bands"][0]["type"]
+    band_count = len(info["bands"])
+    return dtype == "Byte" and band_count in (3, 4)
+
+
 def gdal_cogify(src: Path, dst: Path) -> None:
-    """Convert to COG"""
-    # When creating cog, we convert to Web Mercator and use GoogleMapsCompatible
-    cmd = [
+    """Convert a raster to a Cloud-Optimized GeoTIFF (COG).
+
+    Reprojects to Web Mercator (EPSG:3857) with GoogleMapsCompatible tiling scheme.
+    Uses JPEG for 8-bit RGB/RGBA imagery (lossy, ~10x smaller files).
+    Uses DEFLATE for everything else (lossless, preserves pixel values).
+    """
+    heavy_worker_count = 6  # matches --concurrency=6 in geoapi_workers_heavy
+    threads_per_worker = max(1, os.cpu_count() // heavy_worker_count)
+
+    base_cmd = [
         "gdalwarp",
         "-of",
         "COG",
         "-t_srs",
-        "EPSG:3857",  # Web Mercator
-        "-co",
-        "COMPRESS=DEFLATE",
+        "EPSG:3857",
         "-co",
         "TILING_SCHEME=GoogleMapsCompatible",
-        str(src),
-        str(dst),
+        "-co",
+        "BIGTIFF=YES",
+        "-co",
+        "STATISTICS=YES",
+        # Parallelize warping across multiple threads. COG finalization
+        # (tiling + overviews) is still single-threaded.
+        "-multi",
+        "-wo",
+        f"NUM_THREADS={threads_per_worker}",
     ]
-    logger.info(f"Converting to cog by running command: {' '.join(cmd)}")
 
-    # GDAL creates temp files in the current working directory during COG conversion,
-    # so we run it from the destination directory where Celery has write permissions.
-    working_directory = dst.parent
+    if is_8bit_rgb_or_rgba(src):
+        # 8-bit RGB/RGBA imagery (orthomosaics, aerial photos).
+        # So lossy JPG compression is okay and then we save lots of space.
+        # Alpha band handled by GDAL.
+        compression = ["-co", "COMPRESS=JPEG", "-co", "QUALITY=85"]
+    else:
+        # Everything else (DEMs, multi-band, 16-bit, float) where pixel
+        # values matter. DEFLATE with PREDICTOR=YES gives good lossless
+        # compression; PREDICTOR=YES lets GDAL auto-select horizontal
+        # (int) or floating-point (float32) predictor.
+        #
+        # Note: ZSTD level 3 + PREDICTOR=YES benchmarks slightly better
+        # (smaller files, faster decompression), but QGIS 3.44+ on macOS
+        # ships libtiff without the ZSTD codec due to a regression. So
+        # using DEFLATE but can switch to ZSTD at some later time
+        # See: https://github.com/qgis/QGIS/issues/65409
+        compression = [
+            "-co",
+            "COMPRESS=DEFLATE",
+            "-co",
+            "PREDICTOR=YES",
+        ]
 
-    subprocess.run(cmd, check=True, cwd=working_directory)
+    cmd = base_cmd + compression + [str(src), str(dst)]
+
+    logger.info(f"Converting to COG: {' '.join(cmd)}")
+
+    # GDAL creates temp files in the current working directory during COG
+    # conversion, so we run from the destination directory.
+    subprocess.run(cmd, check=True, cwd=dst.parent)
 
 
 def get_cog_metadata(path: Path) -> dict:
@@ -211,6 +258,14 @@ def import_tile_servers_from_tapis(
             # only prepopulated for single banded images)
             render_options = tile_options.pop("renderOptions", {})
 
+            # Find current max zindex for existing TilserServers
+            max_z = (
+                session.query(func.max(TileServer.uiOptions["zIndex"].as_integer()))
+                .filter(TileServer.project_id == project_id)
+                .scalar()
+            )
+            new_z_index = (max_z + 1) if max_z is not None else 0
+
             # Create TileServer pointing to TiTiler
             ts = TileServer(
                 project_id=project_id,
@@ -227,7 +282,7 @@ def import_tile_servers_from_tapis(
                 current_path=tapis_file.path,
                 tileOptions=tile_options,
                 uiOptions={
-                    "zIndex": 0,  # frontend will readjust as needed
+                    "zIndex": new_z_index,  # frontend will readjust as needed
                     "opacity": 1,
                     "isActive": True,
                     "showInput": False,

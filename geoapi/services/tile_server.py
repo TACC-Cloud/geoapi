@@ -5,7 +5,7 @@ from geoapi.models import TileServer, Task, User
 from geoapi.schema.tapis import TapisFilePath
 from geoapi.log import logger
 from geoapi.utils.assets import delete_assets
-from sqlalchemy import inspect
+from sqlalchemy import inspect, func
 from sqlalchemy.dialects.postgresql import JSONB
 
 
@@ -40,6 +40,22 @@ class TileService:
         :param data: Dict
         :return: ts: TileServer
         """
+        existing_z = (data.get("uiOptions") or {}).get("zIndex", 0)
+        if existing_z == 0:
+            # New layer with default zIndex
+            # So, we place on top by finding current top first
+            max_z = (
+                database_session.query(
+                    func.max(TileServer.uiOptions["zIndex"].as_integer())
+                )
+                .filter(TileServer.project_id == projectId)
+                .scalar()
+            )
+
+            if not data.get("uiOptions"):
+                data["uiOptions"] = {}
+            data["uiOptions"]["zIndex"] = (max_z + 1) if max_z is not None else 0
+
         ts = TileServer()
 
         for key, value in data.items():

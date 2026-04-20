@@ -36,6 +36,15 @@ app.conf.task_queues = {
 
 app.conf.task_default_queue = "default"
 
+# Minimize prefetching (1 extra message per worker child instead of the
+# default 4*concurrency to be pulled). Prefetched messages are marked as
+# "delivered" by RabbitMQ, which starts the consumer_timeout ack timer
+# (default 30min). For long-running tasks (e.g. cog conversion, potree conversion),
+# prefetched messages then can sit unacknowledged long enough to trigger the timeout
+# and crash the entire worker.
+# See: https://www.rabbitmq.com/docs/consumers#acknowledgement-timeout
+app.conf.worker_prefetch_multiplier = 1
+
 app.conf.beat_schedule = {
     "refresh_projects_watch_content": {
         "task": "geoapi.tasks.external_data.refresh_projects_watch_content",
