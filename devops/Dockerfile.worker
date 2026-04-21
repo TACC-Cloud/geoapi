@@ -67,8 +67,8 @@ RUN sed -i 's/style="[^"]*background-image:[^"]*"//' /opt/PotreeConverter/build/
 # Copy PDAL from miniforge builder (no conda runtime needed)
 COPY --from=pdal-builder /opt/conda/envs/pdal /opt/pdal
 
-# Wrapper that sets LD_LIBRARY_PATH only for pdal,
-# so conda's GDAL never leaks into Python processes
+# Wrapper that sets LD_LIBRARY_PATH for just pdal so it uses its included libraries (like gdal
+# which differ from our base image's gdal)
 RUN echo '#!/bin/sh' > /usr/local/bin/pdal \
     && echo 'LD_LIBRARY_PATH="/opt/pdal/lib" exec /opt/pdal/bin/pdal "$@"' >> /usr/local/bin/pdal \
     && chmod +x /usr/local/bin/pdal
