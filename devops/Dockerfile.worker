@@ -1,8 +1,4 @@
-# Build a minimal PDAL environment using conda-forge.
-# We only need the pdal binary and its C++ shared libs.
-# The final image will copy just this env. So we strip
-# everything else (static libs, headers, docs, Python) to
-# reduce image size.
+# Get only pdal binary (and required libs) from conda
 FROM condaforge/miniforge3:latest AS pdal-builder
 RUN conda create -n pdal -c conda-forge --no-default-packages pdal -y \
     && conda clean -afy \
@@ -64,7 +60,7 @@ RUN sed -i '/<body>/r /tmp/nsf_logo_snippet.txt' /opt/PotreeConverter/build/reso
 #  - remove reference to background image
 RUN sed -i 's/style="[^"]*background-image:[^"]*"//' /opt/PotreeConverter/build/resources/page_template/viewer_template.html
 
-# Copy PDAL from miniforge builder (no conda runtime needed)
+# Copy pdal binary and libs from builder
 COPY --from=pdal-builder /opt/conda/envs/pdal /opt/pdal
 
 # Wrapper that sets LD_LIBRARY_PATH for just pdal so it uses its included libraries (like gdal
