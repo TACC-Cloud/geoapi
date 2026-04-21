@@ -119,9 +119,7 @@ WORKDIR /app/geoapi
 # `production` image target is used for deployed runtime environments
 FROM python-base AS production
 
-# Install runtime dependencies
-COPY --from=python-base $PYSETUP_PATH $PYSETUP_PATH
-
+# Inherits runtime deps from python-base; just add app code
 COPY geoapi /app/geoapi
 
 ENV PYTHONPATH=/app
