@@ -232,7 +232,10 @@ class UserService:
                     locked_auth.refresh_token_expires_at = data["refresh_token"][
                         "expires_at"
                     ]
-                    database_session.commit()
+
+                    # write token updates to DB within savepoint
+                    database_session.flush()
+
                     logger.info(
                         f"Finished refreshing token for user:{user.username}"
                         f" tenant:{user.tenant_id}"
@@ -253,6 +256,10 @@ class UserService:
                         f" tenant:{user.tenant_id}: {response}, {response.text}"
                     )
                     raise RefreshTokenError
+
+            # persist token updates after savepoint completes
+            database_session.commit()
+
             # Re-query the updated user after the transaction is committed
             # (so that the caller has the latest state which includes the updated auth token)
             database_session.refresh(user)
