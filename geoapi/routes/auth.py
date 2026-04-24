@@ -192,12 +192,15 @@ class AuthController(Controller):
         if is_anonymous(request.user):
             return Response({"username": None, "authToken": None}, status_code=200)
 
-        tapis = TapisUtils(db_session, request.user)
+        # Merge the user into the current session so refresh_access_token can work
+        user = db_session.merge(request.user)
+
+        tapis = TapisUtils(db_session, user)
 
         try:
             tapis._ensure_valid_token(buffer=60 * 30)  # 30 minutes buffer
         except Exception:
-            logger.exception(f"Error ensuring valid token for user:{request.user}")
+            logger.exception(f"Error ensuring valid token for user:{user}")
             raise NotAuthorizedException("Could not refresh authentication token")
 
         user_info = {
