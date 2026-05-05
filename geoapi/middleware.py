@@ -14,7 +14,6 @@ from litestar.security.jwt.token import Token, JWTDecodeOptions
 from litestar.types import Empty, Scope, Receive, Send, ASGIApp
 from geoapi.utils.users import is_anonymous
 
-
 if TYPE_CHECKING:
     from litestar.connection import ASGIConnection
     from typing_extensions import Self

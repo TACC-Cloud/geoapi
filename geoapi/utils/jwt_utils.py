@@ -11,7 +11,6 @@ import json
 from geoapi.settings import settings
 from geoapi.log import logging
 
-
 logger = logging.getLogger(__name__)
 
 # when acquiring lock to refresh token, its possible someone else has already

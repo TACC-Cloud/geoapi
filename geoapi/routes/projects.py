@@ -49,7 +49,6 @@ from geoapi.schema.projects import (
     TapisOverlayImportBody,
 )
 
-
 if TYPE_CHECKING:
     from sqlalchemy.orm import Session
 
@@ -1081,7 +1080,6 @@ def feature_enc_hook(feature: Feature) -> FeatureModel:
 from geoapi.routes.file_location_status import (  # noqa: E402
     ProjectFileLocationStatusController,
 )
-
 
 projects_router = Router(
     path="/projects",
