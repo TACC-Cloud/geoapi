@@ -2,7 +2,6 @@ from celery import Celery
 from datetime import timedelta
 from geoapi.settings import settings
 
-
 CELERY_CONNECTION_STRING = "amqp://{user}:{pwd}@{hostname}/{vhost}".format(
     user=settings.RABBITMQ_USERNAME,
     pwd=settings.RABBITMQ_PASSWD,

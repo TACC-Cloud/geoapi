@@ -4,7 +4,6 @@ from geoapi.models import Overlay
 
 from unittest.mock import patch
 
-
 if TYPE_CHECKING:
     from litestar import Litestar
     from litestar.testing import TestClient

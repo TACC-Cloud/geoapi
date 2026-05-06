@@ -19,7 +19,6 @@ from geoapi.utils.assets import get_project_asset_dir, get_asset_path
 from geoapi.exceptions import InvalidCoordinateReferenceSystem
 from geoapi.services.point_cloud import PointCloudService
 
-
 METADATA_ROUTE = re.compile(r"https://.*/api/filemeta/.*/.*")
 
 
