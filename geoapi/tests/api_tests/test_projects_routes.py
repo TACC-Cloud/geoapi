@@ -7,7 +7,6 @@ from geoapi.models.users import User
 from geoapi.models.project import Project, ProjectUser
 from geoapi.utils.assets import get_project_asset_dir
 
-
 if TYPE_CHECKING:
     from litestar import Litestar
     from litestar.testing import TestClient
