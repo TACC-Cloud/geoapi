@@ -33,7 +33,6 @@ from geoapi.utils import geometries, features as features_util
 from geoapi.utils.external_apis import TapisUtils
 from geoapi.utils.geo_location import GeoLocation, parse_rapid_geolocation
 
-
 logger = logging.getLogger(__name__)
 
 

@@ -316,9 +316,9 @@ def from_tapis_to_streetview(
                     session, user, streetview_instance, task_uuid, organization_key
                 )
             except Exception as e:
-                error_message = "Error during uploading to mapillary for streetview task:{} \
-                  for user:{}. Error message: {}".format(
-                    task_uuid, user.username, e
+                error_message = (
+                    "Error during uploading to mapillary for streetview task:{} \
+                  for user:{}. Error message: {}".format(task_uuid, user.username, e)
                 )
                 logger.exception(error_message)
                 clean_session(

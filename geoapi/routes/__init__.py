@@ -9,7 +9,6 @@ from .auth import AuthController
 from .webhooks import TaskStatusWebhookController
 from .websockets import websocket_handler
 
-
 api_router = Router(
     path="/",
     route_handlers=[
