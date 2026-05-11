@@ -83,17 +83,17 @@ services:
   workers:
     <<: *worker-base  # Reuses worker-base fragment defined at start
     container_name: geoapi_workers
-    command: celery -A geoapi.celery_app worker -l info -Q default -n default_worker@geoapi --uid=1100 --gid=1100
+    command: celery -A geoapi.celery_app worker -l info -Q default -n default_worker@geoapi
 
   workers-heavy:
     <<: *worker-base  # Reuses worker-base fragment defined at start
     container_name: geoapi_workers_heavy
-    command: celery -A geoapi.celery_app worker -l info -Q heavy --concurrency=6 --uid=1100 --gid=1100
+    command: celery -A geoapi.celery_app worker -l info -Q heavy --concurrency=6
 
   celerybeat:
     <<: *worker-base  # Reuses worker-base fragment defined at start
     container_name: geoapi_celerybeat
-    command: "celery -A geoapi.celery_app beat --schedule=/var/run/celery/celerybeat-schedule -l info --uid=1100 --gid=1100"
+    command: "celery -A geoapi.celery_app beat --schedule=/var/run/celery/celerybeat-schedule -l info"
 
   titiler:
     image: ghcr.io/developmentseed/titiler:0.23.1
@@ -143,6 +143,7 @@ services:
 
   assets-init:
     image: taccwma/geoapi-workers:local
+    user: "0:0"
     volumes:
       - assets:/assets
     command: ["sh", "-c", "chown -R 1100:1100 /assets && chmod -R 775 /assets"]
