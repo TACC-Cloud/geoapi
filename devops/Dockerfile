@@ -4,7 +4,7 @@ LABEL maintainer="DesignSafe-CI <designsafe-ci@tacc.utexas.edu>"
 
 ARG DEBIAN_FRONTEND=noninteractive
 
-RUN apt-get update && apt-get install -y \
+RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     libgdal-dev \
     ffmpeg \
@@ -37,6 +37,9 @@ RUN poetry install
 
 RUN groupadd -g 1100 celeryuser
 RUN useradd -s /sbin/nologin -u 1100 -g 1100 celeryuser
+
+HEALTHCHECK --interval=120s --timeout=5s --start-period=60s --retries=3 \
+  CMD curl -fsS http://localhost:8000/status || exit 1
 
 ##############
 # `development` image target is used for local development

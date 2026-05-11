@@ -1,5 +1,5 @@
 # Get only pdal binary (and required libs) from conda
-FROM condaforge/miniforge3:latest AS pdal-builder
+FROM condaforge/miniforge3:26.1.1-3 AS pdal-builder
 RUN conda create -n pdal -c conda-forge --no-default-packages pdal -y \
     && conda clean -afy \
     && find /opt/conda/envs/pdal -name '*.a' -delete \
@@ -15,7 +15,7 @@ LABEL maintainer="DesignSafe-CI <designsafe-ci@tacc.utexas.edu>"
 
 ENV DEBIAN_FRONTEND=noninteractive
 
-RUN apt-get update && apt-get install -y \
+RUN apt-get update && apt-get install -y --no-install-recommends \
     vim \
     libtiff-dev \
     libgeotiff-dev \
@@ -42,13 +42,16 @@ WORKDIR /opt
 
 # Install PotreeConverter
 # c2328c4 is v2.1.1 and some additional fixes
-RUN git clone -b develop https://github.com/potree/PotreeConverter.git \
-    && cd PotreeConverter \
-    && git checkout c2328c4 \
-    && mkdir build \
-    && cd build \
-    && cmake .. -DCMAKE_BUILD_TYPE=Release \
-    && make
+WORKDIR /opt
+RUN git clone -b develop https://github.com/potree/PotreeConverter.git
+
+WORKDIR /opt/PotreeConverter
+RUN git checkout c2328c4
+
+WORKDIR /opt/PotreeConverter/build
+RUN cmake .. -DCMAKE_BUILD_TYPE=Release && make
+
+WORKDIR /opt
 
 # Setup our page template for PotreeConverter
 COPY devops/misc/potree/page_template/nsf_logo.png /opt/PotreeConverter/build/resources/page_template/
@@ -110,6 +113,7 @@ COPY geoapi /app/geoapi
 ENV PYTHONPATH=/app
 
 WORKDIR /app/geoapi
+USER 1100:1100
 
 ##############
 # `production` image target is used for deployed runtime environments
@@ -121,3 +125,4 @@ COPY geoapi /app/geoapi
 ENV PYTHONPATH=/app
 
 WORKDIR /app/geoapi
+USER 1100:1100
