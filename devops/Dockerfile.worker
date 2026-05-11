@@ -15,7 +15,7 @@ LABEL maintainer="DesignSafe-CI <designsafe-ci@tacc.utexas.edu>"
 
 ENV DEBIAN_FRONTEND=noninteractive
 
-RUN apt-get update && apt-get install -y \
+RUN apt-get update && apt-get install -y --no-install-recommends \
     vim \
     libtiff-dev \
     libgeotiff-dev \
