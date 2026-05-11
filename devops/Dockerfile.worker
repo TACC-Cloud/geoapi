@@ -42,13 +42,16 @@ WORKDIR /opt
 
 # Install PotreeConverter
 # c2328c4 is v2.1.1 and some additional fixes
-RUN git clone -b develop https://github.com/potree/PotreeConverter.git \
-    && cd PotreeConverter \
-    && git checkout c2328c4 \
-    && mkdir build \
-    && cd build \
-    && cmake .. -DCMAKE_BUILD_TYPE=Release \
-    && make
+WORKDIR /opt
+RUN git clone -b develop https://github.com/potree/PotreeConverter.git
+
+WORKDIR /opt/PotreeConverter
+RUN git checkout c2328c4
+
+WORKDIR /opt/PotreeConverter/build
+RUN cmake .. -DCMAKE_BUILD_TYPE=Release && make
+
+WORKDIR /opt
 
 # Setup our page template for PotreeConverter
 COPY devops/misc/potree/page_template/nsf_logo.png /opt/PotreeConverter/build/resources/page_template/
