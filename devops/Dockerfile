@@ -38,6 +38,9 @@ RUN poetry install
 RUN groupadd -g 1100 celeryuser
 RUN useradd -s /sbin/nologin -u 1100 -g 1100 celeryuser
 
+HEALTHCHECK --interval=120s --timeout=5s --start-period=60s --retries=3 \
+  CMD curl -fsS http://localhost:8000/status || exit 1
+
 ##############
 # `development` image target is used for local development
 FROM python-base AS development
