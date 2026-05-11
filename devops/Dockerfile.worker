@@ -1,5 +1,5 @@
 # Get only pdal binary (and required libs) from conda
-FROM condaforge/miniforge3:latest AS pdal-builder
+FROM condaforge/miniforge3:26.1.1-3 AS pdal-builder
 RUN conda create -n pdal -c conda-forge --no-default-packages pdal -y \
     && conda clean -afy \
     && find /opt/conda/envs/pdal -name '*.a' -delete \
