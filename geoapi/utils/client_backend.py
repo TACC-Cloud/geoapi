@@ -2,7 +2,6 @@ from geoapi.settings import settings
 from geoapi.log import logging
 from geoapi.exceptions import AuthenticationIssue, ApiException
 
-
 logger = logging.getLogger(__name__)
 
 

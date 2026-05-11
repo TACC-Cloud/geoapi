@@ -4,7 +4,6 @@ from typing import List, IO
 import tempfile
 import os
 
-
 logger = logging.getLogger(__name__)
 
 # additional files for FILE.shp

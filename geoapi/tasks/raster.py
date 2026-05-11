@@ -19,7 +19,6 @@ from geoapi.utils.external_apis import TapisUtils, TapisFileGetError
 from geoapi.tasks.utils import update_task_and_send_progress_update
 from geoapi.schema.tapis import TapisFilePath
 
-
 ASSETS_DIR = Path(os.getenv("ASSETS_BASE_DIR", "/assets")).resolve()
 
 

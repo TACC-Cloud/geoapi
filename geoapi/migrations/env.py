@@ -4,7 +4,6 @@ from alembic import context
 from geoapi.models import *  # noqa: F401, F403 important to include all models for autogenerate support; do not delete
 from geoapi.db import Base
 
-
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
 config = context.config
