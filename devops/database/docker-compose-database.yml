@@ -1,10 +1,10 @@
 services:
   postgres:
-    image: postgis/postgis:11-3.3
+    image: postgis/postgis:18-3.6-alpine
     env_file: ../../../secret.env # username/password
     volumes:
-      - /database:/var/lib/postgresql/data
-      - ./postgresql.conf:/var/lib/postgresql/data/postgresql.conf:ro   # Comment out on initial db setup run!
+      - /database:/var/lib/postgresql/
+      - ./postgresql.conf:/var/lib/postgresql/18/docker/postgresql.conf:ro  # Comment out on initial db setup run!
     ports:
       - "5432:5432"
     stdin_open: true
