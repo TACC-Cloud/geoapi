@@ -131,8 +131,7 @@ class FeaturesService:
             database_session.add(feat)
             features.append(feat)
         elif data["type"] == "FeatureCollection":
-            fc = geojson.FeatureCollection(data)
-            for feature in fc.features:
+            for feature in data["features"]:
                 feat = Feature.fromGeoJSON(feature)
                 feat.project_id = projectId
                 feat = FeaturesService._importHazmapperV1Images(feat)
