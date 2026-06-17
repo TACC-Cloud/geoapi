@@ -119,7 +119,12 @@ USER 1100:1100
 # `production` image target is used for deployed runtime environments
 FROM python-base AS production
 
-# Inherits runtime deps from python-base; just add app code
+# Strip build-time tooling (Poetry + bundled pip/virtualenv/dulwich) and bump venv pip
+RUN "$VENV_PATH/bin/pip" install --no-cache-dir --upgrade pip \
+    && rm -rf "$POETRY_HOME" \
+              /root/.local/share/virtualenv \
+              /root/.cache
+
 COPY geoapi /app/geoapi
 
 ENV PYTHONPATH=/app
