@@ -101,6 +101,20 @@ RUN mkdir -p /var/run/celery && chown -R 1100:1100 /var/run/celery
 # Set a default command (can be overridden by docker-compose)
 CMD ["bash"]
 
+# Patch bundled jquery-ui 1.12.1 -> 1.13.2 in the Potree viewer template to clear
+# CVE-2021-41182/41183/41184 + CVE-2022-31160. Both template paths are flagged.
+# See https://tacc-main.atlassian.net/browse/WG-38
+RUN JQUERY_UI_VERSION=1.13.2 \
+    && wget -qO /tmp/jquery-ui.min.js  "https://code.jquery.com/ui/${JQUERY_UI_VERSION}/jquery-ui.min.js" \
+    && wget -qO /tmp/jquery-ui.min.css "https://code.jquery.com/ui/${JQUERY_UI_VERSION}/themes/base/jquery-ui.min.css" \
+    && for d in /opt/PotreeConverter/build/resources/page_template/libs/jquery-ui \
+                /opt/PotreeConverter/resources/page_template/libs/jquery-ui; do \
+           cp /tmp/jquery-ui.min.js  "$d/jquery-ui.min.js"; \
+           cp /tmp/jquery-ui.min.css "$d/jquery-ui.min.css"; \
+           sed -i "s/\"version\": \"1.12.1\"/\"version\": \"${JQUERY_UI_VERSION}\"/" "$d/package.json"; \
+       done \
+    && rm -f /tmp/jquery-ui.min.js /tmp/jquery-ui.min.css
+
 ##############
 # `development` image target is used for local development
 FROM python-base AS development
