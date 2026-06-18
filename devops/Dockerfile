@@ -64,8 +64,11 @@ WORKDIR /app/geoapi
 # `production` image target is used for deployed runtime environments
 FROM python-base AS production
 
-# Install runtime dependencies
-COPY --from=python-base $PYSETUP_PATH $PYSETUP_PATH
+# Strip build-time tooling (Poetry + bundled pip/virtualenv/dulwich) and bump venv pip
+RUN "$VENV_PATH/bin/pip" install --no-cache-dir --upgrade pip \
+    && rm -rf "$POETRY_HOME" \
+              /root/.local/share/virtualenv \
+              /root/.cache
 
 COPY geoapi /app/geoapi
 

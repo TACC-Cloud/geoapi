@@ -55,4 +55,14 @@ poetry update
 ```
 
 Poetry edits `/devops/pyproject.toml` and `/devops/poetry.lock` in place; the
-mount writes them back to the host. 
+mount writes them back to the host.
+
+### Scanning image
+
+Build the production images and then scan
+
+```
+make build
+trivy image --ignore-unfixed --severity MEDIUM,HIGH,CRITICAL taccwma/geoapi:latest
+trivy image --ignore-unfixed --severity MEDIUM,HIGH,CRITICAL taccwma/geoapi-workers:latest
+```
