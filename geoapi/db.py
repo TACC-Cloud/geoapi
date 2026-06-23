@@ -50,7 +50,7 @@ def get_celery_engine():
     """
     global _celery_engine
     if _celery_engine is None:
-        logger.info("Creating shared Celery database engine")
+        logger.debug("Creating shared Celery database engine")
         _celery_engine = create_engine(
             get_db_connection_string(settings, app_name="geoapi_celery"),
             echo=False,
