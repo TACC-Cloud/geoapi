@@ -1,6 +1,7 @@
 from datetime import datetime, timedelta, timezone
 import requests
 from sqlalchemy.exc import InvalidRequestError
+from redis.exceptions import RedisError
 
 from geoapi.models import Auth, User, Project, ProjectUser
 from geoapi.utils import jwt_utils
