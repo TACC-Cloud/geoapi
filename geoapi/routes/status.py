@@ -1,6 +1,5 @@
 from typing import Literal
 from litestar import Controller, get, Request
-from litestar.exceptions import HTTPException
 from litestar.response import Response
 from pydantic import BaseModel
 from celery.result import AsyncResult
@@ -10,7 +9,9 @@ from geoapi.utils.decorators import not_anonymous_guard
 
 logger = logging.getLogger(__name__)
 
-WORKER_CHECK_TIMEOUT = 40  # seconds
+WORKER_CHECK_TIMEOUT = (
+    40  # seconds; request timeout is 60s, leaving buffer for response
+)
 
 
 class StatusResponse(BaseModel):
@@ -52,9 +53,15 @@ class StatusController(Controller):
             logger.error(
                 f"Worker health check timed out or failed for user:{request.user.username}: {e}"
             )
-            raise HTTPException(
-                status_code=503, detail="Worker unavailable or timed out"
+            body = WorkerStatusResponse(
+                overall="error",
+                components={
+                    "worker": ComponentStatus(
+                        status="error", detail="Worker unavailable or timed out"
+                    )
+                },
             )
+            return Response(content=body, status_code=503)
 
         body = WorkerStatusResponse(
             overall=result["overall"],
