@@ -443,7 +443,11 @@ class ProjectFeaturesFilsResourceController(Controller):
     @post(
         tags=["projects"],
         operation_id="upload_feature_file",
+        deprecated=True,
         description="""
+          **DEPRECATED**: Direct HTTP file upload. Use `POST /projects/{project_id}/features/files/import/`
+          to import files from Tapis instead. This endpoint remains functional but may be removed in a future release.
+
           Add a new feature(s) to a project from a file that has embedded geospatial information.
           Current allowed file types are GeoJSON, georeferenced image (jpeg) or gpx track.
           Any additional key/value pairs in the form will also be placed in the feature(s) metadata""",
