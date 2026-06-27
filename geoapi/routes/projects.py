@@ -507,32 +507,6 @@ class ProjectFeaturesFileImportResourceController(Controller):
         return OkResponse(message="Task created for file import")
 
 
-class ProjectFeaturesClustersResourceController(Controller):
-    path = "/{project_id:int}/features/cluster/{num_clusters:int}/"
-
-    @get(
-        tags=["projects"],
-        operation_id="get_feature_clusters",
-        description="""K-Means cluster the features in a project. This returns a FeatureCollection of the centroids with the additional
-        property of "count" representing the number of Features that were aggregated into each cluster.""",
-        guards=[project_permissions_guard],
-    )
-    def get_feature_clusters(
-        self,
-        request: Request,
-        db_session: "Session",
-        project_id: int,
-        num_clusters: int,
-    ) -> FeatureCollectionModel:
-        """Get feature clusters for a project."""
-        logger.info(
-            "Get feature clusters for project:{} for user:{} with num_clusters:{}".format(
-                project_id, request.user.username, num_clusters
-            )
-        )
-        return FeaturesService.clusterKMeans(db_session, project_id, num_clusters)
-
-
 class ProjectOverlaysResourceController(Controller):
     path = "/{project_id:int}/overlays/"
 
@@ -1100,7 +1074,6 @@ projects_router = Router(
         ProjectFeaturesCollectionResourceController,
         ProjectFeaturesFilsResourceController,
         ProjectFeaturesFileImportResourceController,
-        ProjectFeaturesClustersResourceController,
         ProjectOverlaysResourceController,
         ProjectOverlaysImportResourceController,
         ProjectOverlayResourceController,

@@ -692,45 +692,6 @@ class FeaturesService:
         return fa
 
     @staticmethod
-    def clusterKMeans(database_session, projectId: int, numClusters: int = 20) -> Dict:
-        """
-        Cluster all the Point geometries in a project
-        :param numClusters: int
-        :param projectId: int
-        :return: FeatureCollection
-        """
-        # TODO: Add filtering clause on the sub-select
-        q = """
-        select json_build_object(
-               'type', 'FeatureCollection',
-               'features', jsonb_agg(features.feature)
-           )
-        from (
-                 select json_build_object(
-                                'type', 'Feature',
-                                'geometry', ST_AsGeoJSON(clusters.center)::jsonb,
-                                'properties', json_build_object(
-                                        'count', clusters.count
-                                    )
-                            ) as feature
-                 from (
-                          select ST_Centroid(ST_Collect(the_geom)) as center, count(clusters.cid) as count
-                          from (
-                                   SELECT ST_ClusterKMeans(the_geom, :numClusters) OVER () AS cid, the_geom
-                                   from features
-                                   where project_id = :projectId
-                               ) as clusters
-                          group by clusters.cid
-                      ) as clusters
-             ) as features
-        """
-        result = database_session.execute(
-            q, {"projectId": projectId, "numClusters": numClusters}
-        ).first()
-        clusters = result[0]
-        return clusters
-
-    @staticmethod
     def addOverlay(
         database_session, projectId: int, fileObj: IO, bounds: List[float], label: str
     ) -> Overlay:
