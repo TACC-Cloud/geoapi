@@ -16,7 +16,7 @@ import geojson
 
 from geoapi.services.images import ImageService, ImageData
 from geoapi.services.vectors import VectorService
-from geoapi.models import Feature, FeatureAsset, Overlay, User, TileServer
+from geoapi.models import Feature, FeatureAsset, User, TileServer
 from geoapi.exceptions import (
     InvalidGeoJSON,
     ApiException,
@@ -690,64 +690,3 @@ class FeaturesService:
             asset_type="video",
         )
         return fa
-
-    @staticmethod
-    def addOverlay(
-        database_session, projectId: int, fileObj: IO, bounds: List[float], label: str
-    ) -> Overlay:
-        """
-
-        :param projectId: int
-        :param fileObj: IO
-        :param bounds: List [minLon, minLat, maxLon, maxLat]
-        :param label: str
-        :return: None
-        """
-
-        imdata = ImageService.processOverlay(fileObj)
-        ov = Overlay()
-        ov.label = label
-        ov.minLon = bounds[0]
-        ov.minLat = bounds[1]
-        ov.maxLon = bounds[2]
-        ov.maxLat = bounds[3]
-        ov.project_id = projectId
-        ov.uuid = uuid.uuid4()
-        asset_path = os.path.join(
-            str(make_project_asset_dir(projectId)), str(ov.uuid) + ".jpeg"
-        )
-        ov.path = get_asset_relative_path(asset_path)
-        imdata.original.save(asset_path, "JPEG")
-        imdata.thumb.save(pathlib.Path(asset_path).with_suffix(".thumb.jpeg"), "JPEG")
-        database_session.add(ov)
-        database_session.commit()
-        return ov
-
-    @staticmethod
-    def addOverlayFromTapis(
-        database_session,
-        user: User,
-        project_id: int,
-        system_id: str,
-        path: str,
-        bounds: List[float],
-        label: str,
-    ) -> Overlay:
-        client = TapisUtils(database_session, user)
-        file_obj = client.getFile(system_id, path)
-        ov = FeaturesService.addOverlay(
-            database_session, project_id, file_obj, bounds, label
-        )
-        return ov
-
-    @staticmethod
-    def getOverlays(database_session, projectId: int) -> List[Overlay]:
-        overlays = database_session.query(Overlay).filter_by(project_id=projectId).all()
-        return overlays
-
-    @staticmethod
-    def deleteOverlay(database_session, projectId: int, overlayId: int) -> None:
-        ov = database_session.get(Overlay, overlayId)
-        delete_assets(projectId=projectId, uuid=ov.uuid)
-        database_session.delete(ov)
-        database_session.commit()
