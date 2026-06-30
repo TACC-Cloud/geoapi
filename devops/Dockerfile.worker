@@ -13,9 +13,10 @@ FROM python:3.12-slim AS python-base
 
 LABEL maintainer="DesignSafe-CI <designsafe-ci@tacc.utexas.edu>"
 
-ENV DEBIAN_FRONTEND=noninteractive
+ARG DEBIAN_FRONTEND=noninteractive
 
-RUN apt-get update && apt-get install -y --no-install-recommends \
+RUN apt-get update && apt-get upgrade -y --no-install-recommends \
+    && apt-get install -y --no-install-recommends \
     vim \
     libtiff-dev \
     libgeotiff-dev \
