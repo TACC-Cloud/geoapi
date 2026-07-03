@@ -45,37 +45,6 @@ class VectorService:
     """
 
     @staticmethod
-    def process_shapefile(shape_file: IO, additional_files: List[IO]):
-        """Process shapefile
-
-        Loads shapefile and converts it to epsg 4326
-
-        :param shape_file: IO
-        :param additional_files: List[IO]   other files needed besides the main .shp file
-        :return: generator that provides geometry plus properties for each item
-        """
-        all_files = additional_files.copy()
-        all_files.append(shape_file)
-
-        with tempfile.TemporaryDirectory() as tmpdirname:
-            # save files together for processing purposes
-            for f in all_files:
-                tmp_path = os.path.join(tmpdirname, os.path.basename(f.filename))
-                with open(tmp_path, "wb") as tmp:
-                    tmp.write(f.read())
-
-            shapefile_path = os.path.join(
-                tmpdirname, os.path.basename(shape_file.filename)
-            )
-            shapefile = gpd.read_file(shapefile_path)
-            shapefile = shapefile.to_crs(epsg=4326)
-            for index, row in shapefile.iterrows():
-                properties = {
-                    key: value for key, value in row.items() if key != "geometry"
-                }
-                yield row["geometry"], properties
-
-    @staticmethod
     def convert_to_geojson(
         fileObj: IO, additional_files: Optional[List[IO]] = None
     ) -> Tuple[str, dict]:

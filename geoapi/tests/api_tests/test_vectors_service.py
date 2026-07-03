@@ -9,34 +9,6 @@ import pyogrio
 import pytest
 
 
-def test_process_shapefile(
-    shapefile_fixture,
-    shapefile_additional_files_fixture,
-    shapefile_first_element_geometry,
-):
-    geom, properties = next(
-        VectorService.process_shapefile(
-            shapefile_fixture, additional_files=shapefile_additional_files_fixture
-        )
-    )
-
-    assert geom.wkt == shapefile_first_element_geometry
-    assert properties == {
-        "continent": "South America",
-        "gdp_md_est": 436100.0,
-        "iso_a3": "CHL",
-        "name": "Chile",
-        "pop_est": 17789267,
-    }
-
-
-def test_process_shapefile_missing_additional_files(shapefile_fixture):
-    with pytest.raises(pyogrio.errors.DataSourceError):
-        _, _ = next(
-            VectorService.process_shapefile(shapefile_fixture, additional_files=[])
-        )
-
-
 def test_supported_vector_extensions():
     assert {"geojson", "shp", "gpx", "gpkg", "parquet", "geoparquet"}.issubset(
         SUPPORTED_VECTOR_EXTENSIONS
@@ -68,6 +40,13 @@ def test_convert_to_geojson_shapefile(
         assert not gdf.geometry.iloc[0].has_z
     finally:
         shutil.rmtree(os.path.dirname(geojson_path), ignore_errors=True)
+
+
+@pytest.mark.worker
+def test_convert_to_geojson_missing_shapefile_additional_files(shapefile_fixture):
+    # a shapefile cannot be read without its companion files (.shx/.dbf/...)
+    with pytest.raises(pyogrio.errors.DataSourceError):
+        VectorService.convert_to_geojson(shapefile_fixture, additional_files=[])
 
 
 @pytest.mark.worker
