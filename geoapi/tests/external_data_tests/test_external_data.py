@@ -222,8 +222,13 @@ def test_external_data_good_files(
         projects_fixture.id,
     )
     features = db_session.query(Feature).all()
-    # the test geojson has 3 features in it
-    assert len(features) == 3
+    # the geojson is now ingested as a single bbox Feature backed by a PMTiles
+    # asset produced by tippecanoe (which runs for real in the worker image)
+    assert len(features) == 1
+    assert len(features[0].assets) == 1
+    asset = features[0].assets[0]
+    assert asset.asset_type == "vector"
+    assert os.path.exists(get_asset_path(asset.path))
     imported_file = db_session.query(ImportedFile).first()
     assert imported_file.successful_import
 
@@ -636,8 +641,9 @@ def test_refresh_projects_watch_content(
 
     assert "rollback" not in caplog.text
     features = db_session.query(Feature).all()
-    # the test geojson has 3 features in it
-    assert len(features) == 3
+    # the geojson is ingested as a single bbox Feature backed by a PMTiles asset
+    assert len(features) == 1
+    assert features[0].assets[0].asset_type == "vector"
 
 
 @pytest.mark.worker

@@ -1,4 +1,5 @@
 import io
+import pathlib
 from datetime import datetime
 from typing import TYPE_CHECKING, Annotated
 from pydantic import BaseModel, Field
@@ -10,12 +11,14 @@ from litestar.exceptions import NotAuthorizedException
 from geojson_pydantic import Feature as GeoJSONFeature
 from geoapi.log import logger
 from geoapi.services.features import FeaturesService
+from geoapi.services.vectors import SUPPORTED_VECTOR_EXTENSIONS
 from geoapi.services.streetview import StreetviewService
 from geoapi.services.point_cloud import PointCloudService
 from geoapi.services.projects import ProjectsService
 from geoapi.services.tile_server import TileService
 from geoapi.tasks import external_data, streetview, point_cloud
 from geoapi.models import Task, Project, Feature, TileServer, Overlay, PointCloud, User
+from geoapi.exceptions import ApiException
 from geoapi.utils.decorators import (
     project_permissions_allow_public_guard,
     project_permissions_guard,
@@ -445,7 +448,9 @@ class ProjectFeaturesFilsResourceController(Controller):
         operation_id="upload_feature_file",
         description="""
           Add a new feature(s) to a project from a file that has embedded geospatial information.
-          Current allowed file types are GeoJSON, georeferenced image (jpeg) or gpx track.
+          Current allowed file types are georeferenced image (jpeg).
+          Vector files (GeoJSON, GPX, shapefile, etc.) are not supported here; import them
+          from Tapis via POST /projects/{project_id}/features/files/import/ instead.
           Any additional key/value pairs in the form will also be placed in the feature(s) metadata""",
         guards=[project_permissions_guard],
         return_dto=FeatureReturnDTO,
@@ -461,6 +466,13 @@ class ProjectFeaturesFilsResourceController(Controller):
     ) -> list[FeatureModel]:
         """Upload a file containing features to a project."""
         file = data.pop("file")
+        ext = pathlib.Path(file.filename).suffix.lstrip(".").lower()
+        if ext in SUPPORTED_VECTOR_EXTENSIONS:
+            raise ApiException(
+                "Vector file uploads are not supported via direct HTTP upload. "
+                "Import the file from Tapis via "
+                "POST /projects/{project_id}/features/files/import/ instead."
+            )
         file_bytes = await file.read()
         file_obj = io.BytesIO(file_bytes)
         file_obj.filename = file.filename

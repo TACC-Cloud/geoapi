@@ -5,17 +5,18 @@ import json
 import tempfile
 import configparser
 import re
+import shutil
 from typing import List, IO, Dict
 
 from geoapi.services.tile_server import TileService
 from geoapi.services.videos import VideoService
-from shapely.geometry import Point, shape
-import fiona
+from shapely.geometry import Point, box
 from geoalchemy2.shape import from_shape
 import geojson
 
 from geoapi.services.images import ImageService, ImageData
-from geoapi.services.vectors import VectorService
+from geoapi.services.tippecanoe import TippecanoeService
+from geoapi.services.vectors import VectorService, SUPPORTED_VECTOR_EXTENSIONS
 from geoapi.models import Feature, FeatureAsset, Overlay, User, TileServer
 from geoapi.exceptions import (
     InvalidGeoJSON,
@@ -29,7 +30,7 @@ from geoapi.utils.assets import (
     get_asset_relative_path,
 )
 from geoapi.log import logging
-from geoapi.utils import geometries, features as features_util
+from geoapi.utils import features as features_util
 from geoapi.utils.external_apis import TapisUtils
 from geoapi.utils.geo_location import GeoLocation, parse_rapid_geolocation
 
@@ -170,87 +171,75 @@ class FeaturesService:
         return f
 
     @staticmethod
-    def fromGPX(
-        database_session,
-        projectId: int,
-        fileObj: IO,
-        metadata: Dict,
-        original_system,  # ignored
-        original_path,  # ignored
-    ) -> Feature:
-
-        # TODO: Fiona should support reading from the file directly, this MemoryFile business
-        #  should not be needed
-        with fiona.io.MemoryFile(fileObj) as memfile:
-            with memfile.open(layer="tracks") as collection:
-                track = collection[0]
-                shp = shape(track["geometry"])
-                feat = Feature()
-                feat.project_id = projectId
-                feat.the_geom = from_shape(geometries.convert_3D_2D(shp), srid=4326)
-                feat.properties = metadata or {}
-                # TODO original_path, original_system are ignored but should not be ignored after WG-600
-
-                database_session.add(feat)
-                database_session.commit()
-                return feat
-
-    @staticmethod
-    def fromGeoJSON(
+    def fromVectorFile(
         database_session,
         projectId: int,
         fileObj: IO,
         metadata: Dict,
         original_system: str = None,
         original_path: str = None,
-    ) -> List[Feature]:
-        """
-
-        :param projectId: int
-        :param fileObj: file descriptor
-        :param metadata: Dict of <key, val> pairs
-        :param original_path: str path of original file location
-        :return: Feature
-        """
-        data = json.loads(fileObj.read())
-        fileObj.close()
-        return FeaturesService.addGeoJSON(
-            database_session, projectId, data, original_system, original_path
-        )
-
-    @staticmethod
-    def fromShapefile(
-        database_session,
-        projectId: int,
-        fileObj: IO,
-        metadata: Dict,
-        additional_files: List[IO],
-        original_system=None,
-        original_path=None,
+        additional_files: List[IO] = None,
     ) -> Feature:
-        """Create features from shapefile
+        """Create a single Feature backed by a PMTiles vector asset.
+
+        The vector file is converted to EPSG:4326 GeoJSON, run through tippecanoe
+        to produce a ``.pmtiles`` archive, and stored as a FeatureAsset. The
+        Feature's geometry is the bounding-box polygon of the source data.
 
         :param projectId: int
-        :param fileObj: file descriptor
-        :param additional_files: file descriptor for all the other non-.shp files
-        :param metadata: Dict of <key, val> pairs   [IGNORED}
-        :param original_path: str path of original file location  [IGNORED}
-        :return: Feature
+        :param fileObj: main vector file
+        :param metadata: Dict of <key, val> pairs stored on the feature
+        :param additional_files: companion files (e.g. shapefile .dbf/.shx/.prj)
+        :return: the created Feature
         """
-        features = []
-        for geom, properties in VectorService.process_shapefile(
-            fileObj, additional_files
-        ):
+        geojson_dir = None
+        try:
+            geojson_path, bbox = VectorService.convert_to_geojson(
+                fileObj, additional_files
+            )
+            geojson_dir = os.path.dirname(geojson_path)
+
+            # layer name derived from the filename stem, sanitized for tippecanoe
+            stem = pathlib.Path(fileObj.filename).stem
+            layer_name = re.sub(r"[^a-zA-Z0-9_-]", "_", stem) or "layer"
+
+            asset_uuid = uuid.uuid4()
+            base_filepath = make_project_asset_dir(projectId)
+            asset_path = os.path.join(base_filepath, str(asset_uuid) + ".pmtiles")
+
+            # build the pmtiles in a temp dir, then move it into the asset dir
+            with tempfile.TemporaryDirectory() as tmp_pmtiles_dir:
+                tmp_pmtiles_path = os.path.join(tmp_pmtiles_dir, "output.pmtiles")
+                TippecanoeService.geojson_to_pmtiles(
+                    geojson_path, tmp_pmtiles_path, layer_name
+                )
+                shutil.copyfile(tmp_pmtiles_path, asset_path)
+
+            bbox_geom = box(bbox["minx"], bbox["miny"], bbox["maxx"], bbox["maxy"])
             feat = Feature()
             feat.project_id = projectId
-            feat.the_geom = from_shape(geometries.convert_3D_2D(geom), srid=4326)
-            feat.properties = properties
+            feat.the_geom = from_shape(bbox_geom, srid=4326)
+            feat.properties = metadata or {}
             # TODO original_path, original_system are ignored but should not be ignored after WG-600
-            database_session.add(feat)
-            features.append(feat)
 
-        database_session.commit()
-        return features
+            fa = FeatureAsset(
+                uuid=asset_uuid,
+                asset_type="vector",
+                original_system=original_system,
+                original_path=original_path,
+                display_path=original_path,
+                path=get_asset_relative_path(asset_path),
+                feature=feat,
+            )
+            feat.assets.append(fa)
+
+            database_session.add(feat)
+            database_session.commit()
+            return feat
+        finally:
+            if geojson_dir and os.path.isdir(geojson_dir):
+                shutil.rmtree(geojson_dir, ignore_errors=True)
+            fileObj.close()
 
     @staticmethod
     def from_rapp_questionnaire(
@@ -444,31 +433,18 @@ class FeaturesService:
                     location,
                 )
             ]
-        elif ext in features_util.GPX_FILE_EXTENSIONS:
+        elif ext in SUPPORTED_VECTOR_EXTENSIONS:
             return [
-                FeaturesService.fromGPX(
+                FeaturesService.fromVectorFile(
                     database_session,
                     projectId,
                     fileObj,
-                    metadata,
+                    {},
                     original_system,
                     original_path,
+                    additional_files,
                 )
             ]
-        elif ext in features_util.GEOJSON_FILE_EXTENSIONS:
-            return FeaturesService.fromGeoJSON(
-                database_session, projectId, fileObj, {}, original_system, original_path
-            )
-        elif ext in features_util.SHAPEFILE_FILE_EXTENSIONS:
-            return FeaturesService.fromShapefile(
-                database_session,
-                projectId,
-                fileObj,
-                {},
-                additional_files,
-                original_system,
-                original_path,
-            )
         elif ext in features_util.INI_FILE_EXTENSIONS:
             return FeaturesService.fromINI(database_session, projectId, fileObj, {})
         elif ext in features_util.RAPP_QUESTIONNAIRE_FILE_EXTENSIONS:

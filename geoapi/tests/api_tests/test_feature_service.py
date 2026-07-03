@@ -1,5 +1,7 @@
+import json
 import os
 
+import pytest
 from werkzeug.datastructures import FileStorage
 from geoapi.services.features import FeaturesService
 from geoapi.models import Feature, FeatureAsset
@@ -19,8 +21,10 @@ def test_create_feature_fromLatLng(projects_fixture, db_session):
 
 
 def test_hazmapperv1_file_with_images(projects_fixture, hazmpperV1_file, db_session):
-    features = FeaturesService.fromGeoJSON(
-        db_session, projects_fixture.id, hazmpperV1_file, metadata={}
+    # container features from a v1 Hazmapper GeoJSON go through addGeoJSON (Path A),
+    # which extracts any embedded base64 images into assets
+    features = FeaturesService.addGeoJSON(
+        db_session, projects_fixture.id, json.loads(hazmpperV1_file.read())
     )
     assert len(features) == 2
     assert len(features[1].assets) == 1
@@ -29,8 +33,10 @@ def test_hazmapperv1_file_with_images(projects_fixture, hazmpperV1_file, db_sess
 def test_insert_feature_geojson(
     projects_fixture, feature_properties_file_fixture, db_session
 ):
-    features = FeaturesService.fromGeoJSON(
-        db_session, projects_fixture.id, feature_properties_file_fixture, metadata={}
+    features = FeaturesService.addGeoJSON(
+        db_session,
+        projects_fixture.id,
+        json.loads(feature_properties_file_fixture.read()),
     )
     feature = features[0]
     assert len(features) == 1
@@ -41,8 +47,8 @@ def test_insert_feature_geojson(
 
 
 def test_insert_feature_collection(projects_fixture, geojson_file_fixture, db_session):
-    features = FeaturesService.fromGeoJSON(
-        db_session, projects_fixture.id, geojson_file_fixture, metadata={}
+    features = FeaturesService.addGeoJSON(
+        db_session, projects_fixture.id, json.loads(geojson_file_fixture.read())
     )
     for feature in features:
         assert feature.project_id == projects_fixture.id
@@ -194,21 +200,29 @@ def test_remove_feature_video_asset(
     assert len(os.listdir(get_project_asset_dir(feature.project_id))) == 0
 
 
+@pytest.mark.worker
 def test_create_feature_shpfile(
     projects_fixture, shapefile_fixture, shapefile_additional_files_fixture, db_session
 ):
-    features = FeaturesService.fromShapefile(
+    feature = FeaturesService.fromVectorFile(
         db_session,
         projects_fixture.id,
         shapefile_fixture,
         metadata={},
         additional_files=shapefile_additional_files_fixture,
+        original_system="system",
         original_path="foo",
     )
-    assert len(features) == 10
-    assert db_session.query(Feature).count() == 10
-    assert features[0].project_id == projects_fixture.id
-    # TODO Test original_path, original_system are configured after WG-600
+    # a vector file is ingested as a single bbox Feature backed by a PMTiles asset
+    assert feature.project_id == projects_fixture.id
+    assert db_session.query(Feature).count() == 1
+    assert len(feature.assets) == 1
+    asset = feature.assets[0]
+    assert asset.asset_type == "vector"
+    assert os.path.isfile(get_asset_path(asset.path))
+    assert asset.original_system == "system"
+    assert asset.original_path == "foo"
+    assert asset.display_path == "foo"
 
 
 def test_create_questionnaire_feature(
