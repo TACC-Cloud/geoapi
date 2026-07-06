@@ -431,6 +431,15 @@ def shapefile_fixture():
 
 
 @pytest.fixture(scope="function")
+def point_and_polygon_geojson_fixture():
+    home = os.path.dirname(__file__)
+    with open(
+        os.path.join(home, "fixtures/TACC_point_and_polygon.geojson"), "rb"
+    ) as f:
+        yield FileStorage(f, filename="TACC_point_and_polygon.geojson")
+
+
+@pytest.fixture(scope="function")
 def shapefile_additional_files_fixture():
     home = os.path.dirname(__file__)
     with open(os.path.join(home, "fixtures/shapefile.cpg"), "rb") as cpg, open(

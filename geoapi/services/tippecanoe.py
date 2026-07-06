@@ -8,6 +8,22 @@ logger = logging.getLogger(__name__)
 # tippecanoe binary; overridable for environments where it is not on PATH
 TIPPECANOE_BIN = os.environ.get("TIPPECANOE_BIN", "tippecanoe")
 
+# Floor for tippecanoe's guessed maximum zoom (-zg).
+#
+# `-zg` picks a max zoom from how far apart / how detailed the features are.
+# For data whose features are simple and spread across a very large extent
+# (e.g. a handful of points scattered globally, or continent-scale polygons)
+# it can guess a max zoom of 0 — a single world tile. That is a problem for us:
+#   * positions are then quantized to a ~10km grid (useless when zoomed in), and
+#   * protomaps-leaflet cannot overzoom a zoom-0 archive (it treats
+#     maxDataZoom 0 as falsy and defaults to 15, requesting tiles that don't
+#     exist), so nothing renders.
+# Flooring the guess to 12 (~sub-meter precision at the deepest tile) fixes both.
+# The floor only *raises* low guesses; data with real local detail already
+# guesses higher (e.g. dense reconnaissance points guess ~16) and is left
+# untouched.
+SMALLEST_MAXIMUM_ZOOM_GUESS = 12
+
 
 class TippecanoeService:
     """
@@ -21,9 +37,6 @@ class TippecanoeService:
         geojson_path: str,
         output_path: str,
         layer_name: str,
-        min_zoom: int = None,
-        max_zoom: int = None,
-        read_parallel: bool = False,
     ) -> str:
         """
         Convert a GeoJSON file into a PMTiles archive using tippecanoe.
@@ -31,11 +44,6 @@ class TippecanoeService:
         :param geojson_path: path to the source GeoJSON file
         :param output_path: path where the .pmtiles archive will be written
         :param layer_name: name of the vector tile layer
-        :param min_zoom: optional minimum zoom; defaults to tippecanoe's default
-        :param max_zoom: optional maximum zoom; when omitted, tippecanoe guesses
-            an appropriate maximum zoom via ``-zg``
-        :param read_parallel: read the input in parallel (``-P``); only valid for
-            line-delimited GeoJSON input, so disabled by default
         :return: output_path
         :raises RuntimeError: if the tippecanoe binary is missing or exits non-zero
         """
@@ -47,16 +55,12 @@ class TippecanoeService:
             "-l",
             layer_name,
             "--drop-densest-as-needed",  # shed features rather than overflow a tile
+            # guess an appropriate maximum zoom, but never below our floor
+            # (see SMALLEST_MAXIMUM_ZOOM_GUESS for why sparse global data needs it)
+            "-zg",
+            f"--smallest-maximum-zoom-guess={SMALLEST_MAXIMUM_ZOOM_GUESS}",
+            geojson_path,
         ]
-        if max_zoom is not None:
-            cmd += ["-z", str(max_zoom)]
-        else:
-            cmd += ["-zg"]  # guess an appropriate maximum zoom
-        if min_zoom is not None:
-            cmd += ["-Z", str(min_zoom)]
-        if read_parallel:
-            cmd += ["-P"]
-        cmd.append(geojson_path)
 
         logger.info("Running tippecanoe: %s", " ".join(cmd))
         try:

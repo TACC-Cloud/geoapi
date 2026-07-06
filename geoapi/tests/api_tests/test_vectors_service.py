@@ -1,10 +1,13 @@
 import os
 import shutil
+import subprocess
+import tempfile
 
 import geopandas as gpd
 from shapely.geometry import Point
 
 from geoapi.services.vectors import VectorService, SUPPORTED_VECTOR_EXTENSIONS
+from geoapi.services.tippecanoe import TippecanoeService
 import pyogrio
 import pytest
 
@@ -47,6 +50,36 @@ def test_convert_to_geojson_missing_shapefile_additional_files(shapefile_fixture
     # a shapefile cannot be read without its companion files (.shx/.dbf/...)
     with pytest.raises(pyogrio.errors.DataSourceError):
         VectorService.convert_to_geojson(shapefile_fixture, additional_files=[])
+
+
+@pytest.mark.worker
+def test_point_and_polygon_geojson_tiles_retain_geometry(
+    point_and_polygon_geojson_fixture,
+):
+    # Convert -> tippecanoe -> decode the tiles and confirm both the point and
+    # the polygon survive the pipeline (regression for mixed-geometry uploads).
+    geojson_path, _ = VectorService.convert_to_geojson(
+        point_and_polygon_geojson_fixture
+    )
+    out_dir = tempfile.mkdtemp(prefix="geoapi_pmtiles_test_")
+    try:
+        pmtiles_path = os.path.join(out_dir, "out.pmtiles")
+        TippecanoeService.geojson_to_pmtiles(geojson_path, pmtiles_path, "tacc")
+        assert os.path.isfile(pmtiles_path)
+
+        decoded = subprocess.run(
+            ["tippecanoe-decode", pmtiles_path],
+            capture_output=True,
+            text=True,
+            check=True,
+        ).stdout
+
+        assert '"Point"' in decoded, "point geometry did not survive tiling"
+        assert '"Polygon"' in decoded, "polygon geometry did not survive tiling"
+        assert "tacc" in decoded, "expected vector layer 'tacc' not found in tiles"
+    finally:
+        shutil.rmtree(out_dir, ignore_errors=True)
+        shutil.rmtree(os.path.dirname(geojson_path), ignore_errors=True)
 
 
 @pytest.mark.worker

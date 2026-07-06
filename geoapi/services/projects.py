@@ -225,7 +225,9 @@ class ProjectsService:
             if asset:
                 params[asset] = asset
                 assetQueries.append(
-                    "fa is null"
+                    # "no_asset_vector" covers both features with no asset and
+                    # features backed by a PMTiles vector asset
+                    "(fa is null OR fa.asset_type = 'vector')"
                     if asset == "no_asset_vector"
                     else "fa.asset_type = :" + asset
                 )
