@@ -57,7 +57,11 @@ class TippecanoeService:
             # prefer adding zoom levels over dropping features (data fidelity);
             # runaway builds are bounded by the Celery task timeout
             "--extend-zooms-if-still-dropping",
-            # shed features rather than overflow a tile
+            # keep every feature at every zoom (no thinning as you zoom out); by
+            # default tippecanoe drops features at low zoom, so a scattered point
+            # layer would show only ~1 point at the world view
+            "--drop-rate=1",
+            # shed features only if a tile would otherwise overflow
             "--drop-densest-as-needed",
             # guess maxzoom from feature spacing, but floor it so sparse/global
             # datasets don't get a near-zero maxzoom

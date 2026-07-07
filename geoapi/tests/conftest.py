@@ -440,6 +440,13 @@ def point_and_polygon_geojson_fixture():
 
 
 @pytest.fixture(scope="function")
+def points_1000_geojson_path_fixture():
+    """Path to a GeoJSON of 1000 points scattered globally (EPSG:4326)."""
+    home = os.path.dirname(__file__)
+    return os.path.join(home, "fixtures/1000_points.geojson")
+
+
+@pytest.fixture(scope="function")
 def shapefile_additional_files_fixture():
     home = os.path.dirname(__file__)
     with open(os.path.join(home, "fixtures/shapefile.cpg"), "rb") as cpg, open(
