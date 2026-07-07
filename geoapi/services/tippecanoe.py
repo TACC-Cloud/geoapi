@@ -54,10 +54,15 @@ class TippecanoeService:
             "--force",  # overwrite output_path if it already exists
             "-l",
             layer_name,
-            "--drop-densest-as-needed",  # shed features rather than overflow a tile
-            # guess an appropriate maximum zoom, but never below our floor
-            # (see SMALLEST_MAXIMUM_ZOOM_GUESS for why sparse global data needs it)
+            # prefer adding zoom levels over dropping features (data fidelity);
+            # runaway builds are bounded by the Celery task timeout
+            "--extend-zooms-if-still-dropping",
+            # shed features rather than overflow a tile
+            "--drop-densest-as-needed",
+            # guess maxzoom from feature spacing, but floor it so sparse/global
+            # datasets don't get a near-zero maxzoom
             "-zg",
+            # See SMALLEST_MAXIMUM_ZOOM_GUESS discussion above
             f"--smallest-maximum-zoom-guess={SMALLEST_MAXIMUM_ZOOM_GUESS}",
             geojson_path,
         ]
@@ -79,4 +84,6 @@ class TippecanoeService:
                 f"tippecanoe failed with exit code {result.returncode}: "
                 f"{result.stderr.strip()}"
             )
+        if result.stderr:
+            logger.debug("tippecanoe output: %s", result.stderr)
         return output_path
