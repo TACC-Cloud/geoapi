@@ -222,8 +222,7 @@ def test_external_data_good_files(
         projects_fixture.id,
     )
     features = db_session.query(Feature).all()
-    # the geojson is now ingested as a single bbox Feature backed by a PMTiles
-    # asset produced by tippecanoe (which runs for real in the worker image)
+    # the geojson is ingested as a single bbox Feature backed by a PMTiles
     assert len(features) == 1
     assert len(features[0].assets) == 1
     asset = features[0].assets[0]
