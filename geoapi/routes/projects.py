@@ -15,7 +15,7 @@ from geoapi.services.point_cloud import PointCloudService
 from geoapi.services.projects import ProjectsService
 from geoapi.services.tile_server import TileService
 from geoapi.tasks import external_data, streetview, point_cloud
-from geoapi.models import Task, Project, Feature, TileServer, Overlay, PointCloud, User
+from geoapi.models import Task, Project, Feature, TileServer, PointCloud, User
 from geoapi.utils.decorators import (
     project_permissions_allow_public_guard,
     project_permissions_guard,
@@ -40,13 +40,10 @@ from geoapi.schema.projects import (
     TaskDTO,
     PointCloudDTO,
     PointCloudModel,
-    OverlayDTO,
     TileServerDTO,
     TileServerModel,
     TapisFileUploadModel,
     TapisFileImportModel,
-    AddOverlayBody,
-    TapisOverlayImportBody,
 )
 
 if TYPE_CHECKING:
@@ -443,7 +440,11 @@ class ProjectFeaturesFilsResourceController(Controller):
     @post(
         tags=["projects"],
         operation_id="upload_feature_file",
+        deprecated=True,
         description="""
+          **DEPRECATED**: Direct HTTP file upload. Use `POST /projects/{project_id}/features/files/import/`
+          to import files from Tapis instead. This endpoint remains functional but may be removed in a future release.
+
           Add a new feature(s) to a project from a file that has embedded geospatial information.
           Current allowed file types are GeoJSON, georeferenced image (jpeg) or gpx track.
           Any additional key/value pairs in the form will also be placed in the feature(s) metadata""",
@@ -501,141 +502,6 @@ class ProjectFeaturesFileImportResourceController(Controller):
                 u.id, file.system, file.path, project_id
             )
         return OkResponse(message="Task created for file import")
-
-
-class ProjectFeaturesClustersResourceController(Controller):
-    path = "/{project_id:int}/features/cluster/{num_clusters:int}/"
-
-    @get(
-        tags=["projects"],
-        operation_id="get_feature_clusters",
-        description="""K-Means cluster the features in a project. This returns a FeatureCollection of the centroids with the additional
-        property of "count" representing the number of Features that were aggregated into each cluster.""",
-        guards=[project_permissions_guard],
-    )
-    def get_feature_clusters(
-        self,
-        request: Request,
-        db_session: "Session",
-        project_id: int,
-        num_clusters: int,
-    ) -> FeatureCollectionModel:
-        """Get feature clusters for a project."""
-        logger.info(
-            "Get feature clusters for project:{} for user:{} with num_clusters:{}".format(
-                project_id, request.user.username, num_clusters
-            )
-        )
-        return FeaturesService.clusterKMeans(db_session, project_id, num_clusters)
-
-
-class ProjectOverlaysResourceController(Controller):
-    path = "/{project_id:int}/overlays/"
-
-    @post(
-        tags=["projects"],
-        operation_id="add_overlay",
-        description="Add a new overlay to a project",
-        guards=[project_permissions_guard],
-        return_dto=OverlayDTO,
-    )
-    async def add_overlay(
-        self,
-        request: Request,
-        db_session: "Session",
-        project_id: int,
-        data: Annotated[
-            AddOverlayBody, Body(media_type=RequestEncodingType.MULTI_PART)
-        ],
-    ) -> Overlay:
-        """Add an overlay to a project."""
-        file = data.file
-        file_bytes = await file.read()
-        file_obj = io.BytesIO(file_bytes)
-
-        logger.info(
-            "Add overlay to project:{} for user:{}: {}".format(
-                project_id, request.user.username, file.filename
-            )
-        )
-
-        bounds = [data.minLon, data.minLat, data.maxLon, data.maxLat]
-        label = data.label
-        return FeaturesService.addOverlay(
-            db_session, project_id, file_obj, bounds, label
-        )
-
-    @get(
-        tags=["projects"],
-        operation_id="get_overlays",
-        description="Get a list of all the overlays associated with the current map project.",
-        guards=[project_permissions_allow_public_guard],
-        return_dto=OverlayDTO,
-    )
-    def get_overlays(
-        self, request: Request, db_session: "Session", project_id: int
-    ) -> list[Overlay]:
-        """Get a list of overlays for a project."""
-        logger.info(
-            "Get overlays for project:{} for user:{}".format(
-                project_id, request.user.username
-            )
-        )
-        return FeaturesService.getOverlays(db_session, project_id)
-
-
-class ProjectOverlaysImportResourceController(Controller):
-    path = "/{project_id:int}/overlays/import/"
-
-    @post(
-        tags=["projects"],
-        operation_id="import_overlay_from_tapis",
-        description="Import an overlay from Tapis into a project.",
-        guards=[project_permissions_guard],
-        return_dto=OverlayDTO,
-    )
-    def import_overlay_from_tapis(
-        self,
-        request: Request,
-        db_session: "Session",
-        project_id: int,
-        data: TapisOverlayImportBody,
-    ) -> Overlay:
-        """Import an overlay from Tapis into a project."""
-        u = request.user
-        logger.info(
-            "Import overlay to project:{} for user:{}: {}".format(
-                project_id, u.username, data
-            )
-        )
-        system_id = data.system_id
-        path = data.path
-        label = data.label
-        bounds = [data.minLon, data.minLat, data.maxLon, data.maxLat]
-        return FeaturesService.addOverlayFromTapis(
-            db_session, u, project_id, system_id, path, bounds, label
-        )
-
-
-class ProjectOverlayResourceController(Controller):
-    path = "/{project_id:int}/overlays/{overlay_id:int}/"
-
-    @delete(
-        tags=["projects"],
-        operation_id="remove_overlay",
-        description="Remove an overlay from a project",
-        guards=[project_permissions_guard],
-    )
-    def remove_overlay(
-        self, request: Request, db_session: "Session", project_id: int, overlay_id: int
-    ) -> None:
-        """Remove an overlay from a project."""
-        logger.info(
-            "Delete overlay:{} in project:{} for user:{}".format(
-                overlay_id, project_id, request.user.username
-            )
-        )
-        FeaturesService.deleteOverlay(db_session, project_id, overlay_id)
 
 
 class ProjectStreetviewResourceController(Controller):
@@ -1096,10 +962,6 @@ projects_router = Router(
         ProjectFeaturesCollectionResourceController,
         ProjectFeaturesFilsResourceController,
         ProjectFeaturesFileImportResourceController,
-        ProjectFeaturesClustersResourceController,
-        ProjectOverlaysResourceController,
-        ProjectOverlaysImportResourceController,
-        ProjectOverlayResourceController,
         ProjectStreetviewResourceController,
         ProjectStreetviewFeatureResourceController,
         ProjectPointCloudsResourceController,
