@@ -1,5 +1,6 @@
 from litestar import Router
 
+from .files import FileInspectController
 from .projects import projects_router
 from .status import StatusController
 from .streetview import StreetviewController
@@ -13,6 +14,7 @@ api_router = Router(
     path="/",
     route_handlers=[
         projects_router,
+        FileInspectController,
         NotificationsController,
         StatusController,
         StreetviewController,

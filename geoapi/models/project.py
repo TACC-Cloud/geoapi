@@ -62,6 +62,7 @@ class Project(Base):
     # watch user of tapis system (system_id)
     watch_users = mapped_column(Boolean, default=False)
 
+    # Computed from the projects_users row, not stored on `projects`.
     _deletable: bool = False
 
     @hybrid_property
@@ -71,6 +72,26 @@ class Project(Base):
     @deletable.setter
     def deletable(self, value: bool):
         self._deletable = value
+
+    # Computed from the projects_users row, not stored on `projects`.
+    _admin: bool = False
+    _creator: bool = False
+
+    @hybrid_property
+    def admin(self):
+        return getattr(self, "_admin", False)
+
+    @admin.setter
+    def admin(self, value: bool):
+        self._admin = value
+
+    @hybrid_property
+    def creator(self):
+        return getattr(self, "_creator", False)
+
+    @creator.setter
+    def creator(self, value: bool):
+        self._creator = value
 
     def __repr__(self):
         return (

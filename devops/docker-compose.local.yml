@@ -148,3 +148,20 @@ services:
     volumes:
       - assets:/assets
     command: ["sh", "-c", "chown -R 1100:1100 /assets && chmod -R 775 /assets"]
+
+  mcp:
+    build:
+      context: ../mcp
+      dockerfile: Dockerfile
+    image: taccwma/geoapi-mcp:local
+    container_name: geoapi_mcp
+    ports:
+      - 8001:8001
+    volumes:
+      - ../mcp:/app
+    environment:
+      - GEOAPI_BASE_URL=http://backend:8000
+      - MCP_HOST=0.0.0.0
+      - MCP_PORT=8001
+    depends_on:
+      - backend

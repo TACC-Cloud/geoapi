@@ -135,3 +135,6 @@ client/swagger-codegen/
 celerybeat-schedule.*
 
 .vscode/
+
+# local MCP client config
+.mcp.json
