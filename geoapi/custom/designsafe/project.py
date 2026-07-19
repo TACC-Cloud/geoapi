@@ -11,10 +11,6 @@ from geoapi.custom.designsafe.utils import (
 
 
 def on_project_creation(database_session, user: User, project: Project):
-    # The .hazmapper marker file lives in the map's associated Tapis storage location.
-    # A standalone map (no system_id/system_path -- e.g. one created without linking it
-    # to DesignSafe storage) has nowhere to write it, so skip rather than POST to
-    # /files/ops/None/None/None.hazmapper (a guaranteed 404).
     if project.system_id and project.system_path and project.system_file:
         try:
             logger.debug(
@@ -41,7 +37,7 @@ def on_project_creation(database_session, user: User, project: Project):
                 f" project:{project.id} project_uuid:{project.uuid} "
             )
     else:
-        logger.debug(
+        logger.error(
             f"Project:{project.id} has no associated Tapis system/path; "
             "skipping .hazmapper marker file."
         )
