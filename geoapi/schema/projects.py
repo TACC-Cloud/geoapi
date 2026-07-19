@@ -1,11 +1,10 @@
 from datetime import datetime
 from pydantic import BaseModel, ConfigDict
-from litestar.datastructures import UploadFile
 from litestar.plugins.sqlalchemy import SQLAlchemyDTO
 from litestar.dto import DTOConfig
 from uuid import UUID
 
-from geoapi.models import Task, Project, Feature, TileServer, Overlay, PointCloud, User
+from geoapi.models import Task, Project, Feature, TileServer, PointCloud, User
 from geoapi.schema.tapis import TapisFilePath
 
 
@@ -171,12 +170,6 @@ class PointCloudModel(BaseModel):
     project_id: int | None = None
 
 
-class OverlayDTO(SQLAlchemyDTO[Overlay]):
-    config = DTOConfig(
-        exclude={"project"},
-    )
-
-
 class TileServerDTO(SQLAlchemyDTO[TileServer]):
     config = DTOConfig(
         include={
@@ -242,21 +235,3 @@ class TapisSaveFileModel(BaseModel):
 
 class TapisFileImportModel(BaseModel):
     files: list[TapisFilePath]
-
-
-class OverlayPostBody(BaseModel):
-    label: str
-    minLon: float
-    minLat: float
-    maxLon: float
-    maxLat: float
-
-
-class AddOverlayBody(OverlayPostBody):
-    model_config = ConfigDict(arbitrary_types_allowed=True)
-    file: UploadFile
-
-
-class TapisOverlayImportBody(OverlayPostBody):
-    system_id: str
-    path: str

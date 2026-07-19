@@ -19,6 +19,7 @@ app = Celery(
 
 # Import task modules
 app.conf.imports = (
+    "geoapi.tasks.health",
     "geoapi.tasks.raster",
     "geoapi.tasks.point_cloud",
     "geoapi.tasks.streetview",
@@ -30,7 +31,11 @@ app.conf.imports = (
 
 # Define the queues
 app.conf.task_queues = {
-    "default": {"exchange": "default", "routing_key": "default"},
+    "default": {
+        "exchange": "default",
+        "routing_key": "default",
+        "queue_arguments": {"x-max-priority": 10},
+    },
     "heavy": {"exchange": "heavy", "routing_key": "heavy"},
 }
 
