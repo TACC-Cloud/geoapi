@@ -313,7 +313,7 @@ def _inspect_image(local_path: str) -> FileInspectResponse | None:
     )
 
 
-def _classify_file(local_path: str, ext: str) -> FileInspectResponse | None:
+def _probe_local(local_path: str, ext: str) -> FileInspectResponse | None:
     """Route a fetched local file to the right tool by extension hint (tool-decided)."""
     if ext in POINTCLOUD_EXTS:
         return _inspect_pointcloud(local_path)
@@ -325,8 +325,9 @@ def _classify_file(local_path: str, ext: str) -> FileInspectResponse | None:
     return _inspect_raster(local_path) or _inspect_vector(local_path)
 
 
-def classify(client: TapisUtils, system_id: str, path: str) -> FileInspectResponse:
-    """Fetch a single file from Tapis and classify it deterministically with GDAL/OGR/PDAL.
+def probe(client: TapisUtils, system_id: str, path: str) -> FileInspectResponse:
+    """Fetch a single file from Tapis and probe it for a deterministic geospatial verdict
+    via GDAL/OGR/PDAL (and EXIF for photos).
 
     ``client`` is a ``geoapi.utils.external_apis.TapisUtils``. This is the WORKER-side
     logic: it needs the geo CLIs and can be slow, so it runs inside the Celery task, not
@@ -339,7 +340,7 @@ def classify(client: TapisUtils, system_id: str, path: str) -> FileInspectRespon
     # clouds, JPEG EXIF) and avoids pulling huge files. Small files come back whole.
     prefix = client.getFilePartial(system_id, path, PARTIAL_READ_BYTES)
     try:
-        result = _classify_file(prefix.name, ext)
+        result = _probe_local(prefix.name, ext)
     finally:
         prefix.close()
 
@@ -349,7 +350,7 @@ def classify(client: TapisUtils, system_id: str, path: str) -> FileInspectRespon
     if result is None:
         full = client.getFile(system_id, path)
         try:
-            result = _classify_file(full.name, ext)
+            result = _probe_local(full.name, ext)
         finally:
             full.close()
 
