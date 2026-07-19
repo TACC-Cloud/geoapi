@@ -148,9 +148,17 @@ def geoapi_create_map(
         system_path = f"/{tapis_username(token)}"
         watch_users = False
     else:
-        system_id = location  # a Tapis project system id, e.g. "project-1234"
+        system_id = (location or "").strip()  # a Tapis project system id, e.g. "project-1234"
         system_path = "/"
-        watch_users = location.startswith("project-")
+        watch_users = system_id.startswith("project-")
+
+    # A map must have a storage location. GeoAPI only logs (doesn't reject) a missing
+    # system/path, so guarantee it here: a non-empty system id and a path (root "/" is OK).
+    if not system_id or not system_path:
+        raise ToolError(
+            "Cannot create a map without a location: pass location='DESIGN_SAFE_MY_DATA' "
+            "or a Tapis project system id (e.g. 'project-1234')."
+        )
     body = {
         "name": name,
         "description": description,

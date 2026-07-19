@@ -208,6 +208,16 @@ def test_create_map_project_uses_given_system():
     assert body["watch_users"] is True  # DesignSafe project -> watch users
 
 
+@respx.mock
+def test_create_map_blank_location_is_rejected():
+    # A blank location has no system -> refuse before POSTing (GeoAPI only logs).
+    route = respx.post(f"{BASE}/projects/").mock(return_value=httpx.Response(200))
+    for bad in ("", "   "):
+        with pytest.raises(ToolError):
+            server.geoapi_create_map(_jwt("nathanf"), "Map", "", bad)
+    assert not route.called
+
+
 def test_tools_are_registered():
     import asyncio
 
