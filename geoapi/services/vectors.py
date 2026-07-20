@@ -1,4 +1,5 @@
 import geopandas as gpd
+import pandas as pd
 from geoapi.log import logging
 from typing import List, IO
 import tempfile
@@ -58,6 +59,8 @@ class VectorService:
             shapefile = shapefile.to_crs(epsg=4326)
             for index, row in shapefile.iterrows():
                 properties = {
-                    key: value for key, value in row.items() if key != "geometry"
+                    key: (None if pd.isna(value) else value)
+                    for key, value in row.items()
+                    if key != "geometry"
                 }
                 yield row["geometry"], properties
