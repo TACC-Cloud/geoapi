@@ -220,13 +220,14 @@ class FeaturesService:
             feat.project_id = projectId
             feat.the_geom = from_shape(bbox_geom, srid=4326)
             feat.properties = metadata or {}
-            # TODO original_path, original_system are ignored but should not be ignored after WG-600
 
             fa = FeatureAsset(
                 uuid=asset_uuid,
                 asset_type="vector",
                 original_system=original_system,
                 original_path=original_path,
+                current_system=original_system,
+                current_path=original_path,
                 display_path=original_path,
                 path=get_asset_relative_path(asset_path),
                 feature=feat,

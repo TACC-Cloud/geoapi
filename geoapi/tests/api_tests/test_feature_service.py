@@ -222,6 +222,8 @@ def test_create_feature_shpfile(
     assert os.path.isfile(get_asset_path(asset.path))
     assert asset.original_system == "system"
     assert asset.original_path == "foo"
+    assert asset.current_system == "system"
+    assert asset.current_path == "foo"
     assert asset.display_path == "foo"
 
 
