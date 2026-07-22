@@ -115,7 +115,10 @@ class ProjectsService:
                     project.id,
                 ]
             )
+        # The creating user owns the new map.
         setattr(project, "deletable", True)
+        setattr(project, "creator", True)
+        setattr(project, "admin", True)
         return project
 
     @staticmethod
@@ -134,6 +137,8 @@ class ProjectsService:
         )
         for p, u in projects_and_project_user:
             setattr(p, "deletable", u.admin or u.creator)
+            setattr(p, "admin", u.admin)
+            setattr(p, "creator", u.creator)
 
         return [p for p, _ in projects_and_project_user]
 
@@ -170,6 +175,8 @@ class ProjectsService:
                 setattr(
                     project, "deletable", project_user.admin or project_user.creator
                 )
+                setattr(project, "admin", project_user.admin)
+                setattr(project, "creator", project_user.creator)
         return project
 
     @staticmethod
