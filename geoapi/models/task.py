@@ -26,6 +26,14 @@ class Task(Base):
         index=True,
         nullable=True,
     )
+    # The user who triggered this task, when known. Nullable: pre-existing rows have
+    # none, and a task created without a user context (e.g. a future background/system
+    # job) leaves it NULL. SET NULL so deleting a user keeps the task.
+    user_id = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL"),
+        index=True,
+        nullable=True,
+    )
     latest_message = mapped_column(String(), nullable=True)
     created = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated = mapped_column(DateTime(timezone=True), onupdate=func.now())

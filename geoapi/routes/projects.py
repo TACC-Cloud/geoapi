@@ -531,7 +531,7 @@ class ProjectStreetviewResourceController(Controller):
         sequenceId = data["sequenceId"]
         token = data["token"]["token"]
         return streetview.process_streetview_sequences(
-            db_session, project_id, sequenceId, token
+            db_session, project_id, sequenceId, token, user_id=request.user.id
         )
 
 
@@ -668,6 +668,7 @@ class ProjectPointCloudResourceController(Controller):
             database_session=db_session,
             pointCloudId=point_cloud_id,
             data=data.model_dump(exclude_none=True),
+            user_id=request.user.id,
         )
 
     @delete(
