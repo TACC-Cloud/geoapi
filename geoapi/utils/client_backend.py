@@ -40,9 +40,6 @@ def get_client_url(url):
         "hazmapper-tmp",
         "staging-tmp",
         "dev-tmp",
-        "taggit",
-        "taggit-staging",
-        "taggit-dev",
         "",
     ]
 

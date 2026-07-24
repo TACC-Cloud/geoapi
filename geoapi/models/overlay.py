@@ -6,6 +6,11 @@ from geoapi.db import Base
 
 
 class Overlay(Base):
+    """**DEPRECATED** — The overlay API routes (add/get/import/remove) were removed
+    as no client used them. This model and its ``overlays`` table are retained only
+    to preserve any existing data and may be dropped in a future migration.
+    """
+
     __tablename__ = "overlays"
     id = mapped_column(Integer, primary_key=True)
     project_id = mapped_column(

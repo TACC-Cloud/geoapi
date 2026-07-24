@@ -153,7 +153,7 @@ async def retrieve_jwt_user_handler(
         # If no token, check for guest UUID
         if not token:
             # if JWT is not provided in header/cookie, then this is a guest user
-            # and if hazmapper/taggit, a guest uuid is provided in the header
+            # and if hazmapper, a guest uuid is provided in the header
             guest_uuid = connection.headers.get("X-Guest-UUID")
             user = AnonymousUser(guest_unique_id=guest_uuid)
         else:
