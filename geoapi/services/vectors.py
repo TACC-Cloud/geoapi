@@ -9,12 +9,18 @@ import os
 logger = logging.getLogger(__name__)
 
 # Vector file extensions that are ingested via convert_to_geojson() -> tippecanoe -> PMTiles
+#
+# Deferred, not yet supported:
+#   * gpkg (GeoPackage) — a multi-layer container (and can hold raster tiles).
+#     Our "1 file = 1 Feature" model would silently ingest only the first layer.
+#     Proper support means exploding its layers into N Features (+ handling any
+#     embedded rasters as internal tile layers) — follow-on work.
+#   * parquet/geoparquet — geopandas needs pyarrow (a heavyweight dep) and the
+#     format is uncommon for our users. Re-adding is a one-dep change (add
+#     pyarrow, restore the exts + a read_parquet branch in _read_direct).
 SUPPORTED_VECTOR_EXTENSIONS = {
     "geojson",
     "json",
-    "gpkg",
-    "parquet",
-    "geoparquet",
     "shp",
     "gpx",
 }
@@ -66,7 +72,7 @@ class VectorService:
         elif ext == "gpx":
             gdf = VectorService._read_gpx(fileObj)
         else:
-            gdf = VectorService._read_direct(fileObj, ext)
+            gdf = VectorService._read_direct(fileObj)
 
         if gdf.crs is None:
             # Inputs without a declared CRS (e.g. GeoJSON per RFC 7946) are WGS84
@@ -114,14 +120,12 @@ class VectorService:
             return gpd.read_file(tmp_path, layer="tracks")
 
     @staticmethod
-    def _read_direct(fileObj: IO, ext: str) -> gpd.GeoDataFrame:
-        """Read a self-contained vector file (geojson/json/gpkg/parquet)."""
+    def _read_direct(fileObj: IO) -> gpd.GeoDataFrame:
+        """Read a self-contained vector file (geojson/json)."""
         with tempfile.TemporaryDirectory() as tmpdirname:
             tmp_path = os.path.join(tmpdirname, os.path.basename(fileObj.filename))
             with open(tmp_path, "wb") as tmp:
                 tmp.write(fileObj.read())
-            if ext in ("parquet", "geoparquet"):
-                return gpd.read_parquet(tmp_path)
             return gpd.read_file(tmp_path)
 
     @staticmethod

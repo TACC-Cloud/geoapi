@@ -13,9 +13,11 @@ import pytest
 
 
 def test_supported_vector_extensions():
-    assert {"geojson", "shp", "gpx", "gpkg", "parquet", "geoparquet"}.issubset(
-        SUPPORTED_VECTOR_EXTENSIONS
-    )
+    assert {"geojson", "shp", "gpx"}.issubset(SUPPORTED_VECTOR_EXTENSIONS)
+    # Deferred formats are intentionally unsupported: gpkg (multi-layer, needs
+    # explode-into-N-features), parquet/geoparquet (no pyarrow dependency).
+    for deferred in ("gpkg", "parquet", "geoparquet"):
+        assert deferred not in SUPPORTED_VECTOR_EXTENSIONS
 
 
 @pytest.mark.worker
