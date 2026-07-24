@@ -11,13 +11,13 @@ logger = logging.getLogger(__name__)
 # Vector file extensions that are ingested via convert_to_geojson() -> tippecanoe -> PMTiles
 #
 # Deferred, not yet supported:
-#   * gpkg (GeoPackage) — a multi-layer container (and can hold raster tiles).
+#   * TODO gpkg (GeoPackage) — a multi-layer container (and can also hold rasters).
 #     Our "1 file = 1 Feature" model would silently ingest only the first layer.
 #     Proper support means exploding its layers into N Features (+ handling any
-#     embedded rasters as internal tile layers) — follow-on work.
-#   * parquet/geoparquet — geopandas needs pyarrow (a heavyweight dep) and the
-#     format is uncommon for our users. Re-adding is a one-dep change (add
-#     pyarrow, restore the exts + a read_parquet branch in _read_direct).
+#     embedded rasters as internal tile layers) — follow-on work. And would be
+#     best have styling approach determined before progressing.
+#   * TODO gdb (Geodatabase) -  Same thought process as above.  Tracked in jirra
+#     task https://tacc-main.atlassian.net/browse/WG-105
 SUPPORTED_VECTOR_EXTENSIONS = {
     "geojson",
     "json",
