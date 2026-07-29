@@ -17,7 +17,7 @@ import geojson
 from geoapi.services.images import ImageService, ImageData
 from geoapi.services.tippecanoe import TippecanoeService
 from geoapi.services.vectors import VectorService, SUPPORTED_VECTOR_EXTENSIONS
-from geoapi.models import Feature, FeatureAsset, Overlay, User, TileServer
+from geoapi.models import Feature, FeatureAsset, User, TileServer
 from geoapi.exceptions import (
     InvalidGeoJSON,
     ApiException,
