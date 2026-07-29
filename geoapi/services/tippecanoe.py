@@ -10,8 +10,15 @@ logger = logging.getLogger(__name__)
 # tippecanoe binary; overridable for environments where it is not on PATH
 TIPPECANOE_BIN = os.environ.get("TIPPECANOE_BIN", "tippecanoe")
 
-PUBLISHED_DS_MAPS_MIN_ZOOM = 6
-PUBLISHED_DS_MAPS_MAX_ZOOM = 16
+# Zoom config for the combined published DesignSafe maps archive (WG-703).
+#   min_zoom  z2  -- world overview (features are thinned below base_zoom; lets
+#                    the layer show a sparse scatter when zoomed out)
+#   base_zoom z8  -- every feature is kept at z8 and every zoom above (matches the
+#                    ReconPortal's selectedEventZoomToLevel); below z8 they are thinned
+#   max_zoom  z14 -- ~0.5m coordinate precision
+PUBLISHED_DS_MAPS_MIN_ZOOM = 2
+PUBLISHED_DS_MAPS_BASE_ZOOM = 8
+PUBLISHED_DS_MAPS_MAX_ZOOM = 14
 
 # Floor for tippecanoe's guessed maximum zoom (-zg).
 #
@@ -102,25 +109,28 @@ class TippecanoeService:
         layers: List[Tuple[str, str]],
         output_path: str,
         min_zoom: int = PUBLISHED_DS_MAPS_MIN_ZOOM,
+        base_zoom: int = PUBLISHED_DS_MAPS_BASE_ZOOM,
         max_zoom: int = PUBLISHED_DS_MAPS_MAX_ZOOM,
     ) -> Optional[int]:
         """
-        Tile per-layer GeoJSON files into one PMTiles archive with NO dropping.
+        Tile per-layer GeoJSON files into one PMTiles archive.
 
         Used for the combined published DesignSafe maps archive (WG-703). Unlike
-        ``geojson_to_pmtiles`` (per-feature vector ingest, which guesses maxzoom
-        and may shed on tile overflow), this pins a moderate zoom range and
-        disables every form of feature thinning, so every marker is present at
-        every zoom. Deep display is handled by client overzoom -- see
-        ``PUBLISHED_DS_MAPS_MAX_ZOOM``.
+        ``geojson_to_pmtiles`` (per-feature vector ingest, which guesses maxzoom),
+        this pins a fixed zoom range and keeps every feature at ``base_zoom`` and
+        above (``-B``) -- so nothing is dropped where the consumer actually looks
+        (its selectedEventZoomToLevel) up through overzoom. Below ``base_zoom``
+        features are thinned into a cheap sparse overview. Per-tile size/feature
+        limits are disabled so ``base_zoom``+ stays complete.
 
         Each entry becomes its own vector-tile layer, so the consumer can style
         and toggle by feature type.
 
         :param layers: list of ``(layer_name, geojson_path)``
         :param output_path: path where the .pmtiles archive will be written
-        :param min_zoom: minimum zoom (default z6)
-        :param max_zoom: maximum zoom (default z16)
+        :param min_zoom: minimum zoom (default z2)
+        :param base_zoom: keep all features at/above this zoom; thin below (default z8)
+        :param max_zoom: maximum zoom (default z14)
         :return: the feature count tippecanoe reports writing (for the caller's
             source-vs-archive count check), or ``None`` if it can't be parsed
         :raises RuntimeError: if the tippecanoe binary is missing or exits non-zero
@@ -138,10 +148,11 @@ class TippecanoeService:
             str(min_zoom),
             "-z",
             str(max_zoom),
-            # --- no feature dropping, at any zoom (as used for all-published-DS-maps (WG-703)
-            # so it requires every marker
-            "--drop-rate=1",  # keep every feature at every zoom
-            "--no-feature-limit",  # don't cap features per tile
+            # keep every feature at base_zoom and above (no dropping where the
+            # consumer looks); below base_zoom, thin into a sparse overview
+            "-B",
+            str(base_zoom),
+            "--no-feature-limit",  # don't cap features per tile (base_zoom+ complete)
             "--no-tile-size-limit",  # don't drop to keep tiles under the size cap
             "--no-tiny-polygon-reduction",  # keep small footprints as-is
             "--no-line-simplification",  # don't move vertices (COG footprints stay put)

@@ -95,16 +95,14 @@ def test_geojson_layers_to_pmtiles_builds_no_drop_command():
     cmd = mock_run.call_args[0][0]
     assert cmd[0] == "tippecanoe"
     assert "-o" in cmd and cmd[cmd.index("-o") + 1] == "/tmp/out.pmtiles"
-    # fixed moderate zoom range (overzoom handles deep display)
-    assert cmd[cmd.index("-Z") + 1] == "6"
-    assert cmd[cmd.index("-z") + 1] == "16"
-    # no dropping of any kind
-    assert "--drop-rate=1" in cmd
+    assert cmd[cmd.index("-Z") + 1] == "2"
+    assert cmd[cmd.index("-z") + 1] == "14"
+    assert cmd[cmd.index("-B") + 1] == "8"
     assert "--no-feature-limit" in cmd
     assert "--no-tile-size-limit" in cmd
     assert "--no-tiny-polygon-reduction" in cmd
     assert "--no-line-simplification" in cmd
-    # crucially NOT the overflow-shedding used by per-feature ingest
+    assert "--drop-rate=1" not in cmd
     assert "--drop-densest-as-needed" not in cmd
     # one named layer per entry
     assert "points:/tmp/points.geojson" in cmd

@@ -7,13 +7,16 @@ import argparse
 import json
 import os
 import shutil
+import subprocess
 import tempfile
+import time
 from collections import Counter, defaultdict
 
 from geoapi.custom.designsafe.published_export import PublishedMapsExportService
 from geoapi.custom.designsafe.published_maps import PublishedMapsService
 from geoapi.db import create_task_session
 from geoapi.services.tippecanoe import (
+    PUBLISHED_DS_MAPS_BASE_ZOOM,
     PUBLISHED_DS_MAPS_MAX_ZOOM,
     PUBLISHED_DS_MAPS_MIN_ZOOM,
     TippecanoeService,
@@ -52,7 +55,8 @@ def main():
     print(f"geoapi base URL    : {get_deployed_geoapi_url()}")
     print(f"hazmapper base URL : {get_deployed_hazmapper_url()}")
     print(
-        f"zoom range         : z{PUBLISHED_DS_MAPS_MIN_ZOOM}-z{PUBLISHED_DS_MAPS_MAX_ZOOM}"
+        f"zoom range         : z{PUBLISHED_DS_MAPS_MIN_ZOOM}-z{PUBLISHED_DS_MAPS_MAX_ZOOM} "
+        f"(all features kept at base z{PUBLISHED_DS_MAPS_BASE_ZOOM}+)"
     )
     print("-" * 72)
 
@@ -97,23 +101,45 @@ def main():
     bounds = _bounds(features)
     print(f"\nBounds [minx,miny,maxx,maxy]: {bounds}")
 
-    # tile into a scratch path (NOT the real public area)
+    # tile into a scratch path (NOT the real public area). Tile each layer
+    # separately (with timing) and then tile-join into the final archive.
     archive_path = args.out or os.path.join(
         str(get_temp_dir()), "published_ds_maps.pmtiles"
     )
     os.makedirs(os.path.dirname(archive_path), exist_ok=True)
     work_dir = tempfile.mkdtemp(prefix="layers_", dir=os.path.dirname(archive_path))
+    written_total = 0
     try:
         layer_files = _write_layer_files(features, work_dir)
-        print(f"\nTiling {len(layer_files)} layer(s) into {archive_path} ...")
-        written = TippecanoeService.geojson_layers_to_pmtiles(layer_files, archive_path)
+        print("\nPer-layer tiling (feature count / time / size):")
+        per_layer_pmtiles = []
+        for layer_name, geojson_path in layer_files:
+            layer_pmtiles = os.path.join(work_dir, f"{layer_name}.pmtiles")
+            start = time.time()
+            count = TippecanoeService.geojson_layers_to_pmtiles(
+                [(layer_name, geojson_path)], layer_pmtiles
+            )
+            elapsed = time.time() - start
+            written_total += count or 0
+            per_layer_pmtiles.append(layer_pmtiles)
+            print(
+                f"  {layer_name:<14} {count or 0:>7} feat  {elapsed:>8.1f}s  "
+                f"{_human_bytes(os.path.getsize(layer_pmtiles))}"
+            )
+
+        print(f"\nCombining {len(per_layer_pmtiles)} layer(s) -> {archive_path} ...")
+        subprocess.run(
+            ["tile-join", "--force", "--no-tile-size-limit", "-o", archive_path]
+            + per_layer_pmtiles,
+            check=True,
+        )
     finally:
         shutil.rmtree(work_dir, ignore_errors=True)
 
     archive_size = os.path.getsize(archive_path)
     print("-" * 72)
-    print(f"tippecanoe wrote   : {written} features (source had {stats['total']})")
-    if written != stats["total"]:
+    print(f"features tiled     : {written_total} (source had {stats['total']})")
+    if written_total != stats["total"]:
         print("  WARNING: count mismatch -- features were dropped!")
     print(f"ARCHIVE SIZE       : {_human_bytes(archive_size)} ({archive_size} bytes)")
     print(f"Archive path       : {archive_path}")
