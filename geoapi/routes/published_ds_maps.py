@@ -10,9 +10,8 @@ logger = logging.getLogger(__name__)
 class PublishedDsMapsController(Controller):
     """Unauthenticated discovery endpoint for the published DesignSafe maps archive.
 
-    Cheap: it just serves the sidecar ``manifest.json`` written by the nightly
-    task -- it never streams the archive (nginx serves the .pmtiles directly) and
-    never builds it (a fresh environment 404s until the first run completes).
+    It just serves the sidecar ``manifest.json`` written by the nightly
+    task. It never streams the archive as nginx serves the .pmtiles directly).
     """
 
     path = "/designsafe"

@@ -21,7 +21,7 @@ def test_get_manifest_returns_200_when_present(test_client):
     assert resp.json() == manifest
 
 
-def test_get_manifest_returns_404_on_cold_start(test_client):
+def test_get_manifest_returns_404_when_missing(test_client):
     with patch("geoapi.routes.published_ds_maps.read_manifest", return_value=None):
         resp = test_client.get(ROUTE)
     assert resp.status_code == 404

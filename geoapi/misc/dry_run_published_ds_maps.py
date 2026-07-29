@@ -1,25 +1,6 @@
 """
-Non-destructive dry run of the WG-703 published DesignSafe maps archive.
-
-Runs the REAL selector + exporter + tiler against whatever database the
-environment is configured for, tiles into a scratch directory, and prints
-counts, a per-layer breakdown, per-feature property-size stats, bounds, and the
-total archive size. Use it to answer "how big is this archive and how many
-projects/features?" before deploying -- e.g. pointed at production data.
-
-It is safe to run against production:
-  * DB access is READ-ONLY (SELECT via the ORM; nothing is written to the DB).
-  * Output goes ONLY to a scratch dir -- it never touches the real
-    assets/public area or manifest.json.
-  * It does NOT take the generation lock and does NOT enqueue anything.
-
-Requirements: this must run from a geoapi-workers image (it has tippecanoe + this
-code) with the environment pointed at the target DB. APP_ENV must match the tier
-whose maps you want (production maps are tagged deployment=production), because
-the selector filters on `deployment == APP_ENV` and the URLs baked into the
-archive come from APP_ENV.
-
-See misc/README.md for how to run it (local + production) and what it reports.
+Non-destructive dry run of creating published DesignSafe maps archive. Useful for testing out
+on prod and staging systems before deployment. See README.md
 """
 
 import argparse

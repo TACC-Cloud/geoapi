@@ -138,8 +138,9 @@ class TippecanoeService:
             str(min_zoom),
             "-z",
             str(max_zoom),
-            # --- no feature dropping, at any zoom (WG-703 requires every marker) ---
-            "--drop-rate=1",  # keep every feature at every zoom (no rate thinning)
+            # --- no feature dropping, at any zoom (as used for all-published-DS-maps (WG-703)
+            # so it requires every marker
+            "--drop-rate=1",  # keep every feature at every zoom
             "--no-feature-limit",  # don't cap features per tile
             "--no-tile-size-limit",  # don't drop to keep tiles under the size cap
             "--no-tiny-polygon-reduction",  # keep small footprints as-is

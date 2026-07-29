@@ -23,12 +23,7 @@ from geoapi.settings import settings
 from geoapi.utils.assets import get_temp_dir
 from geoapi.utils.client_backend import get_deployed_geoapi_url
 
-# Layout of the shared public asset area (served unauthenticated by nginx).
-PUBLIC_ASSET_SUBDIR = "public"
-MANIFEST_FILENAME = "manifest.json"
 
-# Versioned, lexicographically-sortable archive name:
-#   published_ds_maps_20260724T030000Z.pmtiles
 ARCHIVE_PREFIX = "published_ds_maps_"
 ARCHIVE_SUFFIX = ".pmtiles"
 
@@ -36,22 +31,22 @@ ARCHIVE_SUFFIX = ".pmtiles"
 SCHEMA_VERSION = 1
 
 # Prune archives older than this, but never the one the manifest references. 26h
-# (not 24h) leaves margin for a late run so a predecessor isn't removed early; in
-# steady state this keeps two generations.
+# (not 24h) leaves margin for a late run so a predecessor isn't removed early; so
+# we should be keeping two generations.
 PRUNE_AGE_SECONDS = 26 * 3600
 
 # Redis lock so a nightly beat, a startup enqueue, and a manual trigger can't run
-# two tippecanoe builds at once. Auto-expires so a crashed run doesn't wedge it.
+# two tippecanoe builds at once.
 GENERATION_LOCK_KEY = "published_ds_maps:generation"
 GENERATION_LOCK_TIMEOUT_SECONDS = 2 * 3600
 
 
 def public_asset_dir() -> str:
-    return os.path.join(settings.ASSETS_BASE_DIR, PUBLIC_ASSET_SUBDIR)
+    return os.path.join(settings.ASSETS_BASE_DIR, "public")
 
 
 def manifest_path() -> str:
-    return os.path.join(public_asset_dir(), MANIFEST_FILENAME)
+    return os.path.join(public_asset_dir(), "manifest.json")
 
 
 def read_manifest() -> Optional[dict]:
@@ -64,7 +59,7 @@ def read_manifest() -> Optional[dict]:
 
 
 def _public_asset_url(filename: str) -> str:
-    return f"{get_deployed_geoapi_url()}/assets/{PUBLIC_ASSET_SUBDIR}/{filename}"
+    return f"{get_deployed_geoapi_url()}/assets/public/{filename}"
 
 
 def _utc_now() -> datetime:
@@ -72,7 +67,6 @@ def _utc_now() -> datetime:
 
 
 def _archive_filename(now: datetime) -> str:
-    # UTC, explicit Z, no colons/spaces -> filesystem- and URL-safe and sortable
     return f"{ARCHIVE_PREFIX}{now.strftime('%Y%m%dT%H%M%SZ')}{ARCHIVE_SUFFIX}"
 
 
@@ -289,12 +283,10 @@ def _write_manifest(manifest: dict) -> None:
 
 
 def enqueue_generation_if_missing() -> bool:
-    """Cold-start self-heal: enqueue a build if no manifest exists yet.
+    """Enqueue a build if no manifest exists yet.
 
     Called on app startup so a fresh environment produces an archive within one
-    task run instead of waiting for the nightly beat. Never runs generation
-    inline (that would block the worker for minutes); the Redis lock keeps this
-    from overlapping the nightly or a manual trigger.
+    task run instead of waiting for the nightly beat.
 
     :return: True if a generation task was enqueued
     """

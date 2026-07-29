@@ -86,15 +86,9 @@ def get_deployed_hazmapper_url():
     """
     Get the Hazmapper frontend base URL for the current environment.
 
-    Mirrors the frontend's host + basePath convention (see hazmapper
-    getHazmapperBase/getBasePath): a single host, distinguished by a path
-    prefix per environment. Used to build public-map deep links, e.g.
+    Used to build public-map deep links, e.g.
     ``{base}/project-public/{uuid}?selectedFeature={id}``.
     """
-    # basePath per environment mirrors the frontend's getBasePath. Note that
-    # production lives under /hazmapper (not root) -- this matches the canonical
-    # public-map links DesignSafe itself publishes
-    # (https://hazmapper.tacc.utexas.edu/hazmapper/project-public/<uuid>/).
     hazmapper_urls = {
         "local": "http://localhost:4200",
         "production": "https://hazmapper.tacc.utexas.edu/hazmapper",
