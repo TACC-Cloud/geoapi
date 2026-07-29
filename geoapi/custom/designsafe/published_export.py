@@ -160,8 +160,10 @@ class PublishedMapsExportService:
         served at ``{geoapi}/assets/{asset.path}``.
         """
         for asset in feature.assets:
-            if asset.asset_type == "image" and asset.path and asset.path.endswith(
-                ".jpeg"
+            if (
+                asset.asset_type == "image"
+                and asset.path
+                and asset.path.endswith(".jpeg")
             ):
                 thumb_path = asset.path[: -len(".jpeg")] + ".thumb.jpeg"
                 return f"{geoapi_base}/assets/{thumb_path}"

@@ -107,9 +107,7 @@ class PublishedMapsService:
         return detail.get("baseProject") or {}
 
     @classmethod
-    def get_published_maps(
-        cls, database_session
-    ) -> List[PublishedMap]:
+    def get_published_maps(cls, database_session) -> List[PublishedMap]:
         """Resolve the published, this-deployment, public maps to local Projects.
 
         :param database_session: SQLAlchemy session bound to this deployment's DB

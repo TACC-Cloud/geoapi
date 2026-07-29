@@ -23,7 +23,6 @@ from geoapi.settings import settings
 from geoapi.utils.assets import get_temp_dir
 from geoapi.utils.client_backend import get_deployed_geoapi_url
 
-
 ARCHIVE_PREFIX = "published_ds_maps_"
 ARCHIVE_SUFFIX = ".pmtiles"
 
@@ -184,9 +183,7 @@ def generate_published_ds_maps_pmtiles():
     geoapi/misc/dry_run_published_ds_maps.py.
     """
     start_time = time.time()
-    redis_client = redis.Redis(
-        host=settings.REDIS_HOST, port=settings.REDIS_PORT, db=0
-    )
+    redis_client = redis.Redis(host=settings.REDIS_HOST, port=settings.REDIS_PORT, db=0)
     lock = redis_client.lock(
         GENERATION_LOCK_KEY, timeout=GENERATION_LOCK_TIMEOUT_SECONDS
     )
@@ -220,7 +217,9 @@ def generate_published_ds_maps_pmtiles():
         os.makedirs(public_asset_dir(), exist_ok=True)
         # Work under ASSETS_BASE_DIR/tmp so the finished archive is on the SAME
         # filesystem as the public dir and os.replace() is atomic.
-        work_dir = tempfile.mkdtemp(prefix="published_ds_maps_", dir=str(get_temp_dir()))
+        work_dir = tempfile.mkdtemp(
+            prefix="published_ds_maps_", dir=str(get_temp_dir())
+        )
         now = _utc_now()
         filename = _archive_filename(now)
         try:

@@ -24,7 +24,13 @@ FEATURES = [
         "geometry": {
             "type": "Polygon",
             "coordinates": [
-                [[-97.8, 30.2], [-97.6, 30.2], [-97.6, 30.4], [-97.8, 30.4], [-97.8, 30.2]]
+                [
+                    [-97.8, 30.2],
+                    [-97.6, 30.2],
+                    [-97.6, 30.4],
+                    [-97.8, 30.4],
+                    [-97.8, 30.2],
+                ]
             ],
         },
         "properties": {"feature_type": "cog", "feature_id": None},
@@ -173,13 +179,17 @@ def test_generate_aborts_on_count_mismatch_without_touching_manifest(tmp_path):
 
 
 def test_enqueue_generation_if_missing_enqueues_only_when_absent():
-    with patch.object(published_ds_maps, "read_manifest", return_value={"url": "x"}), patch.object(
+    with patch.object(
+        published_ds_maps, "read_manifest", return_value={"url": "x"}
+    ), patch.object(
         published_ds_maps.generate_published_ds_maps_pmtiles, "delay"
     ) as delay:
         assert published_ds_maps.enqueue_generation_if_missing() is False
         delay.assert_not_called()
 
-    with patch.object(published_ds_maps, "read_manifest", return_value=None), patch.object(
+    with patch.object(
+        published_ds_maps, "read_manifest", return_value=None
+    ), patch.object(
         published_ds_maps.generate_published_ds_maps_pmtiles, "delay"
     ) as delay:
         assert published_ds_maps.enqueue_generation_if_missing() is True
@@ -192,7 +202,9 @@ def test_generate_prunes_old_archives_but_keeps_recent(tmp_path):
     os.makedirs(public_dir, exist_ok=True)
 
     old = os.path.join(public_dir, f"{ARCHIVE_PREFIX}20200101T000000Z{ARCHIVE_SUFFIX}")
-    recent = os.path.join(public_dir, f"{ARCHIVE_PREFIX}20990101T000000Z{ARCHIVE_SUFFIX}")
+    recent = os.path.join(
+        public_dir, f"{ARCHIVE_PREFIX}20990101T000000Z{ARCHIVE_SUFFIX}"
+    )
     for path in (old, recent):
         with open(path, "wb") as f:
             f.write(b"old")

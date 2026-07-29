@@ -28,7 +28,9 @@ def _fake_designsafe_api(pages, details):
             offset = int(url.split("offset=")[1].split("&")[0])
             return {"result": pages.get(offset, [])}
         designsafe_project_id = url.rsplit("/", 1)[1]
-        return {"baseProject": {"hazmapperMaps": details.get(designsafe_project_id, [])}}
+        return {
+            "baseProject": {"hazmapperMaps": details.get(designsafe_project_id, [])}
+        }
 
     return _get_json
 
@@ -64,20 +66,20 @@ def test_get_published_maps_selects_only_matching_maps_and_logs_exclusions(
             }
         ],
         # excluded: resolves to a non-public project -> error logged
-        "PRJ-2": [
-            {"uuid": str(private_project.uuid), "deployment": this_deployment}
-        ],
+        "PRJ-2": [{"uuid": str(private_project.uuid), "deployment": this_deployment}],
         # excluded: registered by a different deployment tier
-        "PRJ-3": [
-            {"uuid": str(public_project.uuid), "deployment": "some-other-tier"}
-        ],
+        "PRJ-3": [{"uuid": str(public_project.uuid), "deployment": "some-other-tier"}],
         # excluded: this deployment, but no such project in the DB -> warning
         "PRJ-4": [{"uuid": missing_uuid, "deployment": this_deployment}],
     }
 
     with patch.object(
-        PublishedMapsService, "_get_json", side_effect=_fake_designsafe_api(pages, details)
-    ), patch.object(PublishedMapsService, "inter_request_sleep_seconds", 0), caplog.at_level(
+        PublishedMapsService,
+        "_get_json",
+        side_effect=_fake_designsafe_api(pages, details),
+    ), patch.object(
+        PublishedMapsService, "inter_request_sleep_seconds", 0
+    ), caplog.at_level(
         logging.WARNING
     ):
         selected = PublishedMapsService.get_published_maps(db_session)
@@ -115,7 +117,9 @@ def test_selector_returns_empty_when_no_deployment_matches(db_session):
     }
 
     with patch.object(
-        PublishedMapsService, "_get_json", side_effect=_fake_designsafe_api(pages, details)
+        PublishedMapsService,
+        "_get_json",
+        side_effect=_fake_designsafe_api(pages, details),
     ), patch.object(PublishedMapsService, "inter_request_sleep_seconds", 0):
         selected = PublishedMapsService.get_published_maps(db_session)
 

@@ -51,7 +51,9 @@ def main():
     print(f"DB host / name     : {settings.DB_HOST} / {settings.DB_NAME}")
     print(f"geoapi base URL    : {get_deployed_geoapi_url()}")
     print(f"hazmapper base URL : {get_deployed_hazmapper_url()}")
-    print(f"zoom range         : z{PUBLISHED_DS_MAPS_MIN_ZOOM}-z{PUBLISHED_DS_MAPS_MAX_ZOOM}")
+    print(
+        f"zoom range         : z{PUBLISHED_DS_MAPS_MIN_ZOOM}-z{PUBLISHED_DS_MAPS_MAX_ZOOM}"
+    )
     print("-" * 72)
 
     with create_task_session() as session:
