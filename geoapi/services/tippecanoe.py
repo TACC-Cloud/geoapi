@@ -1,5 +1,7 @@
 import os
+import re
 import subprocess
+from typing import List, Optional, Tuple
 
 from geoapi.log import logging
 
@@ -7,6 +9,9 @@ logger = logging.getLogger(__name__)
 
 # tippecanoe binary; overridable for environments where it is not on PATH
 TIPPECANOE_BIN = os.environ.get("TIPPECANOE_BIN", "tippecanoe")
+
+PUBLISHED_DS_MAPS_MIN_ZOOM = 6
+PUBLISHED_DS_MAPS_MAX_ZOOM = 16
 
 # Floor for tippecanoe's guessed maximum zoom (-zg).
 #
@@ -91,3 +96,86 @@ class TippecanoeService:
         if result.stderr:
             logger.debug("tippecanoe output: %s", result.stderr)
         return output_path
+
+    @staticmethod
+    def geojson_layers_to_pmtiles(
+        layers: List[Tuple[str, str]],
+        output_path: str,
+        min_zoom: int = PUBLISHED_DS_MAPS_MIN_ZOOM,
+        max_zoom: int = PUBLISHED_DS_MAPS_MAX_ZOOM,
+    ) -> Optional[int]:
+        """
+        Tile per-layer GeoJSON files into one PMTiles archive with NO dropping.
+
+        Used for the combined published DesignSafe maps archive (WG-703). Unlike
+        ``geojson_to_pmtiles`` (per-feature vector ingest, which guesses maxzoom
+        and may shed on tile overflow), this pins a moderate zoom range and
+        disables every form of feature thinning, so every marker is present at
+        every zoom. Deep display is handled by client overzoom -- see
+        ``PUBLISHED_DS_MAPS_MAX_ZOOM``.
+
+        Each entry becomes its own vector-tile layer, so the consumer can style
+        and toggle by feature type.
+
+        :param layers: list of ``(layer_name, geojson_path)``
+        :param output_path: path where the .pmtiles archive will be written
+        :param min_zoom: minimum zoom (default z6)
+        :param max_zoom: maximum zoom (default z16)
+        :return: the feature count tippecanoe reports writing (for the caller's
+            source-vs-archive count check), or ``None`` if it can't be parsed
+        :raises RuntimeError: if the tippecanoe binary is missing or exits non-zero
+        :raises ValueError: if ``layers`` is empty
+        """
+        if not layers:
+            raise ValueError("geojson_layers_to_pmtiles requires at least one layer")
+
+        cmd = [
+            TIPPECANOE_BIN,
+            "-o",
+            output_path,
+            "--force",  # overwrite output_path if it already exists
+            "-Z",
+            str(min_zoom),
+            "-z",
+            str(max_zoom),
+            # --- no feature dropping, at any zoom (WG-703 requires every marker) ---
+            "--drop-rate=1",  # keep every feature at every zoom (no rate thinning)
+            "--no-feature-limit",  # don't cap features per tile
+            "--no-tile-size-limit",  # don't drop to keep tiles under the size cap
+            "--no-tiny-polygon-reduction",  # keep small footprints as-is
+            "--no-line-simplification",  # don't move vertices (COG footprints stay put)
+        ]
+        for layer_name, geojson_path in layers:
+            # `-L name:file` reads file into its own named vector-tile layer
+            cmd += ["-L", f"{layer_name}:{geojson_path}"]
+
+        logger.info("Running tippecanoe (public archive): %s", " ".join(cmd))
+        try:
+            result = subprocess.run(cmd, capture_output=True, text=True)
+        except FileNotFoundError as e:
+            raise RuntimeError(
+                f"tippecanoe binary not found (looked for '{TIPPECANOE_BIN}'). "
+                "Install tippecanoe or set the TIPPECANOE_BIN environment variable."
+            ) from e
+
+        if result.returncode != 0:
+            logger.error(
+                "tippecanoe failed (exit %s): %s", result.returncode, result.stderr
+            )
+            raise RuntimeError(
+                f"tippecanoe failed with exit code {result.returncode}: "
+                f"{result.stderr.strip()}"
+            )
+
+        return TippecanoeService._parse_written_feature_count(result.stderr)
+
+    @staticmethod
+    def _parse_written_feature_count(stderr: str) -> Optional[int]:
+        """Pull the feature count out of tippecanoe's summary line.
+
+        tippecanoe prints e.g. ``"3 features, 81 bytes of geometry ..."`` to
+        stderr; this is the number of distinct input features it kept (it does
+        not match the earlier ``"Read N million features"`` progress line).
+        """
+        match = re.search(r"(\d+) features,", stderr or "")
+        return int(match.group(1)) if match else None
