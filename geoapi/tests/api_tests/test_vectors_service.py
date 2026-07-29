@@ -47,6 +47,25 @@ def test_convert_to_geojson_missing_shapefile_additional_files(shapefile_fixture
 
 
 @pytest.mark.worker
+def test_convert_to_geojson_large_extent_shapefile(
+    shapefile_large_extent_fixture, shapefile_large_extent_additional_files_fixture
+):
+    geojson_path, bbox = VectorService.convert_to_geojson(
+        shapefile_large_extent_fixture,
+        additional_files=shapefile_large_extent_additional_files_fixture,
+    )
+    try:
+        assert os.path.isfile(geojson_path)
+        # spans essentially the whole longitude range (antimeridian-crossing)
+        assert bbox["minx"] <= -179 and bbox["maxx"] >= 179
+        gdf = gpd.read_file(geojson_path)
+        assert gdf.crs.to_epsg() == 4326
+        assert len(gdf) == 10
+    finally:
+        shutil.rmtree(os.path.dirname(geojson_path), ignore_errors=True)
+
+
+@pytest.mark.worker
 def test_point_and_polygon_geojson_tiles_retain_geometry(
     point_and_polygon_geojson_fixture,
 ):
