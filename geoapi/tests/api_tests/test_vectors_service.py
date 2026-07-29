@@ -6,7 +6,7 @@ import tempfile
 import geopandas as gpd
 from shapely.geometry import Point
 
-from geoapi.services.vectors import VectorService, SUPPORTED_VECTOR_EXTENSIONS
+from geoapi.services.vectors import VectorService
 from geoapi.services.tippecanoe import TippecanoeService
 import pyogrio
 import pytest
