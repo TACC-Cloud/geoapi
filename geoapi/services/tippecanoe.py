@@ -117,14 +117,15 @@ class TippecanoeService:
 
         Used for the combined published DesignSafe maps archive (WG-703). Unlike
         ``geojson_to_pmtiles`` (per-feature vector ingest, which guesses maxzoom),
-        this pins a fixed zoom range and keeps every feature at ``base_zoom`` and
-        above (``-B``) -- so nothing is dropped where the consumer actually looks
-        (its selectedEventZoomToLevel) up through overzoom. Below ``base_zoom``
-        features are thinned into a cheap sparse overview. Per-tile size/feature
-        limits are disabled so ``base_zoom``+ stays complete.
+        this pins a fixed zoom range and keeps features from ``base_zoom`` up
+        (``-B``), where the ReconPortal actually looks (its selectedEventZoomToLevel),
+        through overzoom. Below ``base_zoom`` they thin into a sparser
+        overview. Tiles that would blow past the size cap shed their densest
+        features at that zoom (``--drop-densest-as-needed``); those reappear at
+        higher zoom where the tile fits (so no feature is lost from the archive).
 
-        Each entry becomes its own vector-tile layer, so the consumer can style
-        and toggle by feature type.
+        Each entry becomes its own vector-tile layer, so the consumer (i.e. ReconPortal)
+        can style and toggle by feature type.
 
         :param layers: list of ``(layer_name, geojson_path)``
         :param output_path: path where the .pmtiles archive will be written
@@ -148,14 +149,11 @@ class TippecanoeService:
             str(min_zoom),
             "-z",
             str(max_zoom),
-            # keep every feature at base_zoom and above (no dropping where the
-            # consumer looks); below base_zoom, thin into a sparse overview
             "-B",
             str(base_zoom),
-            "--no-feature-limit",  # don't cap features per tile (base_zoom+ complete)
-            "--no-tile-size-limit",  # don't drop to keep tiles under the size cap
-            "--no-tiny-polygon-reduction",  # keep small footprints as-is
-            "--no-line-simplification",  # don't move vertices (COG footprints stay put)
+            "--drop-densest-as-needed",
+            "--no-feature-limit",
+            "--no-tiny-polygon-reduction",
         ]
         for layer_name, geojson_path in layers:
             # `-L name:file` reads file into its own named vector-tile layer

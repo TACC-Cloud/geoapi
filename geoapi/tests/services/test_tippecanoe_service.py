@@ -82,7 +82,7 @@ def _point_counts_by_zoom(pmtiles_path):
     return counts
 
 
-def test_geojson_layers_to_pmtiles_builds_no_drop_command():
+def test_geojson_layers_to_pmtiles_builds_command():
     with patch("geoapi.services.tippecanoe.subprocess.run") as mock_run:
         mock_run.return_value = _completed(stderr="42 features, 1234 bytes of geometry")
         count = TippecanoeService.geojson_layers_to_pmtiles(
@@ -98,13 +98,11 @@ def test_geojson_layers_to_pmtiles_builds_no_drop_command():
     assert cmd[cmd.index("-Z") + 1] == "2"
     assert cmd[cmd.index("-z") + 1] == "14"
     assert cmd[cmd.index("-B") + 1] == "8"
+    assert "--drop-densest-as-needed" in cmd
+    assert "--no-tile-size-limit" not in cmd
     assert "--no-feature-limit" in cmd
-    assert "--no-tile-size-limit" in cmd
     assert "--no-tiny-polygon-reduction" in cmd
-    assert "--no-line-simplification" in cmd
     assert "--drop-rate=1" not in cmd
-    assert "--drop-densest-as-needed" not in cmd
-    # one named layer per entry
     assert "points:/tmp/points.geojson" in cmd
     assert "cog:/tmp/cog.geojson" in cmd
 
@@ -121,7 +119,7 @@ def test_parse_written_feature_count_ignores_progress_line():
 
 
 @pytest.mark.worker
-def test_geojson_layers_to_pmtiles_no_drop_multilayer():
+def test_geojson_layers_to_pmtiles_multilayer():
     # tile a point layer and a polygon (COG-footprint-like) layer into one
     # archive; assert the reported count matches input and both layers survive.
     out_dir = tempfile.mkdtemp(prefix="geoapi_published_ds_maps_test_")
