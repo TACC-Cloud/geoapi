@@ -145,7 +145,7 @@ def get_additional_files(
                     f"Required file ({system_id}/{additional_file_path}) missing"
                 )
             if not result_file:
-                logger.error(
+                logger.warning(
                     f"Unable to get non-required {file_suffix}-related file: "
                     f"tapis: {system_id} :: {additional_file_path}   ---- error: {error}"
                 )
@@ -174,7 +174,28 @@ def import_file_from_tapis(userId: int, systemId: str, path: str, projectId: int
             client = TapisUtils(session, user)
             temp_file = client.getFile(systemId, path)
             temp_file.filename = Path(path).name
-            additional_files = get_additional_files(temp_file, systemId, path, client)
+
+            # List the containing directory so get_additional_files only fetches
+            # companion files that actually exist (avoids 404s on optional
+            # shapefile files).
+            available_files = None
+            try:
+                parent = Path(path).parent
+                directory_listing = client.listing(systemId, str(parent))
+                available_files = [
+                    str(parent / Path(item.path).name) for item in directory_listing
+                ]
+            except Exception:
+                logger.warning(
+                    "Could not list directory for %s/%s; will attempt all "
+                    "companion files",
+                    systemId,
+                    path,
+                )
+
+            additional_files = get_additional_files(
+                temp_file, systemId, path, client, available_files=available_files
+            )
 
             optional_location_from_metadata = get_geolocation_from_file_metadata(
                 session, user, system_id=systemId, path=path

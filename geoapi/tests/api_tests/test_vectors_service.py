@@ -1,31 +1,104 @@
+import os
+import shutil
+import subprocess
+import tempfile
+
+import geopandas as gpd
+from shapely.geometry import Point
+
 from geoapi.services.vectors import VectorService
+from geoapi.services.tippecanoe import TippecanoeService
 import pyogrio
 import pytest
 
 
-def test_process_shapefile(
-    shapefile_fixture,
-    shapefile_additional_files_fixture,
-    shapefile_first_element_geometry,
+@pytest.mark.worker
+def test_convert_to_geojson_shapefile(
+    shapefile_fixture, shapefile_additional_files_fixture
 ):
-    geom, properties = next(
-        VectorService.process_shapefile(
-            shapefile_fixture, additional_files=shapefile_additional_files_fixture
-        )
+    geojson_path, bbox = VectorService.convert_to_geojson(
+        shapefile_fixture, additional_files=shapefile_additional_files_fixture
     )
+    try:
+        # a GeoJSON file was written to a real temp directory
+        assert os.path.isfile(geojson_path)
 
-    assert geom.wkt == shapefile_first_element_geometry
-    assert properties == {
-        "continent": "South America",
-        "gdp_md_est": 436100.0,
-        "iso_a3": "CHL",
-        "name": "Chile",
-        "pop_est": 17789267,
-    }
+        # bbox is a valid lon/lat extent
+        assert set(bbox) == {"minx", "miny", "maxx", "maxy"}
+        assert bbox["minx"] < bbox["maxx"]
+        assert bbox["miny"] < bbox["maxy"]
+        # within lon/lat range, allowing tiny FP slop at the antimeridian/poles
+        assert -180.01 <= bbox["minx"] and bbox["maxx"] <= 180.01
+        assert -90.01 <= bbox["miny"] and bbox["maxy"] <= 90.01
+
+        # output is EPSG:4326 and 2D
+        gdf = gpd.read_file(geojson_path)
+        assert gdf.crs.to_epsg() == 4326
+        assert not gdf.geometry.iloc[0].has_z
+    finally:
+        shutil.rmtree(os.path.dirname(geojson_path), ignore_errors=True)
 
 
-def test_process_shapefile_missing_additional_files(shapefile_fixture):
+@pytest.mark.worker
+def test_convert_to_geojson_missing_shapefile_additional_files(shapefile_fixture):
+    # a shapefile cannot be read without its companion files (.shx/.dbf/...)
     with pytest.raises(pyogrio.errors.DataSourceError):
-        _, _ = next(
-            VectorService.process_shapefile(shapefile_fixture, additional_files=[])
-        )
+        VectorService.convert_to_geojson(shapefile_fixture, additional_files=[])
+
+
+@pytest.mark.worker
+def test_convert_to_geojson_large_extent_shapefile(
+    shapefile_large_extent_fixture, shapefile_large_extent_additional_files_fixture
+):
+    geojson_path, bbox = VectorService.convert_to_geojson(
+        shapefile_large_extent_fixture,
+        additional_files=shapefile_large_extent_additional_files_fixture,
+    )
+    try:
+        assert os.path.isfile(geojson_path)
+        # spans essentially the whole longitude range (antimeridian-crossing)
+        assert bbox["minx"] <= -179 and bbox["maxx"] >= 179
+        gdf = gpd.read_file(geojson_path)
+        assert gdf.crs.to_epsg() == 4326
+        assert len(gdf) == 10
+    finally:
+        shutil.rmtree(os.path.dirname(geojson_path), ignore_errors=True)
+
+
+@pytest.mark.worker
+def test_point_and_polygon_geojson_tiles_retain_geometry(
+    point_and_polygon_geojson_fixture,
+):
+    # Convert -> tippecanoe -> decode the tiles and confirm both the point and
+    # the polygon survive the pipeline (regression for mixed-geometry uploads).
+    geojson_path, _ = VectorService.convert_to_geojson(
+        point_and_polygon_geojson_fixture
+    )
+    out_dir = tempfile.mkdtemp(prefix="geoapi_pmtiles_test_")
+    try:
+        pmtiles_path = os.path.join(out_dir, "out.pmtiles")
+        TippecanoeService.geojson_to_pmtiles(geojson_path, pmtiles_path, "tacc")
+        assert os.path.isfile(pmtiles_path)
+
+        decoded = subprocess.run(
+            ["tippecanoe-decode", pmtiles_path],
+            capture_output=True,
+            text=True,
+            check=True,
+        ).stdout
+
+        assert '"Point"' in decoded, "point geometry did not survive tiling"
+        assert '"Polygon"' in decoded, "polygon geometry did not survive tiling"
+        assert "tacc" in decoded, "expected vector layer 'tacc' not found in tiles"
+    finally:
+        shutil.rmtree(out_dir, ignore_errors=True)
+        shutil.rmtree(os.path.dirname(geojson_path), ignore_errors=True)
+
+
+@pytest.mark.worker
+def test_force_2d_strips_z():
+    gdf = gpd.GeoDataFrame(geometry=[Point(1.0, 2.0, 3.0)], crs="EPSG:4326")
+    assert gdf.geometry.iloc[0].has_z
+
+    result = VectorService._force_2d(gdf)
+    assert not result.geometry.iloc[0].has_z
