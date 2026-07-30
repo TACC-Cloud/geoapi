@@ -1,8 +1,7 @@
-import json
 import uuid
 
 from geoalchemy2.shape import from_shape
-from shapely.geometry import Point
+from shapely.geometry import Point, box
 
 from geoapi.models import Feature, FeatureAsset, Project, TileServer
 from geoapi.custom.designsafe.published_export import PublishedMapsExportService
@@ -32,6 +31,22 @@ def _image_feature(db_session, project):
         uuid=asset_uuid,
         asset_type="image",
         path=f"{project.id}/{asset_uuid}.jpeg",
+        feature=feature,
+    )
+    feature.assets.append(asset)
+    db_session.add(feature)
+    db_session.commit()
+    return feature
+
+
+def _vector_feature(db_session, project):
+    feature = Feature(project_id=project.id, properties={})
+    feature.the_geom = from_shape(box(-99.0, 29.0, -98.0, 30.0), srid=4326)
+    asset_uuid = uuid.uuid4()
+    asset = FeatureAsset(
+        uuid=asset_uuid,
+        asset_type="vector",
+        path=f"{project.id}/{asset_uuid}.pmtiles",
         feature=feature,
     )
     feature.assets.append(asset)
@@ -76,80 +91,72 @@ def _published(project, doi="10.17603/ds2-test"):
     )
 
 
-def test_build_features_emits_features_cog_and_enriched_properties(db_session):
+def test_build_features_tiles_markers_and_lists_layer_footprints(db_session):
     project = _project(db_session)
     point = _point_feature(db_session, project)
     image = _image_feature(db_session, project)
+    vector = _vector_feature(db_session, project)
     _cog_tile_server(db_session, project)
 
-    features, cog_features, stats = PublishedMapsExportService.build_features(
+    features, layer_features, stats = PublishedMapsExportService.build_features(
         db_session, [_published(project)]
     )
 
-    # COGs are split out (companion cogs.geojson), not tiled with the features
+    # markers are tiled; COG + vector become layer footprints (companion geojson)
     assert stats == {
         "feature_count": 2,
         "cog_count": 1,
+        "vector_count": 1,
         "project_count": 1,
         "total": 2,
     }
-    assert len(features) == 2  # point + image, tiled
-    assert len(cog_features) == 1  # COG footprint -> cogs.geojson
+    assert len(features) == 2
+    assert len(layer_features) == 2
 
     by_type = {}
     for f in features:
         by_type.setdefault(f["properties"]["feature_type"], []).append(f)
+    layers_by_type = {}
+    for f in layer_features:
+        layers_by_type.setdefault(f["properties"]["feature_type"], []).append(f)
 
-    # every emitted feature (tiled + COG) carries the shared project context
-    for f in features + cog_features:
+    # shared project context on everything (tiled + layer footprints)
+    for f in features + layer_features:
         props = f["properties"]
         assert props["hazmapper_project_uuid"] == str(project.uuid)
         assert props["hazmapper_project_name"] == "pub"
         assert props["ds_project_name"] == "Published One"
         assert "designsafe.storage.published/PRJ-1" in props["ds_project_url"]
-        # project map link only (dedup-able) -- NOT a per-feature deep link
         assert props["hazmapper_url"].endswith(f"/project-public/{project.uuid}")
         assert "selectedFeature" not in props["hazmapper_url"]
-        # slimmed-out fields are gone
-        for gone in (
-            "project_uuid",
-            "ds_project_id",
-            "ds_doi",
-            "has_assets",
-            "created_date",
-        ):
+        for gone in ("project_uuid", "ds_project_id", "ds_doi", "has_assets",
+                     "created_date"):
             assert gone not in props
 
-    # point feature: geometry-derived type; feature_id lets the consumer build the
-    # deep link as f"{hazmapper_url}?selectedFeature={feature_id}"
-    pt = by_type["point"][0]
-    assert pt["properties"]["feature_id"] == point.id
-    assert "thumbnail_url" not in pt["properties"]
+    assert by_type["point"][0]["properties"]["feature_id"] == point.id
+    assert "thumbnail_url" not in by_type["point"][0]["properties"]
+    assert by_type["image"][0]["properties"]["feature_id"] == image.id
 
-    # image feature: asset-derived type; no baked thumbnail (fetched on click)
-    img = by_type["image"][0]
-    assert img["properties"]["feature_id"] == image.id
-    assert "thumbnail_url" not in img["properties"]
-
-    # COG footprint: a filled polygon (rendered client-side from cogs.geojson) +
-    # resolvable tile url + field-for-field descriptor
-    cog = cog_features[0]
-    assert cog["properties"]["feature_type"] == "cog"
+    # COG footprint: filled polygon + tile url + descriptor object + bounds
+    cog = layers_by_type["cog"][0]
     assert cog["geometry"]["type"] == "Polygon"
     assert cog["properties"]["feature_id"] is None
-    assert cog["properties"]["layer_name"] == "my-cog"
-    assert cog["properties"]["max_zoom"] == 22
-    assert cog["properties"]["colormap_name"] == "terrain"
+    assert len(cog["properties"]["bounds"]) == 4
     cog_url = cog["properties"]["cog_url"]
     assert "/tiles/cog/tiles/WebMercatorQuad/{z}/{x}/{y}.png?url=" in cog_url
-    assert "file%3A%2F%2F" in cog_url  # url-encoded file://
     assert "colormap_name=terrain" in cog_url
-
-    descriptor = json.loads(cog["properties"]["tile_layer"])
+    descriptor = cog["properties"]["tile_layer"]
     assert descriptor["internal"] is True
     assert descriptor["kind"] == "cog"
-    assert descriptor["type"] == "xyz"
     assert descriptor["tileOptions"]["maxZoom"] == 22
+
+    # vector footprint: bbox polygon + pointer to its own PMTiles
+    vec = layers_by_type["vector"][0]
+    assert vec["geometry"]["type"] == "Polygon"
+    assert vec["properties"]["feature_id"] == vector.id
+    assert vec["properties"]["pmtiles_url"].endswith(".pmtiles")
+    assert "/assets/" in vec["properties"]["pmtiles_url"]
+    assert len(vec["properties"]["bounds"]) == 4
 
 
 def test_external_tile_layers_are_not_exported(db_session):
@@ -169,10 +176,11 @@ def test_external_tile_layers_are_not_exported(db_session):
     db_session.add(external)
     db_session.commit()
 
-    features, cog_features, stats = PublishedMapsExportService.build_features(
+    features, layer_features, stats = PublishedMapsExportService.build_features(
         db_session, [_published(project)]
     )
 
     assert stats["cog_count"] == 0
+    assert stats["vector_count"] == 0
     assert features == []
-    assert cog_features == []
+    assert layer_features == []

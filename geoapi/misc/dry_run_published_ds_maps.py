@@ -69,12 +69,15 @@ def main():
                 "matches the maps' deployment tag and that the DB is the right tier."
             )
             return
-        features, cog_features, stats = PublishedMapsExportService.build_features(
-            session, published
+        features, layer_features, stats = (
+            PublishedMapsExportService.build_features(session, published)
         )
 
     print(f"Tiled features     : {stats['feature_count']}")
-    print(f"COG footprints     : {stats['cog_count']} (companion cogs.geojson)")
+    print(
+        f"Layer footprints   : {stats['cog_count']} COG + {stats['vector_count']} "
+        "vector (companion geojson)"
+    )
 
     # per-layer (feature_type) breakdown
     by_type = Counter(f["properties"].get("feature_type") for f in features)
@@ -99,12 +102,11 @@ def main():
     for key, nbytes in sorted(per_key_bytes.items(), key=lambda kv: -kv[1])[:8]:
         print(f"  {key:<16} {_human_bytes(nbytes)}")
 
-    bounds = _bounds(features + cog_features)
+    bounds = _bounds(features + layer_features)
     print(f"\nBounds [minx,miny,maxx,maxy]: {bounds}")
 
-    # tile into a scratch path (NOT the real public area). Tile each layer
-    # separately (with timing) and then tile-join into the final archive. COGs are
-    # NOT tiled -- they go to a companion cogs.geojson (see below).
+    # tile into a scratch path (NOT the real public area). Layer footprints (COGs +
+    # vectors) are not tiled -- they go to a companion geojson (see below).
     archive_path = args.out or os.path.join(
         str(get_temp_dir()), "published_ds_maps.pmtiles"
     )
@@ -138,11 +140,11 @@ def main():
     finally:
         shutil.rmtree(work_dir, ignore_errors=True)
 
-    # companion cogs.geojson (COG footprints, rendered client-side -- not tiled)
-    cogs_path = os.path.splitext(archive_path)[0] + ".cogs.geojson"
-    with open(cogs_path, "w") as f:
-        json.dump({"type": "FeatureCollection", "features": cog_features}, f)
-    cogs_size = os.path.getsize(cogs_path)
+    # companion layer footprints (COGs + vectors), rendered client-side, not tiled
+    layers_path = os.path.splitext(archive_path)[0] + ".vectors_and_internal_cogs.geojson"
+    with open(layers_path, "w") as f:
+        json.dump({"type": "FeatureCollection", "features": layer_features}, f)
+    layers_size = os.path.getsize(layers_path)
 
     archive_size = os.path.getsize(archive_path)
     print("-" * 72)
@@ -150,11 +152,14 @@ def main():
     if written_total != stats["feature_count"]:
         print("  WARNING: count mismatch -- features were dropped!")
     print(f"ARCHIVE SIZE       : {_human_bytes(archive_size)} ({archive_size} bytes)")
-    print(f"cogs.geojson       : {_human_bytes(cogs_size)} ({stats['cog_count']} COGs)")
-    print(f"Archive path       : {archive_path}")
-    print(f"COGs path          : {cogs_path}")
     print(
-        f"\n(Delete {archive_path} and {cogs_path} when done. Nothing was written "
+        f"layers geojson     : {_human_bytes(layers_size)} "
+        f"({stats['cog_count']} COG + {stats['vector_count']} vector)"
+    )
+    print(f"Archive path       : {archive_path}")
+    print(f"Layers path        : {layers_path}")
+    print(
+        f"\n(Delete {archive_path} and {layers_path} when done. Nothing was written "
         "to the real assets/public area or manifest.)"
     )
 

@@ -24,14 +24,12 @@ from geoapi.utils.assets import get_temp_dir
 from geoapi.utils.client_backend import get_deployed_geoapi_url
 
 # Main pmtiles archive that will contain all published ds map data in one file
-# (with one exception, see COGS_SUFFIX below)
+# (COG and PMTiles-vector layers are the exception, see LAYERS_SUFFIX below)
 ARCHIVE_PREFIX = "published_ds_maps_"
 ARCHIVE_SUFFIX = ".pmtiles"
-# Companion GeoJSON of internal-COG footprints, rendered client-side (NOT tiled):
-# a COG's extent can be large (up to worldwide), and tiling a filled polygon that
-# big fills every tile it covers and blows up the build. Client-side GeoJSON draws
-# it for free at any size.
-COGS_SUFFIX = ".cogs.geojson"
+# Companion GeoJSON of layer footprints (internal COGs and PMTiles-vector uploads),
+# rendered client-side rather than tiled.
+LAYERS_SUFFIX = ".vectors_and_internal_cogs.geojson"
 
 # Bumped when the manifest/property schema changes in a way consumers must notice.
 SCHEMA_VERSION = 1
@@ -80,8 +78,8 @@ def _archive_filename(now: datetime) -> str:
     return f"{ARCHIVE_PREFIX}{_timestamp(now)}{ARCHIVE_SUFFIX}"
 
 
-def _cogs_filename(now: datetime) -> str:
-    return f"{ARCHIVE_PREFIX}{_timestamp(now)}{COGS_SUFFIX}"
+def _layers_filename(now: datetime) -> str:
+    return f"{ARCHIVE_PREFIX}{_timestamp(now)}{LAYERS_SUFFIX}"
 
 
 def _write_layer_files(features: List[dict], work_dir: str) -> List[Tuple[str, str]]:
@@ -151,13 +149,13 @@ def _prune_old_public_files(keep_filenames: set) -> None:
     manifest = read_manifest() or {}
     keep = set(keep_filenames) | {
         os.path.basename(manifest.get("url", "")),
-        os.path.basename(manifest.get("cogs_url", "")),
+        os.path.basename(manifest.get("layers_url", "")),
     }
     now = time.time()
     for name in os.listdir(directory):
         if not name.startswith(ARCHIVE_PREFIX):
             continue
-        if not (name.endswith(ARCHIVE_SUFFIX) or name.endswith(COGS_SUFFIX)):
+        if not (name.endswith(ARCHIVE_SUFFIX) or name.endswith(LAYERS_SUFFIX)):
             continue
         if name in keep:
             continue
@@ -181,11 +179,11 @@ def generate_published_ds_maps_pmtiles():
     """Nightly: build the combined public PMTiles archive for published DS maps.
 
     Selects this deployment's published, public maps, tiles their features into
-    the PMTiles archive, writes internal-COG footprints to a companion
-    cogs.geojson (rendered client-side, not tiled), and atomically publishes the
-    archive + cogs.geojson + a sidecar manifest into the shared public asset area.
-    Fails loudly and leaves the previous files untouched on any error. Guarded by
-    a Redis lock so runs can't overlap.
+    the PMTiles archive, writes layer footprints (internal COGs and PMTiles-vector
+    uploads) to a companion GeoJSON rendered client-side, and atomically publishes
+    the archive + companion GeoJSON + a sidecar manifest into the shared public
+    asset area. Fails loudly and leaves the previous files untouched on any error.
+    Guarded by a Redis lock so runs can't overlap.
 
     Runs nightly via celery beat; on a fresh environment app startup also enqueues
     one build if no manifest exists yet (see on_startup in app.py). To regenerate
@@ -225,8 +223,8 @@ def generate_published_ds_maps_pmtiles():
                     settings.APP_ENV,
                 )
                 return
-            features, cog_features, stats = PublishedMapsExportService.build_features(
-                session, published_maps
+            features, layer_features, stats = (
+                PublishedMapsExportService.build_features(session, published_maps)
             )
 
         if not features:
@@ -244,7 +242,7 @@ def generate_published_ds_maps_pmtiles():
         )
         now = _utc_now()
         filename = _archive_filename(now)
-        cogs_filename = _cogs_filename(now)
+        layers_filename = _layers_filename(now)
         try:
             layer_files = _write_layer_files(features, work_dir)
             staged_archive = os.path.join(work_dir, filename)
@@ -255,10 +253,9 @@ def generate_published_ds_maps_pmtiles():
 
             # atomic within the same filesystem: a partial file is never readable
             os.replace(staged_archive, os.path.join(public_asset_dir(), filename))
-            # companion COG footprints -- rendered client-side, not tiled
             _write_public_file(
-                {"type": "FeatureCollection", "features": cog_features},
-                cogs_filename,
+                {"type": "FeatureCollection", "features": layer_features},
+                layers_filename,
                 work_dir,
             )
         finally:
@@ -266,12 +263,13 @@ def generate_published_ds_maps_pmtiles():
 
         manifest = {
             "url": _public_asset_url(filename),
-            "cogs_url": _public_asset_url(cogs_filename),
+            "layers_url": _public_asset_url(layers_filename),
             "generated_at": now.isoformat(),
             "feature_count": stats["total"],
             "cog_count": stats["cog_count"],
+            "vector_count": stats["vector_count"],
             "project_count": stats["project_count"],
-            "bounds": _bounds(features + cog_features),
+            "bounds": _bounds(features + layer_features),
             "zoom_min": PUBLISHED_DS_MAPS_MIN_ZOOM,
             "zoom_max": PUBLISHED_DS_MAPS_MAX_ZOOM,
             "schema_version": SCHEMA_VERSION,
@@ -279,15 +277,16 @@ def generate_published_ds_maps_pmtiles():
         _write_manifest(manifest)
 
         # prune only after the manifest points at the new files
-        _prune_old_public_files({filename, cogs_filename})
+        _prune_old_public_files({filename, layers_filename})
 
         logger.info(
-            "Public archive published: %s (%s features) + %s (%s COGs) across "
-            "%s projects in %.1fs.",
+            "Public archive published: %s (%s features) + %s (%s COGs, %s vectors) "
+            "across %s projects in %.1fs.",
             filename,
             stats["total"],
-            cogs_filename,
+            layers_filename,
             stats["cog_count"],
+            stats["vector_count"],
             stats["project_count"],
             time.time() - start_time,
         )
