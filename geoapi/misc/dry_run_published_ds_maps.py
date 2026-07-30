@@ -69,11 +69,12 @@ def main():
                 "matches the maps' deployment tag and that the DB is the right tier."
             )
             return
-        features, stats = PublishedMapsExportService.build_features(session, published)
+        features, cog_features, stats = PublishedMapsExportService.build_features(
+            session, published
+        )
 
-    print(f"DB features        : {stats['feature_count']}")
-    print(f"COG footprints     : {stats['cog_count']}")
-    print(f"Total features     : {stats['total']}")
+    print(f"Tiled features     : {stats['feature_count']}")
+    print(f"COG footprints     : {stats['cog_count']} (companion cogs.geojson)")
 
     # per-layer (feature_type) breakdown
     by_type = Counter(f["properties"].get("feature_type") for f in features)
@@ -98,11 +99,12 @@ def main():
     for key, nbytes in sorted(per_key_bytes.items(), key=lambda kv: -kv[1])[:8]:
         print(f"  {key:<16} {_human_bytes(nbytes)}")
 
-    bounds = _bounds(features)
+    bounds = _bounds(features + cog_features)
     print(f"\nBounds [minx,miny,maxx,maxy]: {bounds}")
 
     # tile into a scratch path (NOT the real public area). Tile each layer
-    # separately (with timing) and then tile-join into the final archive.
+    # separately (with timing) and then tile-join into the final archive. COGs are
+    # NOT tiled -- they go to a companion cogs.geojson (see below).
     archive_path = args.out or os.path.join(
         str(get_temp_dir()), "published_ds_maps.pmtiles"
     )
@@ -136,16 +138,24 @@ def main():
     finally:
         shutil.rmtree(work_dir, ignore_errors=True)
 
+    # companion cogs.geojson (COG footprints, rendered client-side -- not tiled)
+    cogs_path = os.path.splitext(archive_path)[0] + ".cogs.geojson"
+    with open(cogs_path, "w") as f:
+        json.dump({"type": "FeatureCollection", "features": cog_features}, f)
+    cogs_size = os.path.getsize(cogs_path)
+
     archive_size = os.path.getsize(archive_path)
     print("-" * 72)
-    print(f"features tiled     : {written_total} (source had {stats['total']})")
-    if written_total != stats["total"]:
+    print(f"features tiled     : {written_total} (source had {stats['feature_count']})")
+    if written_total != stats["feature_count"]:
         print("  WARNING: count mismatch -- features were dropped!")
     print(f"ARCHIVE SIZE       : {_human_bytes(archive_size)} ({archive_size} bytes)")
+    print(f"cogs.geojson       : {_human_bytes(cogs_size)} ({stats['cog_count']} COGs)")
     print(f"Archive path       : {archive_path}")
+    print(f"COGs path          : {cogs_path}")
     print(
-        f"\n(Delete {archive_path} when done. Nothing was written to the real "
-        "assets/public area or manifest.)"
+        f"\n(Delete {archive_path} and {cogs_path} when done. Nothing was written "
+        "to the real assets/public area or manifest.)"
     )
 
 

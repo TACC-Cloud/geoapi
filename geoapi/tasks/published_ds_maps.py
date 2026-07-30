@@ -23,16 +23,23 @@ from geoapi.settings import settings
 from geoapi.utils.assets import get_temp_dir
 from geoapi.utils.client_backend import get_deployed_geoapi_url
 
+# Main pmtiles archive that will contain all published ds map data in one file
+# (with one exception, see COGS_SUFFIX below)
 ARCHIVE_PREFIX = "published_ds_maps_"
 ARCHIVE_SUFFIX = ".pmtiles"
+# Companion GeoJSON of internal-COG footprints, rendered client-side (NOT tiled):
+# a COG's extent can be large (up to worldwide), and tiling a filled polygon that
+# big fills every tile it covers and blows up the build. Client-side GeoJSON draws
+# it for free at any size.
+COGS_SUFFIX = ".cogs.geojson"
 
 # Bumped when the manifest/property schema changes in a way consumers must notice.
 SCHEMA_VERSION = 1
 
-# Prune archives older than this, but never the one the manifest references. 26h
+# Prune archives older than this, but never the one the manifest references. 30h
 # (not 24h) leaves margin for a late run so a predecessor isn't removed early; so
 # we should be keeping two generations.
-PRUNE_AGE_SECONDS = 26 * 3600
+PRUNE_AGE_SECONDS = 30 * 3600
 
 # Redis lock so a nightly beat, a startup enqueue, and a manual trigger can't run
 # two tippecanoe builds at once.
@@ -65,8 +72,16 @@ def _utc_now() -> datetime:
     return datetime.now(timezone.utc)
 
 
+def _timestamp(now: datetime) -> str:
+    return now.strftime("%Y%m%dT%H%M%SZ")
+
+
 def _archive_filename(now: datetime) -> str:
-    return f"{ARCHIVE_PREFIX}{now.strftime('%Y%m%dT%H%M%SZ')}{ARCHIVE_SUFFIX}"
+    return f"{ARCHIVE_PREFIX}{_timestamp(now)}{ARCHIVE_SUFFIX}"
+
+
+def _cogs_filename(now: datetime) -> str:
+    return f"{ARCHIVE_PREFIX}{_timestamp(now)}{COGS_SUFFIX}"
 
 
 def _write_layer_files(features: List[dict], work_dir: str) -> List[Tuple[str, str]]:
@@ -129,16 +144,22 @@ def _verify_feature_count(source_count: int, written_count: Optional[int]) -> No
     logger.info("Public archive feature count verified: %s.", source_count)
 
 
-def _prune_old_archives(keep_filename: str) -> None:
-    """Delete archives older than PRUNE_AGE_SECONDS, never the referenced one."""
+def _prune_old_public_files(keep_filenames: set) -> None:
+    """Delete versioned archive/cogs files older than PRUNE_AGE_SECONDS, never the
+    just-written ones or the ones the manifest currently references."""
     directory = public_asset_dir()
     manifest = read_manifest() or {}
-    referenced = os.path.basename(manifest.get("url", "")) if manifest else ""
+    keep = set(keep_filenames) | {
+        os.path.basename(manifest.get("url", "")),
+        os.path.basename(manifest.get("cogs_url", "")),
+    }
     now = time.time()
     for name in os.listdir(directory):
-        if not (name.startswith(ARCHIVE_PREFIX) and name.endswith(ARCHIVE_SUFFIX)):
+        if not name.startswith(ARCHIVE_PREFIX):
             continue
-        if name == keep_filename or name == referenced:
+        if not (name.endswith(ARCHIVE_SUFFIX) or name.endswith(COGS_SUFFIX)):
+            continue
+        if name in keep:
             continue
         path = os.path.join(directory, name)
         try:
@@ -149,21 +170,22 @@ def _prune_old_archives(keep_filename: str) -> None:
             try:
                 os.remove(path)
                 logger.info(
-                    "Pruned stale public archive %s (age %.1fh).", name, age / 3600
+                    "Pruned stale public file %s (age %.1fh).", name, age / 3600
                 )
             except OSError:
-                logger.exception("Failed to prune public archive %s.", name)
+                logger.exception("Failed to prune public file %s.", name)
 
 
 @app.task(queue="heavy")
 def generate_published_ds_maps_pmtiles():
     """Nightly: build the combined public PMTiles archive for published DS maps.
 
-    Selects this deployment's published, public maps, exports their features
-    (plus internal-COG footprints) to GeoJSON, tiles them with no dropping, and
-    atomically publishes the archive + a sidecar manifest into the shared public
-    asset area. Fails loudly and leaves the previous archive/manifest untouched
-    on any error. Guarded by a Redis lock so runs can't overlap.
+    Selects this deployment's published, public maps, tiles their features into
+    the PMTiles archive, writes internal-COG footprints to a companion
+    cogs.geojson (rendered client-side, not tiled), and atomically publishes the
+    archive + cogs.geojson + a sidecar manifest into the shared public asset area.
+    Fails loudly and leaves the previous files untouched on any error. Guarded by
+    a Redis lock so runs can't overlap.
 
     Runs nightly via celery beat; on a fresh environment app startup also enqueues
     one build if no manifest exists yet (see on_startup in app.py). To regenerate
@@ -203,7 +225,7 @@ def generate_published_ds_maps_pmtiles():
                     settings.APP_ENV,
                 )
                 return
-            features, stats = PublishedMapsExportService.build_features(
+            features, cog_features, stats = PublishedMapsExportService.build_features(
                 session, published_maps
             )
 
@@ -215,13 +237,14 @@ def generate_published_ds_maps_pmtiles():
             return
 
         os.makedirs(public_asset_dir(), exist_ok=True)
-        # Work under ASSETS_BASE_DIR/tmp so the finished archive is on the SAME
+        # Work under ASSETS_BASE_DIR/tmp so the finished files are on the SAME
         # filesystem as the public dir and os.replace() is atomic.
         work_dir = tempfile.mkdtemp(
             prefix="published_ds_maps_", dir=str(get_temp_dir())
         )
         now = _utc_now()
         filename = _archive_filename(now)
+        cogs_filename = _cogs_filename(now)
         try:
             layer_files = _write_layer_files(features, work_dir)
             staged_archive = os.path.join(work_dir, filename)
@@ -230,32 +253,41 @@ def generate_published_ds_maps_pmtiles():
             )
             _verify_feature_count(len(features), written_count)
 
-            final_archive = os.path.join(public_asset_dir(), filename)
-            # atomic within the same filesystem: a partial archive is never readable
-            os.replace(staged_archive, final_archive)
+            # atomic within the same filesystem: a partial file is never readable
+            os.replace(staged_archive, os.path.join(public_asset_dir(), filename))
+            # companion COG footprints -- rendered client-side, not tiled
+            _write_public_file(
+                {"type": "FeatureCollection", "features": cog_features},
+                cogs_filename,
+                work_dir,
+            )
         finally:
             shutil.rmtree(work_dir, ignore_errors=True)
 
         manifest = {
             "url": _public_asset_url(filename),
+            "cogs_url": _public_asset_url(cogs_filename),
             "generated_at": now.isoformat(),
             "feature_count": stats["total"],
+            "cog_count": stats["cog_count"],
             "project_count": stats["project_count"],
-            "bounds": _bounds(features),
+            "bounds": _bounds(features + cog_features),
             "zoom_min": PUBLISHED_DS_MAPS_MIN_ZOOM,
             "zoom_max": PUBLISHED_DS_MAPS_MAX_ZOOM,
             "schema_version": SCHEMA_VERSION,
         }
         _write_manifest(manifest)
 
-        # prune only after the manifest points at the new archive
-        _prune_old_archives(keep_filename=filename)
+        # prune only after the manifest points at the new files
+        _prune_old_public_files({filename, cogs_filename})
 
         logger.info(
-            "Public pmtiles archive published: %s (%s features across %s projects) "
-            "in %.1fs.",
+            "Public archive published: %s (%s features) + %s (%s COGs) across "
+            "%s projects in %.1fs.",
             filename,
             stats["total"],
+            cogs_filename,
+            stats["cog_count"],
             stats["project_count"],
             time.time() - start_time,
         )
@@ -279,6 +311,15 @@ def _write_manifest(manifest: dict) -> None:
     with open(tmp_path, "w") as f:
         json.dump(manifest, f)
     os.replace(tmp_path, manifest_path())
+
+
+def _write_public_file(data: dict, filename: str, work_dir: str) -> None:
+    """Atomically place a JSON file into the public asset dir. Staged in work_dir
+    (same filesystem as the public dir), so os.replace() is atomic."""
+    staged = os.path.join(work_dir, filename)
+    with open(staged, "w") as f:
+        json.dump(data, f)
+    os.replace(staged, os.path.join(public_asset_dir(), filename))
 
 
 def enqueue_generation_if_missing() -> bool:

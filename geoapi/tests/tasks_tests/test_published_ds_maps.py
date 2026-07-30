@@ -10,9 +10,11 @@ from geoapi.tasks import published_ds_maps
 from geoapi.tasks.published_ds_maps import (
     ARCHIVE_PREFIX,
     ARCHIVE_SUFFIX,
+    COGS_SUFFIX,
     generate_published_ds_maps_pmtiles,
 )
 
+# tiled features (points/shapes) -- COGs are NOT tiled; they go to cogs.geojson
 FEATURES = [
     {
         "type": "Feature",
@@ -33,16 +35,35 @@ FEATURES = [
                 ]
             ],
         },
+        "properties": {"feature_type": "shape", "feature_id": 2},
+    },
+]
+# COG footprint -> companion cogs.geojson (extends the western bound to -98.0)
+COG_FEATURES = [
+    {
+        "type": "Feature",
+        "geometry": {
+            "type": "Polygon",
+            "coordinates": [
+                [
+                    [-98.0, 30.0],
+                    [-97.9, 30.0],
+                    [-97.9, 30.1],
+                    [-98.0, 30.1],
+                    [-98.0, 30.0],
+                ]
+            ],
+        },
         "properties": {"feature_type": "cog", "feature_id": None},
     },
 ]
-STATS = {"feature_count": 1, "cog_count": 1, "project_count": 1, "total": 2}
+STATS = {"feature_count": 2, "cog_count": 1, "project_count": 1, "total": 2}
 
 
 def _write_dummy_archive(layers, output_path, *args, **kwargs):
     with open(output_path, "wb") as f:
         f.write(b"PMTILES-DUMMY")
-    return len(FEATURES)  # tippecanoe "wrote" 2 features
+    return len(FEATURES)  # tippecanoe "wrote" the 2 tiled features
 
 
 class _ContextManagerMock:
@@ -56,7 +77,7 @@ class _ContextManagerMock:
 def _patchers(
     isolated_assets_dir,
     published_maps=("sentinel",),
-    build_return=(FEATURES, STATS),
+    build_return=(FEATURES, COG_FEATURES, STATS),
     tile_side_effect=_write_dummy_archive,
     lock_acquired=True,
 ):
@@ -112,20 +133,30 @@ def test_generate_writes_archive_and_manifest(tmp_path):
         for n in os.listdir(public_dir)
         if n.startswith(ARCHIVE_PREFIX) and n.endswith(ARCHIVE_SUFFIX)
     ]
+    cogs = [n for n in os.listdir(public_dir) if n.endswith(COGS_SUFFIX)]
     assert len(archives) == 1
-    filename = archives[0]
+    assert len(cogs) == 1
+    filename, cogs_filename = archives[0], cogs[0]
+
+    # cogs.geojson is a FeatureCollection of the COG footprints
+    with open(os.path.join(public_dir, cogs_filename)) as f:
+        cogs_fc = json.load(f)
+    assert cogs_fc["type"] == "FeatureCollection"
+    assert len(cogs_fc["features"]) == 1
 
     with open(os.path.join(public_dir, "manifest.json")) as f:
         manifest = json.load(f)
     assert manifest["feature_count"] == 2
+    assert manifest["cog_count"] == 1
     assert manifest["project_count"] == 1
-    assert manifest["zoom_min"] == 6
-    assert manifest["zoom_max"] == 16
+    assert manifest["zoom_min"] == 2
+    assert manifest["zoom_max"] == 14
     assert manifest["schema_version"] == 1
     assert manifest["url"].endswith(f"/assets/public/{filename}")
+    assert manifest["cogs_url"].endswith(f"/assets/public/{cogs_filename}")
     assert len(manifest["bounds"]) == 4
-    # bounds span both features
-    assert manifest["bounds"][0] == pytest.approx(-97.8)
+    # bounds span the tiled features AND the COG footprint (COG extends west to -98)
+    assert manifest["bounds"][0] == pytest.approx(-98.0)
     assert manifest["bounds"][2] == pytest.approx(-97.6)
 
 
@@ -173,7 +204,8 @@ def test_generate_aborts_on_count_mismatch_without_touching_manifest(tmp_path):
     placed = [
         n
         for n in os.listdir(public_dir)
-        if n.startswith(ARCHIVE_PREFIX) and n.endswith(ARCHIVE_SUFFIX)
+        if n.startswith(ARCHIVE_PREFIX)
+        and (n.endswith(ARCHIVE_SUFFIX) or n.endswith(COGS_SUFFIX))
     ]
     assert placed == []
 
@@ -202,21 +234,26 @@ def test_generate_prunes_old_archives_but_keeps_recent(tmp_path):
     os.makedirs(public_dir, exist_ok=True)
 
     old = os.path.join(public_dir, f"{ARCHIVE_PREFIX}20200101T000000Z{ARCHIVE_SUFFIX}")
+    old_cogs = os.path.join(
+        public_dir, f"{ARCHIVE_PREFIX}20200101T000000Z{COGS_SUFFIX}"
+    )
     recent = os.path.join(
         public_dir, f"{ARCHIVE_PREFIX}20990101T000000Z{ARCHIVE_SUFFIX}"
     )
-    for path in (old, recent):
+    for path in (old, old_cogs, recent):
         with open(path, "wb") as f:
             f.write(b"old")
-    # make `old` older than the 26h window; leave `recent` fresh
+    # make the old files older than the 26h window; leave `recent` fresh
     stale = time.time() - (30 * 3600)
     os.utime(old, (stale, stale))
+    os.utime(old_cogs, (stale, stale))
 
     patchers, _ = _patchers(assets_dir)
     _run(patchers)
 
     remaining = set(os.listdir(public_dir))
-    assert os.path.basename(old) not in remaining  # pruned (stale)
+    assert os.path.basename(old) not in remaining  # stale .pmtiles pruned
+    assert os.path.basename(old_cogs) not in remaining  # stale .cogs.geojson pruned
     assert os.path.basename(recent) in remaining  # kept (fresh)
     # the newly generated archive is present too
     assert any(

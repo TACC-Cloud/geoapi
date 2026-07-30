@@ -18,6 +18,8 @@ DESIGNSAFE_PUBLISHED_BROWSER_URL = (
     "designsafe.storage.published/{designsafe_project_id}"
 )
 
+COG_LARGE_EXTENT_WARN_DEG = 30
+
 # asset_type (FeatureAsset) -> feature_type carried in the archive. Types not
 # listed here fall through to a geometry-based point/shape classification (this
 # covers plain geometry features and PMTiles "vector" assets, whose own detail
@@ -32,42 +34,44 @@ _ASSET_TYPE_TO_FEATURE_TYPE = {
 
 
 class PublishedMapsExportService:
-    """Turn selected published maps into GeoJSON features for tiling.
+    """Turn selected published maps into GeoJSON for the public archive.
 
-    Emits one GeoJSON feature per Hazmapper feature, plus one footprint polygon
-    per internal COG (rasters are never tiled into this archive -- only their
-    bounds, carrying a layer descriptor the consumer can use to load the real
-    COG on demand). Every feature carries a small, stable, snake_case property
-    set that WG-671 (Recon Portal) depends on.
+    Emits per-Hazmapper-feature dicts for the tiled PMTiles archive, plus
+    internal-COG footprint polygons for a companion cogs.geojson to be rendered
+    client-side. Every feature carries a property set that Recon Portal uses.
     """
 
     @classmethod
     def build_features(
         cls, database_session, published_maps: List[PublishedMap]
-    ) -> Tuple[List[dict], dict]:
-        """Build the GeoJSON features and summary stats.
+    ) -> Tuple[List[dict], List[dict], dict]:
+        """Build the tiled features and the COG footprints.
 
-        :return: ``(features, stats)`` where ``features`` is a list of GeoJSON
-            Feature dicts and ``stats`` has ``feature_count`` (DB features),
-            ``cog_count`` (COG footprints), ``project_count`` and ``total``.
+        :return: ``(features, cog_features, stats)``. ``features`` are the
+            per-Hazmapper-feature dicts tiled into the PMTiles archive.
+            ``cog_features`` are internal-COG footprint polygons written to a
+            companion cogs.geojson and rendered client-side (not tiled -- see
+            _cog_footprint). ``stats`` has ``feature_count`` (tiled),
+            ``cog_count``, ``project_count`` and ``total`` (tiled).
         """
         geoapi_base = get_deployed_geoapi_url()
         hazmapper_base = get_deployed_hazmapper_url()
 
         features: List[dict] = []
+        cog_features: List[dict] = []
         feature_count = 0
         cog_count = 0
 
         for published in published_maps:
             project = published.project
             common = {
-                "project_uuid": str(project.uuid),
-                "project_name": project.name,
-                "ds_project_id": published.designsafe_project_id,
-                "ds_doi": published.designsafe_doi,
+                "hazmapper_project_uuid": str(project.uuid),
+                "hazmapper_project_name": project.name,
+                "ds_project_name": published.designsafe_project_title,
                 "ds_project_url": DESIGNSAFE_PUBLISHED_BROWSER_URL.format(
                     designsafe_project_id=published.designsafe_project_id
                 ),
+                "hazmapper_url": cls._hazmapper_url(hazmapper_base, project.uuid),
             }
 
             # regular Hazmapper features
@@ -90,28 +94,16 @@ class PublishedMapsExportService:
                     {
                         "feature_id": feature.id,
                         "feature_type": cls._feature_type(feature),
-                        "hazmapper_url": cls._hazmapper_url(
-                            hazmapper_base, project.uuid, feature.id
-                        ),
-                        "has_assets": bool(feature.assets),
-                        "created_date": (
-                            feature.created_date.isoformat()
-                            if feature.created_date
-                            else None
-                        ),
                     }
                 )
-                thumbnail_url = cls._thumbnail_url(feature, geoapi_base)
-                if thumbnail_url:
-                    properties["thumbnail_url"] = thumbnail_url
 
                 features.append(
                     {"type": "Feature", "geometry": geometry, "properties": properties}
                 )
                 feature_count += 1
 
-            # internal COG footprints (never the pixels -- just the outline + a
-            # descriptor the consumer uses to instantiate the real tile layer)
+            # internal COG footprints -> companion cogs.geojson (rendered
+            # client-side, not tiled), each carrying a layer descriptor + tile URL
             for tile_server in (
                 database_session.query(TileServer)
                 .filter(TileServer.project_id == project.id)
@@ -119,11 +111,9 @@ class PublishedMapsExportService:
                 .filter(TileServer.kind == "cog")
                 .all()
             ):
-                footprint = cls._cog_footprint(
-                    tile_server, common, hazmapper_base, geoapi_base, project.uuid
-                )
+                footprint = cls._cog_footprint(tile_server, common, geoapi_base)
                 if footprint:
-                    features.append(footprint)
+                    cog_features.append(footprint)
                     cog_count += 1
 
         stats = {
@@ -133,14 +123,13 @@ class PublishedMapsExportService:
             "total": len(features),
         }
         logger.info(
-            "Public export built %s feature(s): %s DB features + %s COG footprints "
+            "Public export built %s tiled feature(s) + %s COG footprint(s) "
             "across %s project(s).",
-            stats["total"],
             feature_count,
             cog_count,
             stats["project_count"],
         )
-        return features, stats
+        return features, cog_features, stats
 
     @staticmethod
     def _feature_type(feature) -> str:
@@ -152,34 +141,11 @@ class PublishedMapsExportService:
         return "point" if "point" in geometry_type else "shape"
 
     @staticmethod
-    def _thumbnail_url(feature, geoapi_base) -> Optional[str]:
-        """URL of an image feature's thumbnail, if it has one.
-
-        Image assets are stored as ``<uuid>.jpeg`` alongside a
-        ``<uuid>.thumb.jpeg`` thumbnail (see FeaturesService.fromImage), and are
-        served at ``{geoapi}/assets/{asset.path}``.
-        """
-        for asset in feature.assets:
-            if (
-                asset.asset_type == "image"
-                and asset.path
-                and asset.path.endswith(".jpeg")
-            ):
-                thumb_path = asset.path[: -len(".jpeg")] + ".thumb.jpeg"
-                return f"{geoapi_base}/assets/{thumb_path}"
-        return None
-
-    @staticmethod
-    def _hazmapper_url(hazmapper_base, project_uuid, feature_id=None) -> str:
-        url = f"{hazmapper_base}/project-public/{project_uuid}"
-        if feature_id is not None:
-            url += f"?selectedFeature={feature_id}"
-        return url
+    def _hazmapper_url(hazmapper_base, project_uuid) -> str:
+        return f"{hazmapper_base}/project-public/{project_uuid}"
 
     @classmethod
-    def _cog_footprint(
-        cls, tile_server, common, hazmapper_base, geoapi_base, project_uuid
-    ) -> Optional[dict]:
+    def _cog_footprint(cls, tile_server, common, geoapi_base) -> Optional[dict]:
         tile_options = tile_server.tileOptions or {}
         bounds = tile_options.get("bounds")
         # bounds is leaflet-style [[minLat, minLng], [maxLat, maxLng]]
@@ -191,6 +157,7 @@ class PublishedMapsExportService:
             )
             return None
         (south, west), (north, east) = bounds
+        # Filled footprint polygon. COGs go into a companion cogs.geojson
         ring = [
             [west, south],
             [east, south],
@@ -199,6 +166,22 @@ class PublishedMapsExportService:
             [west, south],
         ]
         geometry = {"type": "Polygon", "coordinates": [ring]}
+        width_deg, height_deg = abs(east - west), abs(north - south)
+        if max(width_deg, height_deg) > COG_LARGE_EXTENT_WARN_DEG:
+            logger.warning(
+                "COG %s footprint extent %.2f x %.2f deg is unusually large "
+                "(possible georef error); still included.",
+                tile_server.id,
+                width_deg,
+                height_deg,
+            )
+        else:
+            logger.info(
+                "COG %s footprint extent %.3f x %.3f deg.",
+                tile_server.id,
+                width_deg,
+                height_deg,
+            )
 
         ui_options = tile_server.uiOptions or {}
         render_options = ui_options.get("renderOptions") or {}
@@ -225,8 +208,6 @@ class PublishedMapsExportService:
             {
                 "feature_id": None,
                 "feature_type": "cog",
-                "hazmapper_url": cls._hazmapper_url(hazmapper_base, project_uuid),
-                "has_assets": True,
                 "tile_server_id": tile_server.id,
                 "layer_name": tile_server.name,
                 "layer_type": tile_server.type,

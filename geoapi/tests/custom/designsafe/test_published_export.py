@@ -82,47 +82,59 @@ def test_build_features_emits_features_cog_and_enriched_properties(db_session):
     image = _image_feature(db_session, project)
     _cog_tile_server(db_session, project)
 
-    features, stats = PublishedMapsExportService.build_features(
+    features, cog_features, stats = PublishedMapsExportService.build_features(
         db_session, [_published(project)]
     )
 
+    # COGs are split out (companion cogs.geojson), not tiled with the features
     assert stats == {
         "feature_count": 2,
         "cog_count": 1,
         "project_count": 1,
-        "total": 3,
+        "total": 2,
     }
-    assert len(features) == 3
+    assert len(features) == 2  # point + image, tiled
+    assert len(cog_features) == 1  # COG footprint -> cogs.geojson
 
     by_type = {}
     for f in features:
         by_type.setdefault(f["properties"]["feature_type"], []).append(f)
 
-    # every feature carries the shared publication context
-    for f in features:
+    # every emitted feature (tiled + COG) carries the shared project context
+    for f in features + cog_features:
         props = f["properties"]
-        assert props["project_uuid"] == str(project.uuid)
-        assert props["ds_project_id"] == "PRJ-1"
+        assert props["hazmapper_project_uuid"] == str(project.uuid)
+        assert props["hazmapper_project_name"] == "pub"
+        assert props["ds_project_name"] == "Published One"
         assert "designsafe.storage.published/PRJ-1" in props["ds_project_url"]
-        assert props["ds_doi"] == "10.17603/ds2-test"
-        assert "/project-public/" in props["hazmapper_url"]
+        # project map link only (dedup-able) -- NOT a per-feature deep link
+        assert props["hazmapper_url"].endswith(f"/project-public/{project.uuid}")
+        assert "selectedFeature" not in props["hazmapper_url"]
+        # slimmed-out fields are gone
+        for gone in (
+            "project_uuid",
+            "ds_project_id",
+            "ds_doi",
+            "has_assets",
+            "created_date",
+        ):
+            assert gone not in props
 
-    # point feature: geometry-derived type, deep link, no thumbnail
+    # point feature: geometry-derived type; feature_id lets the consumer build the
+    # deep link as f"{hazmapper_url}?selectedFeature={feature_id}"
     pt = by_type["point"][0]
     assert pt["properties"]["feature_id"] == point.id
-    assert pt["properties"]["has_assets"] is False
-    assert f"selectedFeature={point.id}" in pt["properties"]["hazmapper_url"]
     assert "thumbnail_url" not in pt["properties"]
 
-    # image feature: asset-derived type + thumbnail pointer
+    # image feature: asset-derived type; no baked thumbnail (fetched on click)
     img = by_type["image"][0]
     assert img["properties"]["feature_id"] == image.id
-    assert img["properties"]["has_assets"] is True
-    assert img["properties"]["thumbnail_url"].endswith(".thumb.jpeg")
-    assert "/assets/" in img["properties"]["thumbnail_url"]
+    assert "thumbnail_url" not in img["properties"]
 
-    # cog footprint: polygon + resolvable tile url + field-for-field descriptor
-    cog = by_type["cog"][0]
+    # COG footprint: a filled polygon (rendered client-side from cogs.geojson) +
+    # resolvable tile url + field-for-field descriptor
+    cog = cog_features[0]
+    assert cog["properties"]["feature_type"] == "cog"
     assert cog["geometry"]["type"] == "Polygon"
     assert cog["properties"]["feature_id"] is None
     assert cog["properties"]["layer_name"] == "my-cog"
@@ -157,9 +169,10 @@ def test_external_tile_layers_are_not_exported(db_session):
     db_session.add(external)
     db_session.commit()
 
-    features, stats = PublishedMapsExportService.build_features(
+    features, cog_features, stats = PublishedMapsExportService.build_features(
         db_session, [_published(project)]
     )
 
     assert stats["cog_count"] == 0
     assert features == []
+    assert cog_features == []
