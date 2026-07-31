@@ -129,8 +129,13 @@ def test_build_features_tiles_markers_and_lists_layer_footprints(db_session):
         assert "designsafe.storage.published/PRJ-1" in props["ds_project_url"]
         assert props["hazmapper_url"].endswith(f"/project-public/{project.uuid}")
         assert "selectedFeature" not in props["hazmapper_url"]
-        for gone in ("project_uuid", "ds_project_id", "ds_doi", "has_assets",
-                     "created_date"):
+        for gone in (
+            "project_uuid",
+            "ds_project_id",
+            "ds_doi",
+            "has_assets",
+            "created_date",
+        ):
             assert gone not in props
 
     assert by_type["point"][0]["properties"]["feature_id"] == point.id

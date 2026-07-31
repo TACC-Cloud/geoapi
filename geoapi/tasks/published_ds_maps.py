@@ -223,8 +223,8 @@ def generate_published_ds_maps_pmtiles():
                     settings.APP_ENV,
                 )
                 return
-            features, layer_features, stats = (
-                PublishedMapsExportService.build_features(session, published_maps)
+            features, layer_features, stats = PublishedMapsExportService.build_features(
+                session, published_maps
             )
 
         if not features:

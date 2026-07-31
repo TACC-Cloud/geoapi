@@ -69,8 +69,8 @@ def main():
                 "matches the maps' deployment tag and that the DB is the right tier."
             )
             return
-        features, layer_features, stats = (
-            PublishedMapsExportService.build_features(session, published)
+        features, layer_features, stats = PublishedMapsExportService.build_features(
+            session, published
         )
 
     print(f"Tiled features     : {stats['feature_count']}")
@@ -141,7 +141,9 @@ def main():
         shutil.rmtree(work_dir, ignore_errors=True)
 
     # companion layer footprints (COGs + vectors), rendered client-side, not tiled
-    layers_path = os.path.splitext(archive_path)[0] + ".vectors_and_internal_cogs.geojson"
+    layers_path = (
+        os.path.splitext(archive_path)[0] + ".vectors_and_internal_cogs.geojson"
+    )
     with open(layers_path, "w") as f:
         json.dump({"type": "FeatureCollection", "features": layer_features}, f)
     layers_size = os.path.getsize(layers_path)
