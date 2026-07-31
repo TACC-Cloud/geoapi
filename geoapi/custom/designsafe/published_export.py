@@ -21,6 +21,15 @@ DESIGNSAFE_PUBLISHED_BROWSER_URL = (
 # A footprint wider/taller than this many degrees is logged as a likely georef error.
 LARGE_EXTENT_WARN_DEG = 30
 
+# TODO(from WG-703): brittle, project-specific guard. PRJ-6361 holds nation-wide image
+# footprints (a large filled rectangle per image) that render poorly on the
+# consumer (e.g. Recon Portal), so we leave them out for now. When the next such
+# case appears, replace this with a general policy or figure out how to display
+# these large datasets better on the consumer. Skip any PRJ-6361 geometry wider
+# or taller than this many degrees.
+PRJ_6361_PROJECT_ID = "PRJ-6361"
+PRJ_6361_MAX_EXTENT_DEG = 4
+
 # asset_type (FeatureAsset) -> feature_type for tiled features. "vector" is handled
 # separately as a layer footprint; other unlisted types fall through to a
 # geometry-based point/shape classification.
@@ -53,7 +62,8 @@ class PublishedMapsExportService:
             ``layer_features`` are footprints for internal COGs and PMTiles-vector
             uploads, written to the companion GeoJSON and rendered client-side.
             ``stats`` has ``feature_count`` (tiled), ``cog_count``,
-            ``vector_count``, ``project_count`` and ``total`` (tiled).
+            ``vector_count``, ``skipped_count`` (oversized geometries dropped),
+            ``project_count`` and ``total`` (tiled).
         """
         geoapi_base = get_deployed_geoapi_url()
         hazmapper_base = get_deployed_hazmapper_url()
@@ -63,6 +73,7 @@ class PublishedMapsExportService:
         feature_count = 0
         cog_count = 0
         vector_count = 0
+        skipped_count = 0
 
         for published in published_maps:
             project = published.project
@@ -105,6 +116,21 @@ class PublishedMapsExportService:
                     vector_count += 1
                     continue
 
+                if published.designsafe_project_id == PRJ_6361_PROJECT_ID:
+                    minx, miny, maxx, maxy = shapely.geometry.shape(geometry).bounds
+                    width_deg, height_deg = abs(maxx - minx), abs(maxy - miny)
+                    if max(width_deg, height_deg) > PRJ_6361_MAX_EXTENT_DEG:
+                        logger.info(
+                            "Skipping feature %s: geometry spans %.1f x %.1f deg; "
+                            "a feature this large renders poorly on the consumer "
+                            "(e.g. Recon Portal), so leaving out for now.",
+                            feature.id,
+                            width_deg,
+                            height_deg,
+                        )
+                        skipped_count += 1
+                        continue
+
                 properties = dict(common)
                 properties.update(
                     {
@@ -133,16 +159,18 @@ class PublishedMapsExportService:
             "feature_count": feature_count,
             "cog_count": cog_count,
             "vector_count": vector_count,
+            "skipped_count": skipped_count,
             "project_count": len(published_maps),
             "total": len(features),
         }
         logger.info(
             "Public export built %s tiled feature(s) + %s COG + %s vector "
-            "footprint(s) across %s project(s).",
+            "footprint(s) across %s project(s); skipped %s oversized geometry(ies).",
             feature_count,
             cog_count,
             vector_count,
             stats["project_count"],
+            skipped_count,
         )
         return features, layer_features, stats
 

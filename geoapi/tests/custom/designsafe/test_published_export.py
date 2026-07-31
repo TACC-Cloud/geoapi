@@ -107,6 +107,7 @@ def test_build_features_tiles_markers_and_lists_layer_footprints(db_session):
         "feature_count": 2,
         "cog_count": 1,
         "vector_count": 1,
+        "skipped_count": 0,
         "project_count": 1,
         "total": 2,
     }
