@@ -21,12 +21,12 @@ DESIGNSAFE_PUBLISHED_BROWSER_URL = (
 # A footprint wider/taller than this many degrees is logged as a likely georef error.
 LARGE_EXTENT_WARN_DEG = 30
 
-# TODO(from WG-703): brittle, project-specific guard. PRJ-6361 holds nation-wide image
-# footprints (a large filled rectangle per image) that render poorly on the
+# TODO(from WG-703): brittle, project-specific guard. PRJ-6361 holds nation-wide
+# layers (large image footprints and a worldwide COG) that render poorly on the
 # consumer (e.g. Recon Portal), so we leave them out for now. When the next such
 # case appears, replace this with a general policy or figure out how to display
-# these large datasets better on the consumer. Skip any PRJ-6361 geometry wider
-# or taller than this many degrees.
+# these large datasets better on the consumer. Skip any PRJ-6361 tiled feature or
+# COG footprint wider or taller than this many degrees.
 PRJ_6361_PROJECT_ID = "PRJ-6361"
 PRJ_6361_MAX_EXTENT_DEG = 4
 
@@ -62,8 +62,8 @@ class PublishedMapsExportService:
             ``layer_features`` are footprints for internal COGs and PMTiles-vector
             uploads, written to the companion GeoJSON and rendered client-side.
             ``stats`` has ``feature_count`` (tiled), ``cog_count``,
-            ``vector_count``, ``skipped_count`` (oversized geometries dropped),
-            ``project_count`` and ``total`` (tiled).
+            ``vector_count``, ``skipped_count`` (oversized tiled features / COG
+            footprints dropped), ``project_count`` and ``total`` (tiled).
         """
         geoapi_base = get_deployed_geoapi_url()
         hazmapper_base = get_deployed_hazmapper_url()
@@ -118,16 +118,9 @@ class PublishedMapsExportService:
 
                 if published.designsafe_project_id == PRJ_6361_PROJECT_ID:
                     minx, miny, maxx, maxy = shapely.geometry.shape(geometry).bounds
-                    width_deg, height_deg = abs(maxx - minx), abs(maxy - miny)
-                    if max(width_deg, height_deg) > PRJ_6361_MAX_EXTENT_DEG:
-                        logger.info(
-                            "Skipping feature %s: geometry spans %.1f x %.1f deg; "
-                            "a feature this large renders poorly on the consumer "
-                            "(e.g. Recon Portal), so leaving out for now.",
-                            feature.id,
-                            width_deg,
-                            height_deg,
-                        )
+                    if cls._skip_prj6361_oversized(
+                        "feature", feature.id, abs(maxx - minx), abs(maxy - miny)
+                    ):
                         skipped_count += 1
                         continue
 
@@ -151,9 +144,17 @@ class PublishedMapsExportService:
                 .all()
             ):
                 footprint = cls._cog_footprint(tile_server, common, geoapi_base)
-                if footprint:
-                    layer_features.append(footprint)
-                    cog_count += 1
+                if not footprint:
+                    continue
+                if published.designsafe_project_id == PRJ_6361_PROJECT_ID:
+                    west, south, east, north = footprint["properties"]["bounds"]
+                    if cls._skip_prj6361_oversized(
+                        "COG", tile_server.id, abs(east - west), abs(north - south)
+                    ):
+                        skipped_count += 1
+                        continue
+                layer_features.append(footprint)
+                cog_count += 1
 
         stats = {
             "feature_count": feature_count,
@@ -186,6 +187,20 @@ class PublishedMapsExportService:
     @staticmethod
     def _hazmapper_url(hazmapper_base, project_uuid) -> str:
         return f"{hazmapper_base}/project-public/{project_uuid}"
+
+    @staticmethod
+    def _skip_prj6361_oversized(label, obj_id, width_deg, height_deg) -> bool:
+        if max(width_deg, height_deg) <= PRJ_6361_MAX_EXTENT_DEG:
+            return False
+        logger.info(
+            "Skipping %s %s: extent spans %.1f x %.1f deg; too large to display "
+            "well on the consumer (e.g. Recon Portal), so leaving out for now.",
+            label,
+            obj_id,
+            width_deg,
+            height_deg,
+        )
+        return True
 
     @classmethod
     def _cog_footprint(cls, tile_server, common, geoapi_base) -> Optional[dict]:
