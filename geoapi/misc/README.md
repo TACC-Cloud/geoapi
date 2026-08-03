@@ -4,9 +4,15 @@ Ad-hoc scripts run by hand (not part of the API or the Celery schedule).
 
 ## `dry_run_published_ds_maps.py`
 
-A dry run creating the published-DesignSafe-maps archive.
+A dry run creating the published-DesignSafe-maps archive. Non-destructive: it
+measures counts/sizes and writes to a scratch path, never the real
+`assets/public` area or the manifest.
 
-It writes the archive to `/assets/tmp/published_ds_maps.pmtiles`
+It writes two files:
+
+- `/assets/tmp/published_ds_maps.pmtiles` — the tiled archive
+- `/assets/tmp/published_ds_maps.vectors_and_internal_cogs.geojson` — the
+  companion layer footprints (internal COGs + PMTiles-vector uploads)
 
 ### Run against the local dev stack
 

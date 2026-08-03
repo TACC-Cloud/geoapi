@@ -4,6 +4,7 @@ from urllib.parse import quote
 
 from geoapi.log import logging
 from geoapi.models import Feature, TileServer
+from geoapi.settings import settings
 from geoapi.custom.designsafe.published_maps import PublishedMap
 from geoapi.utils.client_backend import (
     get_deployed_geoapi_url,
@@ -12,9 +13,11 @@ from geoapi.utils.client_backend import (
 
 logger = logging.getLogger(__name__)
 
-# DesignSafe published-data browser URL for a PRJ-#### project.
+# DesignSafe published-data browser URL for a PRJ-#### project. Tier-scoped via
+# DESIGNSAFE_URL so links resolve on the same DesignSafe (prod vs pprd) the
+# publication was read from.
 DESIGNSAFE_PUBLISHED_BROWSER_URL = (
-    "https://www.designsafe-ci.org/data/browser/public/"
+    settings.DESIGNSAFE_URL + "/data/browser/public/"
     "designsafe.storage.published/{designsafe_project_id}"
 )
 

@@ -10,13 +10,12 @@ from geoapi.settings import settings
 
 logger = logging.getLogger(__name__)
 
-# DesignSafe publications API (public, unauthenticated). This is intentionally a
-# module-level constant rather than a per-environment setting: "published" is a
-# production DesignSafe curation act, and the maps embedded in a publication are
-# tagged with the deployment that registered them (see below), so pointing at a
-# single publications host and filtering by deployment is what keeps each geoapi
-# tier scoped to its own maps. Overridable in tests.
-DESIGNSAFE_PUBLICATIONS_API = "https://www.designsafe-ci.org/api/publications/v2"
+# DesignSafe publications API (public, unauthenticated). Tier-scoped via
+# DESIGNSAFE_URL (prod -> designsafe-ci.org, dev/staging -> pprd.designsafe-ci.org)
+# so a pprd test publication is visible to a pprd/dev/staging geoapi. Maps embedded
+# in a publication are further filtered by the deployment that registered them
+# (see below). Overridable in tests.
+DESIGNSAFE_PUBLICATIONS_API = f"{settings.DESIGNSAFE_URL}/api/publications/v2"
 
 # Page size when walking the publications list.
 PUBLICATIONS_PAGE_LIMIT = 100
