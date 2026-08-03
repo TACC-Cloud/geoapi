@@ -95,7 +95,7 @@ def get_deployed_hazmapper_url():
         "staging": "https://hazmapper.tacc.utexas.edu/staging",
         "dev": "https://hazmapper.tacc.utexas.edu/dev",
         "testing": "http://localhost:4200",
-        # Next 3 entries are for proxmox-migration. Remove when completed. https://tacc-main.atlassian.net/browse/WG-615
+        # Next 3 entries are for proxmox-migration. Remove when completed. https://tacc-main.atlassian.net/browse/WG-704
         "production-tmp": "https://hazmapper.tacc.utexas.edu/hazmapper-tmp",
         "staging-tmp": "https://hazmapper.tacc.utexas.edu/staging-tmp",
         "dev-tmp": "https://hazmapper.tacc.utexas.edu/dev-tmp",
