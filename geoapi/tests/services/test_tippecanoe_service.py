@@ -82,6 +82,82 @@ def _point_counts_by_zoom(pmtiles_path):
     return counts
 
 
+def test_geojson_layers_to_pmtiles_builds_command():
+    with patch("geoapi.services.tippecanoe.subprocess.run") as mock_run:
+        mock_run.return_value = _completed(stderr="42 features, 1234 bytes of geometry")
+        count = TippecanoeService.geojson_layers_to_pmtiles(
+            [("points", "/tmp/points.geojson"), ("cog", "/tmp/cog.geojson")],
+            "/tmp/out.pmtiles",
+        )
+
+    # the feature count is parsed from tippecanoe's summary line
+    assert count == 42
+    cmd = mock_run.call_args[0][0]
+    assert cmd[0] == "tippecanoe"
+    assert "-o" in cmd and cmd[cmd.index("-o") + 1] == "/tmp/out.pmtiles"
+    assert cmd[cmd.index("-Z") + 1] == "2"
+    assert cmd[cmd.index("-z") + 1] == "14"
+    assert cmd[cmd.index("-B") + 1] == "8"
+    assert "--drop-densest-as-needed" in cmd
+    assert "--no-tile-size-limit" not in cmd
+    assert "--no-feature-limit" in cmd
+    assert "--no-tiny-polygon-reduction" in cmd
+    assert "--drop-rate=1" not in cmd
+    assert "points:/tmp/points.geojson" in cmd
+    assert "cog:/tmp/cog.geojson" in cmd
+
+
+def test_geojson_layers_to_pmtiles_requires_layers():
+    with pytest.raises(ValueError, match="at least one layer"):
+        TippecanoeService.geojson_layers_to_pmtiles([], "/tmp/out.pmtiles")
+
+
+def test_parse_written_feature_count_ignores_progress_line():
+    stderr = "Read 0.00 million features\n7 features, 10 bytes of geometry\n"
+    assert TippecanoeService._parse_written_feature_count(stderr) == 7
+    assert TippecanoeService._parse_written_feature_count("no summary here") is None
+
+
+@pytest.mark.worker
+def test_geojson_layers_to_pmtiles_multilayer():
+    # tile a point layer and a polygon (COG-footprint-like) layer into one
+    # archive; assert the reported count matches input and both layers survive.
+    out_dir = tempfile.mkdtemp(prefix="geoapi_published_ds_maps_test_")
+    try:
+        points_path = os.path.join(out_dir, "points.geojson")
+        shapes_path = os.path.join(out_dir, "shapes.geojson")
+        with open(points_path, "w") as f:
+            f.write(
+                '{"type":"Feature","geometry":{"type":"Point",'
+                '"coordinates":[-97.7,30.3]},"properties":{"feature_type":"point"}}\n'
+            )
+        with open(shapes_path, "w") as f:
+            f.write(
+                '{"type":"Feature","geometry":{"type":"Polygon","coordinates":'
+                "[[[-97.8,30.2],[-97.6,30.2],[-97.6,30.4],[-97.8,30.4],[-97.8,30.2]]]},"
+                '"properties":{"feature_type":"cog"}}\n'
+            )
+
+        pmtiles_path = os.path.join(out_dir, "out.pmtiles")
+        count = TippecanoeService.geojson_layers_to_pmtiles(
+            [("points", points_path), ("cogs", shapes_path)], pmtiles_path
+        )
+
+        assert os.path.isfile(pmtiles_path)
+        assert count == 2  # both input features present, none dropped
+
+        decoded = subprocess.run(
+            ["tippecanoe-decode", pmtiles_path],
+            capture_output=True,
+            text=True,
+            check=True,
+        ).stdout
+        assert '"points"' in decoded
+        assert '"cogs"' in decoded
+    finally:
+        shutil.rmtree(out_dir, ignore_errors=True)
+
+
 @pytest.mark.worker
 def test_geojson_to_pmtiles_keeps_features_at_all_zooms(
     points_1000_geojson_path_fixture,

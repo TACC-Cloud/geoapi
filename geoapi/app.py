@@ -30,6 +30,7 @@ from redis.asyncio import Redis
 from geoapi.models import User
 from geoapi.routes import api_router
 from geoapi.settings import settings
+from geoapi.log import logger
 from geoapi.db import litestar_sqlalchemy_config, managed_litestar_db_session
 from geoapi.exceptions import (
     InvalidGeoJSON,
@@ -296,8 +297,26 @@ exception_handlers = {
 }
 
 
+def _enqueue_published_ds_maps_cold_start(_app: "Litestar") -> None:
+    """On startup, enqueue an initial published-DS-maps build if none exists yet."""
+    # tests exercise the full app lifespan via TestClient; don't auto-enqueue a
+    # real task (which would hit the live DesignSafe API) during the test run
+    if settings.APP_ENV == "testing":
+        return
+    from geoapi.tasks.published_ds_maps import enqueue_generation_if_missing
+
+    try:
+        enqueue_generation_if_missing()
+    except Exception:
+        # never let a cold-start convenience break app startup
+        logger.exception(
+            "Cold-start enqueue of published-DS-maps generation failed; continuing."
+        )
+
+
 app = Litestar(
     route_handlers=[api_router],
+    on_startup=[_enqueue_published_ds_maps_cold_start],
     middleware=[
         logging_middleware_config.middleware,
         cookie_session_config.middleware,
