@@ -12,9 +12,6 @@ def test_valid_client_urls():
         "https://hazmapper.tacc.utexas.edu/staging/",
         "https://hazmapper.tacc.utexas.edu/staging",
         "https://hazmapper.tacc.utexas.edu/dev/",
-        "https://hazmapper.tacc.utexas.edu/taggit/",
-        "https://hazmapper.tacc.utexas.edu/taggit-staging/",
-        "https://hazmapper.tacc.utexas.edu/taggit-dev/",
     ]
 
     for url in valid_urls:

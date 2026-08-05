@@ -9,6 +9,7 @@ from .notifications import NotificationsController
 from .auth import AuthController
 from .webhooks import TaskStatusWebhookController
 from .websockets import websocket_handler
+from .published_ds_maps import PublishedDsMapsController
 
 api_router = Router(
     path="/",
@@ -22,5 +23,6 @@ api_router = Router(
         AuthController,
         TaskStatusWebhookController,
         websocket_handler,
+        PublishedDsMapsController,
     ],
 )
