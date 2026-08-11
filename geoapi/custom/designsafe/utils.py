@@ -2,7 +2,6 @@ from geoapi.log import logger
 from geoapi.settings import settings
 from geoapi.models import User
 
-
 DESIGNSAFE_PROJECT_ID_CACHE = {}
 
 

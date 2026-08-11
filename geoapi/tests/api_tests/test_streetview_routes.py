@@ -5,7 +5,6 @@ from geoapi.models.users import User
 from geoapi.models.streetview import Streetview, StreetviewOrganization
 from datetime import datetime, timedelta, timezone
 
-
 if TYPE_CHECKING:
     from sqlalchemy.orm import Session
 

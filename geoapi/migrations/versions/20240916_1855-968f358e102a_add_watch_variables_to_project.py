@@ -11,7 +11,6 @@ import sqlalchemy as sa
 from sqlalchemy.orm import Session
 from geoapi.log import logger
 
-
 # revision identifiers, used by Alembic.
 revision = "968f358e102a"
 down_revision = "4eeeeea72dbc"
@@ -30,24 +29,20 @@ def upgrade():
     try:
         # Query all projects and their related observable data projects in order
         # to set the watch_content and watch_users
-        projects_query = sa.text(
-            """
+        projects_query = sa.text("""
             SELECT p.id, odp.id as odp_id, odp.watch_content
             FROM projects p
             LEFT JOIN observable_data_projects odp ON p.id = odp.project_id
-        """
-        )
+        """)
         results = session.execute(projects_query)
 
         # Update projects based on the query results
         for project_id, odp_id, odp_watch_content in results:
-            update_query = sa.text(
-                """
+            update_query = sa.text("""
                 UPDATE projects
                 SET watch_content = :watch_content, watch_users = :watch_users
                 WHERE id = :project_id
-            """
-            )
+            """)
             session.execute(
                 update_query,
                 {

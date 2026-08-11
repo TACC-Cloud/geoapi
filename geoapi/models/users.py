@@ -1,5 +1,4 @@
-import pytz
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC
 from sqlalchemy import Integer, String, DateTime
 from sqlalchemy.sql import func
 from sqlalchemy.ext.hybrid import hybrid_property
@@ -61,7 +60,7 @@ class User(Base):
         """
         if not self.auth or not self.auth.refresh_token:
             return False
-        current_time = datetime.now(pytz.utc)  # Make current_time offset-aware with UTC
+        current_time = datetime.now(UTC)  # Make current_time offset-aware with UTC
         buffer = timedelta(minutes=1)  # 1 minute buffer
         return current_time <= (self.auth.refresh_token_expires_at - buffer)
 

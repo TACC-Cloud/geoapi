@@ -2,7 +2,7 @@ name: geoapi
 
 volumes:
   assets:
-  pgdata:
+  pgdata18:
 
 networks:
   geoapi:
@@ -42,10 +42,12 @@ services:
       retries: 5
 
   rabbitmq:
-    image: rabbitmq:4-management
+    image: rabbitmq:4.2-management
     ports:
       - 15672:15672
     container_name: geoapi_rabbitmq
+    volumes:
+      - ./local_conf/rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf
     environment:
       - RABBITMQ_DEFAULT_USER=dev
       - RABBITMQ_DEFAULT_PASS=dev
@@ -57,9 +59,10 @@ services:
       retries: 5
 
   postgres:
-    image: postgis/postgis:11-3.3-alpine
+    image: postgis/postgis:18-3.6-alpine
+    platform: linux/amd64
     volumes:
-      - pgdata:/var/lib/postgresql/data
+      - pgdata18:/var/lib/postgresql
     container_name: geoapi_postgres
     environment:
       - POSTGRES_PASSWORD=dev
@@ -81,17 +84,17 @@ services:
   workers:
     <<: *worker-base  # Reuses worker-base fragment defined at start
     container_name: geoapi_workers
-    command: celery -A geoapi.celery_app worker -l info -Q default -n default_worker@geoapi --uid=1100 --gid=1100
+    command: celery -A geoapi.celery_app worker -l info -Q default -n default_worker@geoapi
 
   workers-heavy:
     <<: *worker-base  # Reuses worker-base fragment defined at start
     container_name: geoapi_workers_heavy
-    command: celery -A geoapi.celery_app worker -l info -Q heavy --concurrency=6 --uid=1100 --gid=1100
+    command: celery -A geoapi.celery_app worker -l info -Q heavy --concurrency=6
 
   celerybeat:
     <<: *worker-base  # Reuses worker-base fragment defined at start
     container_name: geoapi_celerybeat
-    command: "celery -A geoapi.celery_app beat --schedule=/var/run/celery/celerybeat-schedule -l info --uid=1100 --gid=1100"
+    command: "celery -A geoapi.celery_app beat --schedule=/var/run/celery/celerybeat-schedule -l info"
 
   titiler:
     image: ghcr.io/developmentseed/titiler:0.23.1
@@ -141,6 +144,7 @@ services:
 
   assets-init:
     image: taccwma/geoapi-workers:local
+    user: "0:0"
     volumes:
       - assets:/assets
     command: ["sh", "-c", "chown -R 1100:1100 /assets && chmod -R 775 /assets"]

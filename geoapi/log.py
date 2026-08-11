@@ -3,7 +3,6 @@ import uuid
 from hashlib import sha256
 from geoapi.settings import settings
 
-
 logging.basicConfig(
     format="%(asctime)s :: %(levelname)s :: [%(filename)s:%(lineno)d] :: %(message)s",
     level=logging.INFO,

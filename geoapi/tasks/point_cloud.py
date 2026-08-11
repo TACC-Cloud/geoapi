@@ -25,7 +25,6 @@ from geoapi.utils.geometries import convert_3D_2D
 from geoapi.exceptions import InvalidCoordinateReferenceSystem
 from geoapi.services.point_cloud import PointCloudService
 
-
 logger = logging.getLogger(__file__)
 
 

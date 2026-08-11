@@ -11,7 +11,6 @@ from geoapi.models import (
 )
 from geoapi.log import logging
 
-
 logger = logging.getLogger(__name__)
 
 

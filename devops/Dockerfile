@@ -4,12 +4,14 @@ LABEL maintainer="DesignSafe-CI <designsafe-ci@tacc.utexas.edu>"
 
 ARG DEBIAN_FRONTEND=noninteractive
 
-RUN apt-get update && apt-get install -y \
+RUN apt-get update && apt-get upgrade -y --no-install-recommends \
+    && apt-get install -y --no-install-recommends \
     build-essential \
     libgdal-dev \
     ffmpeg \
     curl \
     git \
+    vim \
     && rm -rf /var/lib/apt/lists/*
 
 # https://python-poetry.org/docs/configuration/#using-environment-variables
@@ -37,6 +39,9 @@ RUN poetry install
 RUN groupadd -g 1100 celeryuser
 RUN useradd -s /sbin/nologin -u 1100 -g 1100 celeryuser
 
+HEALTHCHECK --interval=120s --timeout=5s --start-period=60s --retries=3 \
+  CMD curl -fsS http://localhost:8000/status || exit 1
+
 ##############
 # `development` image target is used for local development
 FROM python-base AS development
@@ -60,8 +65,11 @@ WORKDIR /app/geoapi
 # `production` image target is used for deployed runtime environments
 FROM python-base AS production
 
-# Install runtime dependencies
-COPY --from=python-base $PYSETUP_PATH $PYSETUP_PATH
+# Strip build-time tooling (Poetry + bundled pip/virtualenv/dulwich) and bump venv pip
+RUN "$VENV_PATH/bin/pip" install --no-cache-dir --upgrade pip \
+    && rm -rf "$POETRY_HOME" \
+              /root/.local/share/virtualenv \
+              /root/.cache
 
 COPY geoapi /app/geoapi
 

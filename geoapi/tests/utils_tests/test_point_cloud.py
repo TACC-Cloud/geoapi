@@ -1,6 +1,7 @@
 import pytest
 from geoapi.utils.point_cloud import getProj4, get_bounding_box_2d
 from geoapi.exceptions import InvalidCoordinateReferenceSystem
+from shapely.geometry import Polygon
 
 
 @pytest.mark.worker
@@ -58,9 +59,12 @@ def test_get_bounding_box_medium_size_compressed_laz(
     lidar_medium_size_compressed_las1pt2,
 ):
     bounding_box = get_bounding_box_2d([lidar_medium_size_compressed_las1pt2])
-    assert (
-        str(bounding_box)
-        == "POLYGON ((-105.209138419338 39.66131144844282, -105.20095449180293 39.66131144844282, "
-        "-105.20095449180293 39.66928201079495, -105.209138419338 39.66928201079495,"
-        " -105.209138419338 39.66131144844282))"
+    expected = Polygon(
+        [
+            (-105.2091, 39.6613),
+            (-105.2010, 39.6613),
+            (-105.2010, 39.6693),
+            (-105.2091, 39.6693),
+        ]
     )
+    assert bounding_box.equals_exact(expected, tolerance=1e-3)

@@ -11,7 +11,6 @@ import json
 from geoapi.settings import settings
 from geoapi.log import logging
 
-
 logger = logging.getLogger(__name__)
 
 # when acquiring lock to refresh token, its possible someone else has already
@@ -143,9 +142,12 @@ def is_token_valid(token: str) -> bool:
         # Decode the token and automatically validate the exp claim
         decode_token(token)
         return True  # Token is valid and not expired
-    except (jwt.ExpiredSignatureError, jwt.InvalidTokenError) as e:
+    except jwt.ExpiredSignatureError:
+        logger.debug("token expired")
+        return False
+    except jwt.InvalidTokenError as e:
         logger.error(f"token not valid: {e}")
-        return False  # Token is expired or invalid
+        return False
 
 
 def create_token_expiry_hours_from_now(token: str, hours_from_now: int = 4) -> str:

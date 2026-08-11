@@ -225,13 +225,14 @@ class ProjectsService:
             if asset:
                 params[asset] = asset
                 assetQueries.append(
-                    "fa is null"
+                    # "no_asset_vector" covers both features with no asset and
+                    # features backed by a PMTiles vector asset
+                    "(fa is null OR fa.asset_type = 'vector')"
                     if asset == "no_asset_vector"
                     else "fa.asset_type = :" + asset
                 )
 
-        select_stmt = text(
-            """
+        select_stmt = text("""
         json_build_object(
             'type', 'FeatureCollection',
             'crs',  json_build_object(
@@ -253,27 +254,18 @@ class ProjectsService:
                     )
                 ), '[]'::json)
         ) as geojson
-        """
-        )
+        """)
 
         # The sub select that filters only on this projects ID, filters applied below
-        sub_select = select(
-            text(
-                """feat.*,  array_remove(array_agg(fa), null) as assets
+        sub_select = select(text("""feat.*,  array_remove(array_agg(fa), null) as assets
               from features as feat
               LEFT JOIN feature_assets fa on feat.id = fa.feature_id
-             """
-            )
-        ).where(text("project_id = :projectId"))
+             """)).where(text("project_id = :projectId"))
 
         if bbox:
-            sub_select = sub_select.where(
-                text(
-                    """feat.the_geom &&
+            sub_select = sub_select.where(text("""feat.the_geom &&
                 ST_MakeEnvelope (:bbox_xmin, :bbox_ymin, :bbox_xmax, :bbox_ymax)
-                """
-                )
-            )
+                """))
             params.update(
                 {
                     "bbox_xmin": bbox[0],

@@ -12,7 +12,6 @@ Create Date: 2025-04-14 14:30:00.000000
 
 from alembic import op
 
-
 # revision identifiers, used by Alembic.
 revision = "a1b2c3d4e5f6"
 down_revision = "9ca03b666aee"
@@ -21,13 +20,11 @@ depends_on = None
 
 
 def upgrade():
-    op.execute(
-        """
+    op.execute("""
         UPDATE streetview
         SET token = NULL
         WHERE token_expires_at IS NULL AND token IS NOT NULL
-    """
-    )
+    """)
 
 
 def downgrade():

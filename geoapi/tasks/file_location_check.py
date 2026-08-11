@@ -26,7 +26,6 @@ from geoapi.custom.designsafe.utils import (
     is_designsafe_project,
 )
 
-
 DESIGNSAFE_PUBLISHED_SYSTEM = "designsafe.storage.published"
 PUBLIC_SYSTEMS = [
     DESIGNSAFE_PUBLISHED_SYSTEM,

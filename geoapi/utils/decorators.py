@@ -16,7 +16,6 @@ from geoapi.utils.users import is_anonymous
 from geoapi.log import logger
 from geoapi.db import managed_litestar_db_session
 
-
 if TYPE_CHECKING:
     from sqlalchemy.orm import Session
 

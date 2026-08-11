@@ -15,7 +15,6 @@ from geoapi.exceptions import ApiException
 from geoapi.settings import settings
 from geoapi.log import logging
 
-
 logger = logging.getLogger(__file__)
 
 

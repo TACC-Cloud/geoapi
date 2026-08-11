@@ -9,7 +9,7 @@ default_layers = [
             "isActive": True,
             "showDescription": False,
             "showInput": False,
-            "zIndex": 0,
+            "zIndex": -1,
         },
         "tileOptions": {
             "minZoom": 0,
@@ -28,7 +28,7 @@ default_layers = [
             "isActive": True,
             "showDescription": False,
             "showInput": False,
-            "zIndex": -1,
+            "zIndex": -2,
         },
         "tileOptions": {
             "minZoom": 0,
