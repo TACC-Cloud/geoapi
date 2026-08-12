@@ -67,6 +67,7 @@ class TapisFileListing:
         self.type = data["type"]
         self.path = pathlib.Path(data["path"])
         self.lastModified = parser.parse(data["lastModified"])
+        self.size = data.get("size")
 
     def __repr__(self):
         return "<TapisFileListing {}>".format(self.path)
@@ -318,6 +319,46 @@ class TapisUtils(ApiUtils):
         msg = f"Could not fetch file and no longer retrying.: ({systemId}/{path})"
         logger.exception(msg)
         raise TapisFileGetError(msg)
+
+    def getFilePartial(
+        self, systemId: str, path: str, max_bytes: int
+    ) -> NamedTemporaryFile:
+        """Download only the first ``max_bytes`` of a file.
+
+        Tapis Files has no HTTP Range / partial-read support, so we can't request a byte
+        range. See https://github.com/tapis-project/tapis-files/issues/199
+
+        Workaround: issue a normal streaming GET and STOP reading once we've
+        buffered ``max_bytes`` -- the header we care about (COG IFD, LAS/LAZ header, JPEG
+        EXIF) is at the front of the file, so closing the stream early gives a de-facto
+        partial download and avoids pulling a huge file. A file smaller than ``max_bytes``
+        comes back whole.
+
+        Returns a temp file holding the prefix, with the original suffix preserved so
+        GDAL/OGR/PDAL recognize the format. Caller must ``close()`` it.
+
+        :raises TapisFileGetError: if Tapis returns an error status
+        """
+        url = quote(f"/v3/files/content/{systemId}/{path}")
+        suffix = pathlib.Path(str(path)).suffix
+        with self.client.get(self.base_url + url, stream=True) as r:
+            if r.status_code >= 400:
+                raise TapisFileGetError(
+                    "Could not fetch file ({}/{}) status_code:{}".format(
+                        systemId, path, r.status_code
+                    )
+                )
+            tmpFile = NamedTemporaryFile(dir=ASSETS_TEMP_DIR, suffix=suffix)
+            written = 0
+            for chunk in r.iter_content(64 * 1024):
+                if not chunk:
+                    continue
+                tmpFile.write(chunk)
+                written += len(chunk)
+                if written >= max_bytes:
+                    break  # stop early; exiting the `with` closes/aborts the stream
+            tmpFile.seek(0)
+        return tmpFile
 
     def get_file_context_manager(self, system_id: str, path: str) -> IO:
         tmpFile = self.getFile(system_id, path)

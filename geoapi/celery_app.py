@@ -27,6 +27,7 @@ app.conf.imports = (
     "geoapi.tasks.projects",
     "geoapi.tasks.external_data",
     "geoapi.tasks.file_location_check",
+    "geoapi.tasks.file_inspection",
     "geoapi.tasks.published_ds_maps",
 )
 

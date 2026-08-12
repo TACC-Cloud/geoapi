@@ -185,6 +185,7 @@ class TileService:
                 status="QUEUED",
                 description=f"Add tile-server for {f.path}",
                 project_id=project_id,
+                user_id=user.id,
             )
             database_session.add(task)
             database_session.flush()  # assigns task.id

@@ -35,7 +35,7 @@ class GeoAPITask(celery.Task):
                 # Only mark FAILED if the task didn't explicitly set some other terminal state
                 if task.status != TaskStatus.FAILED:
                     task.status = TaskStatus.FAILED
-                    task.last_message = str(exc)
+                    task.latest_message = str(exc)
                     session.add(task)
                     session.commit()
 

@@ -99,7 +99,10 @@ class ProjectFileLocationStatusController(Controller):
 
         # Create the check record and Task in database
         file_location_check = FileLocationStatusService.start_check(
-            db_session, project_id, celery_task_uuid=celery_task_uuid
+            db_session,
+            project_id,
+            celery_task_uuid=celery_task_uuid,
+            user_id=user.id,
         )
 
         # Try to start Celery task

@@ -18,6 +18,9 @@ def test_get_projects(test_client, projects_fixture, user1):
     assert resp.status_code == 200
     assert len(data) == 1
     assert data[0]["deletable"] is True
+    # projects_fixture makes test1 an admin (not creator)
+    assert data[0]["admin"] is True
+    assert data[0]["creator"] is False
 
 
 def test_get_projects_but_not_admin_or_creator(
@@ -29,6 +32,9 @@ def test_get_projects_but_not_admin_or_creator(
     assert len(data) == 1
     assert data[0]["id"] == projects_fixture2.id
     assert data[0]["deletable"] is False
+    # test2 is a plain member of projects_fixture2 -- neither admin nor creator
+    assert data[0]["admin"] is False
+    assert data[0]["creator"] is False
 
 
 def test_get_projects_with_multiple(

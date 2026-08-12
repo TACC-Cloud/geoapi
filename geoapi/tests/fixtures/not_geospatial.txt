@@ -1,0 +1,2 @@
+This is a plain text file with no geospatial content whatsoever.
+Just some words. Lorem ipsum dolor sit amet.

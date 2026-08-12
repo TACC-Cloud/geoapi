@@ -76,11 +76,14 @@ class PointCloudService:
         return point_cloud
 
     @staticmethod
-    def update(database_session, pointCloudId: int, data: dict) -> PointCloud:
+    def update(
+        database_session, pointCloudId: int, data: dict, user_id: int = None
+    ) -> PointCloud:
         """
         Update a PointCloud
         :param pointCloudId: int
         :param data: dict
+        :param user_id: int, the user triggering a re-process (if any)
         :return: Project
         """
         point_cloud = PointCloudService.get(database_session, pointCloudId)
@@ -94,7 +97,9 @@ class PointCloudService:
             "conversion_parameters" in data
             and previous_conversion_parameters != data["conversion_parameters"]
         ):
-            PointCloudService._process_point_clouds(database_session, pointCloudId)
+            PointCloudService._process_point_clouds(
+                database_session, pointCloudId, user_id=user_id
+            )
 
         return point_cloud
 
@@ -145,11 +150,14 @@ class PointCloudService:
         return file_path
 
     @staticmethod
-    def _process_point_clouds(database_session, pointCloudId: int) -> Task:
+    def _process_point_clouds(
+        database_session, pointCloudId: int, user_id: int = None
+    ) -> Task:
         """
         Process point cloud files
 
         :param pointCloudId: int
+        :param user_id: int, the user who triggered this
         :return: processingTask: Task
         """
         point_cloud = PointCloudService.get(database_session, pointCloudId)
@@ -159,6 +167,7 @@ class PointCloudService:
         task.process_id = celery_task_id
         task.status = "RUNNING"
         task.description = "Processing point cloud #{}".format(pointCloudId)
+        task.user_id = user_id
 
         point_cloud.task = task
 

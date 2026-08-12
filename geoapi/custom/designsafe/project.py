@@ -11,27 +11,35 @@ from geoapi.custom.designsafe.utils import (
 
 
 def on_project_creation(database_session, user: User, project: Project):
-    try:
-        logger.debug(
-            f"Creating .hazmapper file for user:{user.username}"
-            f" project:{project.id} project_uuid:{project.uuid} "
-        )
-        deployment = settings.APP_ENV
-        file_content = json.dumps({"uuid": str(project.uuid), "deployment": deployment})
-        file_name = f"{project.system_file}.hazmapper"
-        from geoapi.utils.external_apis import TapisUtils
+    if project.system_id and project.system_path and project.system_file:
+        try:
+            logger.debug(
+                f"Creating .hazmapper file for user:{user.username}"
+                f" project:{project.id} project_uuid:{project.uuid} "
+            )
+            deployment = settings.APP_ENV
+            file_content = json.dumps(
+                {"uuid": str(project.uuid), "deployment": deployment}
+            )
+            file_name = f"{project.system_file}.hazmapper"
+            from geoapi.utils.external_apis import TapisUtils
 
-        tapis = TapisUtils(database_session, user)
-        tapis.create_file(
-            system_id=project.system_id,
-            system_path=project.system_path,
-            file_name=file_name,
-            file_content=file_content,
-        )
-    except Exception:
-        logger.exception(
-            f"Problem creating .hazmapper file for user:{user.username}"
-            f" project:{project.id} project_uuid:{project.uuid} "
+            tapis = TapisUtils(database_session, user)
+            tapis.create_file(
+                system_id=project.system_id,
+                system_path=project.system_path,
+                file_name=file_name,
+                file_content=file_content,
+            )
+        except Exception:
+            logger.exception(
+                f"Problem creating .hazmapper file for user:{user.username}"
+                f" project:{project.id} project_uuid:{project.uuid} "
+            )
+    else:
+        logger.error(
+            f"Project:{project.id} has no associated Tapis system/path; "
+            "skipping .hazmapper marker file."
         )
 
     try:
