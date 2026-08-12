@@ -14,12 +14,16 @@ FIXTURES = os.path.join(os.path.dirname(os.path.dirname(__file__)), "fixtures")
 
 @pytest.fixture(autouse=True)
 def celery_eager():
-    """inspect() dispatches ALL inspection to a worker task; run it in-process so the
-    route gets a result without a live worker/broker. The worker CI image has the geo
-    CLIs on PATH. Autouse: every inspect call here goes through the task."""
+    """Inspection dispatches to a worker task; run it in-process so submit+poll completes
+    without a live worker/broker. ``task_store_eager_result`` makes the result retrievable
+    via AsyncResult(id) (what the poll endpoint uses); ``task_eager_propagates=False`` so a
+    failing job surfaces as a FAILED result rather than raising out of the submit."""
     celery_app.conf.task_always_eager = True
+    celery_app.conf.task_store_eager_result = True
+    celery_app.conf.task_eager_propagates = False
     yield
     celery_app.conf.task_always_eager = False
+    celery_app.conf.task_store_eager_result = False
 
 
 @pytest.fixture(autouse=True)
@@ -67,7 +71,8 @@ def fx(*parts: str) -> str:
     return os.path.join(FIXTURES, *parts)
 
 
-def _inspect(client, jwt, path, system_id="designsafe.storage.default", recursive=True):
+# --- inspect: submit (202) then poll (GET) --------------------------------------------
+def _submit(client, jwt, path, system_id="designsafe.storage.default", recursive=True):
     return client.post(
         "/files/inspect",
         headers={"X-Tapis-Token": jwt},
@@ -75,12 +80,26 @@ def _inspect(client, jwt, path, system_id="designsafe.storage.default", recursiv
     )
 
 
-def _one(resp):
-    """Assert a 200 whose body is a single-item list, and return that item."""
-    assert resp.status_code == 200
-    body = resp.json()
-    assert isinstance(body, list) and len(body) == 1
-    return body[0]
+def _poll(client, jwt, task_id):
+    return client.get(f"/files/inspect/{task_id}", headers={"X-Tapis-Token": jwt})
+
+
+def _inspect(client, jwt, path, **kw):
+    """Submit then poll (eager runs the job synchronously) -> the job JSON."""
+    resp = _submit(client, jwt, path, **kw)
+    assert resp.status_code == 202, resp.text
+    task_id = resp.json()["task_id"]
+    job = _poll(client, jwt, task_id)
+    assert job.status_code == 200, job.text
+    return job.json()
+
+
+def _one(job):
+    """Assert a COMPLETED job whose result is a single-item list; return that item."""
+    assert job["status"] == "COMPLETED"
+    result = job["result"]
+    assert isinstance(result, list) and len(result) == 1
+    return result[0]
 
 
 @pytest.mark.worker
@@ -136,23 +155,44 @@ def test_inspect_non_geospatial_file(test_client, user1):
 @pytest.mark.worker
 def test_inspect_directory_recurses(test_client, user1):
     # A directory path expands to a verdict per file (rasters/ holds several + a README).
-    resp = _inspect(test_client, user1.jwt, fx("rasters"))
-    assert resp.status_code == 200
-    body = resp.json()
+    job = _inspect(test_client, user1.jwt, fx("rasters"))
+    assert job["status"] == "COMPLETED"
+    body = job["result"]
     assert isinstance(body, list) and len(body) >= 2
     assert all(item["path"] for item in body)  # every verdict names its file
     assert any(item["is_geospatial"] and item["kind"] == "raster" for item in body)
 
 
 @pytest.mark.worker
-def test_inspect_missing_file_is_error(test_client, user1):
-    # The Tapis fetch raises for a nonexistent file; the task failure surfaces as >= 400.
-    resp = _inspect(test_client, user1.jwt, fx("does_not_exist.tif"))
-    assert resp.status_code >= 400
+def test_inspect_missing_file_is_failed_job(test_client, user1):
+    # The worker task raises fetching a nonexistent file; the job reports FAILED.
+    job = _inspect(test_client, user1.jwt, fx("does_not_exist.tif"))
+    assert job["status"] == "FAILED"
+    assert job["error"]
+
+
+def test_inspect_submit_returns_queued_task(test_client, user1):
+    # Submit shape only (not worker-marked): 202 + task id + a status. The eager job may
+    # fail here (no geo CLIs in this container), but submit still returns the task.
+    resp = _submit(test_client, user1.jwt, fx("geojson.json"))
+    assert resp.status_code == 202
+    body = resp.json()
+    assert isinstance(body["task_id"], int)
+    assert body["status"] in ("QUEUED", "RUNNING", "COMPLETED", "FAILED", "ERROR")
+
+
+def test_inspect_job_not_found(test_client, user1):
+    assert _poll(test_client, user1.jwt, 999999).status_code == 404
+
+
+def test_inspect_job_forbidden_for_other_user(test_client, user1, user2):
+    # user1 submits; user2 must not be able to read the job.
+    resp = _submit(test_client, user1.jwt, fx("geojson.json"))
+    task_id = resp.json()["task_id"]
+    assert _poll(test_client, user2.jwt, task_id).status_code == 403
 
 
 def test_inspect_requires_token(test_client_anonymous_session):
-    # No GDAL needed: the guard rejects before any inspection runs (not worker-marked).
     resp = test_client_anonymous_session.post(
         "/files/inspect",
         json={"system_id": "sys", "path": "/whatever.tif"},
@@ -161,6 +201,7 @@ def test_inspect_requires_token(test_client_anonymous_session):
 
 
 def _list(client, jwt, path, system_id="designsafe.storage.default", recursive=True):
+    """The submit POST (202 + task id), or the guard's 4xx."""
     return client.post(
         "/files/list",
         headers={"X-Tapis-Token": jwt},
@@ -168,10 +209,20 @@ def _list(client, jwt, path, system_id="designsafe.storage.default", recursive=T
     )
 
 
+def _list_entries(client, jwt, path, **kw):
+    """Submit + poll (eager runs the list job in-process; no CLIs needed) -> entries."""
+    resp = _list(client, jwt, path, **kw)
+    assert resp.status_code == 202, resp.text
+    task_id = resp.json()["task_id"]
+    job = client.get(f"/files/list/{task_id}", headers={"X-Tapis-Token": jwt})
+    assert job.status_code == 200, job.text
+    body = job.json()
+    assert body["status"] == "COMPLETED", body
+    return body["result"]
+
+
 def test_list_files_directory(test_client, user1):
-    resp = _list(test_client, user1.jwt, fx("rasters"))
-    assert resp.status_code == 200
-    body = resp.json()
+    body = _list_entries(test_client, user1.jwt, fx("rasters"))
     assert isinstance(body, list) and len(body) >= 2
     e = body[0]
     assert e["system"] == "designsafe.storage.default"
@@ -191,7 +242,7 @@ def test_list_files_shallow_shows_dirs(test_client, user1, tmp_path):
     sub.mkdir()
     (sub / "b.las").write_bytes(b"LASF")
     # recursive=false -> immediate children only: a.tif (file) + sub (dir), NOT sub/b.las
-    body = _list(test_client, user1.jwt, str(tmp_path), recursive=False).json()
+    body = _list_entries(test_client, user1.jwt, str(tmp_path), recursive=False)
     by_name = {os.path.basename(e["path"]): e for e in body}
     assert by_name["a.tif"]["type"] == "file"
     assert by_name["sub"]["type"] == "dir"
@@ -205,7 +256,7 @@ def test_list_files_recursive_descends(test_client, user1, tmp_path):
     sub.mkdir()
     (sub / "b.las").write_bytes(b"LASF")
     # recursive=true -> every file under the tree, no dir entries
-    body = _list(test_client, user1.jwt, str(tmp_path), recursive=True).json()
+    body = _list_entries(test_client, user1.jwt, str(tmp_path), recursive=True)
     assert any(e["path"].endswith("b.las") for e in body)
     assert all(e["type"] == "file" for e in body)
 
@@ -232,12 +283,12 @@ def test_validate_listing_path():
 
 
 def test_inspect_mydata_root_is_error(test_client, user1):
-    # Not worker-marked: inspect() rejects root before dispatching to the worker.
-    resp = _inspect(test_client, user1.jwt, "/", system_id="designsafe.storage.default")
+    # submit_inspect validates the path before creating the job -> 400 on submit.
+    resp = _submit(test_client, user1.jwt, "/", system_id="designsafe.storage.default")
     assert resp.status_code == 400
 
 
 def test_list_mydata_root_is_error(test_client, user1):
-    # Not worker-marked: the guard rejects before any listing runs.
+    # The guard rejects before any listing runs.
     resp = _list(test_client, user1.jwt, "/", system_id="designsafe.storage.default")
     assert resp.status_code == 400

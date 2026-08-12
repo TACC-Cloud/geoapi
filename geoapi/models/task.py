@@ -37,6 +37,10 @@ class Task(Base):
     latest_message = mapped_column(String(), nullable=True)
     created = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated = mapped_column(DateTime(timezone=True), onupdate=func.now())
+    # When this task should be deleted by the cleanup job. NULL = keep indefinitely
+    # (durable tasks tied to an object's history). Ephemeral jobs (file inspect/list)
+    # set it so they're depleted after they're no longer useful.
+    expires_at = mapped_column(DateTime(timezone=True), nullable=True, index=True)
 
     def __repr__(self):
         return (

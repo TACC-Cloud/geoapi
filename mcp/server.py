@@ -2,6 +2,7 @@ import base64
 import json
 import os
 import re
+import time
 from typing import Any
 
 import httpx
@@ -11,6 +12,10 @@ from fastmcp.server.dependencies import get_http_headers
 
 GEOAPI_BASE_URL = os.environ.get("GEOAPI_BASE_URL", "http://geoapi:8000").rstrip("/")
 HTTP_TIMEOUT_SECONDS = float(os.environ.get("GEOAPI_HTTP_TIMEOUT", "60"))
+# Inspection is async in GeoAPI (submit -> poll). The MCP does the waiting so the agent
+# gets verdicts in one tool call. Bounded so a huge job doesn't hang the tool forever.
+INSPECT_POLL_SECONDS = float(os.environ.get("GEOAPI_INSPECT_POLL_SECONDS", "2"))
+INSPECT_MAX_WAIT_SECONDS = float(os.environ.get("GEOAPI_INSPECT_MAX_WAIT_SECONDS", "300"))
 
 # TODO Remove later
 # Kind routing for import_file. Anything not raster/pointcloud goes to the general
@@ -86,10 +91,35 @@ def _get_geoapi(token: str, endpoint: str) -> Any:
     return resp.json()
 
 
+def _submit_and_poll(
+    token: str, endpoint: str, body: dict
+) -> list[dict[str, Any]]:
+    """Submit a GeoAPI file job (``endpoint`` = /files/inspect or /files/list), then poll
+    ``{endpoint}/{task_id}`` until it finishes and return its result list. GeoAPI runs
+    these async on the worker; we wait here so the agent gets the result in one tool call."""
+    submit = _post_geoapi(token, endpoint, body)
+    task_id = submit["task_id"]
+
+    deadline = time.monotonic() + INSPECT_MAX_WAIT_SECONDS
+    while True:
+        job = _get_geoapi(token, f"{endpoint}/{task_id}")
+        status = job.get("status")
+        if status == "COMPLETED":
+            return job.get("result") or []
+        if status in ("FAILED", "ERROR", "EXPIRED"):
+            raise ToolError(f"Job {status}: {job.get('error') or status}")
+        if time.monotonic() >= deadline:
+            raise ToolError(
+                f"Job still running after {int(INSPECT_MAX_WAIT_SECONDS)}s. It may be a "
+                f"large directory; poll GET {endpoint}/{task_id} later."
+            )
+        time.sleep(INSPECT_POLL_SECONDS)
+
+
 def geoapi_list(
     token: str, system_id: str, path: str, recursive: bool = True
 ) -> list[dict[str, Any]]:
-    return _post_geoapi(
+    return _submit_and_poll(
         token,
         "/files/list",
         {"system_id": system_id, "path": path, "recursive": recursive},
@@ -99,7 +129,7 @@ def geoapi_list(
 def geoapi_inspect(
     token: str, system_id: str, path: str, recursive: bool = True
 ) -> list[dict[str, Any]]:
-    return _post_geoapi(
+    return _submit_and_poll(
         token,
         "/files/inspect",
         {"system_id": system_id, "path": path, "recursive": recursive},

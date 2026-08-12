@@ -1,7 +1,6 @@
-"""File inspection ALL inspection runs on celery task.
-
-TODO: the synchronous wait is a stopgap. It will be refactored to a async. So only now
-reasonable ot use with small input (few files or small file.
+"""File inspection. ALL inspection runs on a celery task; the endpoint submits and the
+caller polls (``POST /files/inspect`` -> task id, ``GET /files/inspect/{task_id}`` ->
+status + result). The result is read back from the Celery result backend.
 
 TODO: multi-file vector formats (shapefile .shp + .shx/.dbf/.prj) are not handled
 yet (fetching a lone .shp is not enough for OGR. The sidecars must be fetched alongside.
@@ -14,13 +13,24 @@ import subprocess
 
 from geoapi.exceptions import ApiException
 from geoapi.log import logger
-from geoapi.models import User
-from geoapi.schema.files import FileInspectResponse, FileListEntry
+from geoapi.models import Task, User
+from geoapi.schema.files import (
+    FileInspectJobResponse,
+    FileInspectResponse,
+    FileListEntry,
+    FileListJobResponse,
+)
+from geoapi.services.jobs import get_job, submit_job
 from geoapi.utils.external_apis import TapisUtils
 
 POINTCLOUD_EXTS = (".las", ".laz", ".copc")
 VECTOR_EXTS = (".geojson", ".json", ".shp", ".gpkg", ".gpx", ".kml", ".kmz", ".fgb")
 IMAGE_EXTS = (".jpg", ".jpeg")
+
+# Inspect/list are ephemeral survey jobs -- expire (and get cleaned up) after this many
+# hours. Kept a bit longer than Celery's result_expires (~1 day) so a stale poll gets a
+# helpful EXPIRED verdict before the row is deleted (then it's a clean 404).
+JOB_TTL_HOURS = 48
 
 DESIGNSAFE_MYDATA_SYSTEM = "designsafe.storage.default"
 
@@ -374,60 +384,86 @@ def probe(client: TapisUtils, system_id: str, path: str) -> FileInspectResponse:
     return result
 
 
+def build_list_entries(client, system_id: str, path: str, recursive: bool) -> list[dict]:
+    """Build the extension-only listing (as JSON-friendly dicts) for a Tapis path. Cheap:
+    no fetch, no geo CLIs -- just Tapis listing calls + an extension guess. Runs on the
+    worker inside ``list_files_task``."""
+    results: list[dict] = []
+    for item in list_tapis_entries(client, system_id, path, recursive):
+        item_path = str(item.path)
+        if item.type == "dir":
+            results.append(
+                FileListEntry(system=system_id, path=item_path, type="dir").model_dump()
+            )
+            continue
+        ext = os.path.splitext(item_path)[1].lower()
+        results.append(
+            FileListEntry(
+                system=system_id,
+                path=item_path,
+                type="file",
+                size=item.size,
+                extension=ext,
+                geospatial=_extension_geospatial_guess(ext),
+            ).model_dump()
+        )
+    return results
+
+
 class FileInspectionService:
     @staticmethod
-    def inspect(
-        user_id: int, system_id: str, path: str, recursive: bool = True
-    ) -> list[FileInspectResponse]:
-        """Dispatch inspection to the worker and *currently* blocks on the result.
-
-        TODO: this synchronous wait is a stopgap --> it keeps the endpoint
-        returning verdicts inline while we only test on small inputs. Still to finalize:
-        a bounded/configurable wait timeout  and the move to a truly
-        async submit
-        """
-        validate_listing_path(system_id, path)  # fail fast, before dispatching
+    def submit_inspect(
+        session, user_id: int, system_id: str, path: str, recursive: bool = True
+    ) -> Task:
+        """Submit an inspect job (async on the worker). Poll ``get_inspect_job``."""
+        validate_listing_path(system_id, path)  # fail fast, before creating the job
         from geoapi.tasks.file_inspection import inspect_files
 
-        async_result = inspect_files.apply_async(
-            args=[user_id, system_id, path, recursive], queue="default"
+        return submit_job(
+            session,
+            user_id,
+            inspect_files,
+            [user_id, system_id, path, recursive],
+            f"Inspecting {system_id}:{path}",
+            expires_hours=JOB_TTL_HOURS,
         )
-        data = async_result.get(timeout=SUBPROCESS_TIMEOUT_SECONDS)
-        return [FileInspectResponse(**item) for item in data]
 
     @staticmethod
-    def list_files(
+    def get_inspect_job(
+        session, task_id: int, user_id: int
+    ) -> FileInspectJobResponse:
+        task, status, raw, error = get_job(session, task_id, user_id)
+        result = (
+            [FileInspectResponse(**item) for item in raw] if raw is not None else None
+        )
+        return FileInspectJobResponse(
+            task_id=task.id, status=status, result=result, error=error
+        )
+
+    @staticmethod
+    def submit_list(
         session, user_id: int, system_id: str, path: str, recursive: bool = True
-    ) -> list[FileListEntry]:
-        """synchronous listing with an extension-only geospatial guess per file.
+    ) -> Task:
+        """Submit a list job (async on the worker -- no geo CLIs, just Tapis listing).
+        Poll ``get_list_job``."""
+        validate_listing_path(system_id, path)  # fail fast, before creating the job
+        from geoapi.tasks.file_inspection import list_files_task
 
-        Unlike inspect() this needs no geo CLIs and fetches nothing, so it runs in the
-        API rather than on the worker. ``recursive`` (default true) descends into
-        sub-directories; if false, returns the immediate children (files and folders).
+        return submit_job(
+            session,
+            user_id,
+            list_files_task,
+            [user_id, system_id, path, recursive],
+            f"Listing {system_id}:{path}",
+            expires_hours=JOB_TTL_HOURS,
+        )
 
-        TODO: for a huge directory this recursive Tapis listing can still be slow -- the
-        same async refactor noted on inspect() applies.
-        """
-        validate_listing_path(system_id, path)
-        user = session.get(User, user_id)
-        client = TapisUtils(session, user)
-        results: list[FileListEntry] = []
-        for item in list_tapis_entries(client, system_id, path, recursive):
-            item_path = str(item.path)
-            if item.type == "dir":
-                results.append(
-                    FileListEntry(system=system_id, path=item_path, type="dir")
-                )
-                continue
-            ext = os.path.splitext(item_path)[1].lower()
-            results.append(
-                FileListEntry(
-                    system=system_id,
-                    path=item_path,
-                    type="file",
-                    size=item.size,
-                    extension=ext,
-                    geospatial=_extension_geospatial_guess(ext),
-                )
-            )
-        return results
+    @staticmethod
+    def get_list_job(
+        session, task_id: int, user_id: int
+    ) -> FileListJobResponse:
+        task, status, raw, error = get_job(session, task_id, user_id)
+        result = [FileListEntry(**item) for item in raw] if raw is not None else None
+        return FileListJobResponse(
+            task_id=task.id, status=status, result=result, error=error
+        )

@@ -56,6 +56,42 @@ class FileInspectResponse(BaseModel):
     detail: str = Field(description="human-readable one-liner for the agent to relay")
 
 
+class JobSubmitResponse(BaseModel):
+    """The 202 body when a file job (inspect/list) is submitted: its id and status."""
+
+    task_id: int
+    status: str = Field(description="task status, e.g. QUEUED")
+
+
+_JOB_STATUS_DESC = "QUEUED | RUNNING | COMPLETED | FAILED | ERROR | EXPIRED"
+
+
+class FileInspectJobResponse(BaseModel):
+    """An inspect job's status, plus the per-file verdicts once COMPLETED."""
+
+    task_id: int
+    status: str = Field(description=_JOB_STATUS_DESC)
+    result: list[FileInspectResponse] | None = Field(
+        default=None, description="per-file verdicts; present once status is COMPLETED"
+    )
+    error: str | None = Field(
+        default=None, description="failure message when status is FAILED/ERROR/EXPIRED"
+    )
+
+
+class FileListJobResponse(BaseModel):
+    """A list job's status, plus the per-file/dir entries once COMPLETED."""
+
+    task_id: int
+    status: str = Field(description=_JOB_STATUS_DESC)
+    result: list["FileListEntry"] | None = Field(
+        default=None, description="listing entries; present once status is COMPLETED"
+    )
+    error: str | None = Field(
+        default=None, description="failure message when status is FAILED/ERROR/EXPIRED"
+    )
+
+
 class FileListEntry(BaseModel):
     """A cheap, extension-only listing entry -- no fetch, no GDAL.
 
@@ -74,3 +110,7 @@ class FileListEntry(BaseModel):
         description="cheap extension-only guess for files (null for dirs) -- not a "
         "verdict, use /files/inspect for that",
     )
+
+
+# FileListJobResponse forward-references FileListEntry (defined above now); resolve it.
+FileListJobResponse.model_rebuild()
