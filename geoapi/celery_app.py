@@ -1,4 +1,5 @@
 from celery import Celery
+from celery.schedules import crontab
 from datetime import timedelta
 from geoapi.settings import settings
 
@@ -27,6 +28,7 @@ app.conf.imports = (
     "geoapi.tasks.external_data",
     "geoapi.tasks.file_location_check",
     "geoapi.tasks.file_inspection",
+    "geoapi.tasks.published_ds_maps",
 )
 
 # Define the queues
@@ -58,5 +60,9 @@ app.conf.beat_schedule = {
     "refresh_projects_watch_users": {
         "task": "geoapi.tasks.external_data.refresh_projects_watch_users",
         "schedule": timedelta(minutes=30),
+    },
+    "generate_published_ds_maps_pmtiles": {
+        "task": "geoapi.tasks.published_ds_maps.generate_published_ds_maps_pmtiles",
+        "schedule": crontab(hour=3, minute=0),
     },
 }

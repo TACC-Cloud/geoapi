@@ -37,6 +37,8 @@ RUN apt-get update && apt-get upgrade -y --no-install-recommends \
     libc6-dev \
     libtbb-dev\
     libcgal-dev \
+    libsqlite3-dev \
+    zlib1g-dev \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /opt
@@ -63,6 +65,16 @@ RUN sed -i '/<body>/r /tmp/nsf_logo_snippet.txt' /opt/PotreeConverter/build/reso
 
 #  - remove reference to background image
 RUN sed -i 's/style="[^"]*background-image:[^"]*"//' /opt/PotreeConverter/build/resources/page_template/viewer_template.html
+
+# Install tippecanoe
+ARG TIPPECANOE_VERSION=2.79.0
+WORKDIR /opt
+RUN git clone --depth 1 --branch "${TIPPECANOE_VERSION}" https://github.com/felt/tippecanoe.git \
+    && cd tippecanoe \
+    && make -j"$(nproc)" \
+    && make install \
+    && cd /opt \
+    && rm -rf /opt/tippecanoe
 
 # Copy pdal binary and libs from builder
 COPY --from=pdal-builder /opt/conda/envs/pdal /opt/pdal
