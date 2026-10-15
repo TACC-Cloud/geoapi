@@ -6,7 +6,7 @@ holds no state.
 
 ```
 agent service ──MCP (HTTP)──► geoapi-mcp ──REST──► GeoAPI
-                                                    ├─ POST /files/inspect
+                                                    ├─ POST /files/list|inspect + GET …/{task_id}
                                                     └─ existing import endpoints
 ```
 
@@ -14,11 +14,15 @@ agent service ──MCP (HTTP)──► geoapi-mcp ──REST──► GeoAPI
 
 | Tool | Calls | Notes |
 |------|-------|-------|
-| `list_files(system_id, path)` | `POST /files/list` | Cheap, extension-only geospatial guess per file (`yes`/`no`/`maybe`). `path` may be a file or directory (recursive). Survey first, then inspect. |
-| `inspect_file(system_id, path)` | `POST /files/inspect` | Deterministic geospatial verdict (GDAL/OGR/PDAL). `path` may be a file or a directory (recursive); returns a **list** of per-file verdicts. |
+| `list_files(system_id, path)` | `POST /files/list`, then polls `GET /files/list/{task_id}` | Cheap, extension-only geospatial guess per file (`yes`/`no`/`maybe`). `path` may be a file or directory (recursive). Survey first, then inspect. |
+| `inspect_file(system_id, path)` | `POST /files/inspect`, then polls `GET /files/inspect/{task_id}` | Deterministic geospatial verdict (GDAL/OGR/PDAL). `path` may be a file or a directory (recursive); returns a **list** of per-file verdicts. |
 | `import_file(system_id, path, project_id, label=None)` | existing per-kind import endpoints | Routes raster → `/tile-servers/files/import/`, vector/images → `/features/files/import/`. **Point clouds not supported yet** (see the TODO in `server.py`). |
 | `list_maps()` | `GET /projects/` | The user's own maps (token-scoped). Use a map's `id` as `project_id`. |
 | `create_map(name, description="", location="DESIGN_SAFE_MY_DATA")` | `POST /projects/` | Create a new **private** map under My Data (default) or a DesignSafe project (pass its `project-XXXX` system id). Confirm name + location first (a WRITE). Publishing is done later in the Hazmapper web app. |
+
+Both file jobs run async on the GeoAPI worker; the MCP polls (every
+`GEOAPI_INSPECT_POLL_SECONDS`, default 2s, up to `GEOAPI_INSPECT_MAX_WAIT_SECONDS`,
+default 300s) so the agent still gets the result in one tool call.
 
 The tool docstrings steer the agent: survey/inspect first, and only import a file the
 verdict marked `is_geospatial: true` after the user confirms — never import a

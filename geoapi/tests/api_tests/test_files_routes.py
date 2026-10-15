@@ -4,8 +4,10 @@ from tempfile import NamedTemporaryFile
 from types import SimpleNamespace
 
 import pytest
+from celery.app import backends
 
 from geoapi.celery_app import app as celery_app
+from geoapi.tasks.file_inspection import inspect_files, list_files_task
 from geoapi.utils.external_apis import TapisUtils
 
 # fixtures/ lives one level up from api_tests/
@@ -13,17 +15,25 @@ FIXTURES = os.path.join(os.path.dirname(os.path.dirname(__file__)), "fixtures")
 
 
 @pytest.fixture(autouse=True)
-def celery_eager():
+def celery_eager(monkeypatch):
     """Inspection dispatches to a worker task; run it in-process so submit+poll completes
     without a live worker/broker. ``task_store_eager_result`` makes the result retrievable
-    via AsyncResult(id) (what the poll endpoint uses); ``task_eager_propagates=False`` so a
-    failing job surfaces as a FAILED result rather than raising out of the submit."""
-    celery_app.conf.task_always_eager = True
-    celery_app.conf.task_store_eager_result = True
-    celery_app.conf.task_eager_propagates = False
+    via AsyncResult(id) (what the poll endpoint uses), and an in-memory result backend
+    stands in for Redis. ``task_eager_propagates=False`` so a failing job surfaces as a
+    FAILED result rather than raising out of the submit."""
+    backend_cls, url = backends.by_url("cache+memory://", celery_app.loader)
+    memory_backend = backend_cls(app=celery_app, url=url)
+    # Set the app-wide cache directly: the memory backend isn't "thread_safe", so the
+    # normal setter would make it thread-local and the API handler thread would miss it.
+    monkeypatch.setattr(celery_app, "_backend_cache", memory_backend)
+    # Tasks copy backend/store_eager_result when bound, so patch them on the tasks too.
+    for task in (inspect_files, list_files_task):
+        monkeypatch.setattr(task, "backend", memory_backend)
+        monkeypatch.setattr(task, "store_eager_result", True)
+    monkeypatch.setattr(celery_app.conf, "task_always_eager", True)
+    monkeypatch.setattr(celery_app.conf, "task_store_eager_result", True)
+    monkeypatch.setattr(celery_app.conf, "task_eager_propagates", False)
     yield
-    celery_app.conf.task_always_eager = False
-    celery_app.conf.task_store_eager_result = False
 
 
 @pytest.fixture(autouse=True)

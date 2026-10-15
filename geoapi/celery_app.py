@@ -28,6 +28,7 @@ app.conf.imports = (
     "geoapi.tasks.external_data",
     "geoapi.tasks.file_location_check",
     "geoapi.tasks.file_inspection",
+    "geoapi.tasks.jobs",
     "geoapi.tasks.published_ds_maps",
 )
 
@@ -64,5 +65,9 @@ app.conf.beat_schedule = {
     "generate_published_ds_maps_pmtiles": {
         "task": "geoapi.tasks.published_ds_maps.generate_published_ds_maps_pmtiles",
         "schedule": crontab(hour=3, minute=0),
+    },
+    "cleanup_expired_tasks": {
+        "task": "geoapi.tasks.jobs.cleanup_expired_tasks",
+        "schedule": timedelta(hours=1),
     },
 }

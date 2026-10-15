@@ -13,7 +13,7 @@ import subprocess
 
 from geoapi.exceptions import ApiException
 from geoapi.log import logger
-from geoapi.models import Task, User
+from geoapi.models import Task
 from geoapi.schema.files import (
     FileInspectJobResponse,
     FileInspectResponse,
