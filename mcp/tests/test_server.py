@@ -51,7 +51,11 @@ def test_inspect_submits_then_polls_for_result():
                 "task_id": 7,
                 "status": "COMPLETED",
                 "result": [
-                    {"path": fx("rgbsmall.tif"), "is_geospatial": True, "kind": "raster"}
+                    {
+                        "path": fx("rgbsmall.tif"),
+                        "is_geospatial": True,
+                        "kind": "raster",
+                    }
                 ],
             },
         )
@@ -96,7 +100,11 @@ def test_list_submits_then_polls_for_result():
                 "task_id": 3,
                 "status": "COMPLETED",
                 "result": [
-                    {"path": fx("rgbsmall.tif"), "extension": ".tif", "geospatial": "maybe"}
+                    {
+                        "path": fx("rgbsmall.tif"),
+                        "extension": ".tif",
+                        "geospatial": "maybe",
+                    }
                 ],
             },
         )
@@ -124,13 +132,17 @@ def test_import_raster_routes_to_tile_servers():
     assert out == [{"id": 1, "status": "QUEUED"}]
     req = route.calls.last.request
     assert req.headers["X-Tapis-Token"] == "tok-R"
-    assert json.loads(req.content) == {"files": [{"system": "sys", "path": fx("rgbsmall.tif")}]}
+    assert json.loads(req.content) == {
+        "files": [{"system": "sys", "path": fx("rgbsmall.tif")}]
+    }
 
 
 @respx.mock
 def test_import_vector_routes_to_features():
     route = respx.post(f"{BASE}/projects/7/features/files/import/").mock(
-        return_value=httpx.Response(200, json={"message": "Task created for file import"})
+        return_value=httpx.Response(
+            200, json={"message": "Task created for file import"}
+        )
     )
     out = server.geoapi_import("tok-V", 7, "sys", fx("geojson.json"))
 
@@ -218,7 +230,9 @@ def test_create_map_my_data_builds_payload():
     route = respx.post(f"{BASE}/projects/").mock(
         return_value=httpx.Response(200, json={"id": 9})
     )
-    out = server.geoapi_create_map(_jwt("nathanf"), "New Map", "desc", "DESIGN_SAFE_MY_DATA")
+    out = server.geoapi_create_map(
+        _jwt("nathanf"), "New Map", "desc", "DESIGN_SAFE_MY_DATA"
+    )
 
     assert out["id"] == 9
     body = json.loads(route.calls.last.request.content)
@@ -258,7 +272,13 @@ def test_tools_are_registered():
     async def _names():
         return [
             (await server.mcp.get_tool(n)).name
-            for n in ("list_files", "inspect_file", "import_file", "list_maps", "create_map")
+            for n in (
+                "list_files",
+                "inspect_file",
+                "import_file",
+                "list_maps",
+                "create_map",
+            )
         ]
 
     assert asyncio.run(_names()) == [

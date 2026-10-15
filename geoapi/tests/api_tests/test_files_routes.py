@@ -52,14 +52,18 @@ def mock_tapis(monkeypatch):
         return SimpleNamespace(
             type="dir" if is_dir else "file",
             path=p,
-            size=None if is_dir else (os.path.getsize(p) if os.path.isfile(p) else None),
+            size=(
+                None if is_dir else (os.path.getsize(p) if os.path.isfile(p) else None)
+            ),
         )
 
     def fake_listing(self, system_id, path):
         # Mimic Tapis: list ONE level (immediate children), dirs marked type="dir".
         # list_tapis_entries recurses via nested calls when recursive=True.
         if os.path.isdir(path):
-            return [_entry(os.path.join(path, name)) for name in sorted(os.listdir(path))]
+            return [
+                _entry(os.path.join(path, name)) for name in sorted(os.listdir(path))
+            ]
         return [_entry(path)]
 
     monkeypatch.setattr(TapisUtils, "getFilePartial", fake_partial, raising=False)

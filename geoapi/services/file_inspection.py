@@ -36,7 +36,7 @@ DESIGNSAFE_MYDATA_SYSTEM = "designsafe.storage.default"
 
 
 def validate_listing_path(system_id: str, path: str) -> None:
-    """Reject a root path on My Data """
+    """Reject a root path on My Data"""
     if system_id == DESIGNSAFE_MYDATA_SYSTEM and path.strip() in ("", "/"):
         raise ApiException(
             f"Refusing to list the root of '{DESIGNSAFE_MYDATA_SYSTEM}' -- that is the "
@@ -44,13 +44,22 @@ def validate_listing_path(system_id: str, path: str) -> None:
             "instead, e.g. /<username> or /<username>/some/folder."
         )
 
+
 # Cheap extension-only geospatial guess for /files/list (NOT a verdict -- /files/inspect
 # is the real thing). "yes" = formats that are geospatial by definition; "maybe" = could
 # go either way (a .tif may be a plain image, a .json may not be GeoJSON, an image may be
 # geotagged); everything else "no".
 _EXT_GEOSPATIAL_YES = {
-    ".shp", ".gpkg", ".geojson", ".gpx", ".kml", ".kmz", ".fgb",
-    ".las", ".laz", ".copc",
+    ".shp",
+    ".gpkg",
+    ".geojson",
+    ".gpx",
+    ".kml",
+    ".kmz",
+    ".fgb",
+    ".las",
+    ".laz",
+    ".copc",
 }
 _EXT_GEOSPATIAL_MAYBE = {".tif", ".tiff", ".json", ".jpg", ".jpeg", ".png"}
 
@@ -293,8 +302,7 @@ def _gdalinfo_json(path: str) -> dict | None:
 
 
 def _inspect_image(local_path: str) -> FileInspectResponse | None:
-    """A photo is 'geospatial' if it carries an EXIF GPS location.
-    """
+    """A photo is 'geospatial' if it carries an EXIF GPS location."""
     from geoapi.exceptions import InvalidEXIFData
     from geoapi.services.images import get_exif_location
 
@@ -384,7 +392,9 @@ def probe(client: TapisUtils, system_id: str, path: str) -> FileInspectResponse:
     return result
 
 
-def build_list_entries(client, system_id: str, path: str, recursive: bool) -> list[dict]:
+def build_list_entries(
+    client, system_id: str, path: str, recursive: bool
+) -> list[dict]:
     """Build the extension-only listing (as JSON-friendly dicts) for a Tapis path. Cheap:
     no fetch, no geo CLIs -- just Tapis listing calls + an extension guess. Runs on the
     worker inside ``list_files_task``."""
@@ -429,9 +439,7 @@ class FileInspectionService:
         )
 
     @staticmethod
-    def get_inspect_job(
-        session, task_id: int, user_id: int
-    ) -> FileInspectJobResponse:
+    def get_inspect_job(session, task_id: int, user_id: int) -> FileInspectJobResponse:
         task, status, raw, error = get_job(session, task_id, user_id)
         result = (
             [FileInspectResponse(**item) for item in raw] if raw is not None else None
@@ -459,9 +467,7 @@ class FileInspectionService:
         )
 
     @staticmethod
-    def get_list_job(
-        session, task_id: int, user_id: int
-    ) -> FileListJobResponse:
+    def get_list_job(session, task_id: int, user_id: int) -> FileListJobResponse:
         task, status, raw, error = get_job(session, task_id, user_id)
         result = [FileListEntry(**item) for item in raw] if raw is not None else None
         return FileListJobResponse(
