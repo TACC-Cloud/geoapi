@@ -169,7 +169,10 @@ async def retrieve_jwt_user_handler(
             user = UserService.getUser(db_session, username, tenant)
             if not user:
                 user = UserService.create(
-                    db_session, username=username, access_token=token.token, tenant=tenant
+                    db_session,
+                    username=username,
+                    access_token=token.token,
+                    tenant=tenant,
                 )
             else:
                 # Update the jwt access token
