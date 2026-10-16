@@ -1,12 +1,14 @@
 # GeoAPI MCP Server — Local Testing
 
-Assumes the geoapi server is already running locally on port 8001.
+Assumes the local stack is running (`make start` from the repo root), including the MCP server on port 8001.
 
 ## 1. Generate `.mcp.json`
 
 ```bash
-python setup_mcp.py
+uv run --with tapipy python setup_mcp.py
 ```
+
+(Or, without `uv`: `pip install tapipy` in a virtualenv, then `python setup_mcp.py`.)
 
 Prompts for your Tapis username/password, fetches a JWT from `designsafe.tapis.io`, and writes `.mcp.json` with the `geoapi` server registered.
 
