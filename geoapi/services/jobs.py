@@ -6,7 +6,7 @@ Celery id. The worker moves the row RUNNING -> COMPLETED (or FAILED via
 ``GeoAPITask.on_failure``). ``get_job`` reads the row and, once COMPLETED, the return
 value from the Celery result backend.
 
-Results live only in the Celery result backend (``result_expires``, ~1 day by default);
+Results live only in the Celery result backend (``RESULT_EXPIRES`` in celery_app, 1 day);
 the Task row outlives them (``expires_at``) so a late poll gets EXPIRED rather than a
 404. ``cleanup_expired_tasks`` (a beat job) deletes rows past ``expires_at``.
 """

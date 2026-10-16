@@ -44,6 +44,12 @@ app.conf.task_queues = {
 
 app.conf.task_default_queue = "default"
 
+# How long task return values stay in the Redis result backend (Celery's default, set
+# explicitly). Submit/poll jobs read their results from here, and their Task rows are
+# kept longer than this (see JOB_TTL_HOURS in services/file_inspection.py).
+RESULT_EXPIRES = timedelta(days=1)
+app.conf.result_expires = RESULT_EXPIRES
+
 # Minimize prefetching (1 extra message per worker child instead of the
 # default 4*concurrency to be pulled). Prefetched messages are marked as
 # "delivered" by RabbitMQ, which starts the consumer_timeout ack timer

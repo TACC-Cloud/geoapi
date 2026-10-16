@@ -10,7 +10,9 @@ import json
 import os
 import re
 import subprocess
+from datetime import timedelta
 
+from geoapi.celery_app import RESULT_EXPIRES
 from geoapi.exceptions import ApiException
 from geoapi.log import logger
 from geoapi.models import Task
@@ -28,9 +30,9 @@ VECTOR_EXTS = (".geojson", ".json", ".shp", ".gpkg", ".gpx", ".kml", ".kmz", ".f
 IMAGE_EXTS = (".jpg", ".jpeg")
 
 # Inspect/list are ephemeral survey jobs -- expire (and get cleaned up) after this many
-# hours. Kept a bit longer than Celery's result_expires (~1 day) so a stale poll gets a
-# helpful EXPIRED verdict before the row is deleted (then it's a clean 404).
-JOB_TTL_HOURS = 48
+# hours. Twice Celery's result_expires so a stale poll gets a helpful EXPIRED verdict
+# before the row is deleted (then it's a clean 404).
+JOB_TTL_HOURS = 2 * RESULT_EXPIRES / timedelta(hours=1)
 
 DESIGNSAFE_MYDATA_SYSTEM = "designsafe.storage.default"
 
