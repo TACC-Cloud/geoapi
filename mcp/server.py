@@ -2,6 +2,7 @@ import base64
 import json
 import os
 import re
+import time
 from typing import Any
 
 import httpx
@@ -11,6 +12,10 @@ from fastmcp.server.dependencies import get_http_headers
 
 GEOAPI_BASE_URL = os.environ.get("GEOAPI_BASE_URL", "http://geoapi:8000").rstrip("/")
 HTTP_TIMEOUT_SECONDS = float(os.environ.get("GEOAPI_HTTP_TIMEOUT", "60"))
+# Inspection is async in GeoAPI (submit -> poll). The MCP does the waiting so the agent
+# gets verdicts in one tool call. Bounded so a huge task doesn't hang the tool forever.
+TASK_POLL_SECONDS = float(os.environ.get("GEOAPI_TASK_POLL_SECONDS", "2"))
+TASK_MAX_WAIT_SECONDS = float(os.environ.get("GEOAPI_TASK_MAX_WAIT_SECONDS", "300"))
 
 # TODO Remove later
 # Kind routing for import_file. Anything not raster/pointcloud goes to the general
@@ -33,7 +38,8 @@ def extract_tapis_token(headers: dict[str, str]) -> str:
 
 def tapis_username(token: str) -> str:
     """Read the ``tapis/username`` claim from the JWT payload. No signature check --
-    GeoAPI validates the token; we only need the name (e.g. to build the My Data path)."""
+    GeoAPI validates the token; we only need the name (e.g. to build the My Data path).
+    """
     try:
         payload = token.split(".")[1]
         payload += "=" * (-len(payload) % 4)  # pad to a multiple of 4
@@ -86,10 +92,35 @@ def _get_geoapi(token: str, endpoint: str) -> Any:
     return resp.json()
 
 
+def _submit_and_poll(token: str, endpoint: str, body: dict) -> list[dict[str, Any]]:
+    """Submit a GeoAPI file task (``endpoint`` = /files/inspect or /files/list), then poll
+    ``{endpoint}/{task_id}`` until it finishes and return its result list. GeoAPI runs
+    these async on the worker; we wait here so the agent gets the result in one tool call.
+    """
+    submit = _post_geoapi(token, endpoint, body)
+    task_id = submit["task_id"]
+
+    deadline = time.monotonic() + TASK_MAX_WAIT_SECONDS
+    while True:
+        task = _get_geoapi(token, f"{endpoint}/{task_id}")
+        status = task.get("status")
+        if status == "COMPLETED":
+            return task.get("result") or []
+        if status in ("FAILED", "ERROR", "EXPIRED"):
+            raise ToolError(f"Task {status}: {task.get('error') or status}")
+        if time.monotonic() >= deadline:
+            # The agent has no tool to resume polling, so steer it to a smaller request.
+            raise ToolError(
+                f"Still running after {int(TASK_MAX_WAIT_SECONDS)}s, so this tool "
+                "stopped waiting. Try a smaller folder or recursive=false."
+            )
+        time.sleep(TASK_POLL_SECONDS)
+
+
 def geoapi_list(
     token: str, system_id: str, path: str, recursive: bool = True
 ) -> list[dict[str, Any]]:
-    return _post_geoapi(
+    return _submit_and_poll(
         token,
         "/files/list",
         {"system_id": system_id, "path": path, "recursive": recursive},
@@ -99,7 +130,7 @@ def geoapi_list(
 def geoapi_inspect(
     token: str, system_id: str, path: str, recursive: bool = True
 ) -> list[dict[str, Any]]:
-    return _post_geoapi(
+    return _submit_and_poll(
         token,
         "/files/inspect",
         {"system_id": system_id, "path": path, "recursive": recursive},
@@ -125,7 +156,9 @@ def geoapi_import(
     else:
         endpoint = f"/projects/{project_id}/features/files/import/"
     # Existing import endpoints take a batch {files:[...]}; we send the single file.
-    return _post_geoapi(token, endpoint, {"files": [{"system": system_id, "path": path}]})
+    return _post_geoapi(
+        token, endpoint, {"files": [{"system": system_id, "path": path}]}
+    )
 
 
 def geoapi_list_maps(token: str) -> list[dict[str, Any]]:
@@ -148,7 +181,9 @@ def geoapi_create_map(
         system_path = f"/{tapis_username(token)}"
         watch_users = False
     else:
-        system_id = (location or "").strip()  # a Tapis project system id, e.g. "project-1234"
+        system_id = (
+            location or ""
+        ).strip()  # a Tapis project system id, e.g. "project-1234"
         system_path = "/"
         watch_users = system_id.startswith("project-")
 

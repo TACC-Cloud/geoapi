@@ -28,6 +28,7 @@ app.conf.imports = (
     "geoapi.tasks.external_data",
     "geoapi.tasks.file_location_check",
     "geoapi.tasks.file_inspection",
+    "geoapi.tasks.utils",
     "geoapi.tasks.published_ds_maps",
 )
 
@@ -42,6 +43,12 @@ app.conf.task_queues = {
 }
 
 app.conf.task_default_queue = "default"
+
+# How long task return values stay in the Redis result backend (Celery's default, set
+# explicitly). Ephemeral tasks read their results from here, and their Task rows are
+# kept longer than this (see EPHEMERAL_TASK_TTL in services/tasks.py).
+RESULT_EXPIRES = timedelta(days=1)
+app.conf.result_expires = RESULT_EXPIRES
 
 # Minimize prefetching (1 extra message per worker child instead of the
 # default 4*concurrency to be pulled). Prefetched messages are marked as
@@ -64,5 +71,9 @@ app.conf.beat_schedule = {
     "generate_published_ds_maps_pmtiles": {
         "task": "geoapi.tasks.published_ds_maps.generate_published_ds_maps_pmtiles",
         "schedule": crontab(hour=3, minute=0),
+    },
+    "cleanup_expired_tasks": {
+        "task": "geoapi.tasks.utils.cleanup_expired_tasks",
+        "schedule": timedelta(hours=1),
     },
 }

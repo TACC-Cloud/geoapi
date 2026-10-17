@@ -38,18 +38,33 @@ def test_missing_token_fails_cleanly():
 
 # --- inspect forwards the token verbatim -----------------------------------
 @respx.mock
-def test_inspect_forwards_token_and_body():
-    # inspect always returns a LIST of per-file verdicts (a file -> a list of one).
-    route = respx.post(f"{BASE}/files/inspect").mock(
+def test_inspect_submits_then_polls_for_result():
+    # Inspection is async: POST submits (202 + task_id), we poll GET until COMPLETED and
+    # return the per-file verdict list.
+    submit = respx.post(f"{BASE}/files/inspect").mock(
+        return_value=httpx.Response(202, json={"task_id": 7, "status": "QUEUED"})
+    )
+    respx.get(f"{BASE}/files/inspect/7").mock(
         return_value=httpx.Response(
-            200, json=[{"path": fx("rgbsmall.tif"), "is_geospatial": True, "kind": "raster"}]
+            200,
+            json={
+                "task_id": 7,
+                "status": "COMPLETED",
+                "result": [
+                    {
+                        "path": fx("rgbsmall.tif"),
+                        "is_geospatial": True,
+                        "kind": "raster",
+                    }
+                ],
+            },
         )
     )
     out = server.geoapi_inspect("tok-INSPECT", "designsafe.storage", fx("rgbsmall.tif"))
 
     assert isinstance(out, list) and len(out) == 1
     assert out[0]["is_geospatial"] is True and out[0]["kind"] == "raster"
-    req = route.calls.last.request
+    req = submit.calls.last.request
     assert req.headers["X-Tapis-Token"] == "tok-INSPECT"
     assert json.loads(req.content) == {
         "system_id": "designsafe.storage",
@@ -58,19 +73,59 @@ def test_inspect_forwards_token_and_body():
     }
 
 
-# --- list forwards the token, returns the entry list -----------------------
 @respx.mock
-def test_list_forwards_token_and_body():
-    route = respx.post(f"{BASE}/files/list").mock(
+def test_inspect_failed_task_raises():
+    respx.post(f"{BASE}/files/inspect").mock(
+        return_value=httpx.Response(202, json={"task_id": 9, "status": "QUEUED"})
+    )
+    respx.get(f"{BASE}/files/inspect/9").mock(
+        return_value=httpx.Response(
+            200, json={"task_id": 9, "status": "FAILED", "error": "boom"}
+        )
+    )
+    with pytest.raises(ToolError):
+        server.geoapi_inspect("tok-X", "sys", "/some/file.tif")
+
+
+@respx.mock
+def test_inspect_gives_up_after_max_wait(monkeypatch):
+    monkeypatch.setattr(server, "TASK_MAX_WAIT_SECONDS", 0)
+    respx.post(f"{BASE}/files/inspect").mock(
+        return_value=httpx.Response(202, json={"task_id": 9, "status": "QUEUED"})
+    )
+    respx.get(f"{BASE}/files/inspect/9").mock(
+        return_value=httpx.Response(200, json={"task_id": 9, "status": "RUNNING"})
+    )
+    with pytest.raises(ToolError, match="smaller folder"):
+        server.geoapi_inspect("tok-X", "sys", "/some/dir")
+
+
+# --- list submits then polls (same async task pattern as inspect) -----------
+@respx.mock
+def test_list_submits_then_polls_for_result():
+    submit = respx.post(f"{BASE}/files/list").mock(
+        return_value=httpx.Response(202, json={"task_id": 3, "status": "QUEUED"})
+    )
+    respx.get(f"{BASE}/files/list/3").mock(
         return_value=httpx.Response(
             200,
-            json=[{"path": fx("rgbsmall.tif"), "extension": ".tif", "geospatial": "maybe"}],
+            json={
+                "task_id": 3,
+                "status": "COMPLETED",
+                "result": [
+                    {
+                        "path": fx("rgbsmall.tif"),
+                        "extension": ".tif",
+                        "geospatial": "maybe",
+                    }
+                ],
+            },
         )
     )
     out = server.geoapi_list("tok-LIST", "designsafe.storage", "/some/dir")
 
     assert isinstance(out, list) and out[0]["geospatial"] == "maybe"
-    req = route.calls.last.request
+    req = submit.calls.last.request
     assert req.headers["X-Tapis-Token"] == "tok-LIST"
     assert json.loads(req.content) == {
         "system_id": "designsafe.storage",
@@ -90,13 +145,17 @@ def test_import_raster_routes_to_tile_servers():
     assert out == [{"id": 1, "status": "QUEUED"}]
     req = route.calls.last.request
     assert req.headers["X-Tapis-Token"] == "tok-R"
-    assert json.loads(req.content) == {"files": [{"system": "sys", "path": fx("rgbsmall.tif")}]}
+    assert json.loads(req.content) == {
+        "files": [{"system": "sys", "path": fx("rgbsmall.tif")}]
+    }
 
 
 @respx.mock
 def test_import_vector_routes_to_features():
     route = respx.post(f"{BASE}/projects/7/features/files/import/").mock(
-        return_value=httpx.Response(200, json={"message": "Task created for file import"})
+        return_value=httpx.Response(
+            200, json={"message": "Task created for file import"}
+        )
     )
     out = server.geoapi_import("tok-V", 7, "sys", fx("geojson.json"))
 
@@ -184,7 +243,9 @@ def test_create_map_my_data_builds_payload():
     route = respx.post(f"{BASE}/projects/").mock(
         return_value=httpx.Response(200, json={"id": 9})
     )
-    out = server.geoapi_create_map(_jwt("nathanf"), "New Map", "desc", "DESIGN_SAFE_MY_DATA")
+    out = server.geoapi_create_map(
+        _jwt("nathanf"), "New Map", "desc", "DESIGN_SAFE_MY_DATA"
+    )
 
     assert out["id"] == 9
     body = json.loads(route.calls.last.request.content)
@@ -224,7 +285,13 @@ def test_tools_are_registered():
     async def _names():
         return [
             (await server.mcp.get_tool(n)).name
-            for n in ("list_files", "inspect_file", "import_file", "list_maps", "create_map")
+            for n in (
+                "list_files",
+                "inspect_file",
+                "import_file",
+                "list_maps",
+                "create_map",
+            )
         ]
 
     assert asyncio.run(_names()) == [
