@@ -111,9 +111,10 @@ def _submit_and_poll(token: str, endpoint: str, body: dict) -> list[dict[str, An
         if status in ("FAILED", "ERROR", "EXPIRED"):
             raise ToolError(f"Job {status}: {job.get('error') or status}")
         if time.monotonic() >= deadline:
+            # The agent has no tool to resume polling, so steer it to a smaller request.
             raise ToolError(
-                f"Job still running after {int(INSPECT_MAX_WAIT_SECONDS)}s. It may be a "
-                f"large directory; poll GET {endpoint}/{task_id} later."
+                f"Still running after {int(INSPECT_MAX_WAIT_SECONDS)}s, so this tool "
+                "stopped waiting. Try a smaller folder or recursive=false."
             )
         time.sleep(INSPECT_POLL_SECONDS)
 

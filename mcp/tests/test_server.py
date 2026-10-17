@@ -87,6 +87,19 @@ def test_inspect_failed_job_raises():
         server.geoapi_inspect("tok-X", "sys", "/some/file.tif")
 
 
+@respx.mock
+def test_inspect_gives_up_after_max_wait(monkeypatch):
+    monkeypatch.setattr(server, "INSPECT_MAX_WAIT_SECONDS", 0)
+    respx.post(f"{BASE}/files/inspect").mock(
+        return_value=httpx.Response(202, json={"task_id": 9, "status": "QUEUED"})
+    )
+    respx.get(f"{BASE}/files/inspect/9").mock(
+        return_value=httpx.Response(200, json={"task_id": 9, "status": "RUNNING"})
+    )
+    with pytest.raises(ToolError, match="smaller folder"):
+        server.geoapi_inspect("tok-X", "sys", "/some/dir")
+
+
 # --- list submits then polls (same async job pattern as inspect) -----------
 @respx.mock
 def test_list_submits_then_polls_for_result():
