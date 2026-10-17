@@ -2,6 +2,7 @@ import requests
 
 import celery
 
+from geoapi.celery_app import app
 from geoapi.log import logger
 from geoapi.models import Task, TaskStatus, User
 from geoapi.settings import settings
@@ -35,7 +36,7 @@ class GeoAPITask(celery.Task):
                 # Only mark FAILED if the task didn't explicitly set some other terminal state
                 if task.status != TaskStatus.FAILED:
                     task.status = TaskStatus.FAILED
-                    task.last_message = str(exc)
+                    task.latest_message = str(exc)
                     session.add(task)
                     session.commit()
 
@@ -43,6 +44,56 @@ class GeoAPITask(celery.Task):
             logger.exception(
                 f"[Task Failure] Error updating Task status for {task_id}: {error}"
             )
+
+
+def mark_task(session, process_id: str, status: TaskStatus) -> None:
+    """Set the status of the Task row for this Celery task (keyed by ``process_id``, the
+    Celery task id). No-op if the row is gone."""
+    task = session.query(Task).filter(Task.process_id == process_id).first()
+    if task:
+        task.status = status
+        session.commit()
+
+
+class EphemeralTask(GeoAPITask):
+    """Base for ephemeral tasks: submitted, polled, then deleted (see
+    ``TaskService.submit_ephemeral``).
+
+    GeoAPI has two kinds of tasks:
+      * Durable tasks (point clouds, rasters, imports) save their output in the database
+        (features, tile servers, ...). Their Task row is kept as history.
+      * Ephemeral tasks (file list/inspect) save nothing. Their output is the Celery
+        task's return value, kept in the result backend for ``RESULT_EXPIRES``. Their
+        Task row only tracks the task and is deleted once ``expires_at`` passes.
+
+    This base keeps the Task status up to date for polling: RUNNING in ``before_start``,
+    COMPLETED in ``on_success``. Celery calls ``on_success`` *after* storing the return
+    value, so a poll that sees COMPLETED can always read the result. Failures are
+    handled by ``GeoAPITask.on_failure`` (FAILED).
+    """
+
+    abstract = True
+
+    def before_start(self, task_id, args, kwargs):
+        with create_task_session() as session:
+            mark_task(session, task_id, TaskStatus.RUNNING)
+
+    def on_success(self, retval, task_id, args, kwargs):
+        with create_task_session() as session:
+            mark_task(session, task_id, TaskStatus.COMPLETED)
+
+
+# Beat task (see beat_schedule in celery_app). Kept here, next to EphemeralTask, rather
+# than in a module of its own.
+@app.task(queue="default")
+def cleanup_expired_tasks() -> int:
+    """Delete Task rows past their ``expires_at`` (ephemeral tasks)."""
+    from geoapi.services.tasks import TaskService
+
+    with create_task_session() as session:
+        deleted = TaskService.delete_expired(session)
+    logger.info(f"cleanup_expired_tasks: deleted {deleted} expired task(s)")
+    return deleted
 
 
 def send_progress_update(user: User, task_id: str, status: str, message: str) -> None:

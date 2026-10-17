@@ -273,6 +273,7 @@ def import_point_clouds_from_tapis(userId: int, files, pointCloudId: int):
         task = Task()
         task.process_id = celery_task_id
         task.status = TaskStatus.RUNNING
+        task.user_id = userId
 
         point_cloud.task = task
         session.add(point_cloud)
