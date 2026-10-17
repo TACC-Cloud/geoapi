@@ -1,4 +1,5 @@
-"""Submit/poll helpers for short-lived ("ephemeral") Celery jobs backed by a ``Task`` row.
+"""Submit/poll helpers for ephemeral Celery jobs backed by a ``Task`` row (see
+``geoapi.tasks.jobs.EphemeralJobTask`` for how they differ from durable tasks).
 
 Flow: ``submit_job`` creates a QUEUED ``Task`` (owned by the user, with an optional
 ``expires_at``) and dispatches the Celery task using the Task's ``process_id`` as the

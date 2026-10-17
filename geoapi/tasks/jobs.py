@@ -15,11 +15,20 @@ def mark_task(session, process_id: str, status: TaskStatus) -> None:
 
 
 class EphemeralJobTask(GeoAPITask):
-    """Base for submit/poll jobs (see ``geoapi.services.jobs``).
+    """Base for ephemeral jobs: submitted, polled, then deleted (see
+    ``geoapi.services.jobs``).
 
-    Marks the Task COMPLETED in ``on_success``, which Celery calls *after* storing the
-    return value in the result backend -- so a poll that sees COMPLETED can always read
-    the result. Failures are handled by ``GeoAPITask.on_failure`` (FAILED).
+    GeoAPI has two kinds of tasks:
+      * Durable tasks (point clouds, rasters, imports) save their output in the database
+        (features, tile servers, ...). Their Task row is kept as history.
+      * Ephemeral jobs (file list/inspect) save nothing. Their output is the task's
+        return value, kept in the Celery result backend for ``RESULT_EXPIRES``. Their
+        Task row only tracks the job and is deleted once ``expires_at`` passes.
+
+    This base keeps the Task status up to date for polling: RUNNING in ``before_start``,
+    COMPLETED in ``on_success``. Celery calls ``on_success`` *after* storing the return
+    value, so a poll that sees COMPLETED can always read the result. Failures are
+    handled by ``GeoAPITask.on_failure`` (FAILED).
     """
 
     abstract = True
