@@ -56,21 +56,21 @@ class FileInspectResponse(BaseModel):
     detail: str = Field(description="human-readable one-liner for the agent to relay")
 
 
-class JobSubmitResponse(BaseModel):
-    """The 202 body when a file job (inspect/list) is submitted: its id and status."""
+class TaskSubmitResponse(BaseModel):
+    """The 202 body when a file task (inspect/list) is submitted: its id and status."""
 
     task_id: int
     status: str = Field(description="task status, e.g. QUEUED")
 
 
-_JOB_STATUS_DESC = "QUEUED | RUNNING | COMPLETED | FAILED | ERROR | EXPIRED"
+_TASK_STATUS_DESC = "QUEUED | RUNNING | COMPLETED | FAILED | ERROR | EXPIRED"
 
 
-class FileInspectJobResponse(BaseModel):
-    """An inspect job's status, plus the per-file verdicts once COMPLETED."""
+class FileInspectTaskResponse(BaseModel):
+    """An inspect task's status, plus the per-file verdicts once COMPLETED."""
 
     task_id: int
-    status: str = Field(description=_JOB_STATUS_DESC)
+    status: str = Field(description=_TASK_STATUS_DESC)
     result: list[FileInspectResponse] | None = Field(
         default=None, description="per-file verdicts; present once status is COMPLETED"
     )
@@ -79,11 +79,11 @@ class FileInspectJobResponse(BaseModel):
     )
 
 
-class FileListJobResponse(BaseModel):
-    """A list job's status, plus the per-file/dir entries once COMPLETED."""
+class FileListTaskResponse(BaseModel):
+    """A list task's status, plus the per-file/dir entries once COMPLETED."""
 
     task_id: int
-    status: str = Field(description=_JOB_STATUS_DESC)
+    status: str = Field(description=_TASK_STATUS_DESC)
     result: list["FileListEntry"] | None = Field(
         default=None, description="listing entries; present once status is COMPLETED"
     )
@@ -112,5 +112,5 @@ class FileListEntry(BaseModel):
     )
 
 
-# FileListJobResponse forward-references FileListEntry (defined above now); resolve it.
-FileListJobResponse.model_rebuild()
+# FileListTaskResponse forward-references FileListEntry (defined above now); resolve it.
+FileListTaskResponse.model_rebuild()

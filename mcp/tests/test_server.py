@@ -74,7 +74,7 @@ def test_inspect_submits_then_polls_for_result():
 
 
 @respx.mock
-def test_inspect_failed_job_raises():
+def test_inspect_failed_task_raises():
     respx.post(f"{BASE}/files/inspect").mock(
         return_value=httpx.Response(202, json={"task_id": 9, "status": "QUEUED"})
     )
@@ -89,7 +89,7 @@ def test_inspect_failed_job_raises():
 
 @respx.mock
 def test_inspect_gives_up_after_max_wait(monkeypatch):
-    monkeypatch.setattr(server, "INSPECT_MAX_WAIT_SECONDS", 0)
+    monkeypatch.setattr(server, "TASK_MAX_WAIT_SECONDS", 0)
     respx.post(f"{BASE}/files/inspect").mock(
         return_value=httpx.Response(202, json={"task_id": 9, "status": "QUEUED"})
     )
@@ -100,7 +100,7 @@ def test_inspect_gives_up_after_max_wait(monkeypatch):
         server.geoapi_inspect("tok-X", "sys", "/some/dir")
 
 
-# --- list submits then polls (same async job pattern as inspect) -----------
+# --- list submits then polls (same async task pattern as inspect) -----------
 @respx.mock
 def test_list_submits_then_polls_for_result():
     submit = respx.post(f"{BASE}/files/list").mock(

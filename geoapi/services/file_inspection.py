@@ -10,29 +10,22 @@ import json
 import os
 import re
 import subprocess
-from datetime import timedelta
 
-from geoapi.celery_app import RESULT_EXPIRES
 from geoapi.exceptions import ApiException
 from geoapi.log import logger
 from geoapi.models import Task
 from geoapi.schema.files import (
-    FileInspectJobResponse,
+    FileInspectTaskResponse,
     FileInspectResponse,
     FileListEntry,
-    FileListJobResponse,
+    FileListTaskResponse,
 )
-from geoapi.services.jobs import get_job, submit_job
+from geoapi.services.tasks import TaskService
 from geoapi.utils.external_apis import TapisUtils
 
 POINTCLOUD_EXTS = (".las", ".laz", ".copc")
 VECTOR_EXTS = (".geojson", ".json", ".shp", ".gpkg", ".gpx", ".kml", ".kmz", ".fgb")
 IMAGE_EXTS = (".jpg", ".jpeg")
-
-# Inspect/list are ephemeral survey jobs -- expire (and get cleaned up) after this many
-# hours. Twice Celery's result_expires so a stale poll gets a helpful EXPIRED verdict
-# before the row is deleted (then it's a clean 404).
-JOB_TTL_HOURS = 2 * RESULT_EXPIRES / timedelta(hours=1)
 
 DESIGNSAFE_MYDATA_SYSTEM = "designsafe.storage.default"
 
@@ -427,26 +420,27 @@ class FileInspectionService:
     def submit_inspect(
         session, user_id: int, system_id: str, path: str, recursive: bool = True
     ) -> Task:
-        """Submit an inspect job (async on the worker). Poll ``get_inspect_job``."""
-        validate_listing_path(system_id, path)  # fail fast, before creating the job
+        """Submit an inspect task (async on the worker). Poll ``get_inspect_task``."""
+        validate_listing_path(system_id, path)  # fail fast, before creating the task
         from geoapi.tasks.file_inspection import inspect_files
 
-        return submit_job(
+        return TaskService.submit_ephemeral(
             session,
             user_id,
             inspect_files,
             [user_id, system_id, path, recursive],
             f"Inspecting {system_id}:{path}",
-            expires_hours=JOB_TTL_HOURS,
         )
 
     @staticmethod
-    def get_inspect_job(session, task_id: int, user_id: int) -> FileInspectJobResponse:
-        task, status, raw, error = get_job(session, task_id, user_id)
+    def get_inspect_task(
+        session, task_id: int, user_id: int
+    ) -> FileInspectTaskResponse:
+        task, status, raw, error = TaskService.get_ephemeral(session, task_id, user_id)
         result = (
             [FileInspectResponse(**item) for item in raw] if raw is not None else None
         )
-        return FileInspectJobResponse(
+        return FileInspectTaskResponse(
             task_id=task.id, status=status, result=result, error=error
         )
 
@@ -454,24 +448,23 @@ class FileInspectionService:
     def submit_list(
         session, user_id: int, system_id: str, path: str, recursive: bool = True
     ) -> Task:
-        """Submit a list job (async on the worker -- no geo CLIs, just Tapis listing).
-        Poll ``get_list_job``."""
-        validate_listing_path(system_id, path)  # fail fast, before creating the job
+        """Submit a list task (async on the worker -- no geo CLIs, just Tapis listing).
+        Poll ``get_list_task``."""
+        validate_listing_path(system_id, path)  # fail fast, before creating the task
         from geoapi.tasks.file_inspection import list_files_task
 
-        return submit_job(
+        return TaskService.submit_ephemeral(
             session,
             user_id,
             list_files_task,
             [user_id, system_id, path, recursive],
             f"Listing {system_id}:{path}",
-            expires_hours=JOB_TTL_HOURS,
         )
 
     @staticmethod
-    def get_list_job(session, task_id: int, user_id: int) -> FileListJobResponse:
-        task, status, raw, error = get_job(session, task_id, user_id)
+    def get_list_task(session, task_id: int, user_id: int) -> FileListTaskResponse:
+        task, status, raw, error = TaskService.get_ephemeral(session, task_id, user_id)
         result = [FileListEntry(**item) for item in raw] if raw is not None else None
-        return FileListJobResponse(
+        return FileListTaskResponse(
             task_id=task.id, status=status, result=result, error=error
         )

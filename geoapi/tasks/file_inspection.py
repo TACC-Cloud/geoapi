@@ -1,18 +1,18 @@
 from geoapi.celery_app import app
 from geoapi.db import create_task_session
 from geoapi.models import User
-from geoapi.tasks.jobs import EphemeralJobTask
+from geoapi.tasks.utils import EphemeralTask
 from geoapi.utils.external_apis import TapisUtils
 
 
-@app.task(bind=True, base=EphemeralJobTask, queue="default")
+@app.task(bind=True, base=EphemeralTask, queue="default")
 def inspect_files(
     self, user_id: int, system_id: str, path: str, recursive: bool = True
 ) -> list[dict]:
     """Expand ``path`` (file or directory) and probe each file on the worker.
 
     Returns a list of ``FileInspectResponse`` dicts (stored in the Celery result backend
-    and read back by ``GET /files/inspect/{task_id}``). ``EphemeralJobTask`` moves the
+    and read back by ``GET /files/inspect/{task_id}``). ``EphemeralTask`` moves the
     Task row RUNNING -> COMPLETED; ``GeoAPITask.on_failure`` marks it FAILED on error.
     """
     from geoapi.services.file_inspection import probe, list_tapis_files
@@ -26,7 +26,7 @@ def inspect_files(
         ]
 
 
-@app.task(bind=True, base=EphemeralJobTask, queue="default")
+@app.task(bind=True, base=EphemeralTask, queue="default")
 def list_files_task(
     self, user_id: int, system_id: str, path: str, recursive: bool = True
 ) -> list[dict]:

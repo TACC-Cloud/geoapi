@@ -3,11 +3,11 @@ from sqlalchemy.orm import Session
 
 from geoapi.log import logger
 from geoapi.schema.files import (
-    FileInspectJobResponse,
+    FileInspectTaskResponse,
     FileInspectRequest,
-    FileListJobResponse,
+    FileListTaskResponse,
     FileListRequest,
-    JobSubmitResponse,
+    TaskSubmitResponse,
 )
 from geoapi.services.file_inspection import FileInspectionService
 from geoapi.utils.decorators import not_anonymous_guard
@@ -30,7 +30,7 @@ class FileInspectController(Controller):
     )
     def inspect_file(
         self, request: Request, db_session: Session, data: FileInspectRequest
-    ) -> JobSubmitResponse:
+    ) -> TaskSubmitResponse:
         logger.info(
             f"inspect_file: user:{request.user.username} "
             f"system:{data.system_id} path:{data.path}"
@@ -42,22 +42,22 @@ class FileInspectController(Controller):
             path=data.path,
             recursive=data.recursive,
         )
-        return JobSubmitResponse(task_id=task.id, status=task.status)
+        return TaskSubmitResponse(task_id=task.id, status=task.status)
 
     @get(
         "/inspect/{task_id:int}",
         tags=["files"],
-        operation_id="get_inspect_job",
+        operation_id="get_inspect_task",
         description=(
-            "Poll an inspection job: returns its status and, once COMPLETED, the "
+            "Poll an inspection task: returns its status and, once COMPLETED, the "
             "per-file geospatial verdicts."
         ),
         guards=[not_anonymous_guard],
     )
-    def get_inspect_job(
+    def get_inspect_task(
         self, request: Request, db_session: Session, task_id: int
-    ) -> FileInspectJobResponse:
-        return FileInspectionService.get_inspect_job(
+    ) -> FileInspectTaskResponse:
+        return FileInspectionService.get_inspect_task(
             session=db_session, task_id=task_id, user_id=request.user.id
         )
 
@@ -76,7 +76,7 @@ class FileInspectController(Controller):
     )
     def list_files(
         self, request: Request, db_session: Session, data: FileListRequest
-    ) -> JobSubmitResponse:
+    ) -> TaskSubmitResponse:
         logger.info(
             f"list_files: user:{request.user.username} "
             f"system:{data.system_id} path:{data.path}"
@@ -88,18 +88,18 @@ class FileInspectController(Controller):
             path=data.path,
             recursive=data.recursive,
         )
-        return JobSubmitResponse(task_id=task.id, status=task.status)
+        return TaskSubmitResponse(task_id=task.id, status=task.status)
 
     @get(
         "/list/{task_id:int}",
         tags=["files"],
-        operation_id="get_list_job",
-        description="Poll a list job: returns its status and, once COMPLETED, the entries.",
+        operation_id="get_list_task",
+        description="Poll a list task: returns its status and, once COMPLETED, the entries.",
         guards=[not_anonymous_guard],
     )
-    def get_list_job(
+    def get_list_task(
         self, request: Request, db_session: Session, task_id: int
-    ) -> FileListJobResponse:
-        return FileInspectionService.get_list_job(
+    ) -> FileListTaskResponse:
+        return FileInspectionService.get_list_task(
             session=db_session, task_id=task_id, user_id=request.user.id
         )

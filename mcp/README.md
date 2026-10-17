@@ -20,8 +20,8 @@ agent service ──MCP (HTTP)──► geoapi-mcp ──REST──► GeoAPI
 | `list_maps()` | `GET /projects/` | The user's own maps (token-scoped). Use a map's `id` as `project_id`. |
 | `create_map(name, description="", location="DESIGN_SAFE_MY_DATA")` | `POST /projects/` | Create a new **private** map under My Data (default) or a DesignSafe project (pass its `project-XXXX` system id). Confirm name + location first (a WRITE). Publishing is done later in the Hazmapper web app. |
 
-Both file jobs run async on the GeoAPI worker; the MCP polls (every
-`GEOAPI_INSPECT_POLL_SECONDS`, default 2s, up to `GEOAPI_INSPECT_MAX_WAIT_SECONDS`,
+Both file tasks run async on the GeoAPI worker; the MCP polls (every
+`GEOAPI_TASK_POLL_SECONDS`, default 2s, up to `GEOAPI_TASK_MAX_WAIT_SECONDS`,
 default 300s) so the agent still gets the result in one tool call.
 
 The tool docstrings steer the agent: survey/inspect first, and only import a file the
