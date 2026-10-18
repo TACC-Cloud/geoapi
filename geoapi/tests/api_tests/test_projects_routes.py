@@ -18,6 +18,10 @@ def test_get_projects(test_client, projects_fixture, user1):
     assert resp.status_code == 200
     assert len(data) == 1
     assert data[0]["deletable"] is True
+    assert (
+        data[0]["hazmapper_url"]
+        == f"http://localhost:4200/project/{projects_fixture.uuid}"
+    )
 
 
 def test_get_projects_but_not_admin_or_creator(
