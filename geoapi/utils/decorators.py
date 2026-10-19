@@ -12,6 +12,7 @@ from geoapi.services.users import UserService
 from geoapi.services.projects import ProjectsService
 from geoapi.services.features import FeaturesService
 from geoapi.services.point_cloud import PointCloudService
+from geoapi.services.tile_server import TileService
 from geoapi.utils.users import is_anonymous
 from geoapi.log import logger
 from geoapi.db import managed_litestar_db_session
@@ -142,6 +143,10 @@ def project_feature_exists_guard(
         if not feature:
             raise HTTPException(status_code=404, detail="No feature found!")
         if feature.project_id != project_id:
+            logger.warning(
+                f"User:{connection.user.username} requested feature:{feature_id} "
+                f"via project:{project_id} but it belongs to project:{feature.project_id}"
+            )
             raise HTTPException(status_code=404, detail="Feature not part of project")
 
 
@@ -167,8 +172,43 @@ def project_point_cloud_exists_guard(
         if not point_cloud:
             raise HTTPException(status_code=404, detail="No point cloud found!")
         if point_cloud.project_id != project_id:
+            logger.warning(
+                f"User:{connection.user.username} requested point cloud:{point_cloud_id} "
+                f"via project:{project_id} but it belongs to project:{point_cloud.project_id}"
+            )
             raise HTTPException(
                 status_code=404, detail="Point cloud not part of project"
+            )
+
+
+def project_tile_server_exists_guard(
+    connection: ASGIConnection, _: BaseRouteHandler
+) -> None:
+    """
+    Middleware to ensure tile server exists in project.
+
+    This is used in the ASGI app to check permissions before processing the request.
+    """
+    with managed_litestar_db_session(
+        connection.app.state, connection.scope
+    ) as db_session:
+        project_id = connection.path_params["project_id"]
+        tile_server_id = connection.path_params["tile_server_id"]
+
+        proj = ProjectsService.get(db_session, project_id)
+        if not proj:
+            raise HTTPException(status_code=404, detail="No project found")
+
+        tile_server = TileService.get(db_session, tile_server_id)
+        if not tile_server:
+            raise HTTPException(status_code=404, detail="No tile server found!")
+        if tile_server.project_id != project_id:
+            logger.warning(
+                f"User:{connection.user.username} requested tile server:{tile_server_id} "
+                f"via project:{project_id} but it belongs to project:{tile_server.project_id}"
+            )
+            raise HTTPException(
+                status_code=404, detail="Tile server not part of project"
             )
 
 
