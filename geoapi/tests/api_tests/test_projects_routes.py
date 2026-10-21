@@ -21,6 +21,10 @@ def test_get_projects(test_client, projects_fixture, user1):
     # projects_fixture makes test1 an admin (not creator)
     assert data[0]["admin"] is True
     assert data[0]["creator"] is False
+    assert (
+        data[0]["hazmapper_url"]
+        == f"http://localhost:4200/project/{projects_fixture.uuid}"
+    )
 
 
 def test_get_projects_but_not_admin_or_creator(
