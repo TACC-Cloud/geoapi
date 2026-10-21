@@ -93,3 +93,26 @@ def test_callback_invalid_state(test_client):
     test_client.set_session_data({"auth_state": "expected_state"})
     resp = test_client.get("/auth/callback?state=wrong_state&code=mocked_code")
     assert resp.status_code == 400
+
+
+def test_jwt_request_creates_new_user_with_auth(test_client, user1, db_session):
+    # A valid JWT for a user GeoAPI hasn't seen yet (e.g. first MCP call, before any
+    # Hazmapper login) must create the user AND their auth row holding the JWT string.
+    import jwt
+
+    from geoapi.models import User
+    from geoapi.utils.jwt_utils import PRIVATE_KEY_FOR_TESTING
+
+    claims = jwt.decode(user1.jwt, options={"verify_signature": False})
+    claims["tapis/username"] = "brand_new_user"
+    token = jwt.encode(claims, PRIVATE_KEY_FOR_TESTING, algorithm="RS256")
+
+    resp = test_client.get("/status/", headers={"X-Tapis-Token": token})
+    assert resp.status_code == 200
+
+    new_user = (
+        db_session.query(User).filter(User.username == "brand_new_user").one_or_none()
+    )
+    assert new_user is not None
+    assert new_user.auth is not None
+    assert new_user.auth.access_token == token
