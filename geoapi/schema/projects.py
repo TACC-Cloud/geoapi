@@ -82,6 +82,7 @@ class ProjectDTO(SQLAlchemyDTO[Project]):
         include={
             "id",
             "uuid",
+            "hazmapper_url",
             "name",
             "description",
             "public",
