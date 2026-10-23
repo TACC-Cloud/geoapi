@@ -12,6 +12,7 @@ from geoapi.services.users import UserService
 from geoapi.services.projects import ProjectsService
 from geoapi.services.features import FeaturesService
 from geoapi.services.point_cloud import PointCloudService
+from geoapi.services.tile_server import TileService
 from geoapi.utils.users import is_anonymous
 from geoapi.log import logger
 from geoapi.db import managed_litestar_db_session
@@ -120,56 +121,49 @@ def project_admin_or_creator_permissions_guard(
             raise PermissionDeniedException("Must be project admin or creator")
 
 
-def project_feature_exists_guard(
-    connection: ASGIConnection, _: BaseRouteHandler
-) -> None:
+def object_in_project_guard(path_param: str, service, label: str):
     """
-    Middleware to ensure feature exists in project.
+    Build a guard that ensures the object in the URL exists and belongs to the project
+    in the URL. Returns 404 otherwise (so other projects' IDs aren't revealed).
 
-    This is used in the ASGI app to check permissions before processing the request.
+    Must run after a project access guard, which also checks the project exists.
+
+    :param path_param: name of the path parameter holding the object ID
+    :param service: service with a ``get(db_session, id)`` method
+    :param label: name of the object for messages, e.g. "feature"
     """
-    with managed_litestar_db_session(
-        connection.app.state, connection.scope
-    ) as db_session:
-        project_id = connection.path_params["project_id"]
-        feature_id = connection.path_params["feature_id"]
 
-        proj = ProjectsService.get(db_session, project_id)
-        if not proj:
-            raise HTTPException(status_code=404, detail="No project found")
+    def guard(connection: ASGIConnection, _: BaseRouteHandler) -> None:
+        with managed_litestar_db_session(
+            connection.app.state, connection.scope
+        ) as db_session:
+            project_id = connection.path_params["project_id"]
+            object_id = connection.path_params[path_param]
 
-        feature = FeaturesService.get(db_session, feature_id)
-        if not feature:
-            raise HTTPException(status_code=404, detail="No feature found!")
-        if feature.project_id != project_id:
-            raise HTTPException(status_code=404, detail="Feature not part of project")
+            obj = service.get(db_session, object_id)
+            if not obj:
+                raise HTTPException(status_code=404, detail=f"No {label} found!")
+            if obj.project_id != project_id:
+                logger.warning(
+                    f"User:{connection.user.username} requested {label}:{object_id} "
+                    f"via project:{project_id} but it belongs to project:{obj.project_id}"
+                )
+                raise HTTPException(
+                    status_code=404, detail=f"{label.capitalize()} not part of project"
+                )
+
+    return guard
 
 
-def project_point_cloud_exists_guard(
-    connection: ASGIConnection, _: BaseRouteHandler
-) -> None:
-    """
-    Middleware to ensure point cloud exists in project.
-
-    This is used in the ASGI app to check permissions before processing the request.
-    """
-    with managed_litestar_db_session(
-        connection.app.state, connection.scope
-    ) as db_session:
-        project_id = connection.path_params["project_id"]
-        point_cloud_id = connection.path_params["point_cloud_id"]
-
-        proj = ProjectsService.get(db_session, project_id)
-        if not proj:
-            raise HTTPException(status_code=404, detail="No project found")
-
-        point_cloud = PointCloudService.get(db_session, point_cloud_id)
-        if not point_cloud:
-            raise HTTPException(status_code=404, detail="No point cloud found!")
-        if point_cloud.project_id != project_id:
-            raise HTTPException(
-                status_code=404, detail="Point cloud not part of project"
-            )
+project_feature_exists_guard = object_in_project_guard(
+    "feature_id", FeaturesService, "feature"
+)
+project_point_cloud_exists_guard = object_in_project_guard(
+    "point_cloud_id", PointCloudService, "point cloud"
+)
+project_tile_server_exists_guard = object_in_project_guard(
+    "tile_server_id", TileService, "tile server"
+)
 
 
 def project_point_cloud_not_processing_guard(
