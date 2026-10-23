@@ -66,7 +66,7 @@ class Project(Base):
     _deletable: bool = False
 
     @hybrid_property
-    def deletable(self):
+    def deletable(self) -> bool:
         return getattr(self, "_deletable", False)
 
     @deletable.setter
