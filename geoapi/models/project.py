@@ -5,6 +5,7 @@ from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.sql import func
 from geoapi.db import Base
+from geoapi.utils.client_backend import get_deployed_hazmapper_url
 
 
 class ProjectUser(Base):
@@ -81,3 +82,9 @@ class Project(Base):
             f"created={self.created}, updated={self.updated}, "
             f"watch_content={self.watch_content}, watch_users={self.watch_users})>"
         )
+
+    @hybrid_property
+    def hazmapper_url(self) -> str:
+        """Hazmapper link to this map (``/project/<uuid>``) for the current
+        environment."""
+        return f"{get_deployed_hazmapper_url()}/project/{self.uuid}"
