@@ -91,6 +91,8 @@ class ProjectDTO(SQLAlchemyDTO[Project]):
             "system_path",
             "designsafe_project_id",
             "deletable",
+            "admin",
+            "creator",
         },
     )
 

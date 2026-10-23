@@ -1,6 +1,8 @@
 import pytest
 from unittest.mock import patch, MagicMock
 
+from geoapi.models import Task
+
 
 @pytest.fixture
 def check_public_paths_mock():
@@ -12,7 +14,7 @@ def check_public_paths_mock():
 
 
 def test_start_public_status_refresh(
-    test_client, projects_fixture, user1, check_public_paths_mock
+    test_client, projects_fixture, user1, check_public_paths_mock, db_session
 ):
     resp = test_client.post(
         f"/projects/{projects_fixture.id}/file-location-status/",
@@ -26,6 +28,11 @@ def test_start_public_status_refresh(
 
     # Verify the task was called
     check_public_paths_mock.apply_async.assert_called_once()
+
+    # The created Task records who triggered it.
+    task = db_session.get(Task, data["task_id"])
+    assert task is not None
+    assert task.user_id == user1.id
 
 
 def test_start_public_status_refresh_already_running(

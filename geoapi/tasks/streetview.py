@@ -360,7 +360,7 @@ def from_tapis_to_streetview(
 
 
 def process_streetview_sequences(
-    database_session, projectId, sequenceId, token
+    database_session, projectId, sequenceId, token, user_id=None
 ) -> Task:
     """
     Process streetview files
@@ -368,6 +368,7 @@ def process_streetview_sequences(
     :param projectId: int
     :param sequenceId: int
     :param token: str
+    :param user_id: int, the user who triggered this
     :return: processingTask: Task
     """
     streetview_sequence = database_session.get(StreetviewSequence, sequenceId)
@@ -377,6 +378,7 @@ def process_streetview_sequences(
     task.process_id = celery_task_id
     task.status = "RUNNING"
     task.description = "Processing streetview sequence #{}".format(sequenceId)
+    task.user_id = user_id
 
     streetview_sequence.task = task
 

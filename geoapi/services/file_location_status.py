@@ -14,7 +14,10 @@ class FileLocationStatusService:
 
     @staticmethod
     def start_check(
-        db_session: "Session", project_id: int, celery_task_uuid: str
+        db_session: "Session",
+        project_id: int,
+        celery_task_uuid: str,
+        user_id: int = None,
     ) -> FileLocationCheck:
         check = FileLocationStatusService.get(db_session, project_id)
 
@@ -23,6 +26,7 @@ class FileLocationStatusService:
             status=TaskStatus.QUEUED,
             description="Refreshing public status",
             project_id=project_id,
+            user_id=user_id,
         )
         db_session.add(task)
         db_session.flush()  # Flush to get the task.id
