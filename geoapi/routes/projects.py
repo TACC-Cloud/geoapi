@@ -7,7 +7,7 @@ from litestar import Controller, get, Request, post, delete, put, Router
 from litestar.datastructures import UploadFile
 from litestar.params import Body
 from litestar.enums import RequestEncodingType
-from litestar.exceptions import NotAuthorizedException
+from litestar.exceptions import NotAuthorizedException, NotFoundException
 from geojson_pydantic import Feature as GeoJSONFeature
 from geoapi.log import logger
 from geoapi.services.features import FeaturesService
@@ -23,6 +23,7 @@ from geoapi.utils.decorators import (
     project_permissions_allow_public_guard,
     project_permissions_guard,
     project_feature_exists_guard,
+    project_tile_server_exists_guard,
     project_point_cloud_exists_guard,
     project_point_cloud_not_processing_guard,
     not_anonymous_guard,
@@ -319,7 +320,7 @@ class ProjectFeatureResourceController(Controller):
         tags=["projects"],
         operation_id="get_feature",
         description="GET a feature of a project as GeoJSON",
-        guards=[project_permissions_allow_public_guard],
+        guards=[project_permissions_allow_public_guard, project_feature_exists_guard],
         return_dto=FeatureReturnDTO,
     )
     def get_feature(
@@ -335,7 +336,7 @@ class ProjectFeatureResourceController(Controller):
         tags=["projects"],
         operation_id="delete_feature",
         description="Delete a feature from a project",
-        guards=[project_permissions_guard],
+        guards=[project_permissions_guard, project_feature_exists_guard],
     )
     def delete_feature(
         self, request: Request, db_session: "Session", project_id: int, feature_id: int
@@ -554,7 +555,7 @@ class ProjectStreetviewFeatureResourceController(Controller):
         tags=["projects"],
         operation_id="get_streetview_sequence_from_feature",
         description="Get streetview sequence from a project feature",
-        guards=[project_permissions_guard],
+        guards=[project_permissions_guard, project_feature_exists_guard],
         return_dto=FeatureReturnDTO,
     )
     def get_streetview_sequence_from_feature(
@@ -632,7 +633,10 @@ class ProjectPointCloudResourceController(Controller):
         tags=["projects"],
         operation_id="get_point_cloud",
         description="Get point cloud of a project by its ID.",
-        guards=[project_permissions_allow_public_guard],
+        guards=[
+            project_permissions_allow_public_guard,
+            project_point_cloud_exists_guard,
+        ],
         return_dto=PointCloudDTO,
     )
     def get_point_cloud(
@@ -679,7 +683,10 @@ class ProjectPointCloudResourceController(Controller):
         return PointCloudService.update(
             database_session=db_session,
             pointCloudId=point_cloud_id,
-            data=data.model_dump(exclude_none=True),
+            # Ignore fields that must not change (e.g. moving it to another project)
+            data=data.model_dump(
+                exclude_none=True, exclude={"id", "project_id", "feature_id", "task"}
+            ),
         )
 
     @delete(
@@ -840,6 +847,18 @@ class ProjectTileServersResourceController(Controller):
             )
         )
 
+        # Check every tile server is in this project before changing any of them
+        project_tile_server_ids = {
+            ts.id for ts in TileService.getTileServers(db_session, project_id)
+        }
+        for ts in data:
+            if ts.id not in project_tile_server_ids:
+                logger.warning(
+                    f"User:{u.username} requested tile server:{ts.id} "
+                    f"via project:{project_id} but it is not part of the project"
+                )
+                raise NotFoundException("Tile server not part of project")
+
         return TileService.updateTileServers(
             database_session=db_session,
             dataList=[ts.model_dump(exclude_none=True) for ts in data],
@@ -892,7 +911,7 @@ class ProjectTileServerResourceController(Controller):
         tags=["projects"],
         operation_id="delete_tile_server",
         description="Delete a tile server from a project.",
-        guards=[project_permissions_guard],
+        guards=[project_permissions_guard, project_tile_server_exists_guard],
     )
     def delete_tile_server(
         self,
@@ -918,7 +937,7 @@ class ProjectTileServerResourceController(Controller):
         For nested objects (tileOptions, uiOptions), provided values are
         merged with existing data rather than replacing them entirely.
         """,
-        guards=[project_permissions_guard],
+        guards=[project_permissions_guard, project_tile_server_exists_guard],
         return_dto=TileServerDTO,
     )
     def update_tile_server(
