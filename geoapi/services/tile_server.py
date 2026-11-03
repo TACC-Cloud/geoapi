@@ -68,6 +68,15 @@ class TileService:
         return ts
 
     @staticmethod
+    def get(database_session, tileServerId: int) -> TileServer:
+        """
+        Retrieve a single TileServer
+        :param tileServerId: int
+        :return: TileServer
+        """
+        return database_session.get(TileServer, tileServerId)
+
+    @staticmethod
     def getTileServers(
         database_session,
         projectId: int,
