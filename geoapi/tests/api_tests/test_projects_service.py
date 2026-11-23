@@ -4,7 +4,7 @@ import pytest
 from geoapi.services.projects import ProjectsService
 from geoapi.models import User
 from geoapi.models.project import Project, ProjectUser
-from geoapi.exceptions import ProjectSystemPathWatchFilesAlreadyExists
+from geoapi.exceptions import ApiException, ProjectSystemPathWatchFilesAlreadyExists
 
 
 def test_create_project(user1, db_session):
@@ -136,6 +136,13 @@ def test_get_features_filter_type(
         db_session, projects_fixture.id, query
     )
     assert len(project_features["features"]) == 0
+
+
+def test_get_features_filter_type_invalid(projects_fixture, db_session):
+    with pytest.raises(ApiException):
+        ProjectsService.getFeatures(
+            db_session, projects_fixture.id, {"assetType": "unknown"}
+        )
 
 
 def test_update_project(projects_fixture, db_session):

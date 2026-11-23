@@ -16,6 +16,17 @@ from geoapi.exceptions import (
 )
 from geoapi.custom import custom_on_project_creation, custom_on_project_deletion
 
+# Values accepted by the features assetType filter
+FEATURE_ASSET_TYPES = {
+    "image",
+    "video",
+    "point_cloud",
+    "streetview",
+    "questionnaire",
+    "vector",
+    "no_asset_vector",
+}
+
 
 class ProjectsService:
     """
@@ -221,16 +232,18 @@ class ProjectsService:
         assetTypes = assetType.split(",") if assetType else []
         assetQueries = []
 
-        for asset in assetTypes:
-            if asset:
-                params[asset] = asset
-                assetQueries.append(
-                    # "no_asset_vector" covers both features with no asset and
-                    # features backed by a PMTiles vector asset
-                    "(fa is null OR fa.asset_type = 'vector')"
-                    if asset == "no_asset_vector"
-                    else "fa.asset_type = :" + asset
-                )
+        for i, asset in enumerate(assetTypes):
+            if not asset:
+                continue
+            if asset not in FEATURE_ASSET_TYPES:
+                raise ApiException("Invalid assetType")
+            if asset == "no_asset_vector":
+                # "no_asset_vector" covers both features with no asset and
+                # features backed by a PMTiles vector asset
+                assetQueries.append("(fa is null OR fa.asset_type = 'vector')")
+            else:
+                params[f"asset_type_{i}"] = asset
+                assetQueries.append(f"fa.asset_type = :asset_type_{i}")
 
         select_stmt = text("""
         json_build_object(
